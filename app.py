@@ -8,7 +8,7 @@ import os
 # Set page config
 st.set_page_config(
     page_title="DA-CRE Analysis Platform",
-    page_icon="📊",
+    page_icon="🪄📊",
     layout="wide"
 )
 
