@@ -11,11 +11,11 @@ import os
 # Page Configuration
 st.set_page_config(
     page_title="DA-CRE Analysis Platform",
-    page_icon="🪄📊",
+    page_icon="⚡",
     layout="wide"
 )
 
-# Initialize Session State Variables
+# Initialize Session State
 if 'loading_complete' not in st.session_state:
     st.session_state['loading_complete'] = False
 if 'authenticated' not in st.session_state:
@@ -23,77 +23,94 @@ if 'authenticated' not in st.session_state:
 if 'declined_suggested' not in st.session_state:
     st.session_state['declined_suggested'] = False
 
-def generate_strong_password(length=12):
+def generate_strong_password(length=14):
     alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
     return ''.join(secrets.choice(alphabet) for _ in range(length))
 
 if 'suggested_pw' not in st.session_state:
     st.session_state['suggested_pw'] = generate_strong_password()
 
-# Custom CSS: Animated Backgrounds & Hovering Logo
+# High-End Modern UI Styling (Glassmorphism & Glowing Elements)
 st.markdown("""
     <style>
-    /* Blue to Dark Blue Background Animation */
+    /* Background Setup */
     .stApp {
-        background: linear-gradient(-45deg, #0d1b2a, #1b263b, #415a77, #1e3c72, #001122);
-        background-size: 400% 400%;
-        animation: gradientBG 10s ease infinite;
-        color: white;
-    }
-    @keyframes gradientBG {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
+        background: radial-gradient(circle at top left, #1a233a, #0b0e14, #05070a);
+        color: #f0f4f8;
+        font-family: 'Inter', sans-serif;
     }
 
-    /* Hovering & Pulsing DACRE Logo Animation */
+    /* Animated Loading Logo */
     .logo-container {
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        height: 70vh;
+        height: 75vh;
     }
     .dacre-logo {
-        font-size: 4rem;
+        font-size: 4.5rem;
         font-weight: 900;
-        letter-spacing: 4px;
-        color: #ffffff;
-        background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+        letter-spacing: 6px;
+        background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        text-shadow: 0px 10px 20px rgba(0, 210, 255, 0.4);
-        animation: floatAndPulse 2.5s ease-in-out infinite;
+        animation: floatAndGlow 2.2s ease-in-out infinite;
     }
     .logo-subtext {
-        font-size: 1.2rem;
-        color: #e0e1dd;
-        margin-top: 15px;
-        animation: fadeIn 2s ease-in-out infinite alternate;
+        font-size: 1.1rem;
+        color: #94a3b8;
+        letter-spacing: 2px;
+        margin-top: 10px;
     }
-    @keyframes floatAndPulse {
-        0% { transform: translateY(0px) scale(1); filter: drop-shadow(0 5px 15px rgba(0,210,255,0.3)); }
-        50% { transform: translateY(-15px) scale(1.05); filter: drop-shadow(0 20px 30px rgba(0,210,255,0.7)); }
-        100% { transform: translateY(0px) scale(1); filter: drop-shadow(0 5px 15px rgba(0,210,255,0.3)); }
+    @keyframes floatAndGlow {
+        0% { transform: translateY(0px); filter: drop-shadow(0 0 15px rgba(79, 172, 254, 0.3)); }
+        50% { transform: translateY(-12px); filter: drop-shadow(0 0 35px rgba(79, 172, 254, 0.8)); }
+        100% { transform: translateY(0px); filter: drop-shadow(0 0 15px rgba(79, 172, 254, 0.3)); }
     }
 
-    /* Sign-up Card Styling */
-    .signup-card {
-        background: rgba(13, 27, 42, 0.85);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        padding: 2rem;
-        border-radius: 15px;
-        box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+    /* Glassmorphism Cards */
+    .glass-card {
+        background: rgba(18, 24, 38, 0.7);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 20px;
+        padding: 2.2rem;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+        transition: transform 0.3s ease, border-color 0.3s ease;
     }
-    
-    /* Pointer Animation for Profile */
+    .glass-card:hover {
+        border-color: rgba(79, 172, 254, 0.4);
+    }
+
+    /* Corrected Pointer Box (Points 👉 to the Form) */
     .pointer-box {
         text-align: center;
-        background: rgba(65, 90, 119, 0.4);
-        padding: 1rem;
-        border-radius: 12px;
-        border: 1px solid #00d2ff;
-        margin-top: 10px;
+        background: linear-gradient(135deg, rgba(79, 172, 254, 0.15) 0%, rgba(0, 242, 254, 0.05) 100%);
+        padding: 1.2rem;
+        border-radius: 16px;
+        border: 1px solid rgba(79, 172, 254, 0.4);
+        margin-top: 15px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
+
+    /* Custom Header Banner */
+    .main-header {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 2rem;
+        border-radius: 16px;
+        text-align: center;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    .main-header h1 {
+        background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 800;
+        margin-bottom: 5px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -106,47 +123,51 @@ if not st.session_state['loading_complete']:
         st.markdown("""
             <div class="logo-container">
                 <div class="dacre-logo">⚡ DACRE ANALYSIS</div>
-                <div class="logo-subtext">Initializing AI Data Engine...</div>
+                <div class="logo-subtext">INITIALIZING DATA ENGINE...</div>
             </div>
         """, unsafe_allow_html=True)
     
-    # 5 Seconds Delay
     time.sleep(5)
     st.session_state['loading_complete'] = True
     placeholder.empty()
     st.rerun()
 
 
-# --- 2. SIGN-UP PAGE (WITH ANIMATED BACKGROUND & PROFILE GUIDE) ---
+# --- 2. SIGN-UP PAGE WITH ASTONISHING UI & PROPER POINTER ---
 elif not st.session_state['authenticated']:
     
-    st.markdown("<h1 style='text-align: center; color: #00d2ff; margin-bottom: 30px;'>Welcome to DA-CRE Analysis Platform</h1>", unsafe_allow_html=True)
+    st.markdown("""
+        <div class="main-header">
+            <h1>DA-CRE Analysis Platform</h1>
+            <p style="color: #94a3b8; font-size: 1.1rem;">Commercial Real Estate & Advanced Data Intelligence</p>
+        </div>
+    """, unsafe_allow_html=True)
 
     col1, col2 = st.columns([1, 1.2], gap="large")
 
-    # Left Column: Profile Picture pointing to Sign Up
+    # Left Column: Profile Card with 👉 pointing RIGHT
     with col1:
-        st.markdown('<div class="signup-card">', unsafe_allow_html=True)
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
         
-        # Load David Profile Picture if present in GitHub repo
         if os.path.exists("david_profile.png"):
             img = Image.open("david_profile.png")
             st.image(img, use_container_width=True)
         else:
             st.info("📷 Profile photo (david_profile.png)")
 
+        # Fixed 👉 pointing to the right form
         st.markdown("""
             <div class="pointer-box">
-                <h3 style="color: #00d2ff; margin:0;">👈 Welcome!</h3>
-                <p style="margin:5px 0 0 0;">Please fill out the form on the right to complete your sign up and unlock full access.</p>
+                <h3 style="color: #00f2fe; margin:0; font-size: 1.4rem;">Welcome! 👉</h3>
+                <p style="margin:8px 0 0 0; color: #cbd5e1;">Fill out the access form on the right to unlock your workspace.</p>
             </div>
         """, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # Right Column: Animated Sign-Up Form
+    # Right Column: Glassmorphism Sign-Up Form
     with col2:
-        st.markdown('<div class="signup-card">', unsafe_allow_html=True)
-        st.subheader("📝 Create Your Account")
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        st.markdown("<h2 style='color: #4facfe; margin-bottom: 20px;'>📝 Create Account</h2>", unsafe_allow_html=True)
         
         first_name = st.text_input("First Name")
         middle_name = st.text_input("Middle Name (Optional)")
@@ -157,139 +178,140 @@ elif not st.session_state['authenticated']:
         # Email Validation Check
         email_error = False
         if email and "@" not in email:
-            st.error("❌ Invalid Email: Your email address must contain an '@' symbol.")
+            st.error("❌ Invalid Email: Address must include '@'")
             email_error = True
 
-        # Password Suggestion & Decline logic
         st.write("---")
+        
+        # Password Handling Logic
         if not st.session_state['declined_suggested']:
-            st.info(f"💡 **Suggested Secure Password:** `{st.session_state['suggested_pw']}`")
+            st.info(f"🔑 **Suggested Password:** `{st.session_state['suggested_pw']}`")
             
             c_acc, c_dec = st.columns(2)
             with c_acc:
-                if st.button("Use Suggested Password"):
+                if st.button("Accept Suggested", use_container_width=True):
                     password_to_use = st.session_state['suggested_pw']
             with c_dec:
-                if st.button("Decline & Set Custom"):
+                if st.button("Decline & Use Own", use_container_width=True):
                     st.session_state['declined_suggested'] = True
                     st.rerun()
         else:
-            password_to_use = st.text_input("Set Your Own Password", type="password")
+            password_to_use = st.text_input("Custom Password", type="password")
             if st.button("Re-enable Suggested Password"):
                 st.session_state['declined_suggested'] = False
                 st.rerun()
 
         st.write("---")
         
-        # Complete Sign Up Button
-        if st.button("Complete Sign Up & Access Platform"):
+        # Complete Signup Button
+        if st.button("Complete Registration 🚀", use_container_width=True):
             if not first_name:
-                st.warning("Please enter your First Name.")
+                st.warning("First name is required.")
             elif not email or email_error:
-                st.warning("Please enter a valid Email Address containing '@'.")
+                st.warning("Valid email required.")
             elif not password_to_use:
-                st.warning("Please select or type a password.")
+                st.warning("Please specify or accept a password.")
             else:
                 st.session_state['user_name'] = f"{first_name} {middle_name}".strip()
                 st.session_state['authenticated'] = True
-                st.success("Registration Successful! Loading Dashboard...")
+                st.success("Account created! Unlocking platform...")
                 time.sleep(1)
                 st.rerun()
                 
         st.markdown('</div>', unsafe_allow_html=True)
 
 
-# --- 3. MAIN APPLICATION PLATFORM ---
+# --- 3. MAIN APPLICATION DASHBOARD ---
 else:
-    st.sidebar.title(f"👤 Welcome, {st.session_state.get('user_name', 'User')}!")
-    if st.sidebar.button("🔒 Sign Out"):
+    st.sidebar.title(f"👤 {st.session_state.get('user_name', 'User')}")
+    if st.sidebar.button("🔒 Logout", use_container_width=True):
         st.session_state['authenticated'] = False
         st.session_state['loading_complete'] = True
         st.rerun()
 
     st.markdown("""
-        <div style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); padding: 1.5rem; border-radius: 10px; text-align: center; margin-bottom: 20px;">
-            <h1>DA-CRE Analysis Platform</h1>
-            <p>AI-Powered Commercial Real Estate & Data Analytics Engine</p>
+        <div class="main-header">
+            <h1>DA-CRE Analysis Workspace</h1>
+            <p style="color: #94a3b8;">Active Session | Data Analytics & Scraper Engine</p>
         </div>
     """, unsafe_allow_html=True)
 
     app_mode = st.sidebar.radio(
-        "Choose Module",
-        ["🌐 1. Web Data Extractor", "📁 2. File Upload (CSV/Excel)", "🧹 3. Data Cleaning", "📊 4. Visual Analytics"]
+        "Navigation",
+        ["🌐 1. Web Scraper", "📁 2. File Upload", "🧹 3. Data Cleaner", "📊 4. Analytics Engine"]
     )
 
     # MODULE 1: WEB SCRAPER
-    if app_mode == "🌐 1. Web Data Extractor":
-        st.subheader("🌐 Website Data Extraction")
-        url_input = st.text_input("Enter Website URL:", "https://en.wikipedia.org/wiki/List_of_largest_companies_by_revenue")
+    if app_mode == "🌐 1. Web Scraper":
+        st.subheader("🌐 Web Data Scraper")
+        url_input = st.text_input("Enter URL containing data tables:", "https://en.wikipedia.org/wiki/List_of_largest_companies_by_revenue")
         
-        if st.button("Extract Tables"):
+        if st.button("Extract Data"):
             if url_input:
                 try:
-                    with st.spinner("Extracting data tables..."):
+                    with st.spinner("Scraping webpage..."):
                         tables = pd.read_html(url_input)
-                        st.success(f"Successfully found {len(tables)} tables!")
+                        st.success(f"Found {len(tables)} tables!")
                         for i, df in enumerate(tables):
-                            with st.expander(f"Table {i+1} ({df.shape[0]} rows, {df.shape[1]} cols)"):
+                            with st.expander(f"Table #{i+1} ({df.shape[0]} rows x {df.shape[1]} cols)"):
                                 st.dataframe(df)
                                 csv = df.to_csv(index=False).encode('utf-8')
-                                st.download_button(f"Download Table {i+1} CSV", csv, f'table_{i+1}.csv', 'text/csv')
+                                st.download_button(f"Export CSV", csv, f'table_{i+1}.csv', 'text/csv')
                 except Exception as e:
-                    st.error(f"Error extracting tables: {e}")
+                    st.error(f"Scraper error: {e}")
 
     # MODULE 2: FILE UPLOADER
-    elif app_mode == "📁 2. File Upload (CSV/Excel)":
-        st.subheader("📁 Upload Local Data Files")
-        uploaded_file = st.file_uploader("Upload CSV or Excel", type=["csv", "xlsx"])
+    elif app_mode == "📁 2. File Upload":
+        st.subheader("📁 Upload Local Datasets")
+        uploaded_file = st.file_uploader("Choose CSV or Excel file", type=["csv", "xlsx"])
         if uploaded_file is not None:
             try:
                 df = pd.read_csv(uploaded_file) if uploaded_file.name.endswith('.csv') else pd.read_excel(uploaded_file)
                 st.session_state['current_data'] = df
-                st.success(f"Loaded {uploaded_file.name}!")
+                st.success(f"Loaded: {uploaded_file.name}")
                 st.dataframe(df.head(10))
             except Exception as e:
-                st.error(f"Error: {e}")
+                st.error(f"Upload error: {e}")
 
-    # MODULE 3: DATA CLEANING
-    elif app_mode == "🧹 3. Data Cleaning":
-        st.subheader("🧹 Automated Data Cleaning Engine")
+    # MODULE 3: DATA CLEANER
+    elif app_mode == "🧹 3. Data Cleaner":
+        st.subheader("🧹 Automated Cleaning")
         if 'current_data' in st.session_state:
             df = st.session_state['current_data']
             st.dataframe(df.head())
             c1, c2 = st.columns(2)
             with c1:
-                if st.button("Remove Duplicates"):
+                if st.button("Remove Duplicates", use_container_width=True):
                     st.session_state['current_data'] = df.drop_duplicates()
-                    st.success("Duplicates Removed!")
+                    st.success("Duplicates purged!")
             with c2:
-                if st.button("Drop Missing Values"):
+                if st.button("Drop Missing Values", use_container_width=True):
                     st.session_state['current_data'] = df.dropna()
-                    st.success("Missing Values Dropped!")
+                    st.success("Missing rows removed!")
         else:
-            st.info("Upload data in Module 2 first.")
+            st.info("Upload or scrape data first.")
 
-    # MODULE 4: VISUAL ANALYTICS
-    elif app_mode == "📊 4. Visual Analytics":
-        st.subheader("📊 Visual Analytics Engine")
+    # MODULE 4: ANALYTICS
+    elif app_mode == "📊 4. Analytics Engine":
+        st.subheader("📊 Interactive Visualizations")
         if 'current_data' in st.session_state:
             df = st.session_state['current_data']
             num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
             all_cols = df.columns.tolist()
             
             if num_cols and len(all_cols) >= 2:
-                x_axis = st.selectbox("Select X-Axis", all_cols)
-                y_axis = st.selectbox("Select Y-Axis", num_cols)
-                chart_type = st.radio("Chart Type", ["Bar Chart", "Line Chart", "Scatter Plot"])
+                x_axis = st.selectbox("X-Axis", all_cols)
+                y_axis = st.selectbox("Y-Axis", num_cols)
+                chart_type = st.radio("Chart Style", ["Bar Chart", "Line Chart", "Scatter Plot"])
                 
                 if chart_type == "Bar Chart":
-                    fig = px.bar(df, x=x_axis, y=y_axis)
+                    fig = px.bar(df, x=x_axis, y=y_axis, template="plotly_dark")
                 elif chart_type == "Line Chart":
-                    fig = px.line(df, x=x_axis, y=y_axis)
+                    fig = px.line(df, x=x_axis, y=y_axis, template="plotly_dark")
                 else:
-                    fig = px.scatter(df, x=x_axis, y=y_axis)
+                    fig = px.scatter(df, x=x_axis, y=y_axis, template="plotly_dark")
                 st.plotly_chart(fig, use_container_width=True)
             else:
-                st.warning("Need numeric columns to create chart.")
+                st.warning("Numeric columns required for charting.")
         else:
             st.info("Load data in Module 1 or 2 first.")
