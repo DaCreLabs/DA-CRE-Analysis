@@ -4,8 +4,8 @@ import numpy as np
 import plotly.express as px
 import sqlite3
 import hashlib
-import json
 import time
+import io
 from PIL import Image
 import os
 import streamlit.components.v1 as components
@@ -24,7 +24,6 @@ DB_FILE = "dacre_platform.db"
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    # Users Table
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -35,7 +34,6 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    # File Vault Table
     c.execute('''
         CREATE TABLE IF NOT EXISTS file_vault (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -51,11 +49,30 @@ def init_db():
 
 init_db()
 
+# --- HELPER: UNIVERSAL FILE READER ---
+def load_file_data(uploaded_file):
+    """Parses XLSX, XLS, CSV, TSV, JSON, and Parquet formats automatically."""
+    filename = uploaded_file.name
+    ext = filename.split('.')[-1].lower()
+    
+    if ext in ['xlsx', 'xls']:
+        return pd.read_excel(uploaded_file)
+    elif ext == 'csv':
+        return pd.read_csv(uploaded_file)
+    elif ext == 'tsv':
+        return pd.read_csv(uploaded_file, sep='\t')
+    elif ext == 'json':
+        return pd.read_json(uploaded_file)
+    elif ext == 'parquet':
+        return pd.read_parquet(uploaded_file)
+    else:
+        raise ValueError(f"Unsupported file format: .{ext}")
+
 # --- PASSWORD HASHING ---
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-# --- AUDIO ASSISTANT ENGINE (JavaScript SpeechSynthesis) ---
+# --- AUDIO ASSISTANT ENGINE ---
 def trigger_audio_guide(text_to_speak):
     if st.session_state.get('audio_guide_enabled', False):
         js_code = f"""
@@ -96,7 +113,6 @@ st.markdown("""
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
-    /* Floating & Color-Shifting Animated Logo */
     @keyframes floatAndColorShift {
         0% {
             transform: translateY(0px);
@@ -183,7 +199,7 @@ if not st.session_state['loading_complete']:
     st.rerun()
 
 
-# --- 2. AUTHENTICATION (LOGIN & SIGN-UP WITH DATABASE CHECK) ---
+# --- 2. AUTHENTICATION (LOGIN & SIGN-UP) ---
 elif not st.session_state['authenticated']:
     
     st.markdown("""
@@ -206,7 +222,7 @@ elif not st.session_state['authenticated']:
         st.markdown("""
             <div style="text-align: center; margin-top: 15px; padding: 12px; background: rgba(56, 189, 248, 0.1); border-radius: 12px; border: 1px solid rgba(56, 189, 248, 0.3);">
                 <h4 style="color: #38bdf8; margin: 0;">Welcome to DA-CRE! 👉</h4>
-                <p style="color: #cbd5e1; margin: 5px 0 0 0; font-size: 0.9rem;">Sign in or create a new account on the right to access your database vault.</p>
+                <p style="color: #cbd5e1; margin: 5px 0 0 0; font-size: 0.9rem;">Sign in or create a new account to access your database vault.</p>
             </div>
         """, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
@@ -216,7 +232,6 @@ elif not st.session_state['authenticated']:
         
         tab_login, tab_signup = st.tabs(["🔒 Log In", "📝 Create Account"])
 
-        # TAB 1: LOG IN
         with tab_login:
             st.subheader("Welcome Back")
             login_email = st.text_input("Email Address", key="login_email")
@@ -241,7 +256,6 @@ elif not st.session_state['authenticated']:
                     st.error("❌ Invalid email or password.")
                     trigger_audio_guide("Invalid credentials entered. Please try again.")
 
-        # TAB 2: SIGN UP
         with tab_signup:
             st.subheader("Create Account")
             fname = st.text_input("First Name", key="su_fname")
@@ -255,7 +269,6 @@ elif not st.session_state['authenticated']:
                 elif "@" not in su_email:
                     st.error("Invalid email address format.")
                 else:
-                    # Database Duplicate Check
                     conn = sqlite3.connect(DB_FILE)
                     c = conn.cursor()
                     c.execute("SELECT id FROM users WHERE email = ?", (su_email.strip().lower(),))
@@ -286,12 +299,10 @@ elif not st.session_state['authenticated']:
 
 # --- 3. MAIN WORKSPACE DASHBOARD ---
 else:
-    # TOP HEADER & ACTIVE DATA BADGE
     col_n1, col_n2, col_n3 = st.columns([2, 1, 1])
     with col_n1:
         st.markdown("### ⚡ DA-CRE Analysis Workspace")
     with col_n2:
-        # Audio Toggle
         audio_on = st.toggle("🔊 Audio Guide", value=st.session_state['audio_guide_enabled'])
         if audio_on != st.session_state['audio_guide_enabled']:
             st.session_state['audio_guide_enabled'] = audio_on
@@ -305,7 +316,6 @@ else:
 
     st.write("---")
 
-    # SIDEBAR PLATFORM NAVIGATION
     st.sidebar.title(f"👤 {st.session_state.get('user_name', 'User')}")
     
     action_choice = st.sidebar.selectbox(
@@ -332,7 +342,6 @@ else:
         if st.session_state['current_data'] is not None and isinstance(st.session_state['current_data'], pd.DataFrame):
             df = st.session_state['current_data'].copy()
 
-            # TOOLBAR OPTIONS
             st.markdown("##### 🛠️ Quick Action Toolbar")
             tb1, tb2, tb3, tb4 = st.columns(4)
             
@@ -361,13 +370,11 @@ else:
 
             st.write("---")
 
-            # FORMULA BOARD ENGINE
             st.markdown("##### 🧮 Formula Board (Excel, Google Sheets, SQL, Python)")
-            
             f_cat = st.selectbox("Formula Engine Family", ["Excel / Google Sheets Formulas", "SQL Engine", "Python / Pandas Code"])
             
             if f_cat == "Excel / Google Sheets Formulas":
-                excel_formula = st.selectbox("Select Formula", ["SUM (Total of column)", "AVERAGE (Mean of column)", "COUNT (Row count)", "PROFIT MARGIN (Custom Calc)"])
+                excel_formula = st.selectbox("Select Formula", ["SUM (Total of column)", "AVERAGE (Mean of column)", "COUNT (Row count)"])
                 num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
                 
                 if num_cols:
@@ -418,8 +425,6 @@ else:
 
         else:
             st.info("No active dataset loaded in MY DATA. Open or upload a file into your database vault first.")
-            if st.button("How do I load data?"):
-                trigger_audio_guide("To load data, go to Add New Files to Database in the sidebar.")
 
     # SECTION 2: DATABASE FILE VAULT
     elif action_choice == "📂 Database File Vault":
@@ -442,7 +447,8 @@ else:
                 blob = c.fetchone()[0]
                 conn.close()
                 
-                df_loaded = pd.read_json(blob)
+                # FIXED: Wrapped raw JSON string in io.StringIO to prevent FileNotFoundError
+                df_loaded = pd.read_json(io.StringIO(blob))
                 st.session_state['current_data'] = df_loaded
                 st.session_state['active_file_name'] = selected_f
                 st.success(f"'{selected_f}' loaded from Database!")
@@ -455,13 +461,17 @@ else:
     elif action_choice == "📥 Add New Files to Database":
         st.subheader("📥 Save Files into Database Vault")
         
-        uploaded_files = st.file_uploader("Select CSV or Excel files to store in database", accept_multiple_files=True)
+        uploaded_files = st.file_uploader(
+            "Select files to store in database (.xlsx, .xls, .csv, .tsv, .json, .parquet)", 
+            type=['xlsx', 'xls', 'csv', 'tsv', 'json', 'parquet'],
+            accept_multiple_files=True
+        )
         
         if uploaded_files:
             for file in uploaded_files:
                 ext = file.name.split('.')[-1].lower()
                 try:
-                    df = pd.read_csv(file) if ext == 'csv' else pd.read_excel(file)
+                    df = load_file_data(file)
                     json_data = df.to_json()
                     
                     conn = sqlite3.connect(DB_FILE)
