@@ -49,9 +49,27 @@ def init_db():
 
 init_db()
 
+# --- HELPER: AUTO-CLEAN MESSY DATA ---
+def clean_messy_dataframe(df):
+    """Strips currency symbols, commas, percent signs, whitespace, and casts numbers into numeric types."""
+    cleaned_df = df.copy()
+    for col in cleaned_df.columns:
+        if cleaned_df[col].dtype == 'object':
+            # Try cleaning string numbers
+            cleaned_col = (
+                cleaned_df[col]
+                .astype(str)
+                .str.replace(r'[\$,%₦€£]', '', regex=True)
+                .str.replace(',', '', regex=False)
+                .str.strip()
+            )
+            # Try converting to numeric
+            numeric_series = pd.to_numeric(cleaned_col, errors='ignore')
+            cleaned_df[col] = numeric_series
+    return cleaned_df
+
 # --- HELPER: UNIVERSAL FILE READER ---
 def load_file_data(uploaded_file):
-    """Parses XLSX, XLS, CSV, TSV, JSON, and Parquet formats automatically."""
     filename = uploaded_file.name
     ext = filename.split('.')[-1].lower()
     
@@ -103,6 +121,8 @@ if 'current_data' not in st.session_state:
     st.session_state['current_data'] = None
 if 'audio_guide_enabled' not in st.session_state:
     st.session_state['audio_guide_enabled'] = True
+if 'calculation_history' not in st.session_state:
+    st.session_state['calculation_history'] = []
 
 # --- CUSTOM CSS WITH FLOATING/COLOR-SHIFTING LOGO ---
 st.markdown("""
@@ -342,9 +362,18 @@ else:
         if st.session_state['current_data'] is not None and isinstance(st.session_state['current_data'], pd.DataFrame):
             df = st.session_state['current_data'].copy()
 
+            # TOOLBAR WITH ARRANGE/CLEAN DATA
             st.markdown("##### 🛠️ Quick Action Toolbar")
-            tb1, tb2, tb3, tb4 = st.columns(4)
+            tb0, tb1, tb2, tb3 = st.columns(4)
             
+            with tb0:
+                if st.button("✨ Clean & Auto-Format Messy Data", use_container_width=True, type="primary"):
+                    cleaned = clean_messy_dataframe(df)
+                    st.session_state['current_data'] = cleaned
+                    st.success("Messy data cleaned! Text numbers formatted into numeric columns.")
+                    trigger_audio_guide("Messy data formatted and numbers extracted successfully.")
+                    st.rerun()
+
             with tb1:
                 if st.button("🧹 Remove Duplicates", use_container_width=True):
                     st.session_state['current_data'] = df.drop_duplicates()
@@ -362,48 +391,54 @@ else:
                     st.session_state['current_data'] = df.sort_values(by=sort_col, ascending=False)
                     trigger_audio_guide(f"Data sorted in reverse order by {sort_col}")
                     st.rerun()
-            with tb4:
-                if st.button("Drop Missing Rows", use_container_width=True):
-                    st.session_state['current_data'] = df.dropna()
-                    trigger_audio_guide("Missing values removed.")
-                    st.rerun()
 
             st.write("---")
 
+            # FORMULA BOARD ENGINE
             st.markdown("##### 🧮 Formula Board (Excel, Google Sheets, SQL, Python)")
             f_cat = st.selectbox("Formula Engine Family", ["Excel / Google Sheets Formulas", "SQL Engine", "Python / Pandas Code"])
             
             if f_cat == "Excel / Google Sheets Formulas":
                 excel_formula = st.selectbox("Select Formula", ["SUM (Total of column)", "AVERAGE (Mean of column)", "COUNT (Row count)"])
-                num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+                all_cols = df.columns.tolist()
                 
-                if num_cols:
-                    target_c = st.selectbox("Apply to Column", num_cols)
-                    if st.button("Execute Formula"):
-                        if "SUM" in excel_formula:
-                            res = df[target_c].sum()
-                            st.info(f"Result = SUM({target_c}): **{res}**")
-                            trigger_audio_guide(f"The sum of {target_c} is {res}")
-                        elif "AVERAGE" in excel_formula:
-                            res = df[target_c].mean()
-                            st.info(f"Result = AVERAGE({target_c}): **{res:.2f}**")
-                            trigger_audio_guide(f"The average of {target_c} is {res:.2f}")
-                        elif "COUNT" in excel_formula:
-                            res = df[target_c].count()
-                            st.info(f"Result = COUNT({target_c}): **{res}**")
-                            trigger_audio_guide(f"Total count is {res}")
-                else:
-                    st.warning("No numeric columns available for this formula.")
+                target_c = st.selectbox("Select Target Column", all_cols)
+                
+                if st.button("Execute Formula 🚀"):
+                    # Coerce column to numeric if necessary
+                    series = pd.to_numeric(
+                        df[target_c].astype(str).str.replace(r'[\$,%₦€£,]', '', regex=True).str.strip(),
+                        errors='coerce'
+                    )
+                    
+                    if "SUM" in excel_formula:
+                        res = series.sum()
+                        msg = f"SUM({target_c}) = {res:,.2f}"
+                        st.info(f"Result: **{msg}**")
+                        st.session_state['calculation_history'].append(msg)
+                        trigger_audio_guide(f"The sum of column {target_c} is {res:,.2f}")
+                    elif "AVERAGE" in excel_formula:
+                        res = series.mean()
+                        msg = f"AVERAGE({target_c}) = {res:,.2f}"
+                        st.info(f"Result: **{msg}**")
+                        st.session_state['calculation_history'].append(msg)
+                        trigger_audio_guide(f"The average of column {target_c} is {res:,.2f}")
+                    elif "COUNT" in excel_formula:
+                        res = series.count()
+                        msg = f"COUNT({target_c}) = {res}"
+                        st.info(f"Result: **{msg}**")
+                        st.session_state['calculation_history'].append(msg)
+                        trigger_audio_guide(f"Total count for column {target_c} is {res}")
 
             elif f_cat == "SQL Engine":
                 sql_q = st.text_input("Enter SQL Query (Table Name: `df`)", f"SELECT * FROM df LIMIT 10")
                 if st.button("Run SQL Query"):
                     try:
-                        import sqlite3
                         temp_conn = sqlite3.connect(":memory:")
                         df.to_sql("df", temp_conn, index=False)
                         sql_res = pd.read_sql_query(sql_q, temp_conn)
                         st.dataframe(sql_res)
+                        st.session_state['calculation_history'].append(f"SQL Executed: `{sql_q}`")
                         trigger_audio_guide("SQL Query executed successfully.")
                     except Exception as e:
                         st.error(f"SQL Error: {e}")
@@ -414,9 +449,17 @@ else:
                     try:
                         py_res = eval(py_code)
                         st.write(py_res)
+                        st.session_state['calculation_history'].append(f"Python Executed: `{py_code}`")
                         trigger_audio_guide("Python execution complete.")
                     except Exception as e:
                         st.error(f"Python Execution Error: {e}")
+
+            # AUTOMATIC CALCULATION WORKSPACE & AUDIT LOG
+            if st.session_state['calculation_history']:
+                st.write("---")
+                st.markdown("##### 📋 Formula Calculation Audit Trail Workspace")
+                for item in reversed(st.session_state['calculation_history']):
+                    st.code(item, language="markdown")
 
             st.write("---")
             st.markdown("##### 📝 Live Data Grid Editor")
@@ -447,7 +490,6 @@ else:
                 blob = c.fetchone()[0]
                 conn.close()
                 
-                # FIXED: Wrapped raw JSON string in io.StringIO to prevent FileNotFoundError
                 df_loaded = pd.read_json(io.StringIO(blob))
                 st.session_state['current_data'] = df_loaded
                 st.session_state['active_file_name'] = selected_f
@@ -545,7 +587,7 @@ else:
                 st.plotly_chart(fig, use_container_width=True)
                 trigger_audio_guide(f"Generated {style} chart for {x_a} and {y_a}")
             else:
-                st.warning("Numeric columns required for plotting.")
+                st.warning("Numeric columns required for plotting. Try clicking 'Clean & Auto-Format Messy Data' in the Embedded Sheet toolbar.")
         else:
             st.info("No active dataset loaded in MY DATA.")
 
