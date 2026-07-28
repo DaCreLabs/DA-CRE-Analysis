@@ -2,7 +2,7 @@ streamlit
 pandas
 numpy
 plotly
-Pillow
+openpyxl
+xlrd
 lxml
 html5lib
-requests
