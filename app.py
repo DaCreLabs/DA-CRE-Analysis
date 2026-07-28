@@ -1,20 +1,51 @@
+import streamlit as st
 import pandas as pd
 
-def extract_tables_from_url(url):
-    """
-    DA-CRE Analysis - Phase 1: Web Data Extractor
-    Takes a website URL and extracts all table data into structured pandas DataFrames.
-    """
-    print(f"Fetching data from: {url}")
-    try:
-        tables = pd.read_html(url)
-        print(f"Successfully extracted {len(tables)} table(s)!")
-        return tables
-    except Exception as e:
-        print(f"Error extracting data: {e}")
-        return None
+st.set_page_config(page_title="DA-CRE Analysis", page_icon="📊", layout="wide")
 
-if __name__ == "__main__":
-    print("--- DA-CRE Analysis Engine Started ---")
-    test_url = "https://en.wikipedia.org/wiki/List_of_countries_by_GDP_(nominal)"
-    extracted_data = extract_tables_from_url(test_url)
+st.title("📊 DA-CRE Analysis")
+st.subheader("AI-Powered Data Analytics & Extraction Platform")
+
+st.markdown("---")
+
+# Navigation sidebar
+st.sidebar.title("DA-CRE Navigation")
+option = st.sidebar.radio("Choose a Tool:", ["🌐 Web Data Extractor", "🧹 Clean Data", "📈 Analyze Data"])
+
+if option == "🌐 Web Data Extractor":
+    st.header("🌐 Website Data Extractor")
+    st.write("Enter any public website URL containing data tables to extract them automatically.")
+    
+    url = st.text_input("Enter Web URL:", value="https://en.wikipedia.org/wiki/List_of_countries_by_GDP_(nominal)")
+    
+    if st.button("Extract Data"):
+        if url:
+            try:
+                with st.spinner("Extracting tables..."):
+                    tables = pd.read_html(url)
+                    st.success(f"Successfully extracted {len(tables)} table(s)!")
+                    
+                    for idx, table in enumerate(tables):
+                        st.write(f"### Table {idx + 1}")
+                        st.dataframe(table)
+                        
+                        # Download button for CSV
+                        csv = table.to_csv(index=False).encode('utf-8')
+                        st.download_button(
+                            label=f"📥 Download Table {idx + 1} as CSV",
+                            data=csv,
+                            file_name=f"dacre_extracted_table_{idx + 1}.csv",
+                            mime="text/csv"
+                        )
+            except Exception as e:
+                st.error(f"Failed to extract data: {e}")
+        else:
+            st.warning("Please enter a valid URL.")
+
+elif option == "🧹 Clean Data":
+    st.header("🧹 Data Cleaning Suite")
+    st.info("Feature coming next in Phase 2!")
+
+elif option == "📈 Analyze Data":
+    st.header("📈 Data Analysis Engine")
+    st.info("Feature coming in Phase 3!")
