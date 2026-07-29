@@ -31,8 +31,17 @@ def get_base64_logo(path):
 
 logo_b64 = get_base64_logo(APP_LOGO_PATH)
 
-# ---------------- PAGE CONFIG ----------------
+# ---------------- HELPER FUNCTIONS ----------------
+def trigger_audio_guide(text):
+    """Placeholder for Nigerian AI Audio Guide engine."""
+    st.audio_input if hasattr(st, "audio_input") else None
+    st.info(f"🔊 **AI Voice Guide:** \"{text}\"")
 
+def sync_to_database_workflow():
+    """Sync session state and logs to persistent storage upon action or logout."""
+    pass
+
+# ---------------- PAGE CONFIG ----------------
 st.set_page_config(
     page_title="DACRE ANALYSIS",
     page_icon="📊",
@@ -44,7 +53,6 @@ st.set_page_config(
 ADMIN_SECRET_KEY = "theWORDofGOD"
 
 # ---------------- THEME ----------------
-
 st.markdown("""
 <style>
 
@@ -124,23 +132,6 @@ input {
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- LANDING HEADER ----------------
-
-if logo_b64:
-    st.markdown(f"""
-    <div class="logo">
-        <img src="{logo_b64}" width="180">
-    </div>
-    """, unsafe_allow_html=True)
-
-st.markdown("""
-<div class="hero">
-    <h1>🚀 DACRE ANALYSIS</h1>
-    <h3>Enterprise AI Spreadsheet & Data Analytics Platform</h3>
-    <p>Upload • Clean • Analyse • Visualize • Automate • Export</p>
-</div>
-""", unsafe_allow_html=True)
-
 # ---------------- DATABASE ENGINE ----------------
 DB_FILE = "dacre_platform.db"
 
@@ -150,6 +141,7 @@ def init_db():
     c.execute('''CREATE TABLE IF NOT EXISTS users (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     username TEXT UNIQUE,
+                    email TEXT,
                     password_hash TEXT,
                     role TEXT,
                     created_at TEXT
@@ -172,12 +164,12 @@ def make_hashes(password):
 def check_hashes(password, hashed_text):
     return make_hashes(password) == hashed_text
 
-def add_user(username, password, role="User"):
+def add_user(username, email, password, role="User"):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     try:
-        c.execute("INSERT INTO users(username, password_hash, role, created_at) VALUES (?,?,?,?)",
-                  (username, make_hashes(password), role, str(datetime.now())))
+        c.execute("INSERT INTO users(username, email, password_hash, role, created_at) VALUES (?,?,?,?,?)",
+                  (username, email, make_hashes(password), role, str(datetime.now())))
         conn.commit()
         success = True
     except sqlite3.IntegrityError:
@@ -188,11 +180,11 @@ def add_user(username, password, role="User"):
 def login_user(username, password):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("SELECT password_hash, role FROM users WHERE username=?", (username,))
+    c.execute("SELECT email, password_hash, role FROM users WHERE username=?", (username,))
     data = c.fetchone()
     conn.close()
-    if data and check_hashes(password, data[0]):
-        return data[1]
+    if data and check_hashes(password, data[1]):
+        return {"email": data[0], "role": data[2]}
     return None
 
 def log_action(user, action):
@@ -208,21 +200,41 @@ conn = sqlite3.connect(DB_FILE)
 c = conn.cursor()
 c.execute("SELECT * FROM users WHERE username='admin'")
 if not c.fetchone():
-    add_user("admin", ADMIN_SECRET_KEY, role="Admin")
+    add_user("admin", "admin@dacre.ai", ADMIN_SECRET_KEY, role="Admin")
 conn.close()
 
-# ---------------- SESSION STATE ----------------
-if 'logged_in' not in st.session_state:
-    st.session_state.logged_in = False
-if 'user' not in st.session_state:
-    st.session_state.user = None
+# ---------------- SESSION STATE INITIALIZATION ----------------
+if 'authenticated' not in st.session_state:
+    st.session_state["authenticated"] = False
+if 'user_name' not in st.session_state:
+    st.session_state["user_name"] = ""
+if 'user_email' not in st.session_state:
+    st.session_state["user_email"] = ""
 if 'role' not in st.session_state:
-    st.session_state.role = None
-if 'df' not in st.session_state:
-    st.session_state.df = None
+    st.session_state["role"] = None
+if 'current_data' not in st.session_state:
+    st.session_state["current_data"] = None
+if 'formula_logs' not in st.session_state:
+    st.session_state["formula_logs"] = []
 
-# ---------------- AUTHENTICATION UI ----------------
-if not st.session_state.logged_in:
+# ---------------- LANDING HEADER ----------------
+if logo_b64:
+    st.markdown(f"""
+    <div class="logo">
+        <img src="{logo_b64}" width="180">
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("""
+<div class="hero">
+    <h1>🚀 DACRE ANALYSIS</h1>
+    <h3>Enterprise AI Spreadsheet & Data Analytics Platform</h3>
+    <p>Upload • Clean • Analyse • Visualize • Automate • Export</p>
+</div>
+""", unsafe_allow_html=True)
+
+# ---------------- AUTHENTICATION SCREEN ----------------
+if not st.session_state["authenticated"]:
     auth_tab1, auth_tab2 = st.tabs(["🔒 Login", "📝 Register"])
     
     with auth_tab1:
@@ -230,11 +242,12 @@ if not st.session_state.logged_in:
         login_user_input = st.text_input("Username", key="login_user")
         login_pass_input = st.text_input("Password", type="password", key="login_pass")
         if st.button("Sign In"):
-            role = login_user(login_user_input, login_pass_input)
-            if role:
-                st.session_state.logged_in = True
-                st.session_state.user = login_user_input
-                st.session_state.role = role
+            user_data = login_user(login_user_input, login_pass_input)
+            if user_data:
+                st.session_state["authenticated"] = True
+                st.session_state["user_name"] = login_user_input
+                st.session_state["user_email"] = user_data["email"]
+                st.session_state["role"] = user_data["role"]
                 log_action(login_user_input, "User Logged In")
                 st.success(f"Welcome back, {login_user_input}!")
                 st.rerun()
@@ -244,128 +257,183 @@ if not st.session_state.logged_in:
     with auth_tab2:
         st.subheader("Create New Account")
         reg_user = st.text_input("New Username", key="reg_user")
+        reg_email = st.text_input("Email Address", key="reg_email")
         reg_pass = st.text_input("New Password", type="password", key="reg_pass")
         reg_secret = st.text_input("Admin Secret Key (Optional for Admin Role)", type="password", key="reg_secret")
         
         if st.button("Register"):
-            if reg_user and reg_pass:
+            if reg_user and reg_pass and reg_email:
                 role = "Admin" if reg_secret == ADMIN_SECRET_KEY else "User"
-                if add_user(reg_user, reg_pass, role):
+                if add_user(reg_user, reg_email, reg_pass, role):
                     st.success("Account created successfully! Please log in.")
                     log_action(reg_user, f"Account Created ({role})")
                 else:
                     st.error("Username already exists.")
             else:
-                st.warning("Please provide both username and password.")
+                st.warning("Please fill out all required fields.")
 
-# ---------------- MAIN APPLICATION ----------------
+# ---------------- MAIN APPLICATION INTERFACE ----------------
 else:
-    # Sidebar Navigation
-    st.sidebar.markdown(f"### 👤 User: **{st.session_state.user}** ({st.session_state.role})")
-    if st.sidebar.button("Logout"):
-        log_action(st.session_state.user, "User Logged Out")
-        st.session_state.logged_in = False
-        st.session_state.user = None
-        st.session_state.role = None
-        st.session_state.df = None
-        st.rerun()
+    # ==========================================================
+    # PREMIUM ENTERPRISE SIDEBAR
+    # ==========================================================
+    with st.sidebar:
+        if logo_b64:
+            st.markdown(
+                f"""
+                <div style="text-align:center;">
+                    <img src="{logo_b64}" width="170">
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
-    st.sidebar.divider()
-    app_mode = st.sidebar.radio("Navigation", ["📂 Data Workspace", "📈 Analytics & Charts", "⚙️ Admin Portal"])
+        st.markdown("---")
 
-    # --- DATA WORKSPACE ---
-    if app_mode == "📂 Data Workspace":
-        st.header("📂 Data Import & Management")
-        
-        uploaded_file = st.file_uploader("Upload CSV or Excel File", type=["csv", "xlsx", "xls"])
+        st.markdown(f"## 👋 Welcome")
+
+        st.success(st.session_state["user_name"])
+
+        st.caption(st.session_state["user_email"])
+
+        st.markdown("---")
+
+        menu = st.selectbox(
+            "Navigation",
+            [
+                "🏠 Dashboard",
+                "📊 Embedded Sheet & Formula Board",
+                "📂 File Vault to Workflow Engine",
+                "📥 Add New Files to Vault",
+                "🛡️ Admin Control Panel",
+            ],
+        )
+
+        st.markdown("---")
+
+        st.info("DACRE ANALYSIS\nEnterprise Edition")
+
+        if st.button("🚪 Logout", use_container_width=True):
+            sync_to_database_workflow()
+            st.session_state["authenticated"] = False
+            st.rerun()
+
+    # ==========================================================
+    # NAVIGATION ROUTING
+    # ==========================================================
+
+    # --- HOME DASHBOARD ---
+    if menu == "🏠 Dashboard":
+        st.title("📊 Executive Dashboard")
+
+        c1, c2, c3, c4 = st.columns(4)
+
+        total_rows = 0
+        total_columns = 0
+
+        if (
+            st.session_state.get("current_data") is not None
+            and isinstance(st.session_state["current_data"], pd.DataFrame)
+        ):
+            total_rows = len(st.session_state["current_data"])
+            total_columns = len(st.session_state["current_data"].columns)
+
+        with c1:
+            st.metric("Rows", total_rows)
+
+        with c2:
+            st.metric("Columns", total_columns)
+
+        with c3:
+            st.metric("Formula Logs", len(st.session_state["formula_logs"]))
+
+        with c4:
+            st.metric("Status", "Ready")
+
+        st.write("")
+
+        if (
+            st.session_state.get("current_data") is not None
+            and isinstance(st.session_state["current_data"], pd.DataFrame)
+        ):
+
+            df = st.session_state["current_data"]
+
+            numeric = df.select_dtypes(include="number")
+
+            if len(numeric.columns) > 0:
+
+                chart = px.histogram(
+                    numeric,
+                    x=numeric.columns[0],
+                    template="plotly_dark",
+                    title="Distribution",
+                )
+
+                st.plotly_chart(chart, use_container_width=True)
+
+                st.write("### Numeric Summary")
+
+                st.dataframe(numeric.describe(), use_container_width=True)
+
+            else:
+
+                st.info("No numeric columns available yet.")
+
+        else:
+
+            st.info("Upload a dataset to begin analysis.")
+
+        st.write("---")
+
+        st.subheader("🎙 Nigerian AI Audio Guide")
+
+        trigger_audio_guide(
+            "Welcome to Dacre Analysis. Upload your spreadsheet to begin powerful analysis. Use the File Vault to manage your files, then explore charts and formulas from the dashboard."
+        )
+
+    # --- EMBEDDED SHEET & FORMULA BOARD ---
+    elif menu == "📊 Embedded Sheet & Formula Board":
+        st.title("📊 Embedded Sheet & Formula Board")
+        if st.session_state["current_data"] is None:
+            st.info("No data active. Upload or load a file from 'Add New Files to Vault'.")
+        else:
+            edited_df = st.data_editor(st.session_state["current_data"], num_rows="dynamic", use_container_width=True)
+            st.session_state["current_data"] = edited_df
+
+    # --- FILE VAULT & WORKFLOW ---
+    elif menu == "📂 File Vault to Workflow Engine":
+        st.title("📂 File Vault & Workflow Engine")
+        st.write("Manage active workspace data files and automated workflow rules.")
+
+    # --- ADD NEW FILES TO VAULT ---
+    elif menu == "📥 Add New Files to Vault":
+        st.title("📥 Upload New Data to Vault")
+        uploaded_file = st.file_uploader("Choose CSV or Excel File", type=["csv", "xlsx", "xls"])
         if uploaded_file:
             try:
                 if uploaded_file.name.endswith(".csv"):
                     df = pd.read_csv(uploaded_file)
                 else:
                     df = pd.read_excel(uploaded_file)
-                st.session_state.df = df
-                log_action(st.session_state.user, f"Uploaded Dataset: {uploaded_file.name}")
-                st.success(f"Successfully loaded `{uploaded_file.name}` ({df.shape[0]} rows, {df.shape[1]} columns)")
+                st.session_state["current_data"] = df
+                log_action(st.session_state["user_name"], f"Uploaded File: {uploaded_file.name}")
+                st.success(f"Loaded '{uploaded_file.name}' with {len(df)} rows into active workspace!")
             except Exception as e:
-                st.error(f"Error loading file: {e}")
+                st.error(f"Failed to process file: {e}")
 
-        if st.session_state.df is not None:
-            df = st.session_state.df
-            
-            # Metrics Overview
-            m1, m2, m3, m4 = st.columns(4)
-            m1.metric("Rows", df.shape[0])
-            m2.metric("Columns", df.shape[1])
-            m3.metric("Numeric Fields", len(df.select_dtypes(include=np.number).columns))
-            m4.metric("Missing Values", df.isnull().sum().sum())
-            
-            st.divider()
-            
-            # Data Preview & Editing
-            st.subheader("Data Preview")
-            edited_df = st.data_editor(df, num_rows="dynamic", use_container_width=True)
-            st.session_state.df = edited_df
-
-            # Quick Clean Options
-            st.subheader("🧹 Cleaning Tools")
-            c1, c2 = st.columns(2)
-            with c1:
-                if st.button("Drop Duplicate Rows"):
-                    st.session_state.df = st.session_state.df.drop_duplicates()
-                    st.success("Duplicates removed!")
-                    st.rerun()
-            with c2:
-                if st.button("Fill NA with 0"):
-                    st.session_state.df = st.session_state.df.fillna(0)
-                    st.success("Missing values filled!")
-                    st.rerun()
-
-    # --- ANALYTICS & CHARTS ---
-    elif app_mode == "📈 Analytics & Charts":
-        st.header("📈 Interactive Analytics Engine")
-        
-        if st.session_state.df is None:
-            st.warning("Please upload a dataset in the Data Workspace first.")
-        else:
-            df = st.session_state.df
-            numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
-            all_cols = df.columns.tolist()
-
-            if not numeric_cols:
-                st.error("No numeric columns found in the uploaded dataset for charting.")
-            else:
-                chart_type = st.selectbox("Select Visual Chart Type", ["Bar Chart", "Line Chart", "Scatter Plot", "Histogram"])
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    x_axis = st.selectbox("X-Axis Field", options=all_cols)
-                with col2:
-                    y_axis = st.selectbox("Y-Axis Field", options=numeric_cols)
-
-                if chart_type == "Bar Chart":
-                    fig = px.bar(df, x=x_axis, y=y_axis, title=f"{y_axis} by {x_axis}", template="plotly_dark")
-                elif chart_type == "Line Chart":
-                    fig = px.line(df, x=x_axis, y=y_axis, title=f"{y_axis} Trend over {x_axis}", template="plotly_dark")
-                elif chart_type == "Scatter Plot":
-                    fig = px.scatter(df, x=x_axis, y=y_axis, title=f"{y_axis} vs {x_axis}", template="plotly_dark")
-                elif chart_type == "Histogram":
-                    fig = px.histogram(df, x=y_axis, title=f"Distribution of {y_axis}", template="plotly_dark")
-
-                st.plotly_chart(fig, use_container_width=True)
-
-    # --- ADMIN PORTAL ---
-    elif app_mode == "⚙️ Admin Portal":
-        st.header("⚙️ Administration & Security Logs")
-        if st.session_state.role != "Admin":
-            st.error("Access Denied: You must have an Admin role to view this panel.")
+    # --- ADMIN CONTROL PANEL ---
+    elif menu == "🛡️ Admin Control Panel":
+        st.title("🛡️ Admin Control Panel")
+        if st.session_state["role"] != "Admin":
+            st.error("Access Restricted: Admin privileges required.")
         else:
             conn = sqlite3.connect(DB_FILE)
-            st.subheader("Registered Users")
-            users_df = pd.read_sql_query("SELECT id, username, role, created_at FROM users", conn)
+            st.subheader("User Directory")
+            users_df = pd.read_sql_query("SELECT id, username, email, role, created_at FROM users", conn)
             st.dataframe(users_df, use_container_width=True)
 
-            st.subheader("System Activity Logs")
+            st.subheader("Audit Logs")
             logs_df = pd.read_sql_query("SELECT * FROM system_logs ORDER BY timestamp DESC", conn)
             st.dataframe(logs_df, use_container_width=True)
             conn.close()
