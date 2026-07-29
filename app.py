@@ -396,7 +396,7 @@ else:
             st.caption("Click column headers/rows to highlight, edit cells directly, or arrange data. All updates instantly sync above.")
 
             # ENHANCED EDITABLE GRID WITH COLUMN/ROW HIGHLIGHT SELECTION
-            edited_df = st.data_editor(
+           selection_mode="multi-column",
                 st.session_state['current_data'],
                 num_rows="dynamic",
                 use_container_width=True,
