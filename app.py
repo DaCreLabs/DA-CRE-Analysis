@@ -25,7 +25,6 @@ DB_FILE = "dacre_platform.db"
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    # Users table
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,7 +35,6 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    # File Vault storage table
     c.execute('''
         CREATE TABLE IF NOT EXISTS file_vault (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,7 +45,6 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    # SEPARATE WORKFLOW DATABASE TABLE (database_workflow)
     c.execute('''
         CREATE TABLE IF NOT EXISTS database_workflow (
             user_email TEXT PRIMARY KEY,
@@ -100,40 +97,47 @@ def load_file_data(uploaded_file):
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-# --- DAVID'S VOICE ENGINE ---
+# --- IMPROVED VOICE ENGINE (BROWSER & USER-GESTURE COMPATIBLE) ---
 def trigger_audio_guide(text_to_speak):
-    if st.session_state.get('audio_guide_enabled', True):
-        safe_text = text_to_speak.replace("'", "\\'").replace("\n", " ")
-        js_code = f"""
-        <script>
-            function speakNow() {{
-                if ('speechSynthesis' in window) {{
-                    window.speechSynthesis.cancel();
-                    var msg = new SpeechSynthesisUtterance('{safe_text}');
-                    msg.rate = 0.88;
-                    msg.pitch = 0.65;
-                    
-                    var voices = window.speechSynthesis.getVoices();
-                    var selectedVoice = voices.find(function(v) {{
-                        return v.lang.includes('en-NG') || 
-                               (v.name.toLowerCase().includes('male') && v.lang.includes('en')) ||
-                               v.name.toLowerCase().includes('david') || 
-                               v.lang.includes('en-GB');
-                    }});
-                    if (selectedVoice) {{
-                        msg.voice = selectedVoice;
-                    }}
-                    window.speechSynthesis.speak(msg);
+    st.session_state['last_audio_text'] = text_to_speak
+    safe_text = text_to_speak.replace("'", "\\'").replace("\n", " ")
+    
+    js_code = f"""
+    <div style="margin: 10px 0;">
+        <button onclick="speakText()" style="
+            background-color: #38bdf8; 
+            color: #000000; 
+            font-weight: bold; 
+            padding: 8px 16px; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer;">
+            🔊 Play Audio Assistant
+        </button>
+    </div>
+    <script>
+        function speakText() {{
+            if ('speechSynthesis' in window) {{
+                window.speechSynthesis.cancel();
+                var msg = new SpeechSynthesisUtterance('{safe_text}');
+                msg.rate = 0.9;
+                msg.pitch = 1.0;
+                
+                var voices = window.speechSynthesis.getVoices();
+                if (voices.length > 0) {{
+                    var selectedVoice = voices.find(v => v.lang.includes('en'));
+                    if (selectedVoice) msg.voice = selectedVoice;
                 }}
-            }}
-            if (window.speechSynthesis.getVoices().length === 0) {{
-                window.speechSynthesis.onvoiceschanged = speakNow;
+                window.speechSynthesis.speak(msg);
             }} else {{
-                speakNow();
+                alert("Speech synthesis is not supported in this browser.");
             }}
-        </script>
-        """
-        components.html(js_code, height=0, width=0)
+        }}
+        // Attempt autoplay
+        setTimeout(speakText, 300);
+    </script>
+    """
+    components.html(js_code, height=60)
 
 # --- WORKFLOW DATABASE SYNC ENGINE ---
 def sync_to_database_workflow():
@@ -210,12 +214,12 @@ if 'current_data' not in st.session_state:
     st.session_state['current_data'] = None
 if 'raw_data' not in st.session_state:
     st.session_state['raw_data'] = None
-if 'audio_guide_enabled' not in st.session_state:
-    st.session_state['audio_guide_enabled'] = True
 if 'formula_logs' not in st.session_state:
     st.session_state['formula_logs'] = []
+if 'last_audio_text' not in st.session_state:
+    st.session_state['last_audio_text'] = None
 
-# --- HIGH-CONTRAST STYLING (FIXES WHITE-ON-WHITE VISIBILITY) ---
+# --- HIGH-CONTRAST STYLING ---
 st.markdown("""
     <style>
     /* Dark Theme Core */
@@ -302,7 +306,6 @@ elif not st.session_state['authenticated']:
                     st.session_state['user_email'] = l_email.strip().lower()
                     st.session_state['user_name'] = u[0]
                     restore_from_database_workflow(st.session_state['user_email'])
-                    trigger_audio_guide(f"Welcome back {u[0]}! Your database workflow has been restored.")
                     st.rerun()
                 else:
                     st.error("Invalid credentials.")
@@ -320,7 +323,6 @@ elif not st.session_state['authenticated']:
                 st.session_state['authenticated'] = True
                 st.session_state['user_email'] = s_email.strip().lower()
                 st.session_state['user_name'] = s_fname
-                trigger_audio_guide(f"Welcome {s_fname}! Account created.")
                 st.rerun()
 
 else:
@@ -351,6 +353,9 @@ else:
     if menu == "📊 Embedded Sheet & Formula Board":
         st.title("📊 Embedded Sheet & Formula Board")
 
+        if st.session_state.get('last_audio_text'):
+            trigger_audio_guide(st.session_state['last_audio_text'])
+
         if st.session_state['current_data'] is not None and isinstance(st.session_state['current_data'], pd.DataFrame):
             
             # ==========================================
@@ -379,7 +384,6 @@ else:
                     use_container_width=True
                 )
             with col_d2:
-                # PRINT BUTTON COMPONENT
                 js_print = """<button onclick="window.print()" style="width:100%; height:42px; background-color:#10b981; color:white; font-weight:bold; border:none; border-radius:8px; cursor:pointer;">🖨️ Print Data Board Sheet</button>"""
                 components.html(js_print, height=45)
 
@@ -389,17 +393,17 @@ else:
             # 2. DATABASE WORKFLOW GRID & CLEANUP ENGINE
             # ==========================================
             st.markdown("### ⚙️ DATABASE WORKFLOW TABLE (Editable Working Area)")
-            st.caption("Edit values here directly, arrange data, or run cleanup operations. All changes automatically update the DATA BOARD above.")
+            st.caption("Click column headers/rows to highlight, edit cells directly, or arrange data. All updates instantly sync above.")
 
-            # EDITABLE GRID FOR DATABASE WORKFLOW
+            # ENHANCED EDITABLE GRID WITH COLUMN/ROW HIGHLIGHT SELECTION
             edited_df = st.data_editor(
                 st.session_state['current_data'],
                 num_rows="dynamic",
                 use_container_width=True,
+                selection_mode=["multi-column", "multi-row"],
                 key="database_workflow_editor"
             )
 
-            # Detect direct user edits inside the working database and update
             if not edited_df.equals(st.session_state['current_data']):
                 st.session_state['current_data'] = edited_df
                 sync_to_database_workflow()
@@ -415,8 +419,8 @@ else:
                     cleaned_df = arrange_and_clean_data(df)
                     st.session_state['current_data'] = cleaned_df
                     sync_to_database_workflow()
+                    st.session_state['last_audio_text'] = "Data arranged and formatted successfully on the Data Board."
                     st.success("Data arranged and formatting cleaned!")
-                    trigger_audio_guide("Data arranged successfully on the Data Board.")
                     st.rerun()
 
             with c2:
@@ -424,8 +428,8 @@ else:
                     no_dup_df = df.drop_duplicates()
                     st.session_state['current_data'] = no_dup_df
                     sync_to_database_workflow()
+                    st.session_state['last_audio_text'] = "Duplicate rows removed from workflow data."
                     st.success("Duplicate rows removed!")
-                    trigger_audio_guide("Duplicates removed.")
                     st.rerun()
 
             with c3:
@@ -553,11 +557,10 @@ else:
                 st.session_state['raw_data'] = extracted_df.copy()
                 st.session_state['current_data'] = extracted_df.copy()
                 st.session_state['active_file_name'] = selected_file
+                st.session_state['last_audio_text'] = f"Extracted {selected_file} into workflow database."
                 
                 sync_to_database_workflow()
-                
                 st.success(f"Successfully extracted `{selected_file}` into database_workflow table and populated DATA BOARD!")
-                trigger_audio_guide(f"Extracted {selected_file} into workflow database.")
                 st.rerun()
         else:
             st.warning("Your File Vault is currently empty. Upload files in the 'Add New Files to Vault' tab.")
