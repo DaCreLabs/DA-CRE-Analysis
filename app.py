@@ -21,15 +21,26 @@ APP_VERSION = "Enterprise 2026"
 PRIMARY_LOGO_FILENAME = "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png"
 RAW_GITHUB_LOGO_URL = "https://raw.githubusercontent.com/DaCreLabs/DA-CRE-Analysis/main/ChatGPT%20Image%20Jul%2029%2C%202026%2C%2002_27_41%20PM.png"
 
-# ---------------- PAGE CONFIG ----------------
+# ---------------- PAGE CONFIG WITH FAVICON LOGO ----------------
 st.set_page_config(
     page_title="DACRE ANALYSIS",
-    page_icon="📊",
+    page_icon=RAW_GITHUB_LOGO_URL,
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 ADMIN_SECRET_KEY = "theWORDofGOD"
+
+# ---------------- LOGO RENDER ENGINE ----------------
+def get_logo_html(width=250):
+    if os.path.exists(PRIMARY_LOGO_FILENAME):
+        try:
+            with open(PRIMARY_LOGO_FILENAME, "rb") as img_file:
+                b64 = base64.b64encode(img_file.read()).decode()
+                return f'<div style="text-align:center; position:relative; z-index:2; margin-bottom:15px;"><img src="data:image/png;base64,{b64}" style="max-width:{width}px; border-radius:12px; box-shadow:0 8px 20px rgba(0,0,0,0.5);"></div>'
+        except Exception:
+            pass
+    return f'<div style="text-align:center; position:relative; z-index:2; margin-bottom:15px;"><img src="{RAW_GITHUB_LOGO_URL}" style="max-width:{width}px; border-radius:12px; box-shadow:0 8px 20px rgba(0,0,0,0.5);"></div>'
 
 # ---------------- INITIAL 5-SECOND LOADING EFFECT ----------------
 if 'app_loaded' not in st.session_state:
@@ -47,7 +58,8 @@ if not st.session_state['app_loaded']:
             height: 80vh;
             text-align: center;
         ">
-            <h1 style="color: #ffffff; font-weight: 900; font-size: 50px; font-family: sans-serif; letter-spacing: 2px;">DACRE ANALYSIS</h1>
+            <img src="{RAW_GITHUB_LOGO_URL}" style="width: 180px; border-radius: 20px; animation: pulse 1.5s infinite ease-in-out; box-shadow: 0 10px 30px rgba(0,0,0,0.6);">
+            <h1 style="color: #ffffff; font-weight: 900; font-size: 50px; font-family: sans-serif; letter-spacing: 2px; margin-top: 20px;">DACRE ANALYSIS</h1>
             <p style="color: #94a3b8; font-weight: 600; font-size: 18px;">Initializing Enterprise Environment...</p>
             <div style="
                 border: 4px solid rgba(255,255,255,0.1);
@@ -63,6 +75,11 @@ if not st.session_state['app_loaded']:
             @keyframes spin {{
                 0% {{ transform: rotate(0deg); }}
                 100% {{ transform: rotate(360deg); }}
+            }}
+            @keyframes pulse {{
+                0% {{ transform: scale(1); opacity: 0.8; }}
+                50% {{ transform: scale(1.08); opacity: 1; }}
+                100% {{ transform: scale(1); opacity: 0.8; }}
             }}
         </style>
         """, unsafe_allow_html=True)
@@ -131,7 +148,7 @@ div[data-testid="stWidgetLabel"] p {
     border: 1px solid rgba(255, 255, 255, 0.15);
     box-shadow: 0px 15px 35px rgba(0,0,0,.6);
     margin-bottom: 25px;
-    margin-top: 15px;
+    margin-top: 10px;
     text-align: center;
     position: relative;
     z-index: 2;
@@ -279,7 +296,9 @@ if 'current_data' not in st.session_state:
 if 'formula_logs' not in st.session_state:
     st.session_state["formula_logs"] = []
 
-# ---------------- LANDING HEADER ----------------
+# ---------------- MAIN APP LOGO & LANDING HEADER ----------------
+st.markdown(get_logo_html(260), unsafe_allow_html=True)
+
 st.markdown("""
 <div class="hero">
     <h1>DACRE ANALYSIS</h1>
@@ -330,6 +349,8 @@ if not st.session_state["authenticated"]:
 # ---------------- MAIN APPLICATION INTERFACE ----------------
 else:
     with st.sidebar:
+        st.markdown(get_logo_html(180), unsafe_allow_html=True)
+        st.markdown("---")
         st.markdown("## 👋 Welcome")
         st.success(st.session_state["user_name"])
         st.caption(st.session_state["user_email"])
