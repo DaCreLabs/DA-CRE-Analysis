@@ -28,7 +28,7 @@ st.set_page_config(
 
 ADMIN_SECRET_KEY = "theWORDofGOD"
 
-# ---------------- LOGO RENDER ENGINE ----------------
+# ---------------- LOGO RENDER ENGINE (WITH FAILSAFE) ----------------
 @st.cache_data
 def load_logo_b64():
     if os.path.exists(PRIMARY_LOGO_FILENAME):
@@ -42,10 +42,10 @@ def load_logo_b64():
 def get_logo_html(width=220):
     b64 = load_logo_b64()
     if b64:
-        return f'<div style="text-align:center; margin-bottom:10px;"><img src="data:image/png;base64,{b64}" style="max-width:{width}px; border-radius:12px; box-shadow:0 6px 16px rgba(0,0,0,0.4);"></div>'
-    return f'<div style="text-align:center; margin-bottom:10px;"><img src="{RAW_GITHUB_LOGO_URL}" style="max-width:{width}px; border-radius:12px; box-shadow:0 6px 16px rgba(0,0,0,0.4);"></div>'
+        return f'<div style="text-align:center; margin-bottom:12px;"><img src="data:image/png;base64,{b64}" style="max-width:{width}px; border-radius:12px; box-shadow:0 6px 16px rgba(0,0,0,0.5);"></div>'
+    return f'<div style="text-align:center; margin-bottom:12px;"><img src="{RAW_GITHUB_LOGO_URL}" style="max-width:{width}px; border-radius:12px; box-shadow:0 6px 16px rgba(0,0,0,0.5);" onerror="this.onerror=null; this.src=\'https://img.icons8.com/color/180/analytics.png\';"></div>'
 
-# ---------------- INITIAL 5-SECOND LOADING SPLASH SCREEN ----------------
+# ---------------- INITIAL 5-SECOND HOVER LOADING SPLASH SCREEN ----------------
 if 'app_loaded' not in st.session_state:
     st.session_state['app_loaded'] = False
 
@@ -61,8 +61,8 @@ if not st.session_state['app_loaded']:
             height: 80vh;
             text-align: center;
         ">
-            <img src="{RAW_GITHUB_LOGO_URL}" style="width: 170px; border-radius: 20px; animation: pulse 1.5s infinite ease-in-out; box-shadow: 0 10px 30px rgba(0,0,0,0.6);">
-            <h1 style="color: #ffffff; font-weight: 900; font-size: 45px; font-family: sans-serif; letter-spacing: 2px; margin-top: 20px;">DACRE ANALYSIS</h1>
+            {get_logo_html(180)}
+            <h1 style="color: #ffffff; font-weight: 900; font-size: 45px; font-family: sans-serif; letter-spacing: 2px; margin-top: 15px;">DACRE ANALYSIS</h1>
             <p style="color: #94a3b8; font-weight: 600; font-size: 18px;">Initializing Enterprise Environment...</p>
             <div style="
                 border: 4px solid rgba(255,255,255,0.1);
@@ -79,11 +79,6 @@ if not st.session_state['app_loaded']:
                 0% {{ transform: rotate(0deg); }}
                 100% {{ transform: rotate(360deg); }}
             }}
-            @keyframes pulse {{
-                0% {{ transform: scale(1); opacity: 0.8; }}
-                50% {{ transform: scale(1.08); opacity: 1; }}
-                100% {{ transform: scale(1); opacity: 0.8; }}
-            }}
         </style>
         """, unsafe_allow_html=True)
         time.sleep(5)
@@ -97,7 +92,7 @@ st.markdown("""
 footer { visibility: hidden; }
 header { visibility: hidden; }
 
-/* OPTIMIZED DARK THEME */
+/* DARK ENTERPRISE THEME */
 .stApp {
     background: radial-gradient(circle at 50% 20%, #0d1b2a, #0b131f, #050a0f);
     color: #ffffff;
@@ -138,7 +133,7 @@ div[data-testid="stWidgetLabel"] p {
     font-size: 18px;
 }
 
-/* INPUT FIELD STYLING */
+/* INPUT BARS - LIGHT BROWN FILL & GREY PLACEHOLDERS */
 div[data-baseweb="input"] > div, 
 input, 
 textarea, 
