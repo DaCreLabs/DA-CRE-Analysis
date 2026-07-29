@@ -6,15 +6,27 @@ import hashlib
 import time
 import io
 import json
+import base64
+import os
 import streamlit.components.v1 as components
 
-# --- APP BRANDING LOGO ---
+# --- APP BRANDING LOGO (FAILSAFE BASE64 ENCODER) ---
 APP_LOGO_PATH = "dacre_logo.png"
+
+def get_base64_logo(file_path):
+    """Converts logo file to Base64 to guarantee it displays cleanly across Streamlit."""
+    if os.path.exists(file_path):
+        with open(file_path, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read()).decode()
+            return f"data:image/png;base64,{encoded_string}"
+    return None
+
+logo_b64 = get_base64_logo(APP_LOGO_PATH)
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
     page_title="DACRE ANALYSIS",
-    page_icon=APP_LOGO_PATH,
+    page_icon=APP_LOGO_PATH if os.path.exists(APP_LOGO_PATH) else "🔒",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -260,6 +272,14 @@ st.markdown("""
     .stButton>button:hover {
         background-color: #0369a1 !important;
     }
+    
+    /* Center Logo Container */
+    .logo-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 20px;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -270,13 +290,11 @@ if not st.session_state['loading_complete']:
     st.rerun()
 
 elif not st.session_state['authenticated']:
-    # LANDING PAGE HEADER LOGO
-    col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
-    with col_l2:
-        try:
-            st.image(APP_LOGO_PATH, use_column_width=True)
-        except Exception:
-            st.warning("Upload dacre_logo.png to your repository to display your logo here.")
+    # LANDING PAGE HEADER LOGO DISPLAY
+    if logo_b64:
+        st.markdown(f'<div class="logo-container"><img src="{logo_b64}" style="max-width: 280px;"></div>', unsafe_allow_html=True)
+    else:
+        st.warning("Upload dacre_logo.png to your repository root to display your logo here.")
 
     col_c = st.columns([1, 2, 1])[1]
     with col_c:
@@ -317,9 +335,9 @@ elif not st.session_state['authenticated']:
 else:
     # --- SIDEBAR NAVIGATION WITH APP LOGO ---
     with st.sidebar:
-        try:
-            st.image(APP_LOGO_PATH, use_column_width=True)
-        except Exception:
+        if logo_b64:
+            st.markdown(f'<div style="text-align: center;"><img src="{logo_b64}" style="max-width: 100%; border-radius: 8px;"></div>', unsafe_allow_html=True)
+        else:
             st.caption("Logo: dacre_logo.png")
             
     st.sidebar.title(f"👤 {st.session_state['user_name']}")
