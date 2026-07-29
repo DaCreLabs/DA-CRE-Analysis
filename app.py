@@ -16,9 +16,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- AVATAR / LOGO IMAGE URL ---
-# To use your exact personal photo: upload it to your repo and set this to "profile.jpg" or your image's direct URL.
-AVATAR_IMAGE_URL = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80"
+# --- AVATAR / LOGO IMAGE ---
+# Points directly to your uploaded photo file in the repo folder
+AVATAR_IMAGE_PATH = "IMG_20260729_135217.jpg"
 
 # --- ADMIN SECURITY KEY ---
 ADMIN_SECRET_KEY = "theWORDofGOD"
@@ -261,20 +261,6 @@ st.markdown("""
     .stButton>button:hover {
         background-color: #0369a1 !important;
     }
-    
-    /* Character Logo Styling */
-    .logo-container {
-        text-align: center;
-        padding: 10px;
-    }
-    .logo-img {
-        width: 120px;
-        height: 120px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 4px solid #38bdf8;
-        box-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
-    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -285,13 +271,15 @@ if not st.session_state['loading_complete']:
     st.rerun()
 
 elif not st.session_state['authenticated']:
-    # LANDING PAGE AVATAR LOGO
-    st.markdown(f"""
-        <div class="logo-container">
-            <img class="logo-img" src="{AVATAR_IMAGE_URL}" alt="DA-CRE Profile"/>
-            <h1 style='color:#38bdf8; font-weight:900; margin-top:10px;'>DA-CRE WORKFLOW PLATFORM</h1>
-        </div>
-    """, unsafe_allow_html=True)
+    # LANDING PAGE PHOTO HEADER
+    col_l1, col_l2, col_l3 = st.columns([1, 1, 1])
+    with col_l2:
+        try:
+            st.image(AVATAR_IMAGE_PATH, width=140, use_column_width=False)
+        except Exception:
+            st.warning("Upload IMG_20260729_135217.jpg to your repository to display your photo here.")
+            
+    st.markdown("<h1 style='text-align:center; color:#38bdf8; font-weight:900;'>DA-CRE WORKFLOW PLATFORM</h1>", unsafe_allow_html=True)
 
     col_c = st.columns([1, 2, 1])[1]
     with col_c:
@@ -330,12 +318,13 @@ elif not st.session_state['authenticated']:
                 st.rerun()
 
 else:
-    # --- SIDEBAR NAVIGATION WITH PROFILE IMAGE ---
-    st.sidebar.markdown(f"""
-        <div style="text-align:center;">
-            <img src="{AVATAR_IMAGE_URL}" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:3px solid #38bdf8;"/>
-        </div>
-    """, unsafe_allow_html=True)
+    # --- SIDEBAR NAVIGATION WITH YOUR PHOTO ---
+    with st.sidebar:
+        try:
+            st.image(AVATAR_IMAGE_PATH, width=100)
+        except Exception:
+            st.caption("Photo: IMG_20260729_135217.jpg")
+            
     st.sidebar.title(f"👤 {st.session_state['user_name']}")
     
     menu = st.sidebar.selectbox(
@@ -399,7 +388,7 @@ else:
             st.markdown("### ⚙️ DATABASE WORKFLOW TABLE (Editable Working Area)")
             st.caption("Click column headers/rows to highlight, edit cells directly, or arrange data. All updates instantly sync above.")
 
-            # CLEAN INDENTED EDITABLE GRID (FIXED FOR STRICT 4-SPACE INDENT)
+            # CLEAN INDENTED EDITABLE GRID
             edited_df = st.data_editor(
                 st.session_state['current_data'],
                 num_rows="dynamic",
