@@ -7,6 +7,7 @@ import os
 import base64
 from datetime import datetime
 import plotly.express as px
+from PIL import Image
 
 # ==========================================================
 # DACRE ANALYSIS 2026 ENTERPRISE EDITION
@@ -15,14 +16,23 @@ import plotly.express as px
 APP_NAME = "DACRE ANALYSIS"
 APP_VERSION = "Enterprise 2026"
 
-# UPDATED TO CLEAN SHORT NAME
 PRIMARY_LOGO_FILENAME = "logo.png"
 RAW_GITHUB_LOGO_URL = "https://raw.githubusercontent.com/DaCreLabs/DA-CRE-Analysis/main/logo.png"
 
-# ---------------- PAGE CONFIG ----------------
+# ---------------- DYNAMIC TAB ICON LOADER ----------------
+def get_page_icon():
+    for fn in [PRIMARY_LOGO_FILENAME, "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png"]:
+        if os.path.exists(fn):
+            try:
+                return Image.open(fn)
+            except Exception:
+                pass
+    return "📊"
+
+# ---------------- PAGE CONFIG WITH CUSTOM TAB LOGO ----------------
 st.set_page_config(
     page_title="DACRE ANALYSIS",
-    page_icon="📊",
+    page_icon=get_page_icon(),
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -32,7 +42,6 @@ ADMIN_SECRET_KEY = "theWORDofGOD"
 # ---------------- FAILSAFE LOGO RENDER ENGINE ----------------
 @st.cache_data
 def load_logo_b64():
-    # Check local filenames (logo.png or original long name)
     for fn in [PRIMARY_LOGO_FILENAME, "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png"]:
         if os.path.exists(fn):
             try:
@@ -47,7 +56,6 @@ def get_logo_html(width=220):
     if b64:
         return f'<div style="text-align:center; margin-bottom:12px;"><img src="data:image/png;base64,{b64}" style="max-width:{width}px; border-radius:12px; box-shadow:0 6px 16px rgba(0,0,0,0.5);"></div>'
     
-    # SVG Analytics Logo Fallback if file isn't found
     fallback_svg = base64.b64encode(b"""
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#0284c7" width="100" height="100">
         <path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/>
