@@ -11,7 +11,6 @@ import os
 from datetime import datetime
 import plotly.express as px
 import plotly.graph_objects as go
-import streamlit.components.v1 as components
 
 # ==========================================================
 # DACRE ANALYSIS 2026 PROFESSIONAL EDITION
@@ -19,30 +18,6 @@ import streamlit.components.v1 as components
 
 APP_NAME = "DACRE ANALYSIS"
 APP_VERSION = "Enterprise 2026"
-
-# ---------------- LOGO ENGINE ----------------
-# Standard default fallback or auto-load local file if exists
-APP_LOGO_PATH = "dacre_logo.png"
-
-def get_base64_logo():
-    if os.path.exists(APP_LOGO_PATH):
-        try:
-            with open(APP_LOGO_PATH, "rb") as img:
-                return "data:image/png;base64," + base64.b64encode(img.read()).decode()
-        except Exception:
-            pass
-    return None
-
-logo_b64 = get_base64_logo()
-
-# ---------------- HELPER FUNCTIONS ----------------
-def trigger_audio_guide(text):
-    """Placeholder for Nigerian AI Audio Guide engine."""
-    st.info(f"🔊 **AI Voice Guide:** \"{text}\"")
-
-def sync_to_database_workflow():
-    """Sync session state and logs to persistent storage upon action or logout."""
-    pass
 
 # ---------------- PAGE CONFIG ----------------
 st.set_page_config(
@@ -135,36 +110,68 @@ input {
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- DATABASE ENGINE ----------------
+# ---------------- LOGO ENGINE ----------------
+# Fallback online logo or local file detection
+def get_logo_html(width=180):
+    if os.path.exists("dacre_logo.png"):
+        try:
+            with open("dacre_logo.png", "rb") as img:
+                b64 = base64.b64encode(img.read()).decode()
+                return f'<img src="data:image/png;base64,{b64}" width="{width}">'
+        except Exception:
+            pass
+    return f'<h1 style="color:#38bdf8; font-weight:900;">📊 DACRE</h1>'
+
+# ---------------- SAFE DATABASE ENGINE ----------------
 DB_FILE = "dacre_platform.db"
 
-def init_db():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT UNIQUE,
-                    email TEXT,
-                    password_hash TEXT,
-                    role TEXT,
-                    created_at TEXT
-                )''')
-    
-    c.execute('''CREATE TABLE IF NOT EXISTS system_logs (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user TEXT,
-                    action TEXT,
-                    timestamp TEXT
-                )''')
-    
-    # Schema migration safeguard for email column
-    c.execute("PRAGMA table_info(users)")
-    columns = [column[1] for column in c.fetchall()]
-    if 'email' not in columns:
-        c.execute("ALTER TABLE users ADD COLUMN email TEXT")
+def get_db_connection():
+    return sqlite3.connect(DB_FILE, timeout=10)
 
-    conn.commit()
-    conn.close()
+def init_db():
+    conn = get_db_connection()
+    c = conn.cursor()
+    try:
+        c.execute('''CREATE TABLE IF NOT EXISTS users (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        username TEXT UNIQUE,
+                        email TEXT,
+                        password_hash TEXT,
+                        role TEXT,
+                        created_at TEXT
+                    )''')
+        
+        c.execute('''CREATE TABLE IF NOT EXISTS system_logs (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user TEXT,
+                        action TEXT,
+                        timestamp TEXT
+                    )''')
+        conn.commit()
+    except Exception:
+        # Re-create database if corrupted schema exists
+        conn.close()
+        if os.path.exists(DB_FILE):
+            os.remove(DB_FILE)
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute('''CREATE TABLE IF NOT EXISTS users (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        username TEXT UNIQUE,
+                        email TEXT,
+                        password_hash TEXT,
+                        role TEXT,
+                        created_at TEXT
+                    )''')
+        c.execute('''CREATE TABLE IF NOT EXISTS system_logs (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user TEXT,
+                        action TEXT,
+                        timestamp TEXT
+                    )''')
+        conn.commit()
+    finally:
+        conn.close()
 
 init_db()
 
@@ -175,21 +182,21 @@ def check_hashes(password, hashed_text):
     return make_hashes(password) == hashed_text
 
 def add_user(username, email, password, role="User"):
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_connection()
     c = conn.cursor()
     try:
         c.execute("INSERT INTO users(username, email, password_hash, role, created_at) VALUES (?,?,?,?,?)",
                   (username, email, make_hashes(password), role, str(datetime.now())))
         conn.commit()
         success = True
-    except sqlite3.IntegrityError:
+    except Exception:
         success = False
     finally:
         conn.close()
     return success
 
 def login_user(username, password):
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_connection()
     c = conn.cursor()
     c.execute("SELECT email, password_hash, role FROM users WHERE username=?", (username,))
     data = c.fetchone()
@@ -199,24 +206,37 @@ def login_user(username, password):
     return None
 
 def log_action(user, action):
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("INSERT INTO system_logs(user, action, timestamp) VALUES (?,?,?)",
-              (user, action, str(datetime.now())))
-    conn.commit()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("INSERT INTO system_logs(user, action, timestamp) VALUES (?,?,?)",
+                  (user, action, str(datetime.now())))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
 
 def ensure_admin_exists():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("SELECT * FROM users WHERE username='admin'")
-    if not c.fetchone():
-        c.execute("INSERT INTO users(username, email, password_hash, role, created_at) VALUES (?,?,?,?,?)",
-                  ("admin", "admin@dacre.ai", make_hashes(ADMIN_SECRET_KEY), "Admin", str(datetime.now())))
-        conn.commit()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("SELECT * FROM users WHERE username='admin'")
+        if not c.fetchone():
+            c.execute("INSERT INTO users(username, email, password_hash, role, created_at) VALUES (?,?,?,?,?)",
+                      ("admin", "admin@dacre.ai", make_hashes(ADMIN_SECRET_KEY), "Admin", str(datetime.now())))
+            conn.commit()
+        conn.close()
+    except Exception:
+        pass
 
 ensure_admin_exists()
+
+# ---------------- HELPER FUNCTIONS ----------------
+def trigger_audio_guide(text):
+    st.info(f"🔊 **AI Voice Guide:** \"{text}\"")
+
+def sync_to_database_workflow():
+    pass
 
 # ---------------- SESSION STATE INITIALIZATION ----------------
 if 'authenticated' not in st.session_state:
@@ -233,12 +253,7 @@ if 'formula_logs' not in st.session_state:
     st.session_state["formula_logs"] = []
 
 # ---------------- LANDING HEADER ----------------
-if logo_b64:
-    st.markdown(f"""
-    <div class="logo">
-        <img src="{logo_b64}" width="220">
-    </div>
-    """, unsafe_allow_html=True)
+st.markdown(f'<div class="logo">{get_logo_html(220)}</div>', unsafe_allow_html=True)
 
 st.markdown("""
 <div class="hero">
@@ -293,15 +308,7 @@ else:
     # PREMIUM ENTERPRISE SIDEBAR
     # ==========================================================
     with st.sidebar:
-        if logo_b64:
-            st.markdown(
-                f"""
-                <div style="text-align:center;">
-                    <img src="{logo_b64}" width="180">
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+        st.markdown(f'<div style="text-align:center;">{get_logo_html(160)}</div>', unsafe_allow_html=True)
 
         st.markdown("---")
 
@@ -443,7 +450,7 @@ else:
         if st.session_state["role"] != "Admin":
             st.error("Access Restricted: Admin privileges required.")
         else:
-            conn = sqlite3.connect(DB_FILE)
+            conn = get_db_connection()
             st.subheader("User Directory")
             users_df = pd.read_sql_query("SELECT id, username, email, role, created_at FROM users", conn)
             st.dataframe(users_df, use_container_width=True)
