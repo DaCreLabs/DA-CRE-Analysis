@@ -10,14 +10,13 @@ import plotly.express as px
 from PIL import Image
 
 # ==========================================================
-# DACRE ANALYSIS 2026 ENTERPRISE EDITION
+# DACRE ANALYSIS ENTERPRISE EDITION
 # ==========================================================
 
 APP_NAME = "DACRE ANALYSIS"
 APP_VERSION = "Enterprise 2026"
 
 PRIMARY_LOGO_FILENAME = "logo.png"
-RAW_GITHUB_LOGO_URL = "https://raw.githubusercontent.com/DaCreLabs/DA-CRE-Analysis/main/logo.png"
 
 # ---------------- DYNAMIC TAB ICON LOADER ----------------
 def get_page_icon():
@@ -39,7 +38,7 @@ st.set_page_config(
 
 ADMIN_SECRET_KEY = "theWORDofGOD"
 
-# ---------------- FAILSAFE LOGO RENDER ENGINE ----------------
+# ---------------- LOCAL & FAILSAFE LOGO RENDER ENGINE ----------------
 @st.cache_data
 def load_logo_b64():
     for fn in [PRIMARY_LOGO_FILENAME, "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png"]:
@@ -56,6 +55,7 @@ def get_logo_html(width=220):
     if b64:
         return f'<div style="text-align:center; margin-bottom:12px;"><img src="data:image/png;base64,{b64}" style="max-width:{width}px; border-radius:12px; box-shadow:0 6px 16px rgba(0,0,0,0.5);"></div>'
     
+    # Fully local SVG embedded fallback (Works 100% offline)
     fallback_svg = base64.b64encode(b"""
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#0284c7" width="100" height="100">
         <path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/>
@@ -64,9 +64,7 @@ def get_logo_html(width=220):
     
     return f'''
     <div style="text-align:center; margin-bottom:12px;">
-        <img src="{RAW_GITHUB_LOGO_URL}" 
-             style="max-width:{width}px; border-radius:12px; box-shadow:0 6px 16px rgba(0,0,0,0.5);" 
-             onerror="this.onerror=null; this.src='data:image/svg+xml;base64,{fallback_svg}';">
+        <img src="data:image/svg+xml;base64,{fallback_svg}" style="max-width:{width}px; border-radius:12px; box-shadow:0 6px 16px rgba(0,0,0,0.5);">
     </div>
     '''
 
