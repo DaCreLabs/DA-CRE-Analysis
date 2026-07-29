@@ -8,17 +8,16 @@ import io
 import json
 import streamlit.components.v1 as components
 
+# --- APP BRANDING LOGO ---
+APP_LOGO_PATH = "dacre_logo.png"
+
 # --- PAGE CONFIGURATION ---
-# Using your image for both page title and the browser tab icon
 st.set_page_config(
-    page_title="DA-CRE Workflow Engine",
-    page_icon="IMG_20260729_135217.jpg",
+    page_title="DACRE ANALYSIS",
+    page_icon=APP_LOGO_PATH,
     layout="wide",
     initial_sidebar_state="expanded"
 )
-
-# --- AVATAR / LOGO IMAGE PATH ---
-AVATAR_IMAGE_PATH = "IMG_20260729_135217.jpg"
 
 # --- ADMIN SECURITY KEY ---
 ADMIN_SECRET_KEY = "theWORDofGOD"
@@ -271,15 +270,13 @@ if not st.session_state['loading_complete']:
     st.rerun()
 
 elif not st.session_state['authenticated']:
-    # LANDING PAGE PHOTO HEADER
-    col_l1, col_l2, col_l3 = st.columns([1, 1, 1])
+    # LANDING PAGE HEADER LOGO
+    col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
     with col_l2:
         try:
-            st.image(AVATAR_IMAGE_PATH, width=180, use_column_width=False)
+            st.image(APP_LOGO_PATH, use_column_width=True)
         except Exception:
-            st.warning("Upload IMG_20260729_135217.jpg to your repository to display your photo here.")
-            
-    st.markdown("<h1 style='text-align:center; color:#38bdf8; font-weight:900;'>DA-CRE WORKFLOW PLATFORM</h1>", unsafe_allow_html=True)
+            st.warning("Upload dacre_logo.png to your repository to display your logo here.")
 
     col_c = st.columns([1, 2, 1])[1]
     with col_c:
@@ -318,12 +315,12 @@ elif not st.session_state['authenticated']:
                 st.rerun()
 
 else:
-    # --- SIDEBAR NAVIGATION WITH YOUR PHOTO ---
+    # --- SIDEBAR NAVIGATION WITH APP LOGO ---
     with st.sidebar:
         try:
-            st.image(AVATAR_IMAGE_PATH, width=120)
+            st.image(APP_LOGO_PATH, use_column_width=True)
         except Exception:
-            st.caption("Photo: IMG_20260729_135217.jpg")
+            st.caption("Logo: dacre_logo.png")
             
     st.sidebar.title(f"👤 {st.session_state['user_name']}")
     
