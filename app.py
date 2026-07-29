@@ -17,6 +17,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# --- ADMIN SECURITY KEY ---
+ADMIN_SECRET_KEY = "david2026"  # You can change this admin passcode anytime!
+
 # --- DATABASE SETUP (SQLite) ---
 DB_FILE = "dacre_platform.db"
 
@@ -95,26 +98,25 @@ def load_file_data(uploaded_file):
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-# --- NIGERIAN VOICE AUDIO ENGINE ---
+# --- DAVID'S VOICE PITCH SPEECH ENGINE ---
 def trigger_audio_guide(text_to_speak):
     if st.session_state.get('audio_guide_enabled', True):
-        # Escape single quotes and newlines for safe JS execution
         safe_text = text_to_speak.replace("'", "\\'").replace("\n", " ")
         js_code = f"""
         <script>
             if ('speechSynthesis' in window) {{
                 window.speechSynthesis.cancel();
                 var msg = new SpeechSynthesisUtterance('{safe_text}');
-                msg.rate = 0.85; // Measured, natural pace
-                msg.pitch = 0.95; // Slightly lower, natural tone
+                msg.rate = 0.82;  /* Calm, deliberate speech pace matching David's video */
+                msg.pitch = 0.78; /* Tuned male voice pitch frequency matching David's pitch */
                 
                 var voices = window.speechSynthesis.getVoices();
-                // Attempt to pick a Nigerian or African voice if available in browser, else default smoothly
-                var ngVoice = voices.find(function(v) {{
-                    return v.lang.includes('en-NG') || v.name.includes('Nigeria') || v.name.includes('African');
+                /* Select male / African / English voice if available */
+                var selectedVoice = voices.find(function(v) {{
+                    return v.lang.includes('en-NG') || v.name.includes('Male') || v.name.includes('David') || v.lang.includes('en-GB');
                 }});
-                if (ngVoice) {{
-                    msg.voice = ngVoice;
+                if (selectedVoice) {{
+                    msg.voice = selectedVoice;
                 }}
                 window.speechSynthesis.speak(msg);
             }}
@@ -122,7 +124,7 @@ def trigger_audio_guide(text_to_speak):
         """
         components.html(js_code, height=0, width=0)
 
-# --- WORKPERSISTENCE: SAVE SESSION TO DB ---
+# --- WORK PERSISTENCE: SAVE SESSION TO DB ---
 def save_user_session():
     if st.session_state.get('authenticated') and st.session_state.get('user_email'):
         email = st.session_state['user_email']
@@ -148,7 +150,7 @@ def save_user_session():
         conn.commit()
         conn.close()
 
-# --- WORKPERSISTENCE: RESTORE SESSION FROM DB ---
+# --- WORK PERSISTENCE: RESTORE SESSION FROM DB ---
 def restore_user_session(email):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -192,112 +194,55 @@ if 'audio_guide_enabled' not in st.session_state:
     st.session_state['audio_guide_enabled'] = True
 if 'calculation_history' not in st.session_state:
     st.session_state['calculation_history'] = []
-if 'auth_tab' not in st.session_state:
-    st.session_state['auth_tab'] = "log_in"
 if 'show_verification' not in st.session_state:
     st.session_state['show_verification'] = False
 
-# --- CUSTOM STYLING (LIGHT BLUE, BLACK, YELLOW-GREEN, AND HOVERING CLOUD BACKGROUND) ---
+# --- CUSTOM UI STYLING (LIGHT BLUE, BLACK, YELLOW-GREEN, HOVERING CLOUDS) ---
 st.markdown("""
     <style>
-    /* Dark Base Theme with Light Blue and Yellow-Green Accents */
     .stApp {
         background-color: #060913;
         color: #e2e8f0;
         font-family: 'Inter', -apple-system, sans-serif;
     }
 
-    /* 3D HOVERING LIGHT BLUE CLOUDS ANIMATION FOR WORKSPACE */
     @keyframes floatClouds {
-        0% {
-            transform: translateY(0px) scale(1);
-            opacity: 0.25;
-        }
-        50% {
-            transform: translateY(-25px) scale(1.08);
-            opacity: 0.45;
-        }
-        100% {
-            transform: translateY(0px) scale(1);
-            opacity: 0.25;
-        }
+        0% { transform: translateY(0px) scale(1); opacity: 0.25; }
+        50% { transform: translateY(-25px) scale(1.08); opacity: 0.45; }
+        100% { transform: translateY(0px) scale(1); opacity: 0.25; }
     }
 
     .cloud-bg-container {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        pointer-events: none;
-        z-index: 0;
-        overflow: hidden;
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        pointer-events: none; z-index: 0; overflow: hidden;
     }
 
     .cloud-1 {
-        position: absolute;
-        top: 8%;
-        left: 10%;
-        width: 450px;
-        height: 250px;
+        position: absolute; top: 8%; left: 10%; width: 450px; height: 250px;
         background: radial-gradient(circle, rgba(56, 189, 248, 0.35) 0%, rgba(6, 9, 19, 0) 70%);
-        border-radius: 50%;
-        filter: blur(50px);
-        animation: floatClouds 9s ease-in-out infinite;
+        border-radius: 50%; filter: blur(50px); animation: floatClouds 9s ease-in-out infinite;
     }
 
     .cloud-2 {
-        position: absolute;
-        bottom: 12%;
-        right: 8%;
-        width: 550px;
-        height: 300px;
+        position: absolute; bottom: 12%; right: 8%; width: 550px; height: 300px;
         background: radial-gradient(circle, rgba(14, 165, 233, 0.3) 0%, rgba(6, 9, 19, 0) 70%);
-        border-radius: 50%;
-        filter: blur(60px);
-        animation: floatClouds 12s ease-in-out infinite reverse;
+        border-radius: 50%; filter: blur(60px); animation: floatClouds 12s ease-in-out infinite reverse;
     }
 
-    /* UI CARDS: PURE BLACK WITH LIGHT BLUE / YELLOW-GREEN ACCENTS */
     .black-card {
-        background: #000000;
-        border: 2px solid #38bdf8;
-        border-radius: 16px;
-        padding: 2.2rem;
-        box-shadow: 0 10px 30px rgba(56, 189, 248, 0.15);
-        position: relative;
-        z-index: 1;
+        background: #000000; border: 2px solid #38bdf8; border-radius: 16px;
+        padding: 2.2rem; box-shadow: 0 10px 30px rgba(56, 189, 248, 0.15);
+        position: relative; z-index: 1;
     }
 
-    /* YELLOW-GREEN ACCENT HEADINGS */
-    .yg-text {
-        color: #a3e635;
-        font-weight: 800;
-    }
-
-    .yg-badge {
-        background-color: #a3e635;
-        color: #000000;
-        padding: 4px 12px;
-        border-radius: 12px;
-        font-weight: bold;
-        font-size: 0.85rem;
-    }
+    .yg-text { color: #a3e635; font-weight: 800; }
+    .yg-badge { background-color: #a3e635; color: #000000; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 0.85rem; }
 
     .stButton>button {
         background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
-        color: #000000;
-        font-weight: 700;
-        border: none;
-        border-radius: 10px;
-        transition: all 0.2s ease-in-out;
+        color: #000000; font-weight: 700; border: none; border-radius: 10px; transition: all 0.2s ease-in-out;
     }
-
-    .stButton>button:hover {
-        background: #a3e635;
-        color: #000000;
-        transform: translateY(-2px);
-    }
+    .stButton>button:hover { background: #a3e635; color: #000000; transform: translateY(-2px); }
     </style>
 """, unsafe_allow_html=True)
 
@@ -309,7 +254,7 @@ if not st.session_state['loading_complete']:
         st.markdown("""
             <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:75vh;">
                 <h1 style="color:#38bdf8; font-size: 3.5rem; letter-spacing:4px;">⚡ DA-CRE PLATFORM</h1>
-                <p style="color:#a3e635; font-size: 1.2rem; letter-spacing:2px; margin-top:10px;">LOADING YOUR WORKSPACE & AUDIO TUTOR...</p>
+                <p style="color:#a3e635; font-size: 1.2rem; letter-spacing:2px; margin-top:10px;">INITIALIZING SYSTEM & DAVID'S VOICE ENGINE...</p>
             </div>
         """, unsafe_allow_html=True)
     
@@ -345,7 +290,7 @@ elif not st.session_state['authenticated']:
             if st.button("Log In Now 🚀", use_container_width=True):
                 if not login_email or not login_pass:
                     st.warning("Please enter your email and password.")
-                    trigger_audio_guide("How far? You need to type your email and password to sign in.")
+                    trigger_audio_guide("Hello there. Please enter your email address and password to sign in.")
                 else:
                     conn = sqlite3.connect(DB_FILE)
                     c = conn.cursor()
@@ -358,16 +303,15 @@ elif not st.session_state['authenticated']:
                         st.session_state['user_email'] = login_email.strip().lower()
                         st.session_state['user_name'] = f"{user[0]} {user[1]}".strip()
                         
-                        # RESTORE PREVIOUS WORK
                         restore_user_session(st.session_state['user_email'])
                         
                         st.success("Log in successful!")
-                        trigger_audio_guide("Welcome back o! I have restored all your previous work so you can continue right where you stopped.")
+                        trigger_audio_guide(f"Welcome back {user[0]}! I have restored your previous work session so you can continue where you stopped.")
                         time.sleep(1)
                         st.rerun()
                     else:
                         st.error("Invalid email or password.")
-                        trigger_audio_guide("Ah ah, that details no match anything for our system. Check your password or email again.")
+                        trigger_audio_guide("The credentials you entered do not match our system. Please try again.")
 
         # TAB 2: SIGN UP WITH DUPLICATE HUMAN VERIFICATION
         with tab2:
@@ -383,7 +327,7 @@ elif not st.session_state['authenticated']:
                 
                 if verify_human:
                     st.success("✅ Verified Human!")
-                    trigger_audio_guide("Identity verified! Look, these details have already been added to our database before. I am taking you back to the sign in page now so you can log in.")
+                    trigger_audio_guide("Identity verified! The details you entered have already been added to our database. I am redirecting you back to sign in.")
                     time.sleep(2.5)
                     st.session_state['show_verification'] = False
                     st.rerun()
@@ -392,10 +336,10 @@ elif not st.session_state['authenticated']:
                 if st.button("Complete Sign Up 🎯", use_container_width=True):
                     if not fname or not su_email or not su_pass:
                         st.warning("Please fill in all required fields.")
-                        trigger_audio_guide("Abeg, fill all the required spaces before you click sign up.")
+                        trigger_audio_guide("Please fill in all required fields before clicking sign up.")
                     elif "@" not in su_email:
                         st.error("Invalid email address format.")
-                        trigger_audio_guide("This email format no correct. Check am well.")
+                        trigger_audio_guide("The email address format is invalid. Please check and try again.")
                     else:
                         conn = sqlite3.connect(DB_FILE)
                         c = conn.cursor()
@@ -404,7 +348,7 @@ elif not st.session_state['authenticated']:
 
                         if existing_user:
                             st.session_state['show_verification'] = True
-                            trigger_audio_guide("Wait small. It looks like this account already exists. Abeg tick the verification box to prove you are human.")
+                            trigger_audio_guide("It looks like this account already exists. Please check the verification box to prove you are human.")
                             conn.close()
                             st.rerun()
                         else:
@@ -419,7 +363,7 @@ elif not st.session_state['authenticated']:
                             st.session_state['user_email'] = su_email.strip().lower()
                             st.session_state['user_name'] = f"{fname} {mname}".strip()
                             st.success("Account created successfully!")
-                            trigger_audio_guide("Welcome o! Your account don ready. Opening your workspace now.")
+                            trigger_audio_guide(f"Welcome {fname}! Your account has been created. Opening your workspace now.")
                             time.sleep(1)
                             st.rerun()
 
@@ -428,7 +372,7 @@ elif not st.session_state['authenticated']:
 
 # --- 3. MAIN WORKSPACE DASHBOARD ---
 else:
-    # Render Hovering Blue Cloud Background Animation
+    # Floating Blue Cloud Animation Container
     st.markdown("""
         <div class="cloud-bg-container">
             <div class="cloud-1"></div>
@@ -440,11 +384,11 @@ else:
     with col_n1:
         st.markdown("### ⚡ DA-CRE Analysis Workspace")
     with col_n2:
-        audio_on = st.toggle("🔊 Nigerian Voice Guide", value=st.session_state['audio_guide_enabled'])
+        audio_on = st.toggle("🔊 Voice Guide", value=st.session_state['audio_guide_enabled'])
         if audio_on != st.session_state['audio_guide_enabled']:
             st.session_state['audio_guide_enabled'] = audio_on
             if audio_on:
-                trigger_audio_guide("Voice guide activated. I go dey explain anything you click for here.")
+                trigger_audio_guide("Voice guide activated. I will explain actions as you navigate through the app.")
     with col_n3:
         if st.session_state['active_file_name']:
             st.markdown(f'<span class="yg-badge">📂 MY DATA: {st.session_state["active_file_name"]}</span>', unsafe_allow_html=True)
@@ -463,13 +407,14 @@ else:
             "📥 Add New Files to Database",
             "🌐 Web Scraper Engine",
             "📈 Visualizations & Graphs",
-            "🚀 Export Data"
+            "🚀 Export Data",
+            "🛡️ Admin Control Panel"
         ]
     )
 
     if st.sidebar.button("🔒 Logout & Auto-Save", use_container_width=True):
-        save_user_session() # Auto-save session state on logout
-        trigger_audio_guide("Your work don save automatically. Goodbye for now!")
+        save_user_session()
+        trigger_audio_guide("Your session data has been saved automatically. Goodbye!")
         time.sleep(1)
         st.session_state['authenticated'] = False
         st.rerun()
@@ -481,7 +426,7 @@ else:
         if st.session_state['current_data'] is not None and isinstance(st.session_state['current_data'], pd.DataFrame):
             df = st.session_state['current_data'].copy()
 
-            # TOOLBAR WITH CLEAN / ARRANGE DATA
+            # TOOLBAR WITH ARRANGE DATA
             st.markdown("##### 🛠️ Quick Action Toolbar")
             tb0, tb1, tb2, tb3 = st.columns(4)
             
@@ -491,14 +436,14 @@ else:
                     st.session_state['current_data'] = cleaned
                     save_user_session()
                     st.success("Messy data arranged! Currency symbols, commas, and text numbers converted into numbers.")
-                    trigger_audio_guide("I don arrange all your messy data! All currency symbols and commas don comot, and your numbers dey ready for formula calculation now.")
+                    trigger_audio_guide("Messy data arranged! Currency symbols and formatting have been cleaned and your numbers are ready for formula calculations.")
                     st.rerun()
 
             with tb1:
                 if st.button("🧹 Remove Duplicates", use_container_width=True):
                     st.session_state['current_data'] = df.drop_duplicates()
                     save_user_session()
-                    trigger_audio_guide("I don purge all duplicate rows from your active sheet.")
+                    trigger_audio_guide("Duplicate rows removed from your active sheet.")
                     st.success("Duplicates purged!")
                     st.rerun()
             with tb2:
@@ -506,13 +451,13 @@ else:
                 if st.button("Sort (A-Z / Min-Max)", use_container_width=True):
                     st.session_state['current_data'] = df.sort_values(by=sort_col)
                     save_user_session()
-                    trigger_audio_guide(f"Your data don sort from small to big by column {sort_col}.")
+                    trigger_audio_guide(f"Data sorted in ascending order by column {sort_col}.")
                     st.rerun()
             with tb3:
                 if st.button("Sort (Z-A / Max-Min)", use_container_width=True):
                     st.session_state['current_data'] = df.sort_values(by=sort_col, ascending=False)
                     save_user_session()
-                    trigger_audio_guide(f"Your data don sort from big to small by column {sort_col}.")
+                    trigger_audio_guide(f"Data sorted in descending order by column {sort_col}.")
                     st.rerun()
 
             st.write("---")
@@ -528,7 +473,6 @@ else:
                 target_c = st.selectbox("Select Target Column", all_cols)
                 
                 if st.button("Execute Formula 🚀"):
-                    # Coerce column to numeric cleanly
                     series = pd.to_numeric(
                         df[target_c].astype(str).str.replace(r'[\$,%₦€£,]', '', regex=True).str.strip(),
                         errors='coerce'
@@ -540,21 +484,21 @@ else:
                         st.info(f"Result: **{msg}**")
                         st.session_state['calculation_history'].append(msg)
                         save_user_session()
-                        trigger_audio_guide(f"The total sum for column {target_c} is {res:,.2f}. I don save this result to your workspace log below.")
+                        trigger_audio_guide(f"The total sum for column {target_c} is {res:,.2f}. The result is saved in your calculation workspace.")
                     elif "AVERAGE" in excel_formula:
                         res = series.mean()
                         msg = f"AVERAGE({target_c}) = {res:,.2f}"
                         st.info(f"Result: **{msg}**")
                         st.session_state['calculation_history'].append(msg)
                         save_user_session()
-                        trigger_audio_guide(f"The average mean value for column {target_c} is {res:,.2f}. Added to workspace.")
+                        trigger_audio_guide(f"The average mean value for column {target_c} is {res:,.2f}.")
                     elif "COUNT" in excel_formula:
                         res = series.count()
                         msg = f"COUNT({target_c}) = {res}"
                         st.info(f"Result: **{msg}**")
                         st.session_state['calculation_history'].append(msg)
                         save_user_session()
-                        trigger_audio_guide(f"The total count of rows for column {target_c} is {res}.")
+                        trigger_audio_guide(f"Total row count for column {target_c} is {res}.")
 
             elif f_cat == "SQL Engine":
                 sql_q = st.text_input("Enter SQL Query (Table Name: `df`)", f"SELECT * FROM df LIMIT 10")
@@ -566,7 +510,7 @@ else:
                         st.dataframe(sql_res)
                         st.session_state['calculation_history'].append(f"SQL Executed: `{sql_q}`")
                         save_user_session()
-                        trigger_audio_guide("SQL query don run successfully!")
+                        trigger_audio_guide("SQL query executed successfully.")
                     except Exception as e:
                         st.error(f"SQL Error: {e}")
 
@@ -578,7 +522,7 @@ else:
                         st.write(py_res)
                         st.session_state['calculation_history'].append(f"Python Executed: `{py_code}`")
                         save_user_session()
-                        trigger_audio_guide("Python code executed successfully!")
+                        trigger_audio_guide("Python expression executed successfully.")
                     except Exception as e:
                         st.error(f"Python Execution Error: {e}")
 
@@ -598,7 +542,7 @@ else:
 
         else:
             st.info("No active dataset loaded in MY DATA. Open or upload a file into your database vault first.")
-            trigger_audio_guide("Your active workspace is empty right now. Go to Database Vault or Add New Files menu on the sidebar to load your data.")
+            trigger_audio_guide("Your active workspace is empty right now. Go to the Database Vault or Add New Files menu to load your data.")
 
     # SECTION 2: DATABASE FILE VAULT
     elif action_choice == "📂 Database File Vault":
@@ -627,7 +571,7 @@ else:
                 save_user_session()
                 
                 st.success(f"'{selected_f}' loaded from Database!")
-                trigger_audio_guide(f"I don load {selected_f} straight from your vault into your active workspace.")
+                trigger_audio_guide(f"Loaded file {selected_f} into your active workspace.")
                 st.rerun()
         else:
             st.info("Your database vault is empty. Upload files in the 'Add New Files' menu.")
@@ -659,7 +603,7 @@ else:
                     conn.close()
                     
                     st.success(f"Saved '{file.name}' permanently into Database Vault!")
-                    trigger_audio_guide(f"File {file.name} don save permanently into your vault.")
+                    trigger_audio_guide(f"File {file.name} saved permanently into your database vault.")
                 except Exception as e:
                     st.error(f"Error saving {file.name}: {e}")
 
@@ -673,7 +617,7 @@ else:
                 try:
                     tables = pd.read_html(url_in)
                     st.success(f"Extracted {len(tables)} tables!")
-                    trigger_audio_guide(f"I don extract {len(tables)} tables from that website link!")
+                    trigger_audio_guide(f"Extracted {len(tables)} tables from website.")
                     
                     for i, df in enumerate(tables):
                         with st.expander(f"Table #{i+1} ({df.shape[0]} rows x {df.shape[1]} cols)"):
@@ -693,7 +637,7 @@ else:
                                 st.session_state['active_file_name'] = fname
                                 save_user_session()
                                 st.success(f"Saved {fname} to database!")
-                                trigger_audio_guide(f"Saved web table {i+1} straight into your database vault.")
+                                trigger_audio_guide(f"Saved web table {i+1} directly into database vault.")
                                 st.rerun()
                 except Exception as e:
                     st.error(f"Scraper error: {e}")
@@ -719,7 +663,7 @@ else:
                     fig = px.scatter(df, x=x_a, y=y_a, template="plotly_dark")
                 
                 st.plotly_chart(fig, use_container_width=True)
-                trigger_audio_guide(f"Here is your {style} chart graph for {x_a} and {y_a}.")
+                trigger_audio_guide(f"Generated {style} chart for {x_a} and {y_a}.")
             else:
                 st.warning("Numeric columns required for plotting. Click 'Arrange Messy Data' in the Embedded Sheet toolbar first.")
         else:
@@ -746,6 +690,44 @@ else:
                     mime="text/csv",
                     use_container_width=True
                 )
-                trigger_audio_guide("You can download your clean data here as a CSV file.")
+                trigger_audio_guide("Download your clean dataset as a CSV file.")
         else:
             st.info("No active dataset in MY DATA to export.")
+
+    # SECTION 7: ADMIN CONTROL PANEL (DATABASE ACCESS)
+    elif action_choice == "🛡️ Admin Control Panel":
+        st.subheader("🛡️ Database Admin Panel")
+        
+        passkey_input = st.text_input("Enter Admin Security Passkey:", type="password")
+        
+        if passkey_input == ADMIN_SECRET_KEY:
+            st.success("🔓 Access Granted: Connected to SQLite Backend!")
+            trigger_audio_guide("Admin access granted. Showing registered user database and system statistics.")
+            
+            conn = sqlite3.connect(DB_FILE)
+            
+            # Registered Users Table
+            st.markdown("#### 👥 Registered Users List")
+            users_df = pd.read_sql_query("SELECT id, first_name, middle_name, email, created_at FROM users", conn)
+            st.dataframe(users_df, use_container_width=True)
+            st.info(f"Total Registered Users: **{len(users_df)}**")
+
+            st.write("---")
+
+            # Stored Files Table
+            st.markdown("#### 📂 Vault File Inventory")
+            files_df = pd.read_sql_query("SELECT id, user_email, filename, file_type, created_at FROM file_vault", conn)
+            st.dataframe(files_df, use_container_width=True)
+
+            st.write("---")
+
+            # Saved Sessions Table
+            st.markdown("#### 💾 Active Work Sessions")
+            sessions_df = pd.read_sql_query("SELECT user_email, active_file_name, updated_at FROM user_sessions", conn)
+            st.dataframe(sessions_df, use_container_width=True)
+            
+            conn.close()
+        
+        elif passkey_input != "":
+            st.error("❌ Invalid Admin Passkey.")
+            trigger_audio_guide("Invalid admin passkey entered.")
