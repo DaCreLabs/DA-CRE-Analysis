@@ -6,8 +6,7 @@ import sqlite3
 import hashlib
 import time
 import io
-from PIL import Image
-import os
+import json
 import streamlit.components.v1 as components
 
 # --- PAGE CONFIGURATION ---
@@ -44,6 +43,15 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS user_sessions (
+            user_email TEXT PRIMARY KEY,
+            active_file_name TEXT,
+            current_data TEXT,
+            calculation_history TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
     conn.commit()
     conn.close()
 
@@ -51,11 +59,9 @@ init_db()
 
 # --- HELPER: AUTO-CLEAN MESSY DATA ---
 def clean_messy_dataframe(df):
-    """Strips currency symbols, commas, percent signs, whitespace, and casts numbers into numeric types."""
     cleaned_df = df.copy()
     for col in cleaned_df.columns:
         if cleaned_df[col].dtype == 'object':
-            # Try cleaning string numbers
             cleaned_col = (
                 cleaned_df[col]
                 .astype(str)
@@ -63,7 +69,6 @@ def clean_messy_dataframe(df):
                 .str.replace(',', '', regex=False)
                 .str.strip()
             )
-            # Try converting to numeric
             numeric_series = pd.to_numeric(cleaned_col, errors='ignore')
             cleaned_df[col] = numeric_series
     return cleaned_df
@@ -90,21 +95,85 @@ def load_file_data(uploaded_file):
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-# --- AUDIO ASSISTANT ENGINE ---
+# --- NIGERIAN VOICE AUDIO ENGINE ---
 def trigger_audio_guide(text_to_speak):
-    if st.session_state.get('audio_guide_enabled', False):
+    if st.session_state.get('audio_guide_enabled', True):
+        # Escape single quotes and newlines for safe JS execution
+        safe_text = text_to_speak.replace("'", "\\'").replace("\n", " ")
         js_code = f"""
         <script>
             if ('speechSynthesis' in window) {{
                 window.speechSynthesis.cancel();
-                var msg = new SpeechSynthesisUtterance("{text_to_speak}");
-                msg.rate = 1.0;
-                msg.pitch = 1.0;
+                var msg = new SpeechSynthesisUtterance('{safe_text}');
+                msg.rate = 0.85; // Measured, natural pace
+                msg.pitch = 0.95; // Slightly lower, natural tone
+                
+                var voices = window.speechSynthesis.getVoices();
+                // Attempt to pick a Nigerian or African voice if available in browser, else default smoothly
+                var ngVoice = voices.find(function(v) {{
+                    return v.lang.includes('en-NG') || v.name.includes('Nigeria') || v.name.includes('African');
+                }});
+                if (ngVoice) {{
+                    msg.voice = ngVoice;
+                }}
                 window.speechSynthesis.speak(msg);
             }}
         </script>
         """
         components.html(js_code, height=0, width=0)
+
+# --- WORKPERSISTENCE: SAVE SESSION TO DB ---
+def save_user_session():
+    if st.session_state.get('authenticated') and st.session_state.get('user_email'):
+        email = st.session_state['user_email']
+        fname = st.session_state.get('active_file_name')
+        
+        data_json = ""
+        if st.session_state.get('current_data') is not None and isinstance(st.session_state['current_data'], pd.DataFrame):
+            data_json = st.session_state['current_data'].to_json()
+            
+        history_json = json.dumps(st.session_state.get('calculation_history', []))
+        
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("""
+            INSERT INTO user_sessions (user_email, active_file_name, current_data, calculation_history)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(user_email) DO UPDATE SET
+                active_file_name = excluded.active_file_name,
+                current_data = excluded.current_data,
+                calculation_history = excluded.calculation_history,
+                updated_at = CURRENT_TIMESTAMP
+        """, (email, fname, data_json, history_json))
+        conn.commit()
+        conn.close()
+
+# --- WORKPERSISTENCE: RESTORE SESSION FROM DB ---
+def restore_user_session(email):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT active_file_name, current_data, calculation_history FROM user_sessions WHERE user_email = ?", (email,))
+    row = c.fetchone()
+    conn.close()
+    
+    if row:
+        active_f, data_str, hist_str = row
+        st.session_state['active_file_name'] = active_f
+        if data_str:
+            try:
+                st.session_state['current_data'] = pd.read_json(io.StringIO(data_str))
+            except Exception:
+                st.session_state['current_data'] = None
+        else:
+            st.session_state['current_data'] = None
+            
+        if hist_str:
+            try:
+                st.session_state['calculation_history'] = json.loads(hist_str)
+            except Exception:
+                st.session_state['calculation_history'] = []
+        else:
+            st.session_state['calculation_history'] = []
 
 # --- SESSION STATE INITIALIZATION ---
 if 'loading_complete' not in st.session_state:
@@ -123,97 +192,128 @@ if 'audio_guide_enabled' not in st.session_state:
     st.session_state['audio_guide_enabled'] = True
 if 'calculation_history' not in st.session_state:
     st.session_state['calculation_history'] = []
+if 'auth_tab' not in st.session_state:
+    st.session_state['auth_tab'] = "log_in"
+if 'show_verification' not in st.session_state:
+    st.session_state['show_verification'] = False
 
-# --- CUSTOM CSS WITH FLOATING/COLOR-SHIFTING LOGO ---
+# --- CUSTOM STYLING (LIGHT BLUE, BLACK, YELLOW-GREEN, AND HOVERING CLOUD BACKGROUND) ---
 st.markdown("""
     <style>
+    /* Dark Base Theme with Light Blue and Yellow-Green Accents */
     .stApp {
-        background: #080d16;
-        color: #f1f5f9;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        background-color: #060913;
+        color: #e2e8f0;
+        font-family: 'Inter', -apple-system, sans-serif;
     }
 
-    @keyframes floatAndColorShift {
+    /* 3D HOVERING LIGHT BLUE CLOUDS ANIMATION FOR WORKSPACE */
+    @keyframes floatClouds {
         0% {
-            transform: translateY(0px);
-            color: #00f2fe;
-            filter: drop-shadow(0 0 15px rgba(0, 242, 254, 0.4));
+            transform: translateY(0px) scale(1);
+            opacity: 0.25;
         }
-        33% {
-            transform: translateY(-12px);
-            color: #38bdf8;
-            filter: drop-shadow(0 0 25px rgba(56, 189, 248, 0.7));
-        }
-        66% {
-            transform: translateY(-6px);
-            color: #818cf8;
-            filter: drop-shadow(0 0 20px rgba(129, 140, 248, 0.6));
+        50% {
+            transform: translateY(-25px) scale(1.08);
+            opacity: 0.45;
         }
         100% {
-            transform: translateY(0px);
-            color: #00f2fe;
-            filter: drop-shadow(0 0 15px rgba(0, 242, 254, 0.4));
+            transform: translateY(0px) scale(1);
+            opacity: 0.25;
         }
     }
 
-    .dacre-animated-logo {
-        font-size: 3.8rem;
-        font-weight: 900;
-        letter-spacing: 5px;
-        animation: floatAndColorShift 4s ease-in-out infinite;
-        text-align: center;
+    .cloud-bg-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        pointer-events: none;
+        z-index: 0;
+        overflow: hidden;
     }
 
-    .logo-container {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        height: 70vh;
+    .cloud-1 {
+        position: absolute;
+        top: 8%;
+        left: 10%;
+        width: 450px;
+        height: 250px;
+        background: radial-gradient(circle, rgba(56, 189, 248, 0.35) 0%, rgba(6, 9, 19, 0) 70%);
+        border-radius: 50%;
+        filter: blur(50px);
+        animation: floatClouds 9s ease-in-out infinite;
     }
 
-    .glass-card {
-        background: rgba(15, 23, 42, 0.75);
-        backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 20px;
-        padding: 2rem;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    .cloud-2 {
+        position: absolute;
+        bottom: 12%;
+        right: 8%;
+        width: 550px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(14, 165, 233, 0.3) 0%, rgba(6, 9, 19, 0) 70%);
+        border-radius: 50%;
+        filter: blur(60px);
+        animation: floatClouds 12s ease-in-out infinite reverse;
     }
 
-    .my-data-pill {
-        background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%);
-        color: #ffffff;
-        padding: 0.5rem 1.2rem;
-        border-radius: 20px;
+    /* UI CARDS: PURE BLACK WITH LIGHT BLUE / YELLOW-GREEN ACCENTS */
+    .black-card {
+        background: #000000;
+        border: 2px solid #38bdf8;
+        border-radius: 16px;
+        padding: 2.2rem;
+        box-shadow: 0 10px 30px rgba(56, 189, 248, 0.15);
+        position: relative;
+        z-index: 1;
+    }
+
+    /* YELLOW-GREEN ACCENT HEADINGS */
+    .yg-text {
+        color: #a3e635;
+        font-weight: 800;
+    }
+
+    .yg-badge {
+        background-color: #a3e635;
+        color: #000000;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-weight: bold;
+        font-size: 0.85rem;
+    }
+
+    .stButton>button {
+        background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+        color: #000000;
         font-weight: 700;
-        font-size: 0.9rem;
+        border: none;
+        border-radius: 10px;
+        transition: all 0.2s ease-in-out;
     }
 
-    .my-data-pill-empty {
-        background: #1e293b;
-        color: #64748b;
-        padding: 0.5rem 1.2rem;
-        border-radius: 20px;
-        font-weight: 600;
-        font-size: 0.9rem;
+    .stButton>button:hover {
+        background: #a3e635;
+        color: #000000;
+        transform: translateY(-2px);
     }
     </style>
 """, unsafe_allow_html=True)
 
 
-# --- 1. ANIMATED HOVERING LOADING SCREEN ---
+# --- 1. INITIAL LOADING SCREEN ---
 if not st.session_state['loading_complete']:
     placeholder = st.empty()
     with placeholder.container():
         st.markdown("""
-            <div class="logo-container">
-                <div class="dacre-animated-logo">⚡ DACRE ANALYSIS</div>
-                <div style="color: #64748b; letter-spacing: 3px; margin-top: 15px;">INITIALIZING ENTERPRISE ENGINE...</div>
+            <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:75vh;">
+                <h1 style="color:#38bdf8; font-size: 3.5rem; letter-spacing:4px;">⚡ DA-CRE PLATFORM</h1>
+                <p style="color:#a3e635; font-size: 1.2rem; letter-spacing:2px; margin-top:10px;">LOADING YOUR WORKSPACE & AUDIO TUTOR...</p>
             </div>
         """, unsafe_allow_html=True)
     
-    time.sleep(3)
+    time.sleep(2)
     st.session_state['loading_complete'] = True
     placeholder.empty()
     st.rerun()
@@ -223,116 +323,133 @@ if not st.session_state['loading_complete']:
 elif not st.session_state['authenticated']:
     
     st.markdown("""
-        <div style="padding: 1rem 0 1.5rem 0; text-align: center;">
-            <div class="dacre-animated-logo" style="font-size: 2.5rem;">⚡ DA-CRE PLATFORM</div>
-            <p style="color: #94a3b8; font-size: 1.1rem;">Commercial Real Estate Data & Advanced Analytics Hub</p>
+        <div style="text-align: center; margin-top: 2rem; margin-bottom: 2rem;">
+            <h1 style="color: #38bdf8; font-size: 3rem; margin-bottom: 0px;">⚡ DA-CRE PLATFORM</h1>
+            <p style="color: #a3e635; font-size: 1.1rem; font-weight: 600;">Commercial Real Estate Analytics & Data Suite</p>
         </div>
     """, unsafe_allow_html=True)
 
-    col1, col2 = st.columns([1, 1.1], gap="large")
+    col_center = st.columns([1, 2.2, 1])[1]
 
-    with col1:
-        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-        if os.path.exists("david_profile.png"):
-            img = Image.open("david_profile.png")
-            st.image(img, use_container_width=True)
-        else:
-            st.info("📷 Profile photo (david_profile.png)")
-
-        st.markdown("""
-            <div style="text-align: center; margin-top: 15px; padding: 12px; background: rgba(56, 189, 248, 0.1); border-radius: 12px; border: 1px solid rgba(56, 189, 248, 0.3);">
-                <h4 style="color: #38bdf8; margin: 0;">Welcome to DA-CRE! 👉</h4>
-                <p style="color: #cbd5e1; margin: 5px 0 0 0; font-size: 0.9rem;">Sign in or create a new account to access your database vault.</p>
-            </div>
-        """, unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with col2:
-        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+    with col_center:
+        st.markdown('<div class="black-card">', unsafe_allow_html=True)
         
-        tab_login, tab_signup = st.tabs(["🔒 Log In", "📝 Create Account"])
+        tab1, tab2 = st.tabs(["🔒 Sign In", "📝 Sign Up"])
 
-        with tab_login:
-            st.subheader("Welcome Back")
+        # TAB 1: SIGN IN
+        with tab1:
+            st.markdown("<h3 class='yg-text'>Welcome Back, Sign In</h3>", unsafe_allow_html=True)
             login_email = st.text_input("Email Address", key="login_email")
             login_pass = st.text_input("Password", type="password", key="login_pass")
 
-            if st.button("Log In 🚀", use_container_width=True, type="primary"):
-                conn = sqlite3.connect(DB_FILE)
-                c = conn.cursor()
-                c.execute("SELECT first_name, middle_name, password_hash FROM users WHERE email = ?", (login_email.strip().lower(),))
-                user = c.fetchone()
-                conn.close()
-
-                if user and user[2] == hash_password(login_pass):
-                    st.session_state['authenticated'] = True
-                    st.session_state['user_email'] = login_email.strip().lower()
-                    st.session_state['user_name'] = f"{user[0]} {user[1]}".strip()
-                    st.success("Log in successful!")
-                    trigger_audio_guide("Welcome back! Loading your workspace.")
-                    time.sleep(1)
-                    st.rerun()
+            if st.button("Log In Now 🚀", use_container_width=True):
+                if not login_email or not login_pass:
+                    st.warning("Please enter your email and password.")
+                    trigger_audio_guide("How far? You need to type your email and password to sign in.")
                 else:
-                    st.error("❌ Invalid email or password.")
-                    trigger_audio_guide("Invalid credentials entered. Please try again.")
+                    conn = sqlite3.connect(DB_FILE)
+                    c = conn.cursor()
+                    c.execute("SELECT first_name, middle_name, password_hash FROM users WHERE email = ?", (login_email.strip().lower(),))
+                    user = c.fetchone()
+                    conn.close()
 
-        with tab_signup:
-            st.subheader("Create Account")
+                    if user and user[2] == hash_password(login_pass):
+                        st.session_state['authenticated'] = True
+                        st.session_state['user_email'] = login_email.strip().lower()
+                        st.session_state['user_name'] = f"{user[0]} {user[1]}".strip()
+                        
+                        # RESTORE PREVIOUS WORK
+                        restore_user_session(st.session_state['user_email'])
+                        
+                        st.success("Log in successful!")
+                        trigger_audio_guide("Welcome back o! I have restored all your previous work so you can continue right where you stopped.")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error("Invalid email or password.")
+                        trigger_audio_guide("Ah ah, that details no match anything for our system. Check your password or email again.")
+
+        # TAB 2: SIGN UP WITH DUPLICATE HUMAN VERIFICATION
+        with tab2:
+            st.markdown("<h3 class='yg-text'>Create New Account</h3>", unsafe_allow_html=True)
             fname = st.text_input("First Name", key="su_fname")
             mname = st.text_input("Middle Name (Optional)", key="su_mname")
             su_email = st.text_input("Email Address", key="su_email")
             su_pass = st.text_input("Password", type="password", key="su_pass")
 
-            if st.button("Complete Sign Up 🎯", use_container_width=True):
-                if not fname or not su_email or not su_pass:
-                    st.warning("Please fill in all required fields.")
-                elif "@" not in su_email:
-                    st.error("Invalid email address format.")
-                else:
-                    conn = sqlite3.connect(DB_FILE)
-                    c = conn.cursor()
-                    c.execute("SELECT id FROM users WHERE email = ?", (su_email.strip().lower(),))
-                    existing_user = c.fetchone()
+            if st.session_state['show_verification']:
+                st.warning("⚠️ This email is already registered in our database.")
+                verify_human = st.checkbox("Verify your identity: Check box to confirm you are human")
+                
+                if verify_human:
+                    st.success("✅ Verified Human!")
+                    trigger_audio_guide("Identity verified! Look, these details have already been added to our database before. I am taking you back to the sign in page now so you can log in.")
+                    time.sleep(2.5)
+                    st.session_state['show_verification'] = False
+                    st.rerun()
 
-                    if existing_user:
-                        st.error("⚠️ This account has already been added. Please log in!")
-                        trigger_audio_guide("This account already exists. Please switch to the log in tab.")
-                        conn.close()
+            else:
+                if st.button("Complete Sign Up 🎯", use_container_width=True):
+                    if not fname or not su_email or not su_pass:
+                        st.warning("Please fill in all required fields.")
+                        trigger_audio_guide("Abeg, fill all the required spaces before you click sign up.")
+                    elif "@" not in su_email:
+                        st.error("Invalid email address format.")
+                        trigger_audio_guide("This email format no correct. Check am well.")
                     else:
-                        c.execute(
-                            "INSERT INTO users (first_name, middle_name, email, password_hash) VALUES (?, ?, ?, ?)",
-                            (fname.strip(), mname.strip(), su_email.strip().lower(), hash_password(su_pass))
-                        )
-                        conn.commit()
-                        conn.close()
+                        conn = sqlite3.connect(DB_FILE)
+                        c = conn.cursor()
+                        c.execute("SELECT id FROM users WHERE email = ?", (su_email.strip().lower(),))
+                        existing_user = c.fetchone()
 
-                        st.session_state['authenticated'] = True
-                        st.session_state['user_email'] = su_email.strip().lower()
-                        st.session_state['user_name'] = f"{fname} {mname}".strip()
-                        st.success("Account created successfully!")
-                        trigger_audio_guide("Account successfully created. Opening your workspace.")
-                        time.sleep(1)
-                        st.rerun()
+                        if existing_user:
+                            st.session_state['show_verification'] = True
+                            trigger_audio_guide("Wait small. It looks like this account already exists. Abeg tick the verification box to prove you are human.")
+                            conn.close()
+                            st.rerun()
+                        else:
+                            c.execute(
+                                "INSERT INTO users (first_name, middle_name, email, password_hash) VALUES (?, ?, ?, ?)",
+                                (fname.strip(), mname.strip(), su_email.strip().lower(), hash_password(su_pass))
+                            )
+                            conn.commit()
+                            conn.close()
+
+                            st.session_state['authenticated'] = True
+                            st.session_state['user_email'] = su_email.strip().lower()
+                            st.session_state['user_name'] = f"{fname} {mname}".strip()
+                            st.success("Account created successfully!")
+                            trigger_audio_guide("Welcome o! Your account don ready. Opening your workspace now.")
+                            time.sleep(1)
+                            st.rerun()
 
         st.markdown('</div>', unsafe_allow_html=True)
 
 
 # --- 3. MAIN WORKSPACE DASHBOARD ---
 else:
-    col_n1, col_n2, col_n3 = st.columns([2, 1, 1])
+    # Render Hovering Blue Cloud Background Animation
+    st.markdown("""
+        <div class="cloud-bg-container">
+            <div class="cloud-1"></div>
+            <div class="cloud-2"></div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    col_n1, col_n2, col_n3 = st.columns([2, 1.2, 1.2])
     with col_n1:
         st.markdown("### ⚡ DA-CRE Analysis Workspace")
     with col_n2:
-        audio_on = st.toggle("🔊 Audio Guide", value=st.session_state['audio_guide_enabled'])
+        audio_on = st.toggle("🔊 Nigerian Voice Guide", value=st.session_state['audio_guide_enabled'])
         if audio_on != st.session_state['audio_guide_enabled']:
             st.session_state['audio_guide_enabled'] = audio_on
             if audio_on:
-                trigger_audio_guide("Audio guide enabled.")
+                trigger_audio_guide("Voice guide activated. I go dey explain anything you click for here.")
     with col_n3:
         if st.session_state['active_file_name']:
-            st.markdown(f'<div class="my-data-pill">📂 MY DATA: {st.session_state["active_file_name"]}</div>', unsafe_allow_html=True)
+            st.markdown(f'<span class="yg-badge">📂 MY DATA: {st.session_state["active_file_name"]}</span>', unsafe_allow_html=True)
         else:
-            st.markdown('<div class="my-data-pill-empty">📂 MY DATA: Empty</div>', unsafe_allow_html=True)
+            st.markdown('<span style="color:#64748b; font-weight:bold;">📂 MY DATA: Empty</span>', unsafe_allow_html=True)
 
     st.write("---")
 
@@ -350,9 +467,11 @@ else:
         ]
     )
 
-    if st.sidebar.button("🔒 Logout", use_container_width=True):
+    if st.sidebar.button("🔒 Logout & Auto-Save", use_container_width=True):
+        save_user_session() # Auto-save session state on logout
+        trigger_audio_guide("Your work don save automatically. Goodbye for now!")
+        time.sleep(1)
         st.session_state['authenticated'] = False
-        st.session_state['loading_complete'] = True
         st.rerun()
 
     # SECTION 1: EMBEDDED SHEET & FORMULA BOARD
@@ -362,34 +481,38 @@ else:
         if st.session_state['current_data'] is not None and isinstance(st.session_state['current_data'], pd.DataFrame):
             df = st.session_state['current_data'].copy()
 
-            # TOOLBAR WITH ARRANGE/CLEAN DATA
+            # TOOLBAR WITH CLEAN / ARRANGE DATA
             st.markdown("##### 🛠️ Quick Action Toolbar")
             tb0, tb1, tb2, tb3 = st.columns(4)
             
             with tb0:
-                if st.button("✨ Clean & Auto-Format Messy Data", use_container_width=True, type="primary"):
+                if st.button("✨ Arrange Messy Data", use_container_width=True):
                     cleaned = clean_messy_dataframe(df)
                     st.session_state['current_data'] = cleaned
-                    st.success("Messy data cleaned! Text numbers formatted into numeric columns.")
-                    trigger_audio_guide("Messy data formatted and numbers extracted successfully.")
+                    save_user_session()
+                    st.success("Messy data arranged! Currency symbols, commas, and text numbers converted into numbers.")
+                    trigger_audio_guide("I don arrange all your messy data! All currency symbols and commas don comot, and your numbers dey ready for formula calculation now.")
                     st.rerun()
 
             with tb1:
                 if st.button("🧹 Remove Duplicates", use_container_width=True):
                     st.session_state['current_data'] = df.drop_duplicates()
-                    trigger_audio_guide("Duplicate rows removed from active sheet.")
+                    save_user_session()
+                    trigger_audio_guide("I don purge all duplicate rows from your active sheet.")
                     st.success("Duplicates purged!")
                     st.rerun()
             with tb2:
                 sort_col = st.selectbox("Sort Column", df.columns, key="sort_col_sb")
                 if st.button("Sort (A-Z / Min-Max)", use_container_width=True):
                     st.session_state['current_data'] = df.sort_values(by=sort_col)
-                    trigger_audio_guide(f"Data sorted by column {sort_col}")
+                    save_user_session()
+                    trigger_audio_guide(f"Your data don sort from small to big by column {sort_col}.")
                     st.rerun()
             with tb3:
                 if st.button("Sort (Z-A / Max-Min)", use_container_width=True):
                     st.session_state['current_data'] = df.sort_values(by=sort_col, ascending=False)
-                    trigger_audio_guide(f"Data sorted in reverse order by {sort_col}")
+                    save_user_session()
+                    trigger_audio_guide(f"Your data don sort from big to small by column {sort_col}.")
                     st.rerun()
 
             st.write("---")
@@ -405,7 +528,7 @@ else:
                 target_c = st.selectbox("Select Target Column", all_cols)
                 
                 if st.button("Execute Formula 🚀"):
-                    # Coerce column to numeric if necessary
+                    # Coerce column to numeric cleanly
                     series = pd.to_numeric(
                         df[target_c].astype(str).str.replace(r'[\$,%₦€£,]', '', regex=True).str.strip(),
                         errors='coerce'
@@ -416,19 +539,22 @@ else:
                         msg = f"SUM({target_c}) = {res:,.2f}"
                         st.info(f"Result: **{msg}**")
                         st.session_state['calculation_history'].append(msg)
-                        trigger_audio_guide(f"The sum of column {target_c} is {res:,.2f}")
+                        save_user_session()
+                        trigger_audio_guide(f"The total sum for column {target_c} is {res:,.2f}. I don save this result to your workspace log below.")
                     elif "AVERAGE" in excel_formula:
                         res = series.mean()
                         msg = f"AVERAGE({target_c}) = {res:,.2f}"
                         st.info(f"Result: **{msg}**")
                         st.session_state['calculation_history'].append(msg)
-                        trigger_audio_guide(f"The average of column {target_c} is {res:,.2f}")
+                        save_user_session()
+                        trigger_audio_guide(f"The average mean value for column {target_c} is {res:,.2f}. Added to workspace.")
                     elif "COUNT" in excel_formula:
                         res = series.count()
                         msg = f"COUNT({target_c}) = {res}"
                         st.info(f"Result: **{msg}**")
                         st.session_state['calculation_history'].append(msg)
-                        trigger_audio_guide(f"Total count for column {target_c} is {res}")
+                        save_user_session()
+                        trigger_audio_guide(f"The total count of rows for column {target_c} is {res}.")
 
             elif f_cat == "SQL Engine":
                 sql_q = st.text_input("Enter SQL Query (Table Name: `df`)", f"SELECT * FROM df LIMIT 10")
@@ -439,7 +565,8 @@ else:
                         sql_res = pd.read_sql_query(sql_q, temp_conn)
                         st.dataframe(sql_res)
                         st.session_state['calculation_history'].append(f"SQL Executed: `{sql_q}`")
-                        trigger_audio_guide("SQL Query executed successfully.")
+                        save_user_session()
+                        trigger_audio_guide("SQL query don run successfully!")
                     except Exception as e:
                         st.error(f"SQL Error: {e}")
 
@@ -450,24 +577,28 @@ else:
                         py_res = eval(py_code)
                         st.write(py_res)
                         st.session_state['calculation_history'].append(f"Python Executed: `{py_code}`")
-                        trigger_audio_guide("Python execution complete.")
+                        save_user_session()
+                        trigger_audio_guide("Python code executed successfully!")
                     except Exception as e:
                         st.error(f"Python Execution Error: {e}")
 
             # AUTOMATIC CALCULATION WORKSPACE & AUDIT LOG
             if st.session_state['calculation_history']:
                 st.write("---")
-                st.markdown("##### 📋 Formula Calculation Audit Trail Workspace")
+                st.markdown("##### 📋 Live Calculation & Formula Workspace")
                 for item in reversed(st.session_state['calculation_history']):
                     st.code(item, language="markdown")
 
             st.write("---")
             st.markdown("##### 📝 Live Data Grid Editor")
             edited_df = st.data_editor(st.session_state['current_data'], num_rows="dynamic", use_container_width=True)
-            st.session_state['current_data'] = edited_df
+            if not edited_df.equals(st.session_state['current_data']):
+                st.session_state['current_data'] = edited_df
+                save_user_session()
 
         else:
             st.info("No active dataset loaded in MY DATA. Open or upload a file into your database vault first.")
+            trigger_audio_guide("Your active workspace is empty right now. Go to Database Vault or Add New Files menu on the sidebar to load your data.")
 
     # SECTION 2: DATABASE FILE VAULT
     elif action_choice == "📂 Database File Vault":
@@ -493,8 +624,10 @@ else:
                 df_loaded = pd.read_json(io.StringIO(blob))
                 st.session_state['current_data'] = df_loaded
                 st.session_state['active_file_name'] = selected_f
+                save_user_session()
+                
                 st.success(f"'{selected_f}' loaded from Database!")
-                trigger_audio_guide(f"Opened file {selected_f} from your persistent database vault.")
+                trigger_audio_guide(f"I don load {selected_f} straight from your vault into your active workspace.")
                 st.rerun()
         else:
             st.info("Your database vault is empty. Upload files in the 'Add New Files' menu.")
@@ -526,7 +659,7 @@ else:
                     conn.close()
                     
                     st.success(f"Saved '{file.name}' permanently into Database Vault!")
-                    trigger_audio_guide(f"File {file.name} saved into your database vault.")
+                    trigger_audio_guide(f"File {file.name} don save permanently into your vault.")
                 except Exception as e:
                     st.error(f"Error saving {file.name}: {e}")
 
@@ -540,7 +673,7 @@ else:
                 try:
                     tables = pd.read_html(url_in)
                     st.success(f"Extracted {len(tables)} tables!")
-                    trigger_audio_guide(f"Successfully extracted {len(tables)} tables from the website.")
+                    trigger_audio_guide(f"I don extract {len(tables)} tables from that website link!")
                     
                     for i, df in enumerate(tables):
                         with st.expander(f"Table #{i+1} ({df.shape[0]} rows x {df.shape[1]} cols)"):
@@ -558,8 +691,9 @@ else:
                                 
                                 st.session_state['current_data'] = df
                                 st.session_state['active_file_name'] = fname
+                                save_user_session()
                                 st.success(f"Saved {fname} to database!")
-                                trigger_audio_guide(f"Saved web table {i+1} to database vault.")
+                                trigger_audio_guide(f"Saved web table {i+1} straight into your database vault.")
                                 st.rerun()
                 except Exception as e:
                     st.error(f"Scraper error: {e}")
@@ -585,9 +719,9 @@ else:
                     fig = px.scatter(df, x=x_a, y=y_a, template="plotly_dark")
                 
                 st.plotly_chart(fig, use_container_width=True)
-                trigger_audio_guide(f"Generated {style} chart for {x_a} and {y_a}")
+                trigger_audio_guide(f"Here is your {style} chart graph for {x_a} and {y_a}.")
             else:
-                st.warning("Numeric columns required for plotting. Try clicking 'Clean & Auto-Format Messy Data' in the Embedded Sheet toolbar.")
+                st.warning("Numeric columns required for plotting. Click 'Arrange Messy Data' in the Embedded Sheet toolbar first.")
         else:
             st.info("No active dataset loaded in MY DATA.")
 
@@ -599,20 +733,19 @@ else:
             
             col_e1, col_e2 = st.columns(2)
             with col_e1:
-                st.markdown("#### 🟢 Google Apps")
+                st.markdown("#### 🟢 Google Apps Integration")
                 st.link_button("Open Google Sheets 🟢", "https://sheets.new", use_container_width=True)
                 st.link_button("Open Google Docs 📄", "https://docs.new", use_container_width=True)
-                st.link_button("Open Google Slides 📊", "https://slides.new", use_container_width=True)
-
             with col_e2:
                 st.markdown("#### 🔵 Local Export")
                 csv_b = df.to_csv(index=False).encode('utf-8')
                 st.download_button(
-                    label="Download CSV / Excel File 📥",
+                    label="Download CSV File 📥",
                     data=csv_b,
-                    file_name=f"DA_CRE_{st.session_state['active_file_name']}",
+                    file_name=f"DA_CRE_{st.session_state['active_file_name'] or 'Export.csv'}",
                     mime="text/csv",
                     use_container_width=True
                 )
+                trigger_audio_guide("You can download your clean data here as a CSV file.")
         else:
             st.info("No active dataset in MY DATA to export.")
