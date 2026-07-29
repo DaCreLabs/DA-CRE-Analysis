@@ -8,597 +8,364 @@ import io
 import json
 import base64
 import os
+from datetime import datetime
+import plotly.express as px
+import plotly.graph_objects as go
 import streamlit.components.v1 as components
 
-# --- APP BRANDING LOGO (FAILSAFE BASE64 ENCODER) ---
+# ==========================================================
+# DACRE ANALYSIS 2026 PROFESSIONAL EDITION
+# ==========================================================
+
+APP_NAME = "DACRE ANALYSIS"
+APP_VERSION = "Enterprise 2026"
+
 APP_LOGO_PATH = "dacre_logo.png"
 
-def get_base64_logo(file_path):
-    """Converts logo file to Base64 to guarantee it displays cleanly across Streamlit."""
-    if os.path.exists(file_path):
-        with open(file_path, "rb") as image_file:
-            encoded_string = base64.b64encode(image_file.read()).decode()
-            return f"data:image/png;base64,{encoded_string}"
+# ---------------- LOGO ENGINE ----------------
+def get_base64_logo(path):
+    if os.path.exists(path):
+        with open(path, "rb") as img:
+            return "data:image/png;base64," + base64.b64encode(img.read()).decode()
     return None
 
 logo_b64 = get_base64_logo(APP_LOGO_PATH)
 
-# --- PAGE CONFIGURATION ---
+# ---------------- PAGE CONFIG ----------------
+
 st.set_page_config(
     page_title="DACRE ANALYSIS",
-    page_icon=APP_LOGO_PATH if os.path.exists(APP_LOGO_PATH) else "🔒",
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# --- ADMIN SECURITY KEY ---
+# DO NOT CHANGE THIS
 ADMIN_SECRET_KEY = "theWORDofGOD"
 
-# --- DATABASE SETUP (SQLite Backend) ---
+# ---------------- THEME ----------------
+
+st.markdown("""
+<style>
+
+#MainMenu {
+    visibility: hidden;
+}
+
+footer {
+    visibility: hidden;
+}
+
+header {
+    visibility: hidden;
+}
+
+.stApp {
+    background: linear-gradient(135deg, #07111f, #0f172a, #111827);
+    color: white;
+}
+
+.hero {
+    padding: 25px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #0284c7, #0f766e);
+    box-shadow: 0px 15px 35px rgba(0,0,0,.45);
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.hero h1 {
+    font-size: 50px;
+    font-weight: 900;
+    color: white;
+}
+
+.hero h3 {
+    color: #dbeafe;
+}
+
+.metric-card {
+    background: #111827;
+    padding: 18px;
+    border-radius: 15px;
+    border: 1px solid #38bdf8;
+    box-shadow: 0 0 18px rgba(56,189,248,.2);
+}
+
+.logo {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+    margin-bottom: 15px;
+}
+
+.stButton>button {
+    background: linear-gradient(90deg, #0284c7, #0891b2);
+    color: white;
+    font-weight: bold;
+    border-radius: 12px;
+    height: 48px;
+    border: none;
+}
+
+.stButton>button:hover {
+    transform: scale(1.02);
+    background: #0369a1;
+}
+
+input {
+    font-weight: bold !important;
+}
+
+[data-baseweb="select"] {
+    font-weight: bold !important;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+# ---------------- LANDING HEADER ----------------
+
+if logo_b64:
+    st.markdown(f"""
+    <div class="logo">
+        <img src="{logo_b64}" width="180">
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("""
+<div class="hero">
+    <h1>🚀 DACRE ANALYSIS</h1>
+    <h3>Enterprise AI Spreadsheet & Data Analytics Platform</h3>
+    <p>Upload • Clean • Analyse • Visualize • Automate • Export</p>
+</div>
+""", unsafe_allow_html=True)
+
+# ---------------- DATABASE ENGINE ----------------
 DB_FILE = "dacre_platform.db"
 
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            first_name TEXT,
-            middle_name TEXT,
-            email TEXT UNIQUE,
-            password_hash TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS file_vault (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_email TEXT,
-            filename TEXT,
-            file_type TEXT,
-            file_data TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS database_workflow (
-            user_email TEXT PRIMARY KEY,
-            active_filename TEXT,
-            raw_extracted_data TEXT,
-            processed_data TEXT,
-            formula_logs TEXT,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
+    c.execute('''CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT UNIQUE,
+                    password_hash TEXT,
+                    role TEXT,
+                    created_at TEXT
+                )''')
+    
+    c.execute('''CREATE TABLE IF NOT EXISTS system_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user TEXT,
+                    action TEXT,
+                    timestamp TEXT
+                )''')
     conn.commit()
     conn.close()
 
 init_db()
 
-# --- HELPER: ADVANCED DATA CLEANUP ENGINE ---
-def arrange_and_clean_data(df):
-    cleaned_df = df.copy()
-    for col in cleaned_df.columns:
-        if cleaned_df[col].dtype == 'object':
-            cleaned_col = (
-                cleaned_df[col]
-                .astype(str)
-                .str.replace(r'[\$,%₦€£]', '', regex=True)
-                .str.replace(',', '', regex=False)
-                .str.strip()
-            )
-            numeric_series = pd.to_numeric(cleaned_col, errors='ignore')
-            cleaned_df[col] = numeric_series
-    return cleaned_df
+def make_hashes(password):
+    return hashlib.sha256(str.encode(password)).hexdigest()
 
-# --- HELPER: FILE READER ---
-def load_file_data(uploaded_file):
-    filename = uploaded_file.name
-    ext = filename.split('.')[-1].lower()
-    if ext in ['xlsx', 'xls']:
-        return pd.read_excel(uploaded_file)
-    elif ext == 'csv':
-        return pd.read_csv(uploaded_file)
-    elif ext == 'tsv':
-        return pd.read_csv(uploaded_file, sep='\t')
-    elif ext == 'json':
-        return pd.read_json(uploaded_file)
-    elif ext == 'parquet':
-        return pd.read_parquet(uploaded_file)
-    else:
-        raise ValueError(f"Unsupported file format: .{ext}")
+def check_hashes(password, hashed_text):
+    return make_hashes(password) == hashed_text
 
-# --- PASSWORD HASHING ---
-def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
-
-# --- VOICE ENGINE ---
-def trigger_audio_guide(text_to_speak):
-    st.session_state['last_audio_text'] = text_to_speak
-    safe_text = text_to_speak.replace("'", "\\'").replace("\n", " ")
-    
-    js_code = f"""
-    <div style="margin: 10px 0;">
-        <button onclick="speakText()" style="
-            background-color: #38bdf8; 
-            color: #000000; 
-            font-weight: bold; 
-            padding: 8px 16px; 
-            border: none; 
-            border-radius: 6px; 
-            cursor: pointer;">
-            🔊 Play Audio Assistant
-        </button>
-    </div>
-    <script>
-        function speakText() {{
-            if ('speechSynthesis' in window) {{
-                window.speechSynthesis.cancel();
-                var msg = new SpeechSynthesisUtterance('{safe_text}');
-                msg.rate = 0.9;
-                msg.pitch = 1.0;
-                
-                var voices = window.speechSynthesis.getVoices();
-                if (voices.length > 0) {{
-                    var selectedVoice = voices.find(v => v.lang.includes('en'));
-                    if (selectedVoice) msg.voice = selectedVoice;
-                }}
-                window.speechSynthesis.speak(msg);
-            }} else {{
-                alert("Speech synthesis is not supported in this browser.");
-            }}
-        }}
-        setTimeout(speakText, 300);
-    </script>
-    """
-    components.html(js_code, height=60)
-
-# --- WORKFLOW DATABASE SYNC ENGINE ---
-def sync_to_database_workflow():
-    if st.session_state.get('authenticated') and st.session_state.get('user_email'):
-        email = st.session_state['user_email']
-        fname = st.session_state.get('active_file_name', 'Untitled')
-        
-        raw_json = ""
-        if st.session_state.get('raw_data') is not None and isinstance(st.session_state['raw_data'], pd.DataFrame):
-            raw_json = st.session_state['raw_data'].to_json()
-
-        processed_json = ""
-        if st.session_state.get('current_data') is not None and isinstance(st.session_state['current_data'], pd.DataFrame):
-            processed_json = st.session_state['current_data'].to_json()
-            
-        logs_json = json.dumps(st.session_state.get('formula_logs', []))
-        
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("""
-            INSERT INTO database_workflow (user_email, active_filename, raw_extracted_data, processed_data, formula_logs)
-            VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(user_email) DO UPDATE SET
-                active_filename = excluded.active_filename,
-                raw_extracted_data = excluded.raw_extracted_data,
-                processed_data = excluded.processed_data,
-                formula_logs = excluded.formula_logs,
-                updated_at = CURRENT_TIMESTAMP
-        """, (email, fname, raw_json, processed_json, logs_json))
-        conn.commit()
-        conn.close()
-
-def restore_from_database_workflow(email):
+def add_user(username, password, role="User"):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("SELECT active_filename, raw_extracted_data, processed_data, formula_logs FROM database_workflow WHERE user_email = ?", (email,))
-    row = c.fetchone()
+    try:
+        c.execute("INSERT INTO users(username, password_hash, role, created_at) VALUES (?,?,?,?)",
+                  (username, make_hashes(password), role, str(datetime.now())))
+        conn.commit()
+        success = True
+    except sqlite3.IntegrityError:
+        success = False
     conn.close()
-    
-    if row:
-        active_f, raw_str, proc_str, logs_str = row
-        st.session_state['active_file_name'] = active_f
-        
-        if proc_str:
-            try:
-                st.session_state['current_data'] = pd.read_json(io.StringIO(proc_str))
-            except Exception:
-                st.session_state['current_data'] = None
-                
-        if raw_str:
-            try:
-                st.session_state['raw_data'] = pd.read_json(io.StringIO(raw_str))
-            except Exception:
-                st.session_state['raw_data'] = None
+    return success
 
-        if logs_str:
-            try:
-                st.session_state['formula_logs'] = json.loads(logs_str)
-            except Exception:
-                st.session_state['formula_logs'] = []
+def login_user(username, password):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT password_hash, role FROM users WHERE username=?", (username,))
+    data = c.fetchone()
+    conn.close()
+    if data and check_hashes(password, data[0]):
+        return data[1]
+    return None
 
-# --- INITIAL SESSION STATES ---
-if 'loading_complete' not in st.session_state:
-    st.session_state['loading_complete'] = False
-if 'authenticated' not in st.session_state:
-    st.session_state['authenticated'] = False
-if 'user_email' not in st.session_state:
-    st.session_state['user_email'] = None
-if 'user_name' not in st.session_state:
-    st.session_state['user_name'] = ""
-if 'active_file_name' not in st.session_state:
-    st.session_state['active_file_name'] = None
-if 'current_data' not in st.session_state:
-    st.session_state['current_data'] = None
-if 'raw_data' not in st.session_state:
-    st.session_state['raw_data'] = None
-if 'formula_logs' not in st.session_state:
-    st.session_state['formula_logs'] = []
-if 'last_audio_text' not in st.session_state:
-    st.session_state['last_audio_text'] = None
+def log_action(user, action):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("INSERT INTO system_logs(user, action, timestamp) VALUES (?,?,?)",
+              (user, action, str(datetime.now())))
+    conn.commit()
+    conn.close()
 
-# --- HIGH-CONTRAST STYLING ---
-st.markdown("""
-    <style>
-    /* Dark Theme Core */
-    .stApp { background-color: #0b0f19; color: #f8fafc; font-family: 'Inter', sans-serif; }
-    
-    /* Input Fields & Dropdowns - High Contrast Bold Text */
-    input, textarea, [data-baseweb="select"] {
-        background-color: #ffffff !important;
-        color: #000000 !important;
-        font-weight: 700 !important;
-        border: 2px solid #38bdf8 !important;
-        border-radius: 8px !important;
-    }
-    
-    /* Dropdown Options Text */
-    div[role="listbox"] div {
-        color: #000000 !important;
-        font-weight: 700 !important;
-    }
-    
-    /* Input Labels */
-    label, .stMarkdown label {
-        color: #38bdf8 !important;
-        font-weight: 800 !important;
-        font-size: 1rem !important;
-    }
-    
-    /* Buttons Styling */
-    .stButton>button {
-        background-color: #0284c7 !important;
-        color: #ffffff !important;
-        font-weight: 800 !important;
-        border-radius: 8px !important;
-        border: none !important;
-    }
-    .stButton>button:hover {
-        background-color: #0369a1 !important;
-    }
-    
-    /* Center Logo Container */
-    .logo-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin-bottom: 20px;
-    }
-    </style>
-""", unsafe_allow_html=True)
+# Ensure default admin exists
+conn = sqlite3.connect(DB_FILE)
+c = conn.cursor()
+c.execute("SELECT * FROM users WHERE username='admin'")
+if not c.fetchone():
+    add_user("admin", ADMIN_SECRET_KEY, role="Admin")
+conn.close()
 
-# --- APP FLOW ---
-if not st.session_state['loading_complete']:
-    time.sleep(1)
-    st.session_state['loading_complete'] = True
-    st.rerun()
+# ---------------- SESSION STATE ----------------
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
+if 'user' not in st.session_state:
+    st.session_state.user = None
+if 'role' not in st.session_state:
+    st.session_state.role = None
+if 'df' not in st.session_state:
+    st.session_state.df = None
 
-elif not st.session_state['authenticated']:
-    # LANDING PAGE HEADER LOGO DISPLAY
-    if logo_b64:
-        st.markdown(f'<div class="logo-container"><img src="{logo_b64}" style="max-width: 280px;"></div>', unsafe_allow_html=True)
-    else:
-        st.warning("Upload dacre_logo.png to your repository root to display your logo here.")
-
-    col_c = st.columns([1, 2, 1])[1]
-    with col_c:
-        tab1, tab2 = st.tabs(["🔒 Sign In", "📝 Sign Up"])
-        with tab1:
-            l_email = st.text_input("Email", placeholder="Enter your registered email address...", key="l_e")
-            l_pass = st.text_input("Password", type="password", placeholder="Enter your account password...", key="l_p")
-            if st.button("Log In", use_container_width=True):
-                conn = sqlite3.connect(DB_FILE)
-                c = conn.cursor()
-                c.execute("SELECT first_name, password_hash FROM users WHERE email = ?", (l_email.strip().lower(),))
-                u = c.fetchone()
-                conn.close()
-                if u and u[1] == hash_password(l_pass):
-                    st.session_state['authenticated'] = True
-                    st.session_state['user_email'] = l_email.strip().lower()
-                    st.session_state['user_name'] = u[0]
-                    restore_from_database_workflow(st.session_state['user_email'])
-                    st.rerun()
-                else:
-                    st.error("Invalid credentials.")
-        with tab2:
-            s_fname = st.text_input("First Name", placeholder="Enter your first name...", key="s_fn")
-            s_email = st.text_input("Email", placeholder="Enter your email address...", key="s_e")
-            s_pass = st.text_input("Password", type="password", placeholder="Create a strong password...", key="s_p")
-            if st.button("Sign Up", use_container_width=True):
-                conn = sqlite3.connect(DB_FILE)
-                c = conn.cursor()
-                c.execute("INSERT INTO users (first_name, email, password_hash) VALUES (?, ?, ?)", 
-                          (s_fname, s_email.strip().lower(), hash_password(s_pass)))
-                conn.commit()
-                conn.close()
-                st.session_state['authenticated'] = True
-                st.session_state['user_email'] = s_email.strip().lower()
-                st.session_state['user_name'] = s_fname
+# ---------------- AUTHENTICATION UI ----------------
+if not st.session_state.logged_in:
+    auth_tab1, auth_tab2 = st.tabs(["🔒 Login", "📝 Register"])
+    
+    with auth_tab1:
+        st.subheader("Account Login")
+        login_user_input = st.text_input("Username", key="login_user")
+        login_pass_input = st.text_input("Password", type="password", key="login_pass")
+        if st.button("Sign In"):
+            role = login_user(login_user_input, login_pass_input)
+            if role:
+                st.session_state.logged_in = True
+                st.session_state.user = login_user_input
+                st.session_state.role = role
+                log_action(login_user_input, "User Logged In")
+                st.success(f"Welcome back, {login_user_input}!")
                 st.rerun()
+            else:
+                st.error("Invalid Username or Password.")
 
+    with auth_tab2:
+        st.subheader("Create New Account")
+        reg_user = st.text_input("New Username", key="reg_user")
+        reg_pass = st.text_input("New Password", type="password", key="reg_pass")
+        reg_secret = st.text_input("Admin Secret Key (Optional for Admin Role)", type="password", key="reg_secret")
+        
+        if st.button("Register"):
+            if reg_user and reg_pass:
+                role = "Admin" if reg_secret == ADMIN_SECRET_KEY else "User"
+                if add_user(reg_user, reg_pass, role):
+                    st.success("Account created successfully! Please log in.")
+                    log_action(reg_user, f"Account Created ({role})")
+                else:
+                    st.error("Username already exists.")
+            else:
+                st.warning("Please provide both username and password.")
+
+# ---------------- MAIN APPLICATION ----------------
 else:
-    # --- SIDEBAR NAVIGATION WITH APP LOGO ---
-    with st.sidebar:
-        if logo_b64:
-            st.markdown(f'<div style="text-align: center;"><img src="{logo_b64}" style="max-width: 100%; border-radius: 8px;"></div>', unsafe_allow_html=True)
-        else:
-            st.caption("Logo: dacre_logo.png")
-            
-    st.sidebar.title(f"👤 {st.session_state['user_name']}")
-    
-    menu = st.sidebar.selectbox(
-        "Workflow Engine Nav",
-        [
-            "📊 Embedded Sheet & Formula Board",
-            "📂 File Vault to Workflow Engine",
-            "📥 Add New Files to Vault",
-            "🛡️ Admin Control Panel"
-        ]
-    )
-
+    # Sidebar Navigation
+    st.sidebar.markdown(f"### 👤 User: **{st.session_state.user}** ({st.session_state.role})")
     if st.sidebar.button("Logout"):
-        sync_to_database_workflow()
-        st.session_state['authenticated'] = False
+        log_action(st.session_state.user, "User Logged Out")
+        st.session_state.logged_in = False
+        st.session_state.user = None
+        st.session_state.role = None
+        st.session_state.df = None
         st.rerun()
 
-    # --- PRIMARY WORKFLOW PAGE ---
-    if menu == "📊 Embedded Sheet & Formula Board":
-        st.title("📊 Embedded Sheet & Formula Board")
+    st.sidebar.divider()
+    app_mode = st.sidebar.radio("Navigation", ["📂 Data Workspace", "📈 Analytics & Charts", "⚙️ Admin Portal"])
 
-        if st.session_state.get('last_audio_text'):
-            trigger_audio_guide(st.session_state['last_audio_text'])
-
-        if st.session_state['current_data'] is not None and isinstance(st.session_state['current_data'], pd.DataFrame):
-            
-            # ==========================================
-            # 1. READ-ONLY DATA BOARD (DISPLAY ONLY)
-            # ==========================================
-            st.markdown("### 📋 DATA BOARD (Read-Only Preview & Export)")
-            st.caption("Displays changes from the database_workflow below. Use the download button to print or export to your local computer.")
-
-            # READ-ONLY DISPLAY GRID
-            st.dataframe(
-                st.session_state['current_data'],
-                use_container_width=True
-            )
-
-            # PERMANENT DOWNLOAD & PRINT BUTTONS
-            st.markdown("##### 💾 Download or Print Finalized Work Sheet")
-            csv_data = st.session_state['current_data'].to_csv(index=False).encode('utf-8')
-            
-            col_d1, col_d2 = st.columns(2)
-            with col_d1:
-                st.download_button(
-                    label="⬇️ Download Sheet Permanently to Computer (.csv)",
-                    data=csv_data,
-                    file_name=f"Finalized_{st.session_state['active_file_name'] or 'Sheet'}.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
-            with col_d2:
-                js_print = """<button onclick="window.print()" style="width:100%; height:42px; background-color:#10b981; color:white; font-weight:bold; border:none; border-radius:8px; cursor:pointer;">🖨️ Print Data Board Sheet</button>"""
-                components.html(js_print, height=45)
-
-            st.write("---")
-
-            # ==========================================
-            # 2. DATABASE WORKFLOW GRID & CLEANUP ENGINE
-            # ==========================================
-            st.markdown("### ⚙️ DATABASE WORKFLOW TABLE (Editable Working Area)")
-            st.caption("Click column headers/rows to highlight, edit cells directly, or arrange data. All updates instantly sync above.")
-
-            # CLEAN INDENTED EDITABLE GRID
-            edited_df = st.data_editor(
-                st.session_state['current_data'],
-                num_rows="dynamic",
-                use_container_width=True,
-                selection_mode="multi-column",
-                key="database_workflow_editor"
-            )
-
-            if not edited_df.equals(st.session_state['current_data']):
-                st.session_state['current_data'] = edited_df
-                sync_to_database_workflow()
-
-            st.write(" ")
-            
-            # CLEANUP TOOLBAR
-            c1, c2, c3, c4 = st.columns(4)
-            df = st.session_state['current_data'].copy()
-
-            with c1:
-                if st.button("✨ Arrange Data", use_container_width=True):
-                    cleaned_df = arrange_and_clean_data(df)
-                    st.session_state['current_data'] = cleaned_df
-                    sync_to_database_workflow()
-                    st.session_state['last_audio_text'] = "Data arranged and formatted successfully on the Data Board."
-                    st.success("Data arranged and formatting cleaned!")
-                    st.rerun()
-
-            with c2:
-                if st.button("🧹 Remove Duplicates", use_container_width=True):
-                    no_dup_df = df.drop_duplicates()
-                    st.session_state['current_data'] = no_dup_df
-                    sync_to_database_workflow()
-                    st.session_state['last_audio_text'] = "Duplicate rows removed from workflow data."
-                    st.success("Duplicate rows removed!")
-                    st.rerun()
-
-            with c3:
-                sort_column = st.selectbox("Select Sort Target Column", df.columns, key="sort_col")
-                if st.button("🔼 Sort Ascending", use_container_width=True):
-                    st.session_state['current_data'] = df.sort_values(by=sort_column, ascending=True)
-                    sync_to_database_workflow()
-                    st.rerun()
-
-            with c4:
-                if st.button("🔽 Sort Descending", use_container_width=True):
-                    st.session_state['current_data'] = df.sort_values(by=sort_column, ascending=False)
-                    sync_to_database_workflow()
-                    st.rerun()
-
-            st.write("---")
-
-            # ==========================================
-            # 3. SHEET FORMULAS DROPDOWN ENGINE
-            # ==========================================
-            st.markdown("### 📐 SHEET FORMULAS (EXCEL & GOOGLE SHEETS DROPDOWN)")
-            
-            all_formulas = [
-                "VLOOKUP", "XLOOKUP", "HLOOKUP", "INDEX / MATCH", "INDIRECT", "OFFSET", "IMPORTRANGE",
-                "IF", "IFS", "IFERROR", "IFNA", "AND", "OR", "XOR", "NOT", "SWITCH",
-                "SUM", "SUMIF", "SUMIFS", "COUNT", "COUNTA", "COUNTIF", "COUNTIFS", "AVERAGE", "AVERAGEIF", "AVERAGEIFS", "MAX", "MIN", "PRODUCT",
-                "CONCATENATE", "TEXTJOIN", "SPLIT", "UPPER", "LOWER", "PROPER", "TRIM", "CLEAN", "LEFT", "RIGHT", "MID", "LEN", "SUBSTITUTE", "REPLACE", "REGEXEXTRACT", "REGEXREPLACE",
-                "ARRAYFORMULA", "QUERY", "FILTER", "SORT", "SORTBY", "UNIQUE", "SEQUENCE", "RANDARRAY", "FLATTEN", "TRANSPOSE",
-                "TODAY", "NOW", "DATE", "DATEDIF", "YEAR", "MONTH", "DAY", "EDATE", "EOMONTH",
-                "LAMBDA", "MAP", "REDUCE", "BYROW", "BYCOL"
-            ]
-
-            selected_formula = st.selectbox("🔍 Choose Formula to Apply", all_formulas, key="sheet_formula_dropdown")
-
-            st.markdown(f"**Execute `={selected_formula}()` on Database Workflow:**")
-            
-            p_col1, p_col2, p_col3 = st.columns(3)
-
-            if selected_formula in ["VLOOKUP", "XLOOKUP"]:
-                with p_col1: lookup_key_col = st.selectbox("Search Key Column", df.columns, key="v_key")
-                with p_col2: return_target_col = st.selectbox("Return Value Column", df.columns, key="v_ret")
-                with p_col3: search_value = st.text_input("Enter Key Value to Search", placeholder="e.g. A26 5G...", key="v_val")
-                
-                if st.button("OK - Apply Formula", use_container_width=True):
-                    matched = df[df[lookup_key_col].astype(str) == str(search_value)]
-                    if not matched.empty:
-                        res_val = matched[return_target_col].values[0]
-                        st.success(f"Result for {selected_formula}('{search_value}'): **{res_val}**")
-                        st.session_state['formula_logs'].append(f"{selected_formula}('{search_value}') -> {res_val}")
-                        sync_to_database_workflow()
-                    else:
-                        st.warning("No matching row found in dataset.")
-
-            elif selected_formula == "CONCATENATE":
-                with p_col1: c_first = st.selectbox("First Text Column", df.columns, key="c_1")
-                with p_col2: c_second = st.selectbox("Second Text Column", df.columns, key="c_2")
-                with p_col3: new_c_name = st.text_input("New Result Header", placeholder="Combined_Column_Name", key="c_name")
-
-                if st.button("OK - Apply Formula", use_container_width=True):
-                    st.session_state['current_data'][new_c_name] = df[c_first].astype(str) + " " + df[c_second].astype(str)
-                    sync_to_database_workflow()
-                    st.success(f"Formula evaluated! New column '{new_c_name}' added to DATA BOARD.")
-                    st.rerun()
-
-            elif selected_formula in ["SUMIF", "COUNTIF"]:
-                with p_col1: cond_c = st.selectbox("Condition Column", df.columns, key="cond_col")
-                with p_col2: cond_v = st.text_input("Condition Match Value", placeholder="Enter value to match...", key="cond_val")
-                with p_col3: 
-                    target_s = st.selectbox("Sum Target Column", df.columns, key="sum_target") if selected_formula == "SUMIF" else None
-
-                if st.button("OK - Apply Formula", use_container_width=True):
-                    filtered_rows = df[df[cond_c].astype(str) == str(cond_v)]
-                    if selected_formula == "SUMIF":
-                        total_sum = pd.to_numeric(filtered_rows[target_s], errors='coerce').sum()
-                        st.success(f"{selected_formula} Result: **{total_sum:,.2f}**")
-                    else:
-                        count_res = len(filtered_rows)
-                        st.success(f"{selected_formula} Result: **{count_res} rows matched**")
-                    
-                    st.session_state['formula_logs'].append(f"{selected_formula}(Condition: {cond_v})")
-                    sync_to_database_workflow()
-
-            elif selected_formula in ["UPPER", "LOWER", "TRIM"]:
-                with p_col1: target_text_col = st.selectbox("Target Column", df.columns, key="txt_col")
-                
-                if st.button("OK - Apply Formula", use_container_width=True):
-                    if selected_formula == "UPPER":
-                        st.session_state['current_data'][target_text_col] = df[target_text_col].astype(str).str.upper()
-                    elif selected_formula == "LOWER":
-                        st.session_state['current_data'][target_text_col] = df[target_text_col].astype(str).str.lower()
-                    elif selected_formula == "TRIM":
-                        st.session_state['current_data'][target_text_col] = df[target_text_col].astype(str).str.strip()
-                    
-                    sync_to_database_workflow()
-                    st.success(f"Applied {selected_formula} to column '{target_text_col}' on DATA BOARD!")
-                    st.rerun()
-
-            else:
-                st.info(f"Formula **`={selected_formula}()`** is ready in the workflow engine.")
-
-        else:
-            st.info("No active dataset in the database_workflow. Please select or extract a file from the File Vault menu.")
-
-    # --- WORKFLOW: FILE VAULT TRANSFER ---
-    elif menu == "📂 File Vault to Workflow Engine":
-        st.title("📂 Database File Vault")
-        st.caption("Select files from your vault to automatically extract and push into database_workflow.")
-
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("SELECT filename FROM file_vault WHERE user_email = ?", (st.session_state['user_email'],))
-        file_list = c.fetchall()
-        conn.close()
-
-        if file_list:
-            selected_file = st.selectbox("Select File from Vault:", [f[0] for f in file_list])
-            if st.button("Extract Data & Push to Database Workflow 🚀", use_container_width=True):
-                conn = sqlite3.connect(DB_FILE)
-                c = conn.cursor()
-                c.execute("SELECT file_data FROM file_vault WHERE user_email = ? AND filename = ?", (st.session_state['user_email'], selected_file))
-                b_data = c.fetchone()[0]
-                conn.close()
-
-                extracted_df = pd.read_json(io.StringIO(b_data))
-                st.session_state['raw_data'] = extracted_df.copy()
-                st.session_state['current_data'] = extracted_df.copy()
-                st.session_state['active_file_name'] = selected_file
-                st.session_state['last_audio_text'] = f"Extracted {selected_file} into workflow database."
-                
-                sync_to_database_workflow()
-                st.success(f"Successfully extracted `{selected_file}` into database_workflow table and populated DATA BOARD!")
-                st.rerun()
-        else:
-            st.warning("Your File Vault is currently empty. Upload files in the 'Add New Files to Vault' tab.")
-
-    # --- WORKFLOW: UPLOAD FILES ---
-    elif menu == "📥 Add New Files to Vault":
-        st.title("📥 Upload New File to Vault")
-        uploaded_file = st.file_uploader("Choose Excel or CSV File", type=['xlsx', 'xls', 'csv'])
+    # --- DATA WORKSPACE ---
+    if app_mode == "📂 Data Workspace":
+        st.header("📂 Data Import & Management")
+        
+        uploaded_file = st.file_uploader("Upload CSV or Excel File", type=["csv", "xlsx", "xls"])
         if uploaded_file:
-            if st.button("Save to File Vault 💾", use_container_width=True):
-                df_uploaded = load_file_data(uploaded_file)
-                conn = sqlite3.connect(DB_FILE)
-                c = conn.cursor()
-                c.execute("INSERT INTO file_vault (user_email, filename, file_type, file_data) VALUES (?, ?, ?, ?)",
-                          (st.session_state['user_email'], uploaded_file.name, 'excel', df_uploaded.to_json()))
-                conn.commit()
-                conn.close()
-                st.success(f"Saved `{uploaded_file.name}` to File Vault!")
+            try:
+                if uploaded_file.name.endswith(".csv"):
+                    df = pd.read_csv(uploaded_file)
+                else:
+                    df = pd.read_excel(uploaded_file)
+                st.session_state.df = df
+                log_action(st.session_state.user, f"Uploaded Dataset: {uploaded_file.name}")
+                st.success(f"Successfully loaded `{uploaded_file.name}` ({df.shape[0]} rows, {df.shape[1]} columns)")
+            except Exception as e:
+                st.error(f"Error loading file: {e}")
 
-    # --- WORKFLOW: ADMIN CONTROL PANEL ---
-    elif menu == "🛡️ Admin Control Panel":
-        st.title("🛡️ Admin Control Panel")
-        passkey = st.text_input("Enter Admin Security Passkey", type="password", placeholder="Enter admin lock passkey...")
-        if passkey == ADMIN_SECRET_KEY:
-            st.success("Admin Access Granted!")
+        if st.session_state.df is not None:
+            df = st.session_state.df
+            
+            # Metrics Overview
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("Rows", df.shape[0])
+            m2.metric("Columns", df.shape[1])
+            m3.metric("Numeric Fields", len(df.select_dtypes(include=np.number).columns))
+            m4.metric("Missing Values", df.isnull().sum().sum())
+            
+            st.divider()
+            
+            # Data Preview & Editing
+            st.subheader("Data Preview")
+            edited_df = st.data_editor(df, num_rows="dynamic", use_container_width=True)
+            st.session_state.df = edited_df
+
+            # Quick Clean Options
+            st.subheader("🧹 Cleaning Tools")
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("Drop Duplicate Rows"):
+                    st.session_state.df = st.session_state.df.drop_duplicates()
+                    st.success("Duplicates removed!")
+                    st.rerun()
+            with c2:
+                if st.button("Fill NA with 0"):
+                    st.session_state.df = st.session_state.df.fillna(0)
+                    st.success("Missing values filled!")
+                    st.rerun()
+
+    # --- ANALYTICS & CHARTS ---
+    elif app_mode == "📈 Analytics & Charts":
+        st.header("📈 Interactive Analytics Engine")
+        
+        if st.session_state.df is None:
+            st.warning("Please upload a dataset in the Data Workspace first.")
+        else:
+            df = st.session_state.df
+            numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
+            all_cols = df.columns.tolist()
+
+            if not numeric_cols:
+                st.error("No numeric columns found in the uploaded dataset for charting.")
+            else:
+                chart_type = st.selectbox("Select Visual Chart Type", ["Bar Chart", "Line Chart", "Scatter Plot", "Histogram"])
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    x_axis = st.selectbox("X-Axis Field", options=all_cols)
+                with col2:
+                    y_axis = st.selectbox("Y-Axis Field", options=numeric_cols)
+
+                if chart_type == "Bar Chart":
+                    fig = px.bar(df, x=x_axis, y=y_axis, title=f"{y_axis} by {x_axis}", template="plotly_dark")
+                elif chart_type == "Line Chart":
+                    fig = px.line(df, x=x_axis, y=y_axis, title=f"{y_axis} Trend over {x_axis}", template="plotly_dark")
+                elif chart_type == "Scatter Plot":
+                    fig = px.scatter(df, x=x_axis, y=y_axis, title=f"{y_axis} vs {x_axis}", template="plotly_dark")
+                elif chart_type == "Histogram":
+                    fig = px.histogram(df, x=y_axis, title=f"Distribution of {y_axis}", template="plotly_dark")
+
+                st.plotly_chart(fig, use_container_width=True)
+
+    # --- ADMIN PORTAL ---
+    elif app_mode == "⚙️ Admin Portal":
+        st.header("⚙️ Administration & Security Logs")
+        if st.session_state.role != "Admin":
+            st.error("Access Denied: You must have an Admin role to view this panel.")
+        else:
             conn = sqlite3.connect(DB_FILE)
-            st.markdown("##### Registered System Users")
-            st.dataframe(pd.read_sql_query("SELECT id, first_name, email, created_at FROM users", conn), use_container_width=True)
-            st.markdown("##### Database Workflow Records")
-            st.dataframe(pd.read_sql_query("SELECT user_email, active_filename, updated_at FROM database_workflow", conn), use_container_width=True)
+            st.subheader("Registered Users")
+            users_df = pd.read_sql_query("SELECT id, username, role, created_at FROM users", conn)
+            st.dataframe(users_df, use_container_width=True)
+
+            st.subheader("System Activity Logs")
+            logs_df = pd.read_sql_query("SELECT * FROM system_logs ORDER BY timestamp DESC", conn)
+            st.dataframe(logs_df, use_container_width=True)
             conn.close()
-        elif passkey:
-            st.error("Incorrect Admin Passkey.")
