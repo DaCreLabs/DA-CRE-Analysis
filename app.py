@@ -45,8 +45,49 @@ def get_logo_html(width=220):
         return f'<div style="text-align:center; margin-bottom:10px;"><img src="data:image/png;base64,{b64}" style="max-width:{width}px; border-radius:12px; box-shadow:0 6px 16px rgba(0,0,0,0.4);"></div>'
     return f'<div style="text-align:center; margin-bottom:10px;"><img src="{RAW_GITHUB_LOGO_URL}" style="max-width:{width}px; border-radius:12px; box-shadow:0 6px 16px rgba(0,0,0,0.4);"></div>'
 
-# ---------------- INITIAL BOOT STRAP ----------------
+# ---------------- INITIAL 5-SECOND LOADING SPLASH SCREEN ----------------
 if 'app_loaded' not in st.session_state:
+    st.session_state['app_loaded'] = False
+
+if not st.session_state['app_loaded']:
+    loading_placeholder = st.empty()
+    with loading_placeholder.container():
+        st.markdown(f"""
+        <div style="
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 80vh;
+            text-align: center;
+        ">
+            <img src="{RAW_GITHUB_LOGO_URL}" style="width: 170px; border-radius: 20px; animation: pulse 1.5s infinite ease-in-out; box-shadow: 0 10px 30px rgba(0,0,0,0.6);">
+            <h1 style="color: #ffffff; font-weight: 900; font-size: 45px; font-family: sans-serif; letter-spacing: 2px; margin-top: 20px;">DACRE ANALYSIS</h1>
+            <p style="color: #94a3b8; font-weight: 600; font-size: 18px;">Initializing Enterprise Environment...</p>
+            <div style="
+                border: 4px solid rgba(255,255,255,0.1);
+                border-left-color: #38bdf8;
+                border-radius: 50%;
+                width: 45px;
+                height: 45px;
+                animation: spin 1s linear infinite;
+                margin-top: 20px;
+            "></div>
+        </div>
+        <style>
+            @keyframes spin {{
+                0% {{ transform: rotate(0deg); }}
+                100% {{ transform: rotate(360deg); }}
+            }}
+            @keyframes pulse {{
+                0% {{ transform: scale(1); opacity: 0.8; }}
+                50% {{ transform: scale(1.08); opacity: 1; }}
+                100% {{ transform: scale(1); opacity: 0.8; }}
+            }}
+        </style>
+        """, unsafe_allow_html=True)
+        time.sleep(5)
+    loading_placeholder.empty()
     st.session_state['app_loaded'] = True
 
 # ---------------- THEME & CUSTOM STYLING ----------------
@@ -123,22 +164,6 @@ input::placeholder {
     height: 44px;
     border: none;
 }
-
-/* FULL-PAGE CAPTCHA OVERLAY */
-.captcha-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(5, 10, 15, 0.96);
-    z-index: 999999;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -188,7 +213,6 @@ def log_action(user, action):
 
 # ---------------- DYNAMIC ROTATING RECAPTCHA ENGINE (1-MIN ROTATION) ----------------
 def get_current_captcha_target():
-    # Rotates target every 1 minute (60 seconds)
     minute_bucket = int(time.time() // 60)
     challenges = [
         {"target": "Bus", "correct": "Option B", "a": "🚗 Car", "b": "🚌 Bus", "c": "🐶 Dog"},
@@ -244,7 +268,7 @@ if st.session_state['show_captcha'] and not st.session_state['captcha_verified']
 
 # ---------------- AUTHENTICATION & PORTAL SCREEN ----------------
 elif not st.session_state["authenticated"]:
-    portal_type = st.radio("Select Access Portal:", ["👤 User Access", "🛡️ Admin Portal"], horizontal=True)
+    portal_type = st.radio("Select Access Portal:", ["👤 User Access", "🛡️ Isolated Admin Portal"], horizontal=True)
     
     if portal_type == "👤 User Access":
         tab_login, tab_signup = st.tabs(["🔒 Sign In", "📝 Sign Up"])
@@ -298,16 +322,19 @@ elif not st.session_state["authenticated"]:
 
     # --- ISOLATED ADMIN PORTAL ---
     else:
-        st.subheader("🛡️ Dedicated Admin Control Portal")
-        a_pass = st.text_input("Enter Admin Passkey", type="password", key="a_pass")
+        st.subheader("🛡️ Dedicated Admin Control Gateway")
+        st.info("System Administrators Only. Input your secret passkey below.")
         
-        if st.button("Unlock Admin Panel"):
+        a_pass = st.text_input("Enter Admin Passkey", type="password", placeholder="Enter secret key", key="a_pass")
+        
+        if st.button("Unlock Admin Gateway"):
             if a_pass == ADMIN_SECRET_KEY:
                 st.session_state["authenticated"] = True
                 st.session_state["user_name"] = "System Administrator"
                 st.session_state["role"] = "Admin"
                 log_action("Admin", "Admin Access Unlocked")
-                st.success("Admin access granted!")
+                st.success("Admin access granted! Directing to Master Control Center...")
+                time.sleep(1)
                 st.rerun()
             else:
                 trigger_captcha_overlay("Incorrect Admin Secret Key entered!")
