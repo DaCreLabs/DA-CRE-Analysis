@@ -9,15 +9,15 @@ import json
 import streamlit.components.v1 as components
 
 # --- PAGE CONFIGURATION ---
+# Using your image for both page title and the browser tab icon
 st.set_page_config(
     page_title="DA-CRE Workflow Engine",
-    page_icon="🤖",
+    page_icon="IMG_20260729_135217.jpg",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# --- AVATAR / LOGO IMAGE ---
-# Points directly to your uploaded photo file in the repo folder
+# --- AVATAR / LOGO IMAGE PATH ---
 AVATAR_IMAGE_PATH = "IMG_20260729_135217.jpg"
 
 # --- ADMIN SECURITY KEY ---
@@ -275,7 +275,7 @@ elif not st.session_state['authenticated']:
     col_l1, col_l2, col_l3 = st.columns([1, 1, 1])
     with col_l2:
         try:
-            st.image(AVATAR_IMAGE_PATH, width=140, use_column_width=False)
+            st.image(AVATAR_IMAGE_PATH, width=180, use_column_width=False)
         except Exception:
             st.warning("Upload IMG_20260729_135217.jpg to your repository to display your photo here.")
             
@@ -321,7 +321,7 @@ else:
     # --- SIDEBAR NAVIGATION WITH YOUR PHOTO ---
     with st.sidebar:
         try:
-            st.image(AVATAR_IMAGE_PATH, width=100)
+            st.image(AVATAR_IMAGE_PATH, width=120)
         except Exception:
             st.caption("Photo: IMG_20260729_135217.jpg")
             
@@ -434,7 +434,7 @@ else:
 
             with c4:
                 if st.button("🔽 Sort Descending", use_container_width=True):
-                    st.session_state['current_data'] = df.sort_values(by=sort_column, ascending=False)
+                    st.session_state['current_data'] = df.sort_values(by=sort_column, False)
                     sync_to_database_workflow()
                     st.rerun()
 
