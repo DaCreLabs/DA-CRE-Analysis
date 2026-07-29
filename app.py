@@ -112,6 +112,17 @@ header { visibility: hidden; }
     100% { transform: translateY(0px) translateX(0px) scale(1); opacity: 0.4; }
 }
 
+/* FORCED WHITE FIELD LABELS (Username, Password, etc.) */
+label, 
+.stTextInput label, 
+.stSelectbox label, 
+.stFileUploader label,
+div[data-testid="stWidgetLabel"] p {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    font-size: 16px !important;
+}
+
 /* HERO CONTAINER & BOLD WHITE TEXT */
 .hero {
     padding: 30px;
@@ -130,19 +141,19 @@ header { visibility: hidden; }
 .hero h1 {
     font-size: 48px;
     font-weight: 900 !important;
-    color: #ffffff !important; /* Bold White */
+    color: #ffffff !important;
     margin-bottom: 10px;
     letter-spacing: 1.5px;
 }
 
 .hero h3 {
-    color: #f1f5f9 !important; /* Bold White / Light Grey */
+    color: #ffffff !important;
     font-weight: 700 !important;
     font-size: 22px;
 }
 
 .hero p {
-    color: #cbd5e1 !important; /* Soft White */
+    color: #cbd5e1 !important;
     font-weight: 600 !important;
     font-size: 15px;
 }
@@ -152,8 +163,8 @@ div[data-baseweb="input"] > div,
 input, 
 textarea, 
 .stSelectbox > div > div {
-    background-color: #d7ccc8 !important; /* Light Brown Fill */
-    color: #1a0f0d !important; /* Dark Text when typing */
+    background-color: #d7ccc8 !important;
+    color: #1a0f0d !important;
     font-weight: 600 !important;
     border-radius: 8px !important;
     border: 1px solid #a1887f !important;
@@ -161,7 +172,7 @@ textarea,
 
 /* Grey Placeholders styling */
 input::placeholder {
-    color: #757575 !important; /* Grey placeholder format */
+    color: #757575 !important;
     font-style: italic;
     font-weight: 500 !important;
 }
@@ -268,7 +279,7 @@ if 'current_data' not in st.session_state:
 if 'formula_logs' not in st.session_state:
     st.session_state["formula_logs"] = []
 
-# ---------------- LANDING HEADER (ROCKET & SMALL LOGO REMOVED) ----------------
+# ---------------- LANDING HEADER ----------------
 st.markdown("""
 <div class="hero">
     <h1>DACRE ANALYSIS</h1>
