@@ -20,21 +20,24 @@ import streamlit.components.v1 as components
 APP_NAME = "DACRE ANALYSIS"
 APP_VERSION = "Enterprise 2026"
 
+# ---------------- LOGO ENGINE ----------------
+# Standard default fallback or auto-load local file if exists
 APP_LOGO_PATH = "dacre_logo.png"
 
-# ---------------- LOGO ENGINE ----------------
-def get_base64_logo(path):
-    if os.path.exists(path):
-        with open(path, "rb") as img:
-            return "data:image/png;base64," + base64.b64encode(img.read()).decode()
+def get_base64_logo():
+    if os.path.exists(APP_LOGO_PATH):
+        try:
+            with open(APP_LOGO_PATH, "rb") as img:
+                return "data:image/png;base64," + base64.b64encode(img.read()).decode()
+        except Exception:
+            pass
     return None
 
-logo_b64 = get_base64_logo(APP_LOGO_PATH)
+logo_b64 = get_base64_logo()
 
 # ---------------- HELPER FUNCTIONS ----------------
 def trigger_audio_guide(text):
     """Placeholder for Nigerian AI Audio Guide engine."""
-    st.audio_input if hasattr(st, "audio_input") else None
     st.info(f"🔊 **AI Voice Guide:** \"{text}\"")
 
 def sync_to_database_workflow():
@@ -153,6 +156,13 @@ def init_db():
                     action TEXT,
                     timestamp TEXT
                 )''')
+    
+    # Schema migration safeguard for email column
+    c.execute("PRAGMA table_info(users)")
+    columns = [column[1] for column in c.fetchall()]
+    if 'email' not in columns:
+        c.execute("ALTER TABLE users ADD COLUMN email TEXT")
+
     conn.commit()
     conn.close()
 
@@ -174,7 +184,8 @@ def add_user(username, email, password, role="User"):
         success = True
     except sqlite3.IntegrityError:
         success = False
-    conn.close()
+    finally:
+        conn.close()
     return success
 
 def login_user(username, password):
@@ -184,7 +195,7 @@ def login_user(username, password):
     data = c.fetchone()
     conn.close()
     if data and check_hashes(password, data[1]):
-        return {"email": data[0], "role": data[2]}
+        return {"email": data[0] if data[0] else f"{username}@dacre.ai", "role": data[2]}
     return None
 
 def log_action(user, action):
@@ -195,13 +206,17 @@ def log_action(user, action):
     conn.commit()
     conn.close()
 
-# Ensure default admin exists
-conn = sqlite3.connect(DB_FILE)
-c = conn.cursor()
-c.execute("SELECT * FROM users WHERE username='admin'")
-if not c.fetchone():
-    add_user("admin", "admin@dacre.ai", ADMIN_SECRET_KEY, role="Admin")
-conn.close()
+def ensure_admin_exists():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT * FROM users WHERE username='admin'")
+    if not c.fetchone():
+        c.execute("INSERT INTO users(username, email, password_hash, role, created_at) VALUES (?,?,?,?,?)",
+                  ("admin", "admin@dacre.ai", make_hashes(ADMIN_SECRET_KEY), "Admin", str(datetime.now())))
+        conn.commit()
+    conn.close()
+
+ensure_admin_exists()
 
 # ---------------- SESSION STATE INITIALIZATION ----------------
 if 'authenticated' not in st.session_state:
@@ -221,7 +236,7 @@ if 'formula_logs' not in st.session_state:
 if logo_b64:
     st.markdown(f"""
     <div class="logo">
-        <img src="{logo_b64}" width="180">
+        <img src="{logo_b64}" width="220">
     </div>
     """, unsafe_allow_html=True)
 
@@ -282,7 +297,7 @@ else:
             st.markdown(
                 f"""
                 <div style="text-align:center;">
-                    <img src="{logo_b64}" width="170">
+                    <img src="{logo_b64}" width="180">
                 </div>
                 """,
                 unsafe_allow_html=True,
