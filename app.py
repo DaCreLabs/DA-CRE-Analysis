@@ -392,15 +392,14 @@ else:
             # ==========================================
             # 2. DATABASE WORKFLOW GRID & CLEANUP ENGINE
             # ==========================================
-            st.markdown("### ⚙️ DATABASE WORKFLOW TABLE (Editable Working Area)")
-            st.caption("Click column headers/rows to highlight, edit cells directly, or arrange data. All updates instantly sync above.")
-
-            # ENHANCED EDITABLE GRID WITH COLUMN/ROW HIGHLIGHT SELECTION
-           selection_mode="multi-column",
+            # EDITABLE GRID FOR DATABASE WORKFLOW
+            edited_df = st.data_editor(
                 st.session_state['current_data'],
                 num_rows="dynamic",
                 use_container_width=True,
-                selection_mode=["multi-column", "multi-row"],
+                selection_mode="multi-column",
+                key="database_workflow_editor"
+            )
                 key="database_workflow_editor"
             )
 
