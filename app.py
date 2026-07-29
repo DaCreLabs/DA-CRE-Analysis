@@ -32,7 +32,7 @@ st.set_page_config(
 ADMIN_SECRET_KEY = "theWORDofGOD"
 
 # ---------------- LOGO RENDER ENGINE ----------------
-def get_logo_html(width=250):
+def get_logo_html(width=260):
     if os.path.exists(PRIMARY_LOGO_FILENAME):
         try:
             with open(PRIMARY_LOGO_FILENAME, "rb") as img_file:
@@ -224,6 +224,15 @@ div[data-testid="stForm"],
     transform: scale(1.02);
     background: #0369a1;
 }
+
+/* CAPTCHA BOX STYLING */
+.captcha-box {
+    background: rgba(15, 23, 42, 0.9);
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid #0284c7;
+    margin-bottom: 15px;
+}
 </style>
 
 <!-- ANIMATED BACKGROUND ELEMENTS -->
@@ -242,14 +251,10 @@ def check_hashes(password, hashed_text):
     return make_hashes(password) == hashed_text
 
 if "users_db" not in st.session_state:
-    st.session_state.users_db = {
-        "admin": {
-            "email": "admin@dacre.ai",
-            "password_hash": make_hashes(ADMIN_SECRET_KEY),
-            "role": "Admin",
-            "created_at": str(datetime.now())
-        }
-    }
+    st.session_state.users_db = {}
+
+if "active_sessions" not in st.session_state:
+    st.session_state.active_sessions = {}
 
 if "logs_db" not in st.session_state:
     st.session_state.logs_db = []
@@ -268,6 +273,7 @@ def add_user(username, email, password, role="User"):
 def login_user(username, password):
     user = st.session_state.users_db.get(username)
     if user and check_hashes(password, user["password_hash"]):
+        st.session_state.active_sessions[username] = str(datetime.now())
         return user
     return None
 
@@ -278,9 +284,28 @@ def log_action(user, action):
         "timestamp": str(datetime.now())
     })
 
-# ---------------- HELPER FUNCTIONS ----------------
-def trigger_audio_guide(text):
-    st.info(f"🔊 **AI Voice Guide:** \"{text}\"")
+# ---------------- RECAPTCHA HUMAN VERIFICATION ENGINE ----------------
+def bus_recaptcha_widget(key_prefix="auth"):
+    st.markdown('<div class="captcha-box">', unsafe_allow_html=True)
+    st.write("🤖 **reCAPTCHA: Verify you are human**")
+    st.caption("Select the image below that contains a **Bus**:")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.write("📷 Option A")
+        st.markdown("🚗 *Car*")
+    with col2:
+        st.write("📷 Option B")
+        st.markdown("🚌 *Bus*")
+    with col3:
+        st.write("📷 Option C")
+        st.markdown("🚲 *Bicycle*")
+        
+    choice = st.radio("Which image shows a Bus?", ["Select Option...", "Option A (Car)", "Option B (Bus)", "Option C (Bicycle)"], key=f"{key_prefix}_captcha_choice")
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    return choice == "Option B (Bus)"
 
 # ---------------- SESSION STATE INITIALIZATION ----------------
 if 'authenticated' not in st.session_state:
@@ -295,6 +320,17 @@ if 'current_data' not in st.session_state:
     st.session_state["current_data"] = None
 if 'formula_logs' not in st.session_state:
     st.session_state["formula_logs"] = []
+if 'auth_mode' not in st.session_state:
+    st.session_state['auth_mode'] = 'User Portal'
+if 'selected_auth_tab' not in st.session_state:
+    st.session_state['selected_auth_tab'] = 0
+
+# Check forced logout by Admin
+if st.session_state["authenticated"] and st.session_state["user_name"] in st.session_state.get("forced_logouts", []):
+    st.session_state["authenticated"] = False
+    st.session_state["forced_logouts"].remove(st.session_state["user_name"])
+    st.warning("⚠️ You have been logged out by the System Administrator.")
+    st.rerun()
 
 # ---------------- MAIN APP LOGO & LANDING HEADER ----------------
 st.markdown(get_logo_html(260), unsafe_allow_html=True)
@@ -307,72 +343,117 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ---------------- AUTHENTICATION SCREEN ----------------
+# ---------------- AUTHENTICATION & ADMIN PORTAL ----------------
 if not st.session_state["authenticated"]:
-    auth_tab1, auth_tab2 = st.tabs(["🔒 Login", "📝 Register"])
     
-    with auth_tab1:
-        st.subheader("Account Login")
-        login_user_input = st.text_input("Username", placeholder="uchechukwudavid", key="login_user")
-        login_pass_input = st.text_input("Password", type="password", placeholder="Enter your password", key="login_pass")
-        if st.button("Sign In"):
-            user_data = login_user(login_user_input, login_pass_input)
-            if user_data:
+    auth_portal_choice = st.radio("Select Portal:", ["👤 User Access", "🛡️ Admin Portal"], horizontal=True)
+    
+    # ================= USER PORTAL =================
+    if auth_portal_choice == "👤 User Access":
+        
+        auth_tab1, auth_tab2 = st.tabs(["🔒 Sign In", "📝 Register"])
+        
+        # --- LOGIN TAB ---
+        with auth_tab1:
+            st.subheader("User Login")
+            login_user_input = st.text_input("Username", placeholder="uchechukwudavid", key="login_user")
+            login_pass_input = st.text_input("Password", type="password", placeholder="Enter your password", key="login_pass")
+            
+            is_human = bus_recaptcha_widget("login")
+            
+            if st.button("Sign In"):
+                if not is_human:
+                    st.error("❌ Human verification failed! Please select the picture with the Bus.")
+                elif login_user_input not in st.session_state.users_db:
+                    st.error("⚠️ Account has not been created. Please sign up!")
+                else:
+                    user_data = login_user(login_user_input, login_pass_input)
+                    if user_data:
+                        st.session_state["authenticated"] = True
+                        st.session_state["user_name"] = login_user_input
+                        st.session_state["user_email"] = user_data["email"]
+                        st.session_state["role"] = user_data["role"]
+                        log_action(login_user_input, "User Logged In")
+                        st.success(f"Welcome back, {login_user_input}!")
+                        st.rerun()
+                    else:
+                        st.error("❌ Invalid Password. Please check your credentials.")
+
+        # --- REGISTER TAB ---
+        with auth_tab2:
+            st.subheader("Create New User Account")
+            reg_user = st.text_input("Username", placeholder="uchechukwudavid", key="reg_user")
+            reg_email = st.text_input("Email Address", placeholder="david@example.com", key="reg_email")
+            reg_pass = st.text_input("New Password", type="password", placeholder="Create a strong password", key="reg_pass")
+            
+            is_human_reg = bus_recaptcha_widget("register")
+            
+            if st.button("Register Account"):
+                if not is_human_reg:
+                    st.error("❌ Human verification failed! Please select the picture with the Bus.")
+                elif reg_user in st.session_state.users_db:
+                    st.warning("⚠️ This account has already been added! Redirecting to Sign In...")
+                    time.sleep(2)
+                    st.rerun()
+                elif reg_user and reg_pass and reg_email:
+                    if add_user(reg_user, reg_email, reg_pass, role="User"):
+                        st.success("🎉 Account created successfully! Please sign in now.")
+                        log_action(reg_user, "Account Created")
+                    else:
+                        st.error("Username already exists.")
+                else:
+                    st.warning("Please fill out all required fields.")
+
+    # ================= ISOLATED ADMIN PORTAL =================
+    else:
+        st.subheader("🛡️ Dedicated Admin Security Gateway")
+        st.info("Authorized System Administrators Only.")
+        
+        admin_passkey = st.text_input("Enter Admin Passkey", type="password", placeholder="Enter secret key", key="admin_key")
+        is_human_admin = bus_recaptcha_widget("admin")
+        
+        if st.button("Unlock Admin Control Panel"):
+            if not is_human_admin:
+                st.error("❌ Human verification failed! Select the Bus image.")
+            elif admin_passkey == ADMIN_SECRET_KEY:
                 st.session_state["authenticated"] = True
-                st.session_state["user_name"] = login_user_input
-                st.session_state["user_email"] = user_data["email"]
-                st.session_state["role"] = user_data["role"]
-                log_action(login_user_input, "User Logged In")
-                st.success(f"Welcome back, {login_user_input}!")
+                st.session_state["user_name"] = "System Administrator"
+                st.session_state["user_email"] = "admin@dacre.ai"
+                st.session_state["role"] = "Admin"
+                log_action("Admin", "Admin Panel Unlocked")
+                st.success("Access Granted! Loading Enterprise Admin Panel...")
+                time.sleep(1)
                 st.rerun()
             else:
-                st.error("Invalid Username or Password.")
+                st.error("❌ Incorrect Admin Secret Passkey.")
 
-    with auth_tab2:
-        st.subheader("Create New Account")
-        reg_user = st.text_input("Username", placeholder="uchechukwudavid", key="reg_user")
-        reg_email = st.text_input("Email Address", placeholder="david@example.com", key="reg_email")
-        reg_pass = st.text_input("New Password", type="password", placeholder="Create a strong password", key="reg_pass")
-        reg_secret = st.text_input("Admin Secret Key (Optional for Admin Role)", type="password", placeholder="Enter secret key if applicable", key="reg_secret")
-        
-        if st.button("Register"):
-            if reg_user and reg_pass and reg_email:
-                role = "Admin" if reg_secret == ADMIN_SECRET_KEY else "User"
-                if add_user(reg_user, reg_email, reg_pass, role):
-                    st.success("Account created successfully! Please log in.")
-                    log_action(reg_user, f"Account Created ({role})")
-                else:
-                    st.error("Username already exists.")
-            else:
-                st.warning("Please fill out all required fields.")
-
-# ---------------- MAIN APPLICATION INTERFACE ----------------
+# ---------------- MAIN APPLICATION INTERFACE (LOGGED IN) ----------------
 else:
     with st.sidebar:
         st.markdown(get_logo_html(180), unsafe_allow_html=True)
         st.markdown("---")
-        st.markdown("## 👋 Welcome")
-        st.success(st.session_state["user_name"])
-        st.caption(st.session_state["user_email"])
+        st.markdown(f"## 👋 Welcome, {st.session_state['user_name']}")
+        st.caption(f"Role: **{st.session_state['role']}**")
 
         st.markdown("---")
 
-        menu = st.selectbox(
-            "Navigation",
-            [
-                "🏠 Dashboard",
-                "📊 Embedded Sheet & Formula Board",
-                "📂 File Vault to Workflow Engine",
-                "📥 Add New Files to Vault",
-                "🛡️ Admin Control Panel",
-            ],
-        )
+        nav_options = [
+            "🏠 Dashboard",
+            "📊 Embedded Sheet & Formula Board",
+            "📂 File Vault to Workflow Engine",
+            "📥 Add New Files to Vault"
+        ]
+        
+        if st.session_state["role"] == "Admin":
+            nav_options.append("🛡️ Master Admin Control Center")
+
+        menu = st.selectbox("Navigation", nav_options)
 
         st.markdown("---")
-
-        st.info("DACRE ANALYSIS\nEnterprise Edition")
 
         if st.button("🚪 Logout", use_container_width=True):
+            if st.session_state["user_name"] in st.session_state.get("active_sessions", {}):
+                del st.session_state.active_sessions[st.session_state["user_name"]]
             st.session_state["authenticated"] = False
             st.rerun()
 
@@ -416,10 +497,6 @@ else:
         else:
             st.info("Upload a dataset to begin analysis.")
 
-        st.write("---")
-        st.subheader("🎙 Nigerian AI Audio Guide")
-        trigger_audio_guide("Welcome to Dacre Analysis. Upload your spreadsheet to begin powerful analysis. Use the File Vault to manage your files, then explore charts and formulas from the dashboard.")
-
     elif menu == "📊 Embedded Sheet & Formula Board":
         st.title("📊 Embedded Sheet & Formula Board")
         if st.session_state["current_data"] is None:
@@ -447,16 +524,63 @@ else:
             except Exception as e:
                 st.error(f"Failed to process file: {e}")
 
-    elif menu == "🛡️ Admin Control Panel":
-        st.title("🛡️ Admin Control Panel")
-        if st.session_state["role"] != "Admin":
-            st.error("Access Restricted: Admin privileges required.")
-        else:
-            st.subheader("User Directory")
-            users_list = []
-            for u, d in st.session_state.users_db.items():
-                users_list.append({"username": u, "email": d["email"], "role": d["role"], "created_at": d["created_at"]})
-            st.dataframe(pd.DataFrame(users_list), use_container_width=True)
+    # ================= MASTER ADMIN CONTROL CENTER =================
+    elif menu == "🛡️ Master Admin Control Center":
+        st.title("🛡️ Master Admin Control Center")
+        st.caption("Full Administrative & System Supervision Interface")
+        
+        st.markdown("### ℹ️ App Functionality & Architecture")
+        st.info("""
+        **DACRE ANALYSIS** is an enterprise AI-powered spreadsheet cleaning, analytics, and workflow automation platform. 
+        It allows users to upload datasets, perform real-time data cleaning, run formula logs, generate distribution charts, and export results.
+        """)
 
-            st.subheader("Audit Logs")
-            st.dataframe(pd.DataFrame(st.session_state.logs_db), use_container_width=True)
+        st.markdown("---")
+        
+        # --- ADMIN METRICS ---
+        m1, m2, m3 = st.columns(3)
+        with m1:
+            st.metric("Registered Users", len(st.session_state.users_db))
+        with m2:
+            st.metric("Active Sessions", len(st.session_state.active_sessions))
+        with m3:
+            st.metric("Total Audit Logs", len(st.session_state.logs_db))
+
+        st.markdown("---")
+
+        # --- USER MANAGEMENT & FORCE LOGOUT ---
+        st.subheader("👥 Registered User Management & Remote Logout Controls")
+        
+        if len(st.session_state.users_db) == 0:
+            st.info("No users registered yet.")
+        else:
+            user_table = []
+            for u, d in st.session_state.users_db.items():
+                user_table.append({
+                    "Username": u,
+                    "Email": d["email"],
+                    "Role": d["role"],
+                    "Registered At": d["created_at"],
+                    "Status": "Online 🟢" if u in st.session_state.active_sessions else "Offline ⚪"
+                })
+            
+            st.dataframe(pd.DataFrame(user_table), use_container_width=True)
+
+            st.write("#### 🚨 Force Disconnect / Logout Any User")
+            user_to_kick = st.selectbox("Select User to Terminate Session:", ["None"] + list(st.session_state.users_db.keys()))
+            
+            if st.button("🔴 Terminate Selected User Session") and user_to_kick != "None":
+                if "forced_logouts" not in st.session_state:
+                    st.session_state["forced_logouts"] = []
+                st.session_state["forced_logouts"].append(user_to_kick)
+                if user_to_kick in st.session_state.active_sessions:
+                    del st.session_state.active_sessions[user_to_kick]
+                log_action("Admin", f"Force logged out user: {user_to_kick}")
+                st.success(f"User '{user_to_kick}' has been forcefully logged out.")
+                st.rerun()
+
+        st.markdown("---")
+        
+        # --- AUDIT LOGS ---
+        st.subheader("📜 System Audit & Activity Logs")
+        st.dataframe(pd.DataFrame(st.session_state.logs_db), use_container_width=True)
