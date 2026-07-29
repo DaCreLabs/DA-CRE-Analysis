@@ -1,12 +1,10 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import sqlite3
 import hashlib
 import time
 import io
 import json
-import base64
 import os
 from datetime import datetime
 import plotly.express as px
@@ -29,19 +27,21 @@ st.set_page_config(
 
 ADMIN_SECRET_KEY = "theWORDofGOD"
 
-# ---------------- LOGO ENGINE ----------------
-# Uses official direct hosted path & local file fallback
-LOGO_URL = "https://raw.githubusercontent.com/DaCreLabs/DA-CRE-Analysis/main/dacre_logo.png"
-
-def get_logo_html(width=200):
-    if os.path.exists("dacre_logo.png"):
-        try:
-            with open("dacre_logo.png", "rb") as img:
-                b64 = base64.b64encode(img.read()).decode()
-                return f'<img src="data:image/png;base64,{b64}" width="{width}">'
-        except Exception:
-            pass
-    return f'<img src="{LOGO_URL}" width="{width}" onerror="this.onerror=null; this.src=\'https://via.placeholder.com/200x200.png?text=DACRE+ANALYSIS\';">'
+# ---------------- EMBEDDED DIRECT SVG LOGO ----------------
+# Pure code-rendered vector logo guarantees 100% display rate everywhere
+def get_logo_html(width=220):
+    return f"""
+    <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 15px;">
+        <svg width="{width}" height="60" viewBox="0 0 350 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="350" height="70" rx="12" fill="#0f172a"/>
+            <path d="M25 45L40 20L55 45H25Z" fill="#38bdf8" stroke="#0284c7" stroke-width="2"/>
+            <circle cx="40" cy="20" r="5" fill="#f43f5e"/>
+            <text x="70" y="45" font-family="Arial, sans-serif" font-weight="900" font-size="26" fill="#ffffff" letter-spacing="1">DACRE</text>
+            <text x="180" y="45" font-family="Arial, sans-serif" font-weight="700" font-size="26" fill="#38bdf8" letter-spacing="1">ANALYSIS</text>
+            <line x1="70" y1="52" x2="300" y2="52" stroke="#0284c7" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+    </div>
+    """
 
 # ---------------- THEME ----------------
 st.markdown("""
@@ -74,13 +74,6 @@ header { visibility: hidden; }
     color: #dbeafe;
 }
 
-.logo-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 15px;
-}
-
 .stButton>button {
     background: linear-gradient(90deg, #0284c7, #0891b2);
     color: white;
@@ -97,73 +90,53 @@ header { visibility: hidden; }
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- IN-MEMORY CRASH-PROOF DATABASE ENGINE ----------------
-if 'db_conn' not in st.session_state:
-    st.session_state.db_conn = sqlite3.connect(":memory:", check_same_thread=False)
-    c = st.session_state.db_conn.cursor()
-    c.execute('''CREATE TABLE users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT UNIQUE,
-                    email TEXT,
-                    password_hash TEXT,
-                    role TEXT,
-                    created_at TEXT
-                )''')
-    c.execute('''CREATE TABLE system_logs (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user TEXT,
-                    action TEXT,
-                    timestamp TEXT
-                )''')
-    st.session_state.db_conn.commit()
-
+# ---------------- FAIL-PROOF SESSION-BASED DATABASE ENGINE ----------------
 def make_hashes(password):
     return hashlib.sha256(str.encode(password)).hexdigest()
 
 def check_hashes(password, hashed_text):
     return make_hashes(password) == hashed_text
 
+if "users_db" not in st.session_state:
+    st.session_state.users_db = {
+        "admin": {
+            "email": "admin@dacre.ai",
+            "password_hash": make_hashes(ADMIN_SECRET_KEY),
+            "role": "Admin",
+            "created_at": str(datetime.now())
+        }
+    }
+
+if "logs_db" not in st.session_state:
+    st.session_state.logs_db = []
+
 def add_user(username, email, password, role="User"):
-    try:
-        c = st.session_state.db_conn.cursor()
-        c.execute("INSERT INTO users(username, email, password_hash, role, created_at) VALUES (?,?,?,?,?)",
-                  (username, email, make_hashes(password), role, str(datetime.now())))
-        st.session_state.db_conn.commit()
-        return True
-    except Exception:
+    if username in st.session_state.users_db:
         return False
+    st.session_state.users_db[username] = {
+        "email": email,
+        "password_hash": make_hashes(password),
+        "role": role,
+        "created_at": str(datetime.now())
+    }
+    return True
 
 def login_user(username, password):
-    c = st.session_state.db_conn.cursor()
-    c.execute("SELECT email, password_hash, role FROM users WHERE username=?", (username,))
-    data = c.fetchone()
-    if data and check_hashes(password, data[1]):
-        return {"email": data[0], "role": data[2]}
+    user = st.session_state.users_db.get(username)
+    if user and check_hashes(password, user["password_hash"]):
+        return user
     return None
 
 def log_action(user, action):
-    try:
-        c = st.session_state.db_conn.cursor()
-        c.execute("INSERT INTO system_logs(user, action, timestamp) VALUES (?,?,?)",
-                  (user, action, str(datetime.now())))
-        st.session_state.db_conn.commit()
-    except Exception:
-        pass
-
-# Ensure default admin account always exists
-c = st.session_state.db_conn.cursor()
-c.execute("SELECT * FROM users WHERE username='admin'")
-if not c.fetchone():
-    c.execute("INSERT INTO users(username, email, password_hash, role, created_at) VALUES (?,?,?,?,?)",
-              ("admin", "admin@dacre.ai", make_hashes(ADMIN_SECRET_KEY), "Admin", str(datetime.now())))
-    st.session_state.db_conn.commit()
+    st.session_state.logs_db.append({
+        "user": user,
+        "action": action,
+        "timestamp": str(datetime.now())
+    })
 
 # ---------------- HELPER FUNCTIONS ----------------
 def trigger_audio_guide(text):
     st.info(f"🔊 **AI Voice Guide:** \"{text}\"")
-
-def sync_to_database_workflow():
-    pass
 
 # ---------------- SESSION STATE INITIALIZATION ----------------
 if 'authenticated' not in st.session_state:
@@ -180,7 +153,7 @@ if 'formula_logs' not in st.session_state:
     st.session_state["formula_logs"] = []
 
 # ---------------- LANDING HEADER & LOGO ----------------
-st.markdown(f'<div class="logo-container">{get_logo_html(220)}</div>', unsafe_allow_html=True)
+st.markdown(get_logo_html(350), unsafe_allow_html=True)
 
 st.markdown("""
 <div class="hero">
@@ -235,14 +208,12 @@ else:
     # PREMIUM ENTERPRISE SIDEBAR
     # ==========================================================
     with st.sidebar:
-        st.markdown(f'<div style="text-align:center;">{get_logo_html(160)}</div>', unsafe_allow_html=True)
+        st.markdown(get_logo_html(220), unsafe_allow_html=True)
 
         st.markdown("---")
 
-        st.markdown(f"## 👋 Welcome")
-
+        st.markdown("## 👋 Welcome")
         st.success(st.session_state["user_name"])
-
         st.caption(st.session_state["user_email"])
 
         st.markdown("---")
@@ -263,7 +234,6 @@ else:
         st.info("DACRE ANALYSIS\nEnterprise Edition")
 
         if st.button("🚪 Logout", use_container_width=True):
-            sync_to_database_workflow()
             st.session_state["authenticated"] = False
             st.rerun()
 
@@ -279,66 +249,37 @@ else:
         total_rows = 0
         total_columns = 0
 
-        if (
-            st.session_state.get("current_data") is not None
-            and isinstance(st.session_state["current_data"], pd.DataFrame)
-        ):
+        if st.session_state.get("current_data") is not None and isinstance(st.session_state["current_data"], pd.DataFrame):
             total_rows = len(st.session_state["current_data"])
             total_columns = len(st.session_state["current_data"].columns)
 
         with c1:
             st.metric("Rows", total_rows)
-
         with c2:
             st.metric("Columns", total_columns)
-
         with c3:
             st.metric("Formula Logs", len(st.session_state["formula_logs"]))
-
         with c4:
             st.metric("Status", "Ready")
 
         st.write("")
 
-        if (
-            st.session_state.get("current_data") is not None
-            and isinstance(st.session_state["current_data"], pd.DataFrame)
-        ):
-
+        if st.session_state.get("current_data") is not None and isinstance(st.session_state["current_data"], pd.DataFrame):
             df = st.session_state["current_data"]
-
             numeric = df.select_dtypes(include="number")
-
             if len(numeric.columns) > 0:
-
-                chart = px.histogram(
-                    numeric,
-                    x=numeric.columns[0],
-                    template="plotly_dark",
-                    title="Distribution",
-                )
-
+                chart = px.histogram(numeric, x=numeric.columns[0], template="plotly_dark", title="Distribution")
                 st.plotly_chart(chart, use_container_width=True)
-
                 st.write("### Numeric Summary")
-
                 st.dataframe(numeric.describe(), use_container_width=True)
-
             else:
-
                 st.info("No numeric columns available yet.")
-
         else:
-
             st.info("Upload a dataset to begin analysis.")
 
         st.write("---")
-
         st.subheader("🎙 Nigerian AI Audio Guide")
-
-        trigger_audio_guide(
-            "Welcome to Dacre Analysis. Upload your spreadsheet to begin powerful analysis. Use the File Vault to manage your files, then explore charts and formulas from the dashboard."
-        )
+        trigger_audio_guide("Welcome to Dacre Analysis. Upload your spreadsheet to begin powerful analysis. Use the File Vault to manage your files, then explore charts and formulas from the dashboard.")
 
     elif menu == "📊 Embedded Sheet & Formula Board":
         st.title("📊 Embedded Sheet & Formula Board")
@@ -373,9 +314,10 @@ else:
             st.error("Access Restricted: Admin privileges required.")
         else:
             st.subheader("User Directory")
-            users_df = pd.read_sql_query("SELECT id, username, email, role, created_at FROM users", st.session_state.db_conn)
-            st.dataframe(users_df, use_container_width=True)
+            users_list = []
+            for u, d in st.session_state.users_db.items():
+                users_list.append({"username": u, "email": d["email"], "role": d["role"], "created_at": d["created_at"]})
+            st.dataframe(pd.DataFrame(users_list), use_container_width=True)
 
             st.subheader("Audit Logs")
-            logs_df = pd.read_sql_query("SELECT * FROM system_logs ORDER BY timestamp DESC", st.session_state.db_conn)
-            st.dataframe(logs_df, use_container_width=True)
+            st.dataframe(pd.DataFrame(st.session_state.logs_db), use_container_width=True)
