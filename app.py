@@ -27,24 +27,28 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# DO NOT CHANGE THIS
 ADMIN_SECRET_KEY = "theWORDofGOD"
+
+# ---------------- LOGO ENGINE ----------------
+# Uses official direct hosted path & local file fallback
+LOGO_URL = "https://raw.githubusercontent.com/DaCreLabs/DA-CRE-Analysis/main/dacre_logo.png"
+
+def get_logo_html(width=200):
+    if os.path.exists("dacre_logo.png"):
+        try:
+            with open("dacre_logo.png", "rb") as img:
+                b64 = base64.b64encode(img.read()).decode()
+                return f'<img src="data:image/png;base64,{b64}" width="{width}">'
+        except Exception:
+            pass
+    return f'<img src="{LOGO_URL}" width="{width}" onerror="this.onerror=null; this.src=\'https://via.placeholder.com/200x200.png?text=DACRE+ANALYSIS\';">'
 
 # ---------------- THEME ----------------
 st.markdown("""
 <style>
-
-#MainMenu {
-    visibility: hidden;
-}
-
-footer {
-    visibility: hidden;
-}
-
-header {
-    visibility: hidden;
-}
+#MainMenu { visibility: hidden; }
+footer { visibility: hidden; }
+header { visibility: hidden; }
 
 .stApp {
     background: linear-gradient(135deg, #07111f, #0f172a, #111827);
@@ -61,7 +65,7 @@ header {
 }
 
 .hero h1 {
-    font-size: 50px;
+    font-size: 45px;
     font-weight: 900;
     color: white;
 }
@@ -70,18 +74,10 @@ header {
     color: #dbeafe;
 }
 
-.metric-card {
-    background: #111827;
-    padding: 18px;
-    border-radius: 15px;
-    border: 1px solid #38bdf8;
-    box-shadow: 0 0 18px rgba(56,189,248,.2);
-}
-
-.logo {
+.logo-container {
     display: flex;
     justify-content: center;
-    margin-top: 10px;
+    align-items: center;
     margin-bottom: 15px;
 }
 
@@ -98,82 +94,28 @@ header {
     transform: scale(1.02);
     background: #0369a1;
 }
-
-input {
-    font-weight: bold !important;
-}
-
-[data-baseweb="select"] {
-    font-weight: bold !important;
-}
-
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- LOGO ENGINE ----------------
-# Fallback online logo or local file detection
-def get_logo_html(width=180):
-    if os.path.exists("dacre_logo.png"):
-        try:
-            with open("dacre_logo.png", "rb") as img:
-                b64 = base64.b64encode(img.read()).decode()
-                return f'<img src="data:image/png;base64,{b64}" width="{width}">'
-        except Exception:
-            pass
-    return f'<h1 style="color:#38bdf8; font-weight:900;">📊 DACRE</h1>'
-
-# ---------------- SAFE DATABASE ENGINE ----------------
-DB_FILE = "dacre_platform.db"
-
-def get_db_connection():
-    return sqlite3.connect(DB_FILE, timeout=10)
-
-def init_db():
-    conn = get_db_connection()
-    c = conn.cursor()
-    try:
-        c.execute('''CREATE TABLE IF NOT EXISTS users (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        username TEXT UNIQUE,
-                        email TEXT,
-                        password_hash TEXT,
-                        role TEXT,
-                        created_at TEXT
-                    )''')
-        
-        c.execute('''CREATE TABLE IF NOT EXISTS system_logs (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        user TEXT,
-                        action TEXT,
-                        timestamp TEXT
-                    )''')
-        conn.commit()
-    except Exception:
-        # Re-create database if corrupted schema exists
-        conn.close()
-        if os.path.exists(DB_FILE):
-            os.remove(DB_FILE)
-        conn = get_db_connection()
-        c = conn.cursor()
-        c.execute('''CREATE TABLE IF NOT EXISTS users (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        username TEXT UNIQUE,
-                        email TEXT,
-                        password_hash TEXT,
-                        role TEXT,
-                        created_at TEXT
-                    )''')
-        c.execute('''CREATE TABLE IF NOT EXISTS system_logs (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        user TEXT,
-                        action TEXT,
-                        timestamp TEXT
-                    )''')
-        conn.commit()
-    finally:
-        conn.close()
-
-init_db()
+# ---------------- IN-MEMORY CRASH-PROOF DATABASE ENGINE ----------------
+if 'db_conn' not in st.session_state:
+    st.session_state.db_conn = sqlite3.connect(":memory:", check_same_thread=False)
+    c = st.session_state.db_conn.cursor()
+    c.execute('''CREATE TABLE users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT UNIQUE,
+                    email TEXT,
+                    password_hash TEXT,
+                    role TEXT,
+                    created_at TEXT
+                )''')
+    c.execute('''CREATE TABLE system_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user TEXT,
+                    action TEXT,
+                    timestamp TEXT
+                )''')
+    st.session_state.db_conn.commit()
 
 def make_hashes(password):
     return hashlib.sha256(str.encode(password)).hexdigest()
@@ -182,54 +124,39 @@ def check_hashes(password, hashed_text):
     return make_hashes(password) == hashed_text
 
 def add_user(username, email, password, role="User"):
-    conn = get_db_connection()
-    c = conn.cursor()
     try:
+        c = st.session_state.db_conn.cursor()
         c.execute("INSERT INTO users(username, email, password_hash, role, created_at) VALUES (?,?,?,?,?)",
                   (username, email, make_hashes(password), role, str(datetime.now())))
-        conn.commit()
-        success = True
+        st.session_state.db_conn.commit()
+        return True
     except Exception:
-        success = False
-    finally:
-        conn.close()
-    return success
+        return False
 
 def login_user(username, password):
-    conn = get_db_connection()
-    c = conn.cursor()
+    c = st.session_state.db_conn.cursor()
     c.execute("SELECT email, password_hash, role FROM users WHERE username=?", (username,))
     data = c.fetchone()
-    conn.close()
     if data and check_hashes(password, data[1]):
-        return {"email": data[0] if data[0] else f"{username}@dacre.ai", "role": data[2]}
+        return {"email": data[0], "role": data[2]}
     return None
 
 def log_action(user, action):
     try:
-        conn = get_db_connection()
-        c = conn.cursor()
+        c = st.session_state.db_conn.cursor()
         c.execute("INSERT INTO system_logs(user, action, timestamp) VALUES (?,?,?)",
                   (user, action, str(datetime.now())))
-        conn.commit()
-        conn.close()
+        st.session_state.db_conn.commit()
     except Exception:
         pass
 
-def ensure_admin_exists():
-    try:
-        conn = get_db_connection()
-        c = conn.cursor()
-        c.execute("SELECT * FROM users WHERE username='admin'")
-        if not c.fetchone():
-            c.execute("INSERT INTO users(username, email, password_hash, role, created_at) VALUES (?,?,?,?,?)",
-                      ("admin", "admin@dacre.ai", make_hashes(ADMIN_SECRET_KEY), "Admin", str(datetime.now())))
-            conn.commit()
-        conn.close()
-    except Exception:
-        pass
-
-ensure_admin_exists()
+# Ensure default admin account always exists
+c = st.session_state.db_conn.cursor()
+c.execute("SELECT * FROM users WHERE username='admin'")
+if not c.fetchone():
+    c.execute("INSERT INTO users(username, email, password_hash, role, created_at) VALUES (?,?,?,?,?)",
+              ("admin", "admin@dacre.ai", make_hashes(ADMIN_SECRET_KEY), "Admin", str(datetime.now())))
+    st.session_state.db_conn.commit()
 
 # ---------------- HELPER FUNCTIONS ----------------
 def trigger_audio_guide(text):
@@ -252,8 +179,8 @@ if 'current_data' not in st.session_state:
 if 'formula_logs' not in st.session_state:
     st.session_state["formula_logs"] = []
 
-# ---------------- LANDING HEADER ----------------
-st.markdown(f'<div class="logo">{get_logo_html(220)}</div>', unsafe_allow_html=True)
+# ---------------- LANDING HEADER & LOGO ----------------
+st.markdown(f'<div class="logo-container">{get_logo_html(220)}</div>', unsafe_allow_html=True)
 
 st.markdown("""
 <div class="hero">
@@ -344,7 +271,6 @@ else:
     # NAVIGATION ROUTING
     # ==========================================================
 
-    # --- HOME DASHBOARD ---
     if menu == "🏠 Dashboard":
         st.title("📊 Executive Dashboard")
 
@@ -414,7 +340,6 @@ else:
             "Welcome to Dacre Analysis. Upload your spreadsheet to begin powerful analysis. Use the File Vault to manage your files, then explore charts and formulas from the dashboard."
         )
 
-    # --- EMBEDDED SHEET & FORMULA BOARD ---
     elif menu == "📊 Embedded Sheet & Formula Board":
         st.title("📊 Embedded Sheet & Formula Board")
         if st.session_state["current_data"] is None:
@@ -423,12 +348,10 @@ else:
             edited_df = st.data_editor(st.session_state["current_data"], num_rows="dynamic", use_container_width=True)
             st.session_state["current_data"] = edited_df
 
-    # --- FILE VAULT & WORKFLOW ---
     elif menu == "📂 File Vault to Workflow Engine":
         st.title("📂 File Vault & Workflow Engine")
         st.write("Manage active workspace data files and automated workflow rules.")
 
-    # --- ADD NEW FILES TO VAULT ---
     elif menu == "📥 Add New Files to Vault":
         st.title("📥 Upload New Data to Vault")
         uploaded_file = st.file_uploader("Choose CSV or Excel File", type=["csv", "xlsx", "xls"])
@@ -444,18 +367,15 @@ else:
             except Exception as e:
                 st.error(f"Failed to process file: {e}")
 
-    # --- ADMIN CONTROL PANEL ---
     elif menu == "🛡️ Admin Control Panel":
         st.title("🛡️ Admin Control Panel")
         if st.session_state["role"] != "Admin":
             st.error("Access Restricted: Admin privileges required.")
         else:
-            conn = get_db_connection()
             st.subheader("User Directory")
-            users_df = pd.read_sql_query("SELECT id, username, email, role, created_at FROM users", conn)
+            users_df = pd.read_sql_query("SELECT id, username, email, role, created_at FROM users", st.session_state.db_conn)
             st.dataframe(users_df, use_container_width=True)
 
             st.subheader("Audit Logs")
-            logs_df = pd.read_sql_query("SELECT * FROM system_logs ORDER BY timestamp DESC", conn)
+            logs_df = pd.read_sql_query("SELECT * FROM system_logs ORDER BY timestamp DESC", st.session_state.db_conn)
             st.dataframe(logs_df, use_container_width=True)
-            conn.close()
