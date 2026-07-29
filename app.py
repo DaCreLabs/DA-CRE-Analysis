@@ -18,63 +18,102 @@ import plotly.graph_objects as go
 APP_NAME = "DACRE ANALYSIS"
 APP_VERSION = "Enterprise 2026"
 
-# ---------------- PAGE CONFIG ----------------
+PRIMARY_LOGO_FILENAME = "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png"
+RAW_GITHUB_LOGO_URL = "https://raw.githubusercontent.com/DaCreLabs/DA-CRE-Analysis/main/ChatGPT%20Image%20Jul%2029%2C%202026%2C%2002_27_41%20PM.png"
+
+# ---------------- PAGE CONFIG WITH APP LOGO ICON ----------------
 st.set_page_config(
     page_title="DACRE ANALYSIS",
-    page_icon="📊",
+    page_icon=RAW_GITHUB_LOGO_URL,
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 ADMIN_SECRET_KEY = "theWORDofGOD"
 
-# ---------------- LOGO ENGINE (EXACT GITHUB FILE MATCH) ----------------
-PRIMARY_LOGO_FILENAME = "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png"
-RAW_GITHUB_LOGO_URL = "https://raw.githubusercontent.com/DaCreLabs/DA-CRE-Analysis/main/ChatGPT%20Image%20Jul%2029%2C%202026%2C%2002_27_41%20PM.png"
-
+# ---------------- LOGO ENGINE ----------------
 def get_logo_html(width=250):
-    # Check 1: Local repository file
     if os.path.exists(PRIMARY_LOGO_FILENAME):
         try:
             with open(PRIMARY_LOGO_FILENAME, "rb") as img_file:
                 b64 = base64.b64encode(img_file.read()).decode()
-                return f'<div style="text-align:center;"><img src="data:image/png;base64,{b64}" style="max-width:{width}px; border-radius:12px; box-shadow:0 8px 20px rgba(0,0,0,0.5);"></div>'
+                return f'<div style="text-align:center; position:relative; z-index:2;"><img src="data:image/png;base64,{b64}" style="max-width:{width}px; border-radius:12px; box-shadow:0 8px 20px rgba(0,0,0,0.5);"></div>'
         except Exception:
             pass
+    return f'<div style="text-align:center; position:relative; z-index:2;"><img src="{RAW_GITHUB_LOGO_URL}" style="max-width:{width}px; border-radius:12px; box-shadow:0 8px 20px rgba(0,0,0,0.5);"></div>'
 
-    # Check 2: Direct Raw GitHub CDN
-    return f'<div style="text-align:center;"><img src="{RAW_GITHUB_LOGO_URL}" style="max-width:{width}px; border-radius:12px; box-shadow:0 8px 20px rgba(0,0,0,0.5);"></div>'
-
-# ---------------- THEME ----------------
+# ---------------- THEME & FLOATING SKY ANIMATION ----------------
 st.markdown("""
 <style>
 #MainMenu { visibility: hidden; }
 footer { visibility: hidden; }
 header { visibility: hidden; }
 
+/* SKY ANIMATION BACKGROUND */
 .stApp {
-    background: linear-gradient(135deg, #07111f, #0f172a, #111827);
-    color: white;
+    background: radial-gradient(circle at 50% 20%, #0d1b2a, #0b131f, #050a0f);
+    color: #e2e8f0;
+    overflow-x: hidden;
 }
 
+/* Floating Sky Orbs / Clouds */
+.sky-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+}
+
+.cloud {
+    position: absolute;
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.15) 0%, rgba(2, 132, 199, 0) 70%);
+    border-radius: 50%;
+    animation: floatSky 12s infinite ease-in-out;
+}
+
+.cloud-1 { width: 350px; height: 350px; top: 10%; left: -5%; animation-duration: 16s; }
+.cloud-2 { width: 450px; height: 450px; top: 55%; right: -10%; animation-duration: 20s; animation-delay: -5s; }
+.cloud-3 { width: 250px; height: 250px; top: 30%; left: 60%; animation-duration: 14s; animation-delay: -8s; }
+
+@keyframes floatSky {
+    0% { transform: translateY(0px) translateX(0px) scale(1); opacity: 0.4; }
+    50% { transform: translateY(-30px) translateX(20px) scale(1.1); opacity: 0.8; }
+    100% { transform: translateY(0px) translateX(0px) scale(1); opacity: 0.4; }
+}
+
+/* DARK TEXT HERO BANNERS */
 .hero {
     padding: 25px;
     border-radius: 18px;
-    background: linear-gradient(135deg, #0284c7, #0f766e);
+    background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
     box-shadow: 0px 15px 35px rgba(0,0,0,.45);
     margin-bottom: 20px;
     margin-top: 15px;
     text-align: center;
+    position: relative;
+    z-index: 2;
 }
 
+/* Darkened Header Text */
 .hero h1 {
     font-size: 45px;
     font-weight: 900;
-    color: white;
+    color: #0f172a !important; /* Dark Text */
+    margin-bottom: 5px;
 }
 
 .hero h3 {
-    color: #dbeafe;
+    color: #1e293b !important; /* Dark Text */
+    font-weight: 700;
+}
+
+.hero p {
+    color: #334155 !important; /* Dark Text */
+    font-weight: 600;
 }
 
 .stButton>button {
@@ -91,6 +130,13 @@ header { visibility: hidden; }
     background: #0369a1;
 }
 </style>
+
+<!-- ANIMATED BACKGROUND ELEMENTS -->
+<div class="sky-container">
+    <div class="cloud cloud-1"></div>
+    <div class="cloud cloud-2"></div>
+    <div class="cloud cloud-3"></div>
+</div>
 """, unsafe_allow_html=True)
 
 # ---------------- FAIL-PROOF SESSION-BASED DATABASE ENGINE ----------------
@@ -207,9 +253,6 @@ if not st.session_state["authenticated"]:
 
 # ---------------- MAIN APPLICATION INTERFACE ----------------
 else:
-    # ==========================================================
-    # PREMIUM ENTERPRISE SIDEBAR
-    # ==========================================================
     with st.sidebar:
         st.markdown(get_logo_html(180), unsafe_allow_html=True)
 
