@@ -16,6 +16,10 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# --- AVATAR / LOGO IMAGE URL ---
+# To use your exact personal photo: upload it to your repo and set this to "profile.jpg" or your image's direct URL.
+AVATAR_IMAGE_URL = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80"
+
 # --- ADMIN SECURITY KEY ---
 ADMIN_SECRET_KEY = "theWORDofGOD"
 
@@ -97,7 +101,7 @@ def load_file_data(uploaded_file):
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-# --- IMPROVED VOICE ENGINE (BROWSER & USER-GESTURE COMPATIBLE) ---
+# --- VOICE ENGINE ---
 def trigger_audio_guide(text_to_speak):
     st.session_state['last_audio_text'] = text_to_speak
     safe_text = text_to_speak.replace("'", "\\'").replace("\n", " ")
@@ -133,7 +137,6 @@ def trigger_audio_guide(text_to_speak):
                 alert("Speech synthesis is not supported in this browser.");
             }}
         }}
-        // Attempt autoplay
         setTimeout(speakText, 300);
     </script>
     """
@@ -265,9 +268,10 @@ st.markdown("""
         padding: 10px;
     }
     .logo-img {
-        width: 110px;
-        height: 110px;
+        width: 120px;
+        height: 120px;
         border-radius: 50%;
+        object-fit: cover;
         border: 4px solid #38bdf8;
         box-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
     }
@@ -281,10 +285,10 @@ if not st.session_state['loading_complete']:
     st.rerun()
 
 elif not st.session_state['authenticated']:
-    # ONLINE CHARACTER LOGO
-    st.markdown("""
+    # LANDING PAGE AVATAR LOGO
+    st.markdown(f"""
         <div class="logo-container">
-            <img class="logo-img" src="https://img.freepik.com/free-vector/gradient-ai-avatar_23-2150529851.jpg" alt="DA-CRE Logo"/>
+            <img class="logo-img" src="{AVATAR_IMAGE_URL}" alt="DA-CRE Profile"/>
             <h1 style='color:#38bdf8; font-weight:900; margin-top:10px;'>DA-CRE WORKFLOW PLATFORM</h1>
         </div>
     """, unsafe_allow_html=True)
@@ -326,10 +330,10 @@ elif not st.session_state['authenticated']:
                 st.rerun()
 
 else:
-    # --- SIDEBAR NAVIGATION WITH CHARACTER LOGO ---
-    st.sidebar.markdown("""
+    # --- SIDEBAR NAVIGATION WITH PROFILE IMAGE ---
+    st.sidebar.markdown(f"""
         <div style="text-align:center;">
-            <img src="https://img.freepik.com/free-vector/gradient-ai-avatar_23-2150529851.jpg" style="width:80px; height:80px; border-radius:50%; border:3px solid #38bdf8;"/>
+            <img src="{AVATAR_IMAGE_URL}" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:3px solid #38bdf8;"/>
         </div>
     """, unsafe_allow_html=True)
     st.sidebar.title(f"👤 {st.session_state['user_name']}")
@@ -392,14 +396,15 @@ else:
             # ==========================================
             # 2. DATABASE WORKFLOW GRID & CLEANUP ENGINE
             # ==========================================
-            # EDITABLE GRID FOR DATABASE WORKFLOW
+            st.markdown("### ⚙️ DATABASE WORKFLOW TABLE (Editable Working Area)")
+            st.caption("Click column headers/rows to highlight, edit cells directly, or arrange data. All updates instantly sync above.")
+
+            # CLEAN INDENTED EDITABLE GRID (FIXED FOR STRICT 4-SPACE INDENT)
             edited_df = st.data_editor(
                 st.session_state['current_data'],
                 num_rows="dynamic",
                 use_container_width=True,
                 selection_mode="multi-column",
-                key="database_workflow_editor"
-            )
                 key="database_workflow_editor"
             )
 
