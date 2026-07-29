@@ -437,7 +437,7 @@ else:
 
             with c4:
                 if st.button("🔽 Sort Descending", use_container_width=True):
-                    st.session_state['current_data'] = df.sort_values(by=sort_column, False)
+                    st.session_state['current_data'] = df.sort_values(by=sort_column, ascending=False)
                     sync_to_database_workflow()
                     st.rerun()
 
