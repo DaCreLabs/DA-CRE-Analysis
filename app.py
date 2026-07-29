@@ -21,10 +21,10 @@ APP_VERSION = "Enterprise 2026"
 PRIMARY_LOGO_FILENAME = "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png"
 RAW_GITHUB_LOGO_URL = "https://raw.githubusercontent.com/DaCreLabs/DA-CRE-Analysis/main/ChatGPT%20Image%20Jul%2029%2C%202026%2C%2002_27_41%20PM.png"
 
-# ---------------- PAGE CONFIG WITH APP LOGO ICON ----------------
+# ---------------- PAGE CONFIG ----------------
 st.set_page_config(
     page_title="DACRE ANALYSIS",
-    page_icon=RAW_GITHUB_LOGO_URL,
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -47,9 +47,8 @@ if not st.session_state['app_loaded']:
             height: 80vh;
             text-align: center;
         ">
-            <img src="{RAW_GITHUB_LOGO_URL}" style="width: 180px; border-radius: 20px; animation: pulse 1.5s infinite ease-in-out; box-shadow: 0 10px 30px rgba(0,0,0,0.6);">
-            <h2 style="color: #38bdf8; font-weight: 900; margin-top: 25px; font-family: sans-serif;">DACRE ANALYSIS</h2>
-            <p style="color: #94a3b8; font-weight: 600;">Initializing Enterprise Environment...</p>
+            <h1 style="color: #ffffff; font-weight: 900; font-size: 50px; font-family: sans-serif; letter-spacing: 2px;">DACRE ANALYSIS</h1>
+            <p style="color: #94a3b8; font-weight: 600; font-size: 18px;">Initializing Enterprise Environment...</p>
             <div style="
                 border: 4px solid rgba(255,255,255,0.1);
                 border-left-color: #38bdf8;
@@ -57,7 +56,7 @@ if not st.session_state['app_loaded']:
                 width: 45px;
                 height: 45px;
                 animation: spin 1s linear infinite;
-                margin-top: 15px;
+                margin-top: 20px;
             "></div>
         </div>
         <style>
@@ -65,27 +64,11 @@ if not st.session_state['app_loaded']:
                 0% {{ transform: rotate(0deg); }}
                 100% {{ transform: rotate(360deg); }}
             }}
-            @keyframes pulse {{
-                0% {{ transform: scale(1); opacity: 0.8; }}
-                50% {{ transform: scale(1.08); opacity: 1; }}
-                100% {{ transform: scale(1); opacity: 0.8; }}
-            }}
         </style>
         """, unsafe_allow_html=True)
         time.sleep(5)
     loading_placeholder.empty()
     st.session_state['app_loaded'] = True
-
-# ---------------- LOGO ENGINE ----------------
-def get_logo_html(width=250):
-    if os.path.exists(PRIMARY_LOGO_FILENAME):
-        try:
-            with open(PRIMARY_LOGO_FILENAME, "rb") as img_file:
-                b64 = base64.b64encode(img_file.read()).decode()
-                return f'<div style="text-align:center; position:relative; z-index:2;"><img src="data:image/png;base64,{b64}" style="max-width:{width}px; border-radius:12px; box-shadow:0 8px 20px rgba(0,0,0,0.5);"></div>'
-        except Exception:
-            pass
-    return f'<div style="text-align:center; position:relative; z-index:2;"><img src="{RAW_GITHUB_LOGO_URL}" style="max-width:{width}px; border-radius:12px; box-shadow:0 8px 20px rgba(0,0,0,0.5);"></div>'
 
 # ---------------- THEME & CUSTOM STYLING ----------------
 st.markdown("""
@@ -97,7 +80,7 @@ header { visibility: hidden; }
 /* BACKGROUND & SKY ANIMATION */
 .stApp {
     background: radial-gradient(circle at 50% 20%, #0d1b2a, #0b131f, #050a0f);
-    color: #e2e8f0;
+    color: #ffffff;
     overflow-x: hidden;
 }
 
@@ -129,13 +112,14 @@ header { visibility: hidden; }
     100% { transform: translateY(0px) translateX(0px) scale(1); opacity: 0.4; }
 }
 
-/* HERO CONTAINER & BOLD BLACK TEXT */
+/* HERO CONTAINER & BOLD WHITE TEXT */
 .hero {
-    padding: 25px;
+    padding: 30px;
     border-radius: 18px;
-    background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
-    box-shadow: 0px 15px 35px rgba(0,0,0,.45);
-    margin-bottom: 20px;
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95));
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0px 15px 35px rgba(0,0,0,.6);
+    margin-bottom: 25px;
     margin-top: 15px;
     text-align: center;
     position: relative;
@@ -144,36 +128,42 @@ header { visibility: hidden; }
 }
 
 .hero h1 {
-    font-size: 45px;
+    font-size: 48px;
     font-weight: 900 !important;
-    color: #000000 !important; /* Bold Black */
-    margin-bottom: 5px;
+    color: #ffffff !important; /* Bold White */
+    margin-bottom: 10px;
+    letter-spacing: 1.5px;
 }
 
 .hero h3 {
-    color: #000000 !important; /* Bold Black */
-    font-weight: 800 !important;
+    color: #f1f5f9 !important; /* Bold White / Light Grey */
+    font-weight: 700 !important;
+    font-size: 22px;
 }
 
 .hero p {
-    color: #000000 !important; /* Bold Black */
-    font-weight: 700 !important;
+    color: #cbd5e1 !important; /* Soft White */
+    font-weight: 600 !important;
+    font-size: 15px;
 }
 
-/* ALL FILL-IN INPUT BARS -> LIGHT BROWN COLORFILL */
+/* ALL FILL-IN INPUT BARS -> LIGHT BROWN COLORFILL & GREY PLACEHOLDERS */
 div[data-baseweb="input"] > div, 
 input, 
 textarea, 
 .stSelectbox > div > div {
     background-color: #d7ccc8 !important; /* Light Brown Fill */
-    color: #3e2723 !important; /* Dark Brown Text */
-    font-weight: bold !important;
+    color: #1a0f0d !important; /* Dark Text when typing */
+    font-weight: 600 !important;
     border-radius: 8px !important;
     border: 1px solid #a1887f !important;
 }
 
+/* Grey Placeholders styling */
 input::placeholder {
-    color: #5d4037 !important;
+    color: #757575 !important; /* Grey placeholder format */
+    font-style: italic;
+    font-weight: 500 !important;
 }
 
 /* ANIMATED SIGN IN / REGISTER PANE LANDING EFFECT */
@@ -278,12 +268,10 @@ if 'current_data' not in st.session_state:
 if 'formula_logs' not in st.session_state:
     st.session_state["formula_logs"] = []
 
-# ---------------- LANDING HEADER & LOGO ----------------
-st.markdown(get_logo_html(300), unsafe_allow_html=True)
-
+# ---------------- LANDING HEADER (ROCKET & SMALL LOGO REMOVED) ----------------
 st.markdown("""
 <div class="hero">
-    <h1>🚀 DACRE ANALYSIS</h1>
+    <h1>DACRE ANALYSIS</h1>
     <h3>Enterprise AI Spreadsheet & Data Analytics Platform</h3>
     <p>Upload • Clean • Analyse • Visualize • Automate • Export</p>
 </div>
@@ -295,8 +283,8 @@ if not st.session_state["authenticated"]:
     
     with auth_tab1:
         st.subheader("Account Login")
-        login_user_input = st.text_input("Username", key="login_user")
-        login_pass_input = st.text_input("Password", type="password", key="login_pass")
+        login_user_input = st.text_input("Username", placeholder="uchechukwudavid", key="login_user")
+        login_pass_input = st.text_input("Password", type="password", placeholder="Enter your password", key="login_pass")
         if st.button("Sign In"):
             user_data = login_user(login_user_input, login_pass_input)
             if user_data:
@@ -312,10 +300,10 @@ if not st.session_state["authenticated"]:
 
     with auth_tab2:
         st.subheader("Create New Account")
-        reg_user = st.text_input("New Username", key="reg_user")
-        reg_email = st.text_input("Email Address", key="reg_email")
-        reg_pass = st.text_input("New Password", type="password", key="reg_pass")
-        reg_secret = st.text_input("Admin Secret Key (Optional for Admin Role)", type="password", key="reg_secret")
+        reg_user = st.text_input("Username", placeholder="uchechukwudavid", key="reg_user")
+        reg_email = st.text_input("Email Address", placeholder="david@example.com", key="reg_email")
+        reg_pass = st.text_input("New Password", type="password", placeholder="Create a strong password", key="reg_pass")
+        reg_secret = st.text_input("Admin Secret Key (Optional for Admin Role)", type="password", placeholder="Enter secret key if applicable", key="reg_secret")
         
         if st.button("Register"):
             if reg_user and reg_pass and reg_email:
@@ -331,10 +319,6 @@ if not st.session_state["authenticated"]:
 # ---------------- MAIN APPLICATION INTERFACE ----------------
 else:
     with st.sidebar:
-        st.markdown(get_logo_html(180), unsafe_allow_html=True)
-
-        st.markdown("---")
-
         st.markdown("## 👋 Welcome")
         st.success(st.session_state["user_name"])
         st.caption(st.session_state["user_email"])
