@@ -75,7 +75,6 @@ def arrange_and_clean_data(df):
                 .str.replace(',', '', regex=False)
                 .str.strip()
             )
-            # Convert to numeric if possible without breaking non-numerics
             numeric_series = pd.to_numeric(cleaned_col, errors='ignore')
             cleaned_df[col] = numeric_series
     return cleaned_df
@@ -101,7 +100,7 @@ def load_file_data(uploaded_file):
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-# --- DAVID'S VOICE ENGINE ---
+# --- DAVID'S VOICE ENGINE (ENHANCED NIGERIAN MALE VOICE ACCENT & PITCH) ---
 def trigger_audio_guide(text_to_speak):
     if st.session_state.get('audio_guide_enabled', True):
         safe_text = text_to_speak.replace("'", "\\'").replace("\n", " ")
@@ -110,17 +109,28 @@ def trigger_audio_guide(text_to_speak):
             if ('speechSynthesis' in window) {{
                 window.speechSynthesis.cancel();
                 var msg = new SpeechSynthesisUtterance('{safe_text}');
-                msg.rate = 0.82;
-                msg.pitch = 0.78;
+                msg.rate = 0.88;
+                msg.pitch = 0.65; // Deep Male Pitch Tuning
                 
-                var voices = window.speechSynthesis.getVoices();
-                var selectedVoice = voices.find(function(v) {{
-                    return v.lang.includes('en-NG') || v.name.includes('Male') || v.name.includes('David') || v.lang.includes('en-GB');
-                }});
-                if (selectedVoice) {{
-                    msg.voice = selectedVoice;
+                function setVoice() {{
+                    var voices = window.speechSynthesis.getVoices();
+                    var selectedVoice = voices.find(function(v) {{
+                        return v.lang.includes('en-NG') || 
+                               (v.name.toLowerCase().includes('male') && v.lang.includes('en')) ||
+                               v.name.toLowerCase().includes('david') || 
+                               v.lang.includes('en-GB');
+                    }});
+                    if (selectedVoice) {{
+                        msg.voice = selectedVoice;
+                    }}
+                    window.speechSynthesis.speak(msg);
                 }}
-                window.speechSynthesis.speak(msg);
+
+                if (window.speechSynthesis.getVoices().length === 0) {{
+                    window.speechSynthesis.onvoiceschanged = setVoice;
+                }} else {{
+                    setVoice();
+                }}
             }}
         </script>
         """
@@ -240,7 +250,7 @@ elif not st.session_state['authenticated']:
                     st.session_state['user_email'] = l_email.strip().lower()
                     st.session_state['user_name'] = u[0]
                     restore_from_database_workflow(st.session_state['user_email'])
-                    trigger_audio_guide(f"Welcome back {u[0]}! Workflow restored.")
+                    trigger_audio_guide(f"Welcome back {u[0]}! Your database workflow has been restored.")
                     st.rerun()
                 else:
                     st.error("Invalid credentials.")
@@ -258,7 +268,7 @@ elif not st.session_state['authenticated']:
                 st.session_state['authenticated'] = True
                 st.session_state['user_email'] = s_email.strip().lower()
                 st.session_state['user_name'] = s_fname
-                trigger_audio_guide(f"Welcome {s_fname}! Workspace initialized.")
+                trigger_audio_guide(f"Welcome {s_fname}! Account created.")
                 st.rerun()
 
 else:
@@ -289,7 +299,7 @@ else:
             # 1. TOP SECTION: DATA BOARD (LIVE GRID)
             # ==========================================
             st.markdown("### 📋 DATA BOARD")
-            st.caption("Live editable grid syncs directly with the database_workflow engine.")
+            st.caption("Live interactive data board synced with database_workflow table.")
 
             # Live Data Grid Display
             edited_df = st.data_editor(
@@ -299,32 +309,31 @@ else:
                 key="data_board_editor"
             )
 
-            # Detect direct user edits inside the grid and update the database_workflow
+            # Detect direct user edits inside the grid and sync back
             if not edited_df.equals(st.session_state['current_data']):
                 st.session_state['current_data'] = edited_df
                 sync_to_database_workflow()
 
-            # PERMANENT DOWNLOAD BUTTON RIGHT AT DATA BOARD LEVEL
+            # PERMANENT CSV / EXCEL DOWNLOAD FIX (NO XLSSXWRITER CRASH)
             st.markdown("##### 💾 Download Finalized Work Sheet")
-            out_buffer = io.BytesIO()
-            with pd.ExcelWriter(out_buffer, engine='xlsxwriter') as writer:
-                st.session_state['current_data'].to_excel(writer, sheet_name='Data_Board', index=False)
+
+            csv_data = st.session_state['current_data'].to_csv(index=False).encode('utf-8')
             
             st.download_button(
-                label="⬇️ Download Permanently to Computer (.xlsx)",
-                data=out_buffer.getvalue(),
-                file_name=f"Finalized_{st.session_state['active_file_name'] or 'Sheet'}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                label="⬇️ Download Sheet Permanently to Computer (.csv)",
+                data=csv_data,
+                file_name=f"Finalized_{st.session_state['active_file_name'] or 'Sheet'}.csv",
+                mime="text/csv",
                 use_container_width=True
             )
 
             st.write("---")
 
             # ==========================================
-            # 2. DATABASE WORKFLOW CONTROLS & CLEANUP
+            # 2. WORKFLOW ENGINE & DATA CLEANUP
             # ==========================================
             st.markdown("### ⚙️ DATABASE WORKFLOW ENGINE & CLEANUP TOOLBAR")
-            st.caption("Actions here process raw data in database_workflow and automatically update the DATA BOARD above.")
+            st.caption("Selecting cleanup options transforms data in database_workflow and automatically updates the DATA BOARD.")
 
             c1, c2, c3, c4 = st.columns(4)
             df = st.session_state['current_data'].copy()
@@ -334,8 +343,8 @@ else:
                     cleaned_df = arrange_and_clean_data(df)
                     st.session_state['current_data'] = cleaned_df
                     sync_to_database_workflow()
-                    st.success("Data arranged and numeric values cleaned!")
-                    trigger_audio_guide("Data arranged and updated on the DATA BOARD.")
+                    st.success("Data arranged and formatting cleaned!")
+                    trigger_audio_guide("Data arranged successfully.")
                     st.rerun()
 
             with c2:
@@ -348,7 +357,7 @@ else:
                     st.rerun()
 
             with c3:
-                sort_column = st.selectbox("Sort Target Column", df.columns, key="sort_col")
+                sort_column = st.selectbox("Sort Column Target", df.columns, key="sort_col")
                 if st.button("🔼 Sort Ascending", use_container_width=True):
                     st.session_state['current_data'] = df.sort_values(by=sort_column, ascending=True)
                     sync_to_database_workflow()
@@ -365,30 +374,21 @@ else:
             # ==========================================
             # 3. BOTTOM SECTION: SHEET FORMULAS DROPDOWN
             # ==========================================
-            st.markdown("### 📐 SHEET FORMULAS (GOOGLE SHEETS & EXCEL ENGINE)")
+            st.markdown("### 📐 SHEET FORMULAS (EXCEL & GOOGLE SHEETS FORMULA DROPDOWN)")
             
-            # FULL EXCEL & GOOGLE SHEETS FORMULA LIST
             all_formulas = [
-                # Lookup & Reference
                 "VLOOKUP", "XLOOKUP", "HLOOKUP", "INDEX / MATCH", "INDIRECT", "OFFSET", "IMPORTRANGE",
-                # Logical & Conditional
                 "IF", "IFS", "IFERROR", "IFNA", "AND", "OR", "XOR", "NOT", "SWITCH",
-                # Math & Aggregations
                 "SUM", "SUMIF", "SUMIFS", "COUNT", "COUNTA", "COUNTIF", "COUNTIFS", "AVERAGE", "AVERAGEIF", "AVERAGEIFS", "MAX", "MIN", "PRODUCT",
-                # Text Operations
                 "CONCATENATE", "TEXTJOIN", "SPLIT", "UPPER", "LOWER", "PROPER", "TRIM", "CLEAN", "LEFT", "RIGHT", "MID", "LEN", "SUBSTITUTE", "REPLACE", "REGEXEXTRACT", "REGEXREPLACE",
-                # Array & Dynamic Filter Functions (Google Sheets & Excel 365)
                 "ARRAYFORMULA", "QUERY", "FILTER", "SORT", "SORTBY", "UNIQUE", "SEQUENCE", "RANDARRAY", "FLATTEN", "TRANSPOSE",
-                # Date & Time
                 "TODAY", "NOW", "DATE", "DATEDIF", "YEAR", "MONTH", "DAY", "EDATE", "EOMONTH",
-                # Advanced / Custom
                 "LAMBDA", "MAP", "REDUCE", "BYROW", "BYCOL"
             ]
 
-            selected_formula = st.selectbox("🔍 Select Sheet Formula", all_formulas, key="sheet_formula_dropdown")
+            selected_formula = st.selectbox("🔍 Dropdown Sheet Formulas", all_formulas, key="sheet_formula_dropdown")
 
-            # INTERACTIVE FORMULA PARAMETERS & EXECUTION
-            st.markdown(f"**Execute `{selected_formula}` on Database Workflow:**")
+            st.markdown(f"**Execute `={selected_formula}()` on Database Workflow:**")
             
             p_col1, p_col2, p_col3 = st.columns(3)
 
@@ -405,7 +405,7 @@ else:
                         st.session_state['formula_logs'].append(f"{selected_formula}('{search_value}') -> {res_val}")
                         sync_to_database_workflow()
                     else:
-                        st.warning("No matching row found in the table.")
+                        st.warning("No matching row found in dataset.")
 
             elif selected_formula == "CONCATENATE":
                 with p_col1: c_first = st.selectbox("First Text Column", df.columns, key="c_1")
@@ -452,7 +452,7 @@ else:
                     st.rerun()
 
             else:
-                st.info(f"The formula **`={selected_formula}()`** is listed and ready. Define target parameters to run directly on your dataset.")
+                st.info(f"Formula **`={selected_formula}()`** is ready in the workflow engine.")
 
         else:
             st.info("No active dataset in the database_workflow. Please select or extract a file from the File Vault menu.")
@@ -486,7 +486,7 @@ else:
                 sync_to_database_workflow()
                 
                 st.success(f"Successfully extracted `{selected_file}` into database_workflow table and populated DATA BOARD!")
-                trigger_audio_guide(f"Extracted {selected_file} into workflow database. Ready on DATA BOARD.")
+                trigger_audio_guide(f"Extracted {selected_file} into workflow database.")
                 st.rerun()
         else:
             st.warning("Your File Vault is currently empty. Upload files in the 'Add New Files to Vault' tab.")
@@ -519,4 +519,4 @@ else:
             st.dataframe(pd.read_sql_query("SELECT user_email, active_filename, updated_at FROM database_workflow", conn), use_container_width=True)
             conn.close()
         elif passkey:
-            st.error("Incorrect Admin Passkey.")
+            st.error("Incorrect Admin Passkey.")=
