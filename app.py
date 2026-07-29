@@ -6,6 +6,7 @@ import time
 import io
 import json
 import os
+import base64
 from datetime import datetime
 import plotly.express as px
 import plotly.graph_objects as go
@@ -27,21 +28,22 @@ st.set_page_config(
 
 ADMIN_SECRET_KEY = "theWORDofGOD"
 
-# ---------------- EMBEDDED DIRECT SVG LOGO ----------------
-# Pure code-rendered vector logo guarantees 100% display rate everywhere
-def get_logo_html(width=220):
-    return f"""
-    <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 15px;">
-        <svg width="{width}" height="60" viewBox="0 0 350 70" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="350" height="70" rx="12" fill="#0f172a"/>
-            <path d="M25 45L40 20L55 45H25Z" fill="#38bdf8" stroke="#0284c7" stroke-width="2"/>
-            <circle cx="40" cy="20" r="5" fill="#f43f5e"/>
-            <text x="70" y="45" font-family="Arial, sans-serif" font-weight="900" font-size="26" fill="#ffffff" letter-spacing="1">DACRE</text>
-            <text x="180" y="45" font-family="Arial, sans-serif" font-weight="700" font-size="26" fill="#38bdf8" letter-spacing="1">ANALYSIS</text>
-            <line x1="70" y1="52" x2="300" y2="52" stroke="#0284c7" stroke-width="3" stroke-linecap="round"/>
-        </svg>
-    </div>
-    """
+# ---------------- LOGO ENGINE (EXACT GITHUB FILE MATCH) ----------------
+PRIMARY_LOGO_FILENAME = "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png"
+RAW_GITHUB_LOGO_URL = "https://raw.githubusercontent.com/DaCreLabs/DA-CRE-Analysis/main/ChatGPT%20Image%20Jul%2029%2C%202026%2C%2002_27_41%20PM.png"
+
+def get_logo_html(width=250):
+    # Check 1: Local repository file
+    if os.path.exists(PRIMARY_LOGO_FILENAME):
+        try:
+            with open(PRIMARY_LOGO_FILENAME, "rb") as img_file:
+                b64 = base64.b64encode(img_file.read()).decode()
+                return f'<div style="text-align:center;"><img src="data:image/png;base64,{b64}" style="max-width:{width}px; border-radius:12px; box-shadow:0 8px 20px rgba(0,0,0,0.5);"></div>'
+        except Exception:
+            pass
+
+    # Check 2: Direct Raw GitHub CDN
+    return f'<div style="text-align:center;"><img src="{RAW_GITHUB_LOGO_URL}" style="max-width:{width}px; border-radius:12px; box-shadow:0 8px 20px rgba(0,0,0,0.5);"></div>'
 
 # ---------------- THEME ----------------
 st.markdown("""
@@ -61,6 +63,7 @@ header { visibility: hidden; }
     background: linear-gradient(135deg, #0284c7, #0f766e);
     box-shadow: 0px 15px 35px rgba(0,0,0,.45);
     margin-bottom: 20px;
+    margin-top: 15px;
     text-align: center;
 }
 
@@ -153,7 +156,7 @@ if 'formula_logs' not in st.session_state:
     st.session_state["formula_logs"] = []
 
 # ---------------- LANDING HEADER & LOGO ----------------
-st.markdown(get_logo_html(350), unsafe_allow_html=True)
+st.markdown(get_logo_html(300), unsafe_allow_html=True)
 
 st.markdown("""
 <div class="hero">
@@ -208,7 +211,7 @@ else:
     # PREMIUM ENTERPRISE SIDEBAR
     # ==========================================================
     with st.sidebar:
-        st.markdown(get_logo_html(220), unsafe_allow_html=True)
+        st.markdown(get_logo_html(180), unsafe_allow_html=True)
 
         st.markdown("---")
 
