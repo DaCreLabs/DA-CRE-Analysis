@@ -31,6 +31,51 @@ st.set_page_config(
 
 ADMIN_SECRET_KEY = "theWORDofGOD"
 
+# ---------------- INITIAL 5-SECOND LOADING EFFECT ----------------
+if 'app_loaded' not in st.session_state:
+    st.session_state['app_loaded'] = False
+
+if not st.session_state['app_loaded']:
+    loading_placeholder = st.empty()
+    with loading_placeholder.container():
+        st.markdown(f"""
+        <div style="
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 80vh;
+            text-align: center;
+        ">
+            <img src="{RAW_GITHUB_LOGO_URL}" style="width: 180px; border-radius: 20px; animation: pulse 1.5s infinite ease-in-out; box-shadow: 0 10px 30px rgba(0,0,0,0.6);">
+            <h2 style="color: #38bdf8; font-weight: 900; margin-top: 25px; font-family: sans-serif;">DACRE ANALYSIS</h2>
+            <p style="color: #94a3b8; font-weight: 600;">Initializing Enterprise Environment...</p>
+            <div style="
+                border: 4px solid rgba(255,255,255,0.1);
+                border-left-color: #38bdf8;
+                border-radius: 50%;
+                width: 45px;
+                height: 45px;
+                animation: spin 1s linear infinite;
+                margin-top: 15px;
+            "></div>
+        </div>
+        <style>
+            @keyframes spin {{
+                0% {{ transform: rotate(0deg); }}
+                100% {{ transform: rotate(360deg); }}
+            }}
+            @keyframes pulse {{
+                0% {{ transform: scale(1); opacity: 0.8; }}
+                50% {{ transform: scale(1.08); opacity: 1; }}
+                100% {{ transform: scale(1); opacity: 0.8; }}
+            }}
+        </style>
+        """, unsafe_allow_html=True)
+        time.sleep(5)
+    loading_placeholder.empty()
+    st.session_state['app_loaded'] = True
+
 # ---------------- LOGO ENGINE ----------------
 def get_logo_html(width=250):
     if os.path.exists(PRIMARY_LOGO_FILENAME):
@@ -42,21 +87,20 @@ def get_logo_html(width=250):
             pass
     return f'<div style="text-align:center; position:relative; z-index:2;"><img src="{RAW_GITHUB_LOGO_URL}" style="max-width:{width}px; border-radius:12px; box-shadow:0 8px 20px rgba(0,0,0,0.5);"></div>'
 
-# ---------------- THEME & FLOATING SKY ANIMATION ----------------
+# ---------------- THEME & CUSTOM STYLING ----------------
 st.markdown("""
 <style>
 #MainMenu { visibility: hidden; }
 footer { visibility: hidden; }
 header { visibility: hidden; }
 
-/* SKY ANIMATION BACKGROUND */
+/* BACKGROUND & SKY ANIMATION */
 .stApp {
     background: radial-gradient(circle at 50% 20%, #0d1b2a, #0b131f, #050a0f);
     color: #e2e8f0;
     overflow-x: hidden;
 }
 
-/* Floating Sky Orbs / Clouds */
 .sky-container {
     position: fixed;
     top: 0;
@@ -85,7 +129,7 @@ header { visibility: hidden; }
     100% { transform: translateY(0px) translateX(0px) scale(1); opacity: 0.4; }
 }
 
-/* DARK TEXT HERO BANNERS */
+/* HERO CONTAINER & BOLD BLACK TEXT */
 .hero {
     padding: 25px;
     border-radius: 18px;
@@ -96,24 +140,57 @@ header { visibility: hidden; }
     text-align: center;
     position: relative;
     z-index: 2;
+    animation: fadeInSlide 1.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Darkened Header Text */
 .hero h1 {
     font-size: 45px;
-    font-weight: 900;
-    color: #0f172a !important; /* Dark Text */
+    font-weight: 900 !important;
+    color: #000000 !important; /* Bold Black */
     margin-bottom: 5px;
 }
 
 .hero h3 {
-    color: #1e293b !important; /* Dark Text */
-    font-weight: 700;
+    color: #000000 !important; /* Bold Black */
+    font-weight: 800 !important;
 }
 
 .hero p {
-    color: #334155 !important; /* Dark Text */
-    font-weight: 600;
+    color: #000000 !important; /* Bold Black */
+    font-weight: 700 !important;
+}
+
+/* ALL FILL-IN INPUT BARS -> LIGHT BROWN COLORFILL */
+div[data-baseweb="input"] > div, 
+input, 
+textarea, 
+.stSelectbox > div > div {
+    background-color: #d7ccc8 !important; /* Light Brown Fill */
+    color: #3e2723 !important; /* Dark Brown Text */
+    font-weight: bold !important;
+    border-radius: 8px !important;
+    border: 1px solid #a1887f !important;
+}
+
+input::placeholder {
+    color: #5d4037 !important;
+}
+
+/* ANIMATED SIGN IN / REGISTER PANE LANDING EFFECT */
+div[data-testid="stForm"], 
+.stTabs {
+    animation: fadeInSlide 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeInSlide {
+    0% {
+        opacity: 0;
+        transform: translateY(40px) scale(0.96);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 
 .stButton>button {
@@ -139,7 +216,7 @@ header { visibility: hidden; }
 </div>
 """, unsafe_allow_html=True)
 
-# ---------------- FAIL-PROOF SESSION-BASED DATABASE ENGINE ----------------
+# ---------------- SESSION-BASED DATABASE ENGINE ----------------
 def make_hashes(password):
     return hashlib.sha256(str.encode(password)).hexdigest()
 
