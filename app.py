@@ -15,8 +15,9 @@ import plotly.express as px
 APP_NAME = "DACRE ANALYSIS"
 APP_VERSION = "Enterprise 2026"
 
-PRIMARY_LOGO_FILENAME = "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png"
-RAW_GITHUB_LOGO_URL = "https://raw.githubusercontent.com/DaCreLabs/DA-CRE-Analysis/main/ChatGPT%20Image%20Jul%2029%2C%202026%2C%2002_27_41%20PM.png"
+# UPDATED TO CLEAN SHORT NAME
+PRIMARY_LOGO_FILENAME = "logo.png"
+RAW_GITHUB_LOGO_URL = "https://raw.githubusercontent.com/DaCreLabs/DA-CRE-Analysis/main/logo.png"
 
 # ---------------- PAGE CONFIG ----------------
 st.set_page_config(
@@ -28,22 +29,38 @@ st.set_page_config(
 
 ADMIN_SECRET_KEY = "theWORDofGOD"
 
-# ---------------- LOGO RENDER ENGINE (WITH FAILSAFE) ----------------
+# ---------------- FAILSAFE LOGO RENDER ENGINE ----------------
 @st.cache_data
 def load_logo_b64():
-    if os.path.exists(PRIMARY_LOGO_FILENAME):
-        try:
-            with open(PRIMARY_LOGO_FILENAME, "rb") as img_file:
-                return base64.b64encode(img_file.read()).decode()
-        except Exception:
-            return None
+    # Check local filenames (logo.png or original long name)
+    for fn in [PRIMARY_LOGO_FILENAME, "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png"]:
+        if os.path.exists(fn):
+            try:
+                with open(fn, "rb") as img_file:
+                    return base64.b64encode(img_file.read()).decode()
+            except Exception:
+                pass
     return None
 
 def get_logo_html(width=220):
     b64 = load_logo_b64()
     if b64:
         return f'<div style="text-align:center; margin-bottom:12px;"><img src="data:image/png;base64,{b64}" style="max-width:{width}px; border-radius:12px; box-shadow:0 6px 16px rgba(0,0,0,0.5);"></div>'
-    return f'<div style="text-align:center; margin-bottom:12px;"><img src="{RAW_GITHUB_LOGO_URL}" style="max-width:{width}px; border-radius:12px; box-shadow:0 6px 16px rgba(0,0,0,0.5);" onerror="this.onerror=null; this.src=\'https://img.icons8.com/color/180/analytics.png\';"></div>'
+    
+    # SVG Analytics Logo Fallback if file isn't found
+    fallback_svg = base64.b64encode(b"""
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#0284c7" width="100" height="100">
+        <path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/>
+    </svg>
+    """).decode()
+    
+    return f'''
+    <div style="text-align:center; margin-bottom:12px;">
+        <img src="{RAW_GITHUB_LOGO_URL}" 
+             style="max-width:{width}px; border-radius:12px; box-shadow:0 6px 16px rgba(0,0,0,0.5);" 
+             onerror="this.onerror=null; this.src='data:image/svg+xml;base64,{fallback_svg}';">
+    </div>
+    '''
 
 # ---------------- INITIAL 5-SECOND HOVER LOADING SPLASH SCREEN ----------------
 if 'app_loaded' not in st.session_state:
@@ -133,7 +150,7 @@ div[data-testid="stWidgetLabel"] p {
     font-size: 18px;
 }
 
-/* INPUT BARS - LIGHT BROWN FILL & GREY PLACEHOLDERS */
+/* INPUT BARS */
 div[data-baseweb="input"] > div, 
 input, 
 textarea, 
