@@ -40,12 +40,11 @@ st.markdown("""
         100% { background-position: 0 0; }
     }
     
-    /* Background element index layer pushed backward to protect visibility elements */
     .stApp::before {
         content: "";
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
-        background: url('https://user-images.githubusercontent.com/2673119/31048080-86532e74-a612-11e7-8250-9343be34a781.png') repeat;
+        background: url('https://githubusercontent.com') repeat;
         opacity: 0.15;
         pointer-events: none;
         animation: floatSky 75s infinite linear;
@@ -237,3 +236,5 @@ elif not st.session_state.logged_in_user:
             if login_user in st.session_state.users and st.session_state.users[login_user]["password"] == login_pass:
                 st.session_state.logged_in_user = login_user
                 if st.session_state.users[login_user]["role"] == "master":
+                    st.session_state.last_spoken_phrase = "Welcome back, Master David. All sovereign admin control channels are operational."
+                else:
