@@ -44,38 +44,69 @@ st.markdown("""
         content: "";
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
-        background: url('https://user-images.githubusercontent.com/2673119/31048080-86532e74-a612-11e7-8250-9343be34a781.png') repeat;
+        background: url('https://githubusercontent.com') repeat;
         opacity: 0.18;
         pointer-events: none;
         animation: floatSky 75s infinite linear;
         z-index: 0;
     }
 
-    /* Modern Soft Cards */
+    /* Modern Solid Slate Cards for Absolute Form Contrast */
     .card-box {
-        background: rgba(31, 41, 55, 0.65) !important;
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.12) !important;
-        border-radius: 12px;
-        padding: 24px;
-        margin-top: 10px;
-        margin-bottom: 24px;
+        background-color: #1e293b !important;
+        border: 1px solid #334155 !important;
+        border-radius: 14px !important;
+        padding: 28px !important;
+        margin-top: 15px !important;
+        margin-bottom: 24px !important;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4) !important;
     }
 
+    /* Absolute Forced Visibility for Form Headings, Text Labels and Links */
+    h1, h2, h3, h4, h5, h6, p, label, span, div, [data-testid="stMarkdownContainer"] p {
+        color: #ffffff !important;
+    }
+    
+    /* Ensure Sidebar Text Color remains stark white */
+    [data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] h3 {
+        color: #ffffff !important;
+    }
+
+    /* Dynamic Hero Gradient Title */
     .hero-title {
         background: linear-gradient(90deg, #38bdf8 0%, #818cf8 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
+        font-family: 'Space Grotesk', sans-serif;
         font-size: 2.6rem;
         font-weight: 800;
         margin-bottom: 0.2rem;
     }
     
-    /* Security Intercept Box */
+    /* Interactive Navigation Tab Settings */
+    .stTabs [data-baseweb="tab"] {
+        color: #94a3b8 !important;
+        font-size: 1.1rem !important;
+        font-weight: 600 !important;
+    }
+    .stTabs [aria-selected="true"] {
+        color: #38bdf8 !important;
+        border-bottom-color: #38bdf8 !important;
+    }
+
+    /* Bright Forced Visibility for Input Input Bar Containers */
+    .stTextInput input, .stNumberInput input, .stSelectbox div {
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        border: 2px solid #cbd5e1 !important;
+        border-radius: 8px !important;
+        padding: 8px !important;
+    }
+    
+    /* Security Takeover Component Card Layout */
     .intercept-box {
-        background: rgba(30, 41, 59, 0.85);
-        border: 2px solid #ff3366;
+        background: #1e293b !important;
+        border: 2px solid #ff3366 !important;
         border-radius: 12px;
         padding: 24px;
         margin: 15px 0;
@@ -157,7 +188,7 @@ with st.sidebar:
     try:
         st.image(LOGO_PATH, use_container_width=True)
     except Exception:
-        st.markdown("<div style='border:1px dashed rgba(255,255,255,0.2); padding:10px; text-align:center;'>🖼️ Brand Image Syncing...</div>", unsafe_allow_html=True)
+        st.markdown("<div style='border:1px dashed rgba(255,255,255,0.2); padding:10px; text-align:center;'>🖼Header Frame Syncing...</div>", unsafe_allow_html=True)
 
     st.markdown(f"### **{APP_NAME}**")
     st.caption("Sky Engine v3.5 • Neural Suite")
@@ -211,24 +242,4 @@ if st.session_state.show_fullscreen_captcha:
 elif not st.session_state.logged_in_user:
     st.markdown(f'<div class="hero-title">{APP_NAME} Portal</div>', unsafe_allow_html=True)
     st.write("Sign in or register an account to deploy your Digital Intelligence.")
-
-    tab_signin, tab_signup = st.tabs(["🔑 Sign In Hub", "📝 Sign Up & Deploy DI"])
-
-    with tab_signin:
-        st.markdown('<div class="card-box">', unsafe_allow_html=True)
-        st.subheader("Account Login")
-        login_user = st.text_input("Username", placeholder="Type profile handle name...", key="l_user")
-        login_pass = st.text_input("Password", placeholder="Type passkey code...", type="password", key="l_pass")
-        
-        if st.button("Authorize Connection Link", use_container_width=True):
-            if login_user in st.session_state.users and st.session_state.users[login_user]["password"] == login_pass:
-                st.session_state.logged_in_user = login_user
-                if st.session_state.users[login_user]["role"] == "master":
-                    st.session_state.last_spoken_phrase = "Welcome back, Master David. Full executive administrative control center functions are completely authorized."
-                else:
-                    st.session_state.last_spoken_phrase = f"Access granted. Dashboard online for profile node {login_user}."
-                st.rerun()
-            else:
-                st.error("Invalid username or password specification.")
-        st.markdown('</div>', unsafe_allow_html=True)
 
