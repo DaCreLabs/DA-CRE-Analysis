@@ -2,21 +2,19 @@ import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
-import json
-import io
 import time
 from datetime import datetime
 from PIL import Image
 
 # -----------------------------------------------------------------------------
-# 1. APP CONFIGURATION & MASTER CONSTANTS
+# 1. APP CONFIGURATION & LOGO SETUP
 # -----------------------------------------------------------------------------
 APP_NAME = "Dacre Analysis Engine"
 MASTER_FULL_NAME = "David Emenike"
 MASTER_PASSKEY = "theWORDofGOD@111"
 LOGO_PATH = "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png"
 
-# Safe Page Icon Loading
+# Load Logo for Favicon Icon
 try:
     logo_img = Image.open(LOGO_PATH)
     st.set_page_config(
@@ -34,79 +32,37 @@ except Exception:
     )
 
 # -----------------------------------------------------------------------------
-# 2. HIGH-PERFORMANCE STYLING & AUTOMATED CORE CSS
+# 2. STYLING: STANDARD UI/UX FOR MAIN APP; DARK THEME ONLY FOR PRESENTATION
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
-    .stApp {
+    /* Dark Theme restricted EXCLUSIVELY to Presentation Slide Cards */
+    .presentation-dark-card {
         background: radial-gradient(ellipse at bottom, #090d16 0%, #020408 100%) !important;
-        color: #f8fafc !important;
-    }
-
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #110d0a 0%, #070504 100%) !important;
-        border-right: 2px solid #38bdf8 !important;
-    }
-
-    [data-testid="stSidebar"] *, [data-testid="stSidebar"] p, [data-testid="stSidebar"] span {
-        color: #e0f2fe !important;
-    }
-
-    .hero-title {
-        background: linear-gradient(90deg, #38bdf8 0%, #818cf8 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-family: 'Space Grotesk', sans-serif;
-        font-size: 2.2rem;
-        font-weight: 800;
-        margin-bottom: 0.5rem;
-    }
-
-    .stTextInput input, .stNumberInput input, .stSelectbox div {
-        background-color: #0f172a !important;
+        border: 2px solid #38bdf8 !important;
+        border-radius: 14px !important;
+        padding: 30px !important;
+        min-height: 400px !important;
         color: #ffffff !important;
-        border: 1.5px solid #38bdf8 !important;
-        border-radius: 6px !important;
+        box-shadow: 0 0 25px rgba(56, 189, 248, 0.25) !important;
     }
-
-    .stButton>button {
-        background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
-        color: #ffffff !important;
-        font-weight: bold !important;
-        border: none !important;
-        border-radius: 6px !important;
-        padding: 8px 18px !important;
-        transition: all 0.2s ease;
+    
+    .presentation-dark-card h2 {
+        color: #38bdf8 !important;
     }
-
-    .stButton>button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(56, 189, 248, 0.4) !important;
-    }
-
-    /* Presentation Slide Styling */
-    .slide-card {
-        background: #030712;
-        border: 2px solid #38bdf8;
-        border-radius: 14px;
-        padding: 30px;
-        min-height: 420px;
-        box-shadow: 0 0 30px rgba(56, 189, 248, 0.2);
-        animation: fadeIn 0.8s ease-in-out;
-    }
-
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
+    
+    .presentation-dark-card p {
+        color: #f0f9ff !important;
+        font-size: 1.25rem !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 3. FAST NIGERIAN VOICE SYNTHESIS DISPATCHER
+# 3. FAST DIRECT SPEECH SYNTHESIS ENGINE
 # -----------------------------------------------------------------------------
-def speak_fast_text(text: str):
-    """Executes high-speed text-to-speech output immediately."""
+def speak_direct_response(text: str):
+    """Answers user queries directly via speech without recording voice data."""
     clean_text = text.replace("'", "\\'").replace("\n", " ")
     js_code = f"""
     <script>
@@ -115,7 +71,6 @@ def speak_fast_text(text: str):
             var msg = new SpeechSynthesisUtterance('{clean_text}');
             msg.rate = 1.15;
             msg.pitch = 1.0;
-            msg.volume = 1.0;
             window.speechSynthesis.speak(msg);
         }}
     </script>
@@ -123,7 +78,7 @@ def speak_fast_text(text: str):
     components.html(js_code, height=0, width=0)
 
 # -----------------------------------------------------------------------------
-# 4. STATE PERSISTENCE & DATA STORAGE INITIALIZATION
+# 4. STATE PERSISTENCE INITIALIZATION
 # -----------------------------------------------------------------------------
 if "db_users" not in st.session_state:
     st.session_state.db_users = {
@@ -146,8 +101,8 @@ if "logged_in_user" not in st.session_state:
 if "is_master_authenticated" not in st.session_state:
     st.session_state.is_master_authenticated = False
 
-if "last_spoken_phrase" not in st.session_state:
-    st.session_state.last_spoken_phrase = None
+if "last_direct_speech" not in st.session_state:
+    st.session_state.last_direct_speech = None
 
 if "current_nav_page" not in st.session_state:
     st.session_state.current_nav_page = "📊 Workflow Dashboard"
@@ -155,12 +110,11 @@ if "current_nav_page" not in st.session_state:
 if "auth_mode" not in st.session_state:
     st.session_state.auth_mode = "🔑 Sign In"
 
-# Voice playback trigger
-if st.session_state.last_spoken_phrase:
-    speak_fast_text(st.session_state.last_spoken_phrase)
-    st.session_state.last_spoken_phrase = None
+# Trigger direct spoken response if pending
+if st.session_state.last_direct_speech:
+    speak_direct_response(st.session_state.last_direct_speech)
+    st.session_state.last_direct_speech = None
 
-# Helper to retrieve active dataset for current session
 def get_current_df():
     u = st.session_state.logged_in_user or "default"
     if u not in st.session_state.user_datasets:
@@ -172,90 +126,56 @@ def save_current_df(df):
     st.session_state.user_datasets[u] = df.copy()
 
 # -----------------------------------------------------------------------------
-# 5. DI SALUTATION & COMMAND RESOLVER
+# 5. DI DIRECT ANSWER & SHARP QUESTION ENGINE (NO RECORDING)
 # -----------------------------------------------------------------------------
-def get_user_salutation():
-    if st.session_state.is_master_authenticated:
-        return f"Sovereign Master {MASTER_FULL_NAME}"
-    elif st.session_state.logged_in_user:
-        return f"{st.session_state.logged_in_user}"
-    else:
-        return "Operator"
-
-def process_voice_command(text: str):
-    cmd = text.lower()
-    salutation = get_user_salutation()
-
-    if "sign in" in cmd or "login" in cmd:
-        st.session_state.auth_mode = "🔑 Sign In"
-        reply = f"Navigating to Sign In page for you, {salutation}."
-        return reply, True
-    elif "sign up" in cmd or "register" in cmd:
-        st.session_state.auth_mode = "📝 Sign Up"
-        reply = f"Opening registration portal now, {salutation}."
-        return reply, True
-    elif "dashboard" in cmd or "workflow" in cmd:
+def respond_directly_and_ask(user_query: str):
+    """Processes query instantly and asks sharp clarifying follow-ups without recording session logs."""
+    q = user_query.lower().strip()
+    
+    if "hello" in q or "hi" in q:
+        return "Hello! I am ready. Would you like me to process your dataset, switch pages, or generate a visual report right now?"
+    elif "dashboard" in q or "workflow" in q:
         st.session_state.current_nav_page = "📊 Workflow Dashboard"
-        reply = f"Switching directly to your Workflow Dashboard, {salutation}."
-        return reply, True
-    elif "preview" in cmd:
+        return "Opened Workflow Dashboard immediately. What specific data row or column do you want to analyze next?"
+    elif "preview" in q or "print" in q:
         st.session_state.current_nav_page = "📋 Data Preview & Print"
-        reply = f"Opening read-only Data Preview, {salutation}."
-        return reply, True
-    elif "customize" in cmd or "report" in cmd or "chart" in cmd:
+        return "Switched to Data Preview. Shall I generate a downloadable CSV file or trigger document print?"
+    elif "presentation" in q or "slide" in q:
         st.session_state.current_nav_page = "📈 Customize Data & Analytics"
-        reply = f"Moving to Customize Analytics and Presentation Suite, {salutation}."
-        return reply, True
-    elif "master" in cmd or "who are you" in cmd or "who built you" in cmd:
-        if st.session_state.is_master_authenticated:
-            reply = f"My Master is {MASTER_FULL_NAME}. All systems operate under your sovereign directive."
-        else:
-            reply = f"I am your built-in Digital Intelligence assistant. Welcome, {salutation}."
-        return reply, False
+        return "Presentation engine ready in Dark Theme mode. Would you like to launch the automated speech slides now?"
+    elif "who are you" in q or "master" in q:
+        return f"I am the Dacre Autonomous DI Assistant working for {MASTER_FULL_NAME}. What command shall I execute for you now?"
     else:
-        reply = f"Executed request: '{text}'. Ready for next command, {salutation}."
-        return reply, False
+        return f"Direct Answer: Processing command '{user_query}'. Which analytical transformation should I execute next?"
 
 # -----------------------------------------------------------------------------
-# 6. HEADER & AUTOMATED INSTANT SPEECH RECOGNITION WIDGET
+# 6. HEADER & SIDEBAR WITH LOGO
 # -----------------------------------------------------------------------------
-st.markdown('<div class="hero-title">DACRE AUTONOMOUS DATA ENGINE</div>', unsafe_allow_html=True)
+st.title("DACRE AUTONOMOUS DATA ENGINE")
 
 with st.sidebar:
+    # Render Logo Image directly in Sidebar
     try:
         st.image(LOGO_PATH, use_container_width=True)
     except Exception:
-        pass
+        st.info("Logo File: Ensure file exists as named in your repo.")
 
     st.markdown(f"### **{APP_NAME}**")
-    st.caption("Built-In Continuous Voice Core Active")
-    st.markdown("---")
-
-    # Dynamic Identity Box
-    st.markdown(f"""
-        <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid #38bdf8; padding: 10px; border-radius: 8px;">
-            <p style="margin:0; font-weight:bold; color:#38bdf8 !important;">🤖 Built-in DI Assistant</p>
-            <p style="margin:0; font-size: 0.85rem;">Status: 🟢 Instant Auto-Listen Active</p>
-            <p style="margin:0; font-size: 0.85rem; color:#38bdf8;">User: <b>{get_user_salutation()}</b></p>
-        </div>
-    """, unsafe_allow_html=True)
+    st.caption("Sharp Direct-Response Speech Engine")
     st.markdown("---")
 
     if st.session_state.logged_in_user:
-        st.success(f"Session Saved: **{st.session_state.logged_in_user}**")
-        if st.button("Log Out & Save Session", use_container_width=True):
+        st.success(f"Active User: **{st.session_state.logged_in_user}**")
+        if st.button("Log Out", use_container_width=True):
             st.session_state.logged_in_user = None
             st.session_state.is_master_authenticated = False
-            st.session_state.last_spoken_phrase = "Work saved automatically. Session logged out successfully."
+            st.session_state.last_direct_speech = "Logged out successfully."
             st.rerun()
 
-# Instant JavaScript Auto-Start Mic Widget
+# Instant Mic Auto-Listener Widget (Translates speech to quick action without saving speech logs)
 mic_widget_html = """
-<div style="background: rgba(15, 23, 42, 0.8); border: 1px solid #38bdf8; padding: 10px 14px; border-radius: 8px; margin-bottom: 10px;">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span style="color:#38bdf8; font-weight:bold; font-size:0.9rem;">🎙️ Continuous Auto-Speech Listening Active...</span>
-        <span id="speech-live-status" style="color:#10b981; font-size:0.85rem; font-weight:600;">Listening Live</span>
-    </div>
+<div style="padding: 6px 0px; margin-bottom: 10px;">
+    <span style="font-weight:bold; color:#0284c7;">🎙️ DI Direct Speech Active (Instant Query Answer Mode)</span>
 </div>
 
 <script>
@@ -276,37 +196,29 @@ window.addEventListener('DOMContentLoaded', (event) => {
             }
         };
 
-        recognition.onerror = (event) => {
-            console.log("Auto-speech error: " + event.error);
-        };
-
-        recognition.onend = () => {
-            recognition.start();
-        };
-
+        recognition.onend = () => { recognition.start(); };
         recognition.start();
     }
 });
 </script>
 """
-components.html(mic_widget_html, height=55)
+components.html(mic_widget_html, height=40)
 
-# Fast Command Bar
+# Quick Action Command Line
 col_cmd, col_act = st.columns([5, 1])
 with col_cmd:
-    voice_input = st.text_input("Live Voice Input Stream:", key="voice_stream_input", placeholder="Speak or type command...")
+    voice_query = st.text_input("Ask DI Question or Command:", key="voice_stream_input", placeholder="Speak or type query...")
 with col_act:
     st.write(" ")
     st.write(" ")
-    if st.button("⚡ Dispatch Command", use_container_width=True):
-        if voice_input:
-            msg, rerun_flag = process_voice_command(voice_input)
-            st.session_state.last_spoken_phrase = msg
-            if rerun_flag:
-                st.rerun()
+    if st.button("⚡ Ask / Execute", use_container_width=True):
+        if voice_query:
+            answer = respond_directly_and_ask(voice_query)
+            st.session_state.last_direct_speech = answer
+            st.rerun()
 
 # -----------------------------------------------------------------------------
-# 7. AUTHENTICATION ENGINE
+# 7. AUTHENTICATION PORTAL
 # -----------------------------------------------------------------------------
 if not st.session_state.logged_in_user:
     st.markdown("---")
@@ -320,10 +232,10 @@ if not st.session_state.logged_in_user:
             if st.button("Sign In", use_container_width=True):
                 if u_name in st.session_state.db_users and st.session_state.db_users[u_name]["password"] == u_pass:
                     st.session_state.logged_in_user = u_name
-                    st.session_state.last_spoken_phrase = f"Welcome back, {u_name}! Your previous session data has been restored."
+                    st.session_state.last_direct_speech = f"Sign in successful. Welcome {u_name}! What data task would you like to perform now?"
                     st.rerun()
                 else:
-                    st.error("Invalid Login Credentials.")
+                    st.error("Invalid Credentials.")
 
     else:
         c1, c2 = st.columns(2)
@@ -331,15 +243,15 @@ if not st.session_state.logged_in_user:
             new_u = st.text_input("Choose Username", key="reg_username")
             new_p = st.text_input("Choose Password", type="password", key="reg_password")
             new_full = st.text_input("Full Name", key="reg_fullname")
-            if st.button("Create Account & Save", use_container_width=True):
+            if st.button("Create Account", use_container_width=True):
                 if new_u and new_p:
                     st.session_state.db_users[new_u] = {"password": new_p, "full_name": new_full, "role": "user"}
                     st.session_state.logged_in_user = new_u
-                    st.session_state.last_spoken_phrase = f"Account created! Welcome, {new_u}."
+                    st.session_state.last_direct_speech = f"Account created! Welcome {new_u}. How may I assist your analysis?"
                     st.rerun()
 
 # -----------------------------------------------------------------------------
-# 8. MAIN WORKSPACE ENGINE
+# 8. MAIN WORKSPACE
 # -----------------------------------------------------------------------------
 else:
     pages = ["📊 Workflow Dashboard", "📋 Data Preview & Print", "📈 Customize Data & Analytics", "🛡️ Master Admin Portal"]
@@ -349,7 +261,7 @@ else:
     current_df = get_current_df()
 
     # -------------------------------------------------------------------------
-    # TAB 1: WORKFLOW DASHBOARD & COLLECT DATA BAR
+    # TAB 1: WORKFLOW DASHBOARD
     # -------------------------------------------------------------------------
     if st.session_state.current_nav_page == "📊 Workflow Dashboard":
         st.subheader("📂 Collect Local Data File")
@@ -362,22 +274,21 @@ else:
                 else:
                     imported_df = pd.read_excel(uploaded_file)
                 save_current_df(imported_df)
-                st.session_state.last_spoken_phrase = f"Data collected successfully from {uploaded_file.name}. Saved to your dashboard and preview!"
-                st.success("File imported and synchronized across Workflow and Preview!")
+                st.session_state.last_direct_speech = f"Data collected successfully from {uploaded_file.name}. What chart or calculation do you want to build with this dataset?"
+                st.success("File imported and synchronized!")
                 st.rerun()
             except Exception as e:
                 st.error(f"Error loading file: {e}")
 
         st.markdown("---")
-        st.subheader("📊 Interactive Workflow Board")
+        st.subheader("📊 Interactive Data Workflow")
 
-        # Top Data Manipulation Action Bar
         t_col1, t_col2, t_col3, t_col4 = st.columns(4)
         with t_col1:
             if st.button("🧹 Remove Duplicates", use_container_width=True):
                 df_clean = current_df.drop_duplicates()
                 save_current_df(df_clean)
-                st.session_state.last_spoken_phrase = "Duplicates removed successfully."
+                st.session_state.last_direct_speech = "Duplicates removed instantly. What next?"
                 st.rerun()
         with t_col2:
             target_col = st.selectbox("Select Sort Target", current_df.columns)
@@ -393,73 +304,18 @@ else:
                 st.rerun()
 
         st.markdown("---")
-        # Sidebar Formula Applications
-        st.sidebar.markdown("### 🧮 Formula Engine")
-        
-        # Excel / Google Sheets Formulas
-        excel_formula = st.sidebar.selectbox("Google Sheets / Excel Formula", [
-            "None", "SUM", "AVERAGE", "MIN", "MAX", "COUNT", "ROUND", "PERCENTAGE OF TOTAL"
-        ])
-        num_cols = current_df.select_dtypes(include=[np.number]).columns.tolist()
-
-        if excel_formula != "None" and num_cols:
-            formula_col = st.sidebar.selectbox("Apply Excel Formula On:", num_cols)
-            if st.sidebar.button("Apply Sheets Formula"):
-                if excel_formula == "SUM":
-                    val = current_df[formula_col].sum()
-                elif excel_formula == "AVERAGE":
-                    val = current_df[formula_col].mean()
-                elif excel_formula == "MIN":
-                    val = current_df[formula_col].min()
-                elif excel_formula == "MAX":
-                    val = current_df[formula_col].max()
-                elif excel_formula == "COUNT":
-                    val = current_df[formula_col].count()
-                elif excel_formula == "ROUND":
-                    current_df[formula_col] = current_df[formula_col].round(2)
-                    save_current_df(current_df)
-                    val = "Rounded Column"
-                elif excel_formula == "PERCENTAGE OF TOTAL":
-                    total = current_df[formula_col].sum()
-                    current_df[f"{formula_col}_%"] = (current_df[formula_col] / total * 100).round(2)
-                    save_current_df(current_df)
-                    val = "Calculated % Column"
-                
-                st.sidebar.success(f"Result ({excel_formula}): {val}")
-                st.session_state.last_spoken_phrase = f"Applied {excel_formula} formula to {formula_col}."
-
-        # SQL Formula Engine
-        sql_formula = st.sidebar.selectbox("SQL Transformation Query", [
-            "None", "SELECT * WHERE Qty > 10", "SELECT * ORDER BY Cost DESC", "GROUP BY Category (SUM Qty)", "COUNT Rows By Status"
-        ])
-
-        if sql_formula != "None":
-            if st.sidebar.button("Run SQL Command"):
-                if sql_formula == "SELECT * WHERE Qty > 10" and "Qty" in current_df.columns:
-                    current_df = current_df[current_df["Qty"] > 10]
-                elif sql_formula == "SELECT * ORDER BY Cost DESC" and "Cost" in current_df.columns:
-                    current_df = current_df.sort_values(by="Cost", ascending=False)
-                elif sql_formula == "GROUP BY Category (SUM Qty)" and "Category" in current_df.columns and "Qty" in current_df.columns:
-                    current_df = current_df.groupby("Category", as_index=False)["Qty"].sum()
-                save_current_df(current_df)
-                st.session_state.last_spoken_phrase = "SQL query applied successfully."
-                st.rerun()
-
-        # Editable Data Grid
-        st.write("Edit cell values directly below:")
+        st.write("Editable Data Grid:")
         edited_df = st.data_editor(current_df, num_rows="dynamic", use_container_width=True)
         if st.button("💾 Save Grid Edits", use_container_width=True):
             save_current_df(edited_df)
-            st.session_state.last_spoken_phrase = "Grid updates saved."
-            st.success("Workflow changes saved to persistent storage!")
+            st.session_state.last_direct_speech = "Edits saved successfully!"
+            st.success("Workflow saved!")
 
     # -------------------------------------------------------------------------
-    # TAB 2: DATA PREVIEW & PRINT (READ-ONLY)
+    # TAB 2: DATA PREVIEW & PRINT
     # -------------------------------------------------------------------------
     elif st.session_state.current_nav_page == "📋 Data Preview & Print":
-        st.subheader("📋 Synchronized Read-Only Data Preview")
-        st.caption("Updated clean dataset ready for export or printing.")
-
+        st.subheader("📋 Synchronized Data Preview")
         st.dataframe(current_df, use_container_width=True)
 
         p_col1, p_col2 = st.columns(2)
@@ -468,7 +324,7 @@ else:
             st.download_button(
                 label="📥 Download Clean CSV File",
                 data=csv_data,
-                file_name=f"dacre_data_export_{datetime.now().strftime('%Y%m%d')}.csv",
+                file_name=f"dacre_export_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
                 use_container_width=True
             )
@@ -477,60 +333,31 @@ else:
                 components.html("<script>window.print();</script>", height=0)
 
     # -------------------------------------------------------------------------
-    # TAB 3: CUSTOMIZE DATA & ANALYTICS SUITE
+    # TAB 3: CUSTOMIZE DATA & ANALYTICS (PRESENTATION IS DARK THEME)
     # -------------------------------------------------------------------------
     elif st.session_state.current_nav_page == "📈 Customize Data & Analytics":
-        st.subheader("📈 Business Analyst Reports, Dynamic Charts & Presentation Engine")
+        st.subheader("📈 Analytics & Presentation Hub")
 
-        sub_tab1, sub_tab2, sub_tab3 = st.tabs(["📊 Get Data Report", "🎨 Dynamic Dark Charts", "🎬 Do Presentation"])
+        sub_tab1, sub_tab2, sub_tab3 = st.tabs(["📊 Data Report", "🎨 Dynamic Charts", "🎬 Do Presentation (Dark Mode)"])
 
-        # SUB-TAB 1: DATA REPORT
         with sub_tab1:
-            if st.button("🚀 Generate Business Data Analyst Report", use_container_width=True):
-                st.markdown("### 📋 Executive Business Data Analyst Report")
-                
+            if st.button("🚀 Generate Analyst Summary", use_container_width=True):
                 num_df = current_df.select_dtypes(include=[np.number])
-                total_products = len(current_df)
-                
-                st.write(f"**Total Record Volume:** {total_products} items")
-
+                st.write(f"**Total Records:** {len(current_df)}")
                 if not num_df.empty:
-                    st.markdown("#### Statistical Summaries")
-                    stats_df = pd.DataFrame({
-                        "Mean": num_df.mean(),
-                        "Median": num_df.median(),
-                        "Std Dev": num_df.std(),
-                        "Min": num_df.min(),
-                        "Max": num_df.max()
-                    })
-                    st.dataframe(stats_df, use_container_width=True)
-
-                if "Qty" in current_df.columns and "Name" in current_df.columns:
-                    lacking = current_df.sort_values(by="Qty", ascending=True).iloc[0]
-                    st.warning(f"⚠️ **Restock Urgency Alert:** Item **'{lacking['Name']}'** has lowest inventory stock ({lacking['Qty']} units). Action recommended immediately!")
+                    st.dataframe(num_df.describe(), use_container_width=True)
                 
-                if "Sales" in current_df.columns and "Name" in current_df.columns:
-                    leader = current_df.sort_values(by="Sales", ascending=False).iloc[0]
-                    st.success(f"🌟 **Market Driver Leader:** Item **'{leader['Name']}'** generates highest sales volume ({leader['Sales']} units). Prioritize inventory allocation!")
+                resp = f"Dataset analysis complete. Total record volume is {len(current_df)} rows. Would you like me to export this to PDF or generate visual charts?"
+                st.info(resp)
+                speak_direct_response(resp)
 
-                narrative = (
-                    f"Business Intelligence Assessment: Based on your preview dataset of {total_products} records, "
-                    "operational performance shows strong momentum. Inventory restock is required for lagging stock items, "
-                    "while top sales drivers should be allocated maximum supply chain priority."
-                )
-                st.info(f"**Analyst Narrative:** {narrative}")
-                speak_fast_text(narrative)
-
-        # SUB-TAB 2: GORGEOUS NATIVE DARK CHARTS
         with sub_tab2:
-            st.markdown("#### Select Visualizer Type")
-            chart_type = st.selectbox("Dynamic Chart Selector", ["Bar Chart", "Line Chart", "Area Chart", "Scatter Plot"])
-            
+            chart_type = st.selectbox("Chart Type", ["Bar Chart", "Line Chart", "Area Chart"])
             c_cols = current_df.columns.tolist()
-            x_var = st.selectbox("X-Axis Parameter", c_cols, index=0)
-            y_var = st.selectbox("Y-Axis Parameter", current_df.select_dtypes(include=[np.number]).columns.tolist(), index=0)
+            x_var = st.selectbox("X-Axis", c_cols, index=0)
+            y_var = st.selectbox("Y-Axis", current_df.select_dtypes(include=[np.number]).columns.tolist(), index=0)
 
-            if st.button("🎨 Render Dynamic Visualizer", use_container_width=True):
+            if st.button("Render Chart", use_container_width=True):
                 chart_df = current_df.set_index(x_var)[y_var]
                 if chart_type == "Bar Chart":
                     st.bar_chart(chart_df)
@@ -538,49 +365,44 @@ else:
                     st.line_chart(chart_df)
                 elif chart_type == "Area Chart":
                     st.area_chart(chart_df)
-                elif chart_type == "Scatter Plot":
-                    st.scatter_chart(current_df, x=x_var, y=y_var)
 
-        # SUB-TAB 3: DO PRESENTATION MODE
+        # Presentation Mode (Restricted Dark Theme)
         with sub_tab3:
-            st.markdown("#### 🎬 DI Automated Interactive Presentation Engine")
-            if st.button("▶️ Launch Verbal DI Animated Presentation", use_container_width=True):
+            st.markdown("#### 🎬 Dark Theme Dynamic Presentation Engine")
+            if st.button("▶️ Launch Presentation", use_container_width=True):
                 slides = [
-                    {"title": "Slide 1: Executive Overview", "body": f"Welcome to the automated presentation. Master data preview contains {len(current_df)} primary enterprise items.", "speech": f"Welcome to the executive data presentation for {get_user_salutation()}. We have compiled your dataset for analysis."},
-                    {"title": "Slide 2: Stock & Inventory Dynamics", "body": "Evaluating stock metrics and inventory variance across all categories.", "speech": "Slide two shows your stock dynamics. Inventory balancing is aligned with operational targets."},
-                    {"title": "Slide 3: Strategic Analyst Summary", "body": "Restock lagging inventory items immediately to capitalize on peak market demand.", "speech": "Slide three details strategic recommendations. Restock underperforming units and scale high-volume drivers immediately."}
+                    {"title": "Slide 1: Executive Overview", "body": f"Master data preview contains {len(current_df)} items.", "speech": "Welcome to the executive data presentation. What specific metric would you like to highlight?"},
+                    {"title": "Slide 2: Inventory & Operations", "body": "Evaluating stock metrics and supply efficiency.", "speech": "Slide two shows your operational stock dynamics. Shall we adjust inventory parameters?"},
+                    {"title": "Slide 3: Strategic Recommendations", "body": "Prioritize high sales volume drivers and replenish low inventory.", "speech": "Slide three details strategic recommendations. Ready for further questions?"}
                 ]
 
-                for idx, slide in enumerate(slides):
+                for slide in slides:
                     st.markdown(f"""
-                        <div class="slide-card">
-                            <h2 style="color:#38bdf8;">{slide['title']}</h2>
+                        <div class="presentation-dark-card">
+                            <h2>{slide['title']}</h2>
                             <hr style="border-color:#38bdf8;">
-                            <p style="font-size:1.3rem; color:#e0f2fe; margin-top:30px;">{slide['body']}</p>
+                            <p>{slide['body']}</p>
                         </div>
                     """, unsafe_allow_html=True)
-                    speak_fast_text(slide['speech'])
+                    speak_direct_response(slide['speech'])
                     time.sleep(4)
 
     # -------------------------------------------------------------------------
-    # TAB 4: MASTER ADMIN PORTAL (VERIFIED ACCESS ONLY)
+    # TAB 4: MASTER ADMIN PORTAL
     # -------------------------------------------------------------------------
     elif st.session_state.current_nav_page == "🛡️ Master Admin Portal":
-        st.subheader("🛡️ Overall Master Admin Security Portal")
+        st.subheader("🛡️ Master Admin Security Portal")
         
         if not st.session_state.is_master_authenticated:
-            passkey_in = st.text_input("Enter Master Security Passkey:", type="password")
-            if st.button("Authorize Sovereign Master Access", use_container_width=True):
+            passkey_in = st.text_input("Enter Passkey:", type="password")
+            if st.button("Authenticate", use_container_width=True):
                 if passkey_in == MASTER_PASSKEY:
                     st.session_state.is_master_authenticated = True
-                    st.session_state.last_spoken_phrase = f"Sovereign Master {MASTER_FULL_NAME} authenticated! All DI cores operate under your explicit master command."
-                    st.success(f"Welcome Sovereign Master {MASTER_FULL_NAME}!")
+                    st.session_state.last_direct_speech = f"Master {MASTER_FULL_NAME} authenticated! What admin task shall we execute?"
+                    st.success(f"Authenticated Master: {MASTER_FULL_NAME}")
                     st.rerun()
                 else:
-                    st.error("Access Denied: Invalid Master Security Passkey.")
+                    st.error("Invalid Passkey.")
         else:
             st.success(f"👑 Verified Sovereign Master: **{MASTER_FULL_NAME}**")
-            st.write(f"DI is operating in Master Mode for **{MASTER_FULL_NAME}**.")
-            st.markdown("---")
-            st.write("#### Registered System Users & Saved Sessions")
             st.json(st.session_state.db_users)
