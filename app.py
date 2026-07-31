@@ -25,118 +25,76 @@ except Exception:
     )
 
 # -----------------------------------------------------------------------------
-# 2. BALANCED CONTRAST BRAND UI STYLING ENGINE
+# 2. BEAUTIFUL SKY ANIMATION & CLEAN UI (NO AGGRESSIVE CSS OVERRIDES)
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
-    @import url('https://googleapis.com');
-    
-    /* Smooth, Flat Deep Space Canvas Background */
+    /* Floating Celestial Sky Background Effect */
     .stApp {
-        background-color: #0e1726 !important;
-        background-image: none !important;
-        font-family: 'Plus Jakarta Sans', sans-serif;
+        background: radial-gradient(ellipse at bottom, #111827 0%, #030712 100%) !important;
     }
 
-    /* Clean Solid Slate Cards for Optimal Contrast Visibility */
-    .glass-card {
-        background: #1e293b !important;
-        border: 1px solid #334155 !important;
-        border-radius: 16px !important;
-        padding: 30px;
+    @keyframes floatSky {
+        0% { background-position: 0 0; }
+        50% { background-position: 100px -100px; }
+        100% { background-position: 0 0; }
+    }
+    
+    .stApp::before {
+        content: "";
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: url('https://user-images.githubusercontent.com/2673119/31048080-86532e74-a612-11e7-8250-9343be34a781.png') repeat;
+        opacity: 0.18;
+        pointer-events: none;
+        animation: floatSky 75s infinite linear;
+        z-index: 0;
+    }
+
+    /* Modern Soft Cards */
+    .card-box {
+        background: rgba(31, 41, 55, 0.65) !important;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        border-radius: 12px;
+        padding: 24px;
         margin-top: 10px;
         margin-bottom: 24px;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
     }
 
-    /* Stark White Text for Complete Legibility */
-    h1, h2, h3, h4, h5, h6, p, label, span, div, [data-testid="stMarkdownContainer"] p {
-        color: #ffffff !important;
-    }
-
-    /* Clear High-Contrast Sidebar Labels */
-    [data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] h3 {
-        color: #ffffff !important;
-    }
-
-    /* Dynamic Multi-Color Hero Typography */
     .hero-title {
-        background: linear-gradient(90deg, #38bdf8 0%, #818cf8 50%, #f472b6 100%);
+        background: linear-gradient(90deg, #38bdf8 0%, #818cf8 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        font-family: 'Space Grotesk', sans-serif;
-        font-size: 3rem;
+        font-size: 2.6rem;
         font-weight: 800;
-        margin-bottom: 4px;
-    }
-
-    .hero-subtitle {
-        color: #94a3b8 !important;
-        font-size: 1.1rem;
-        margin-bottom: 25px;
-    }
-
-    /* Solid White Input Fields for Perfect Form Ingestion */
-    .stTextInput input, .stNumberInput input, .stSelectbox div {
-        background-color: #ffffff !important;
-        color: #0f172a !important;
-        border: 2px solid #cbd5e1 !important;
-        border-radius: 10px !important;
-        padding: 10px !important;
+        margin-bottom: 0.2rem;
     }
     
-    /* Interactive Navigation Tab Settings */
-    .stTabs [data-baseweb="tab"] {
-        color: #94a3b8 !important;
-        font-size: 1.1rem !important;
-        font-weight: 600 !important;
-    }
-    .stTabs [aria-selected="true"] {
-        color: #38bdf8 !important;
-        border-bottom-color: #38bdf8 !important;
-    }
-
-    /* Kinetic Action Command Buttons */
-    .stButton>button {
-        background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%) !important;
-        color: #ffffff !important;
-        border: none !important;
-        border-radius: 10px !important;
-        padding: 12px 28px !important;
-        font-family: 'Space Grotesk', sans-serif;
-        font-weight: 700 !important;
-        box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3) !important;
-        width: 100%;
-        transition: all 0.2s ease;
-    }
-    .stButton>button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5) !important;
-    }
-
-    /* Security Component Alert Container Box */
-    .recaptcha-box {
-        background: #1e293b !important;
-        border: 2px solid #ff3366 !important;
+    /* Security Intercept Box */
+    .intercept-box {
+        background: rgba(30, 41, 59, 0.85);
+        border: 2px solid #ff3366;
         border-radius: 12px;
-        padding: 20px;
+        padding: 24px;
         margin: 15px 0;
     }
     </style>
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 3. VERBAL AUDIO VOICE ENGINE
+# 3. VOICE SYNTHESIS HELPER
 # -----------------------------------------------------------------------------
 def speak_text(text: str):
-    """Triggers browser native text-to-speech engine cleanly."""
+    """Triggers browser native text-to-speech engine."""
     clean_text = text.replace("'", "\\'").replace("\n", " ")
     js_code = f"""
     <script>
         if ('speechSynthesis' in window) {{
             window.speechSynthesis.cancel();
             var msg = new SpeechSynthesisUtterance('{clean_text}');
-            msg.rate = 1.05;
+            msg.rate = 1.0;
             msg.pitch = 1.0;
             msg.volume = 1.0;
             window.speechSynthesis.speak(msg);
@@ -183,34 +141,38 @@ if "captcha_quiz_options" not in st.session_state:
     st.session_state.captcha_quiz_options = []
     st.session_state.captcha_quiz_correct = ""
 
-# Execute browser voice triggers
+if "captcha_num1" not in st.session_state:
+    st.session_state.captcha_num1 = random.randint(1, 9)
+    st.session_state.captcha_num2 = random.randint(1, 9)
+
+# Fire voice engines
 if st.session_state.last_spoken_phrase:
     speak_text(st.session_state.last_spoken_phrase)
     st.session_state.last_spoken_phrase = None
 
 # -----------------------------------------------------------------------------
-# 5. SIDEBAR BRANDING & OPERATOR PROTOCOLS
+# 5. SIDEBAR BRANDING & AUTHENTICATION
 # -----------------------------------------------------------------------------
 with st.sidebar:
     try:
         st.image(LOGO_PATH, use_container_width=True)
     except Exception:
-        st.markdown("<div style='border:1px dashed rgba(255,255,255,0.2); padding:10px; text-align:center;'>🖼️ Brand Image Sync Active...</div>", unsafe_allow_html=True)
+        st.markdown("<div style='border:1px dashed rgba(255,255,255,0.2); padding:10px; text-align:center;'>🖼️ Brand Image Syncing...</div>", unsafe_allow_html=True)
 
     st.markdown(f"### **{APP_NAME}**")
-    st.caption("Sky Engine v3.5 • High Visibility UI")
+    st.caption("Sky Engine v3.5 • Neural Suite")
     st.markdown("---")
 
     if st.session_state.logged_in_user:
-        st.write(f"Active Account: :cyan[**{st.session_state.logged_in_user.upper()}**]")
-        if st.button("Disconnect Session", use_container_width=True):
+        st.success(f"Authenticated: **{st.session_state.logged_in_user.upper()}**")
+        if st.button("Log Out Node System", use_container_width=True):
             st.session_state.logged_in_user = None
             st.rerun()
     else:
-        st.markdown("<div style='background:rgba(56,189,248,0.1); border:1px solid #38bdf8; padding:10px; border-radius:8px; text-align:center; color:#38bdf8 !important; font-weight:600;'>🔒 Secure Firewall Active</div>", unsafe_allow_html=True)
+        st.info("🔒 Secure Firewall Matrix Online")
 
 # -----------------------------------------------------------------------------
-# FULL-SCREEN RECAPTCHA TAKEOVER INTERCEPT LAYOUT
+# FULL-SCREEN INTERCEPT WINDOW: USER COLLISION HANDLER
 # -----------------------------------------------------------------------------
 if st.session_state.show_fullscreen_captcha:
     st.markdown("""
@@ -220,26 +182,53 @@ if st.session_state.show_fullscreen_captcha:
         </style>
     """, unsafe_allow_html=True)
     
-    st.markdown("<h1 style='text-align: center; color: #ff3366 !important; font-size: 3rem;'>🚨 SYSTEM SECURITY CAPTCHA INTERCEPT</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; font-size: 1.2rem;'>This account has already been added. Complete verification to return to entry hub.</p>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; color: #ff3366 !important; font-size: 3rem;'>🚨 SECURITY CLASSIFICATION TAKEOVER</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-size: 1.2rem;'>This account has already been added. Solve the anti-bot verification matrix to continue.</p>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
     
     _, col_c2, _ = st.columns()
     with col_c2:
-        st.markdown('<div class="recaptcha-box">', unsafe_allow_html=True)
-        st.subheader("🛡️ Multi-Choice Anti-Bot Query Challenge")
-        st.write(f"**Verification Parameter Request:** Select the item that represents: **{st.session_state.captcha_quiz_correct.upper()}**")
+        st.markdown('<div class="intercept-box">', unsafe_allow_html=True)
+        st.subheader("🛡️ Anti-Automation Cipher System")
+        st.write(f"**Verification Request:** Select the item matching classification: **{st.session_state.captcha_quiz_correct.upper()}**")
         
         user_selected_ans = st.radio("Available Signatures:", st.session_state.captcha_quiz_options)
         
-        if st.button("Authorize Resolution Core Sync"):
+        if st.button("Authorize Core Gate Re-route Link", use_container_width=True):
             if user_selected_ans == st.session_state.captcha_quiz_correct:
                 st.session_state.show_fullscreen_captcha = False
                 st.rerun()
             else:
-                st.error("Challenge Rejected. Regenerating target network challenges.")
-                st.session_state.captcha_quiz_options = random.sample(["Quantum Server Node", "Space Nebular Loop", "Bot Application Script", "Organic Human Operator Pro"], 4)
-                st.session_state.captcha_quiz_correct = "Organic Human Operator Pro"
+                st.error("Verification error. Re-indexing signature options.")
+                st.session_state.captcha_quiz_options = random.sample(["Server Grid Matrix", "Nebular System Frame", "Automated Script Engine", "Organic Human Operator Asset"], 4)
+                st.session_state.captcha_quiz_correct = "Organic Human Operator Asset"
                 st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+# -----------------------------------------------------------------------------
+# 6. SIGN IN / SIGN UP PORTAL TERMINAL LAYOUT
+# -----------------------------------------------------------------------------
+elif not st.session_state.logged_in_user:
+    st.markdown(f'<div class="hero-title">{APP_NAME} Portal</div>', unsafe_allow_html=True)
+    st.write("Sign in or register an account to deploy your Digital Intelligence.")
+
+    tab_signin, tab_signup = st.tabs(["🔑 Sign In Hub", "📝 Sign Up & Deploy DI"])
+
+    with tab_signin:
+        st.markdown('<div class="card-box">', unsafe_allow_html=True)
+        st.subheader("Account Login")
+        login_user = st.text_input("Username", placeholder="Type profile handle name...", key="l_user")
+        login_pass = st.text_input("Password", placeholder="Type passkey code...", type="password", key="l_pass")
+        
+        if st.button("Authorize Connection Link", use_container_width=True):
+            if login_user in st.session_state.users and st.session_state.users[login_user]["password"] == login_pass:
+                st.session_state.logged_in_user = login_user
+                if st.session_state.users[login_user]["role"] == "master":
+                    st.session_state.last_spoken_phrase = "Welcome back, Master David. Full executive administrative control center functions are completely authorized."
+                else:
+                    st.session_state.last_spoken_phrase = f"Access granted. Dashboard online for profile node {login_user}."
+                st.rerun()
+            else:
+                st.error("Invalid username or password specification.")
         st.markdown('</div>', unsafe_allow_html=True)
 
