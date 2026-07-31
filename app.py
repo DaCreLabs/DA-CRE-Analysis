@@ -6,7 +6,9 @@ import random
 # 1. PAGE CONFIGURATION & LOGO INITIALIZATION
 # -----------------------------------------------------------------------------
 APP_NAME = "DA-CRE-Analysis"
-LOGO_PATH = "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png"
+
+# ⬇️ UPDATED TO THE CLEAN REPO IMAGE PATH ⬇️
+LOGO_PATH = "IMG_20260729_135217.jpg"
 
 try:
     st.set_page_config(
@@ -230,4 +232,3 @@ if not st.session_state.logged_in_user:
                 st.session_state.users[reg_user] = {"password": reg_pass, "role": "user", "di_name": desired_di}
                 # Create corresponding Intelligence Node automatically
                 st.session_state.enrolled_dis.append({
-                    "user": reg_user,
