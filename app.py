@@ -192,7 +192,7 @@ if not st.session_state.logged_in_user:
                 st.warning("Please fill out all fields.")
             elif new_user in st.session_state.users:
                 st.error("Username already registered.")
-            else{
+            else:
                 st.session_state.users[new_user] = {
                     "password": new_pass, 
                     "role": "user", 
