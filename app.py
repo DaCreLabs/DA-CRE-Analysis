@@ -19,7 +19,7 @@ if "logged_in_user" not in st.session_state:
 if "last_di_speech" not in st.session_state:
     st.session_state.last_di_speech = ""
 
-# --- 3. DI (DAVID'S INTELLIGENCE) CORE LOGIC ---
+# --- 3. DI (DAVID'S INTELLIGENCE) BRAIN & LOGIC ---
 def generate_di_response(user_input):
     query = user_input.lower()
     
@@ -45,21 +45,25 @@ def generate_di_response(user_input):
     return response, nav
 
 def trigger_speech(text):
-    """Native Web Speech API for reliable, instant voice playback across all browsers."""
+    """Reliable, instant voice playback across all browsers via HTML5 Web Speech API."""
+    clean_text = text.replace('"', '\\"').replace("'", "\\'")
     js_code = f"""
         <script>
-            var msg = new SpeechSynthesisUtterance("{text}");
-            msg.rate = 1.0;
-            msg.pitch = 1.0;
-            window.speechSynthesis.speak(msg);
+            if ('speechSynthesis' in window) {{
+                window.speechSynthesis.cancel();
+                var msg = new SpeechSynthesisUtterance("{clean_text}");
+                msg.rate = 1.0;
+                msg.pitch = 1.0;
+                window.speechSynthesis.speak(msg);
+            }}
         </script>
     """
     components.html(js_code, height=0, width=0)
 
-# --- 4. SIDEBAR: BRANDING & DI INTERFACE ---
+# --- 4. SIDEBAR: LOGO & DI ASSISTANT ---
 with st.sidebar:
-    # Platform Branding / Logo Header
-    st.markdown("# 📊 DACRE Analysis")
+    # Platform Branding Header
+    st.title("📊 DACRE Analysis")
     st.caption("Commercial Real Estate Analytics Suite")
     st.markdown("---")
     
@@ -68,7 +72,7 @@ with st.sidebar:
     st.caption("Built-in Voice & Navigation AI")
     
     # DI Chat Input Box
-    user_query = st.text_input("Talk to DI:", placeholder="Ask DI or command a page navigation...", key="di_input")
+    user_query = st.text_input("Talk to DI:", placeholder="Ask DI or tell it where to take you...", key="di_input")
     
     col_send, col_clear = st.columns(2)
     with col_send:
@@ -89,23 +93,23 @@ with st.sidebar:
         st.session_state.di_history.append({"user": user_query, "di": di_reply})
         st.session_state.last_di_speech = di_reply
 
-    # Trigger speech if there is a new message
+    # Trigger Speech Playback
     if st.session_state.last_di_speech:
         trigger_speech(st.session_state.last_di_speech)
         st.session_state.last_di_speech = ""
 
-    # Display Conversation Logs
+    # Conversation Log Display
     if st.session_state.di_history:
-        st.markdown("### DI Conversation")
+        st.markdown("### DI Logs")
         for chat in reversed(st.session_state.di_history):
             st.write(f"🗣️ **You:** {chat['user']}")
             st.write(f"🤖 **DI:** {chat['di']}")
             st.markdown("---")
 
-# --- 5. MAIN NAVIGATION BAR ---
+# --- 5. MAIN NAVIGATION & HEADER ---
 st.title("📊 DACRE Analysis Platform")
 
-# Navigation Tabs
+# Top Navigation Tabs
 selected_page = st.radio(
     "Select Interface View:", 
     ["Dashboard", "Embedded Formula Board"], 
@@ -118,19 +122,19 @@ st.session_state.current_page = selected_page
 # --- 6. PAGE 1: DASHBOARD & CALCULATORS ---
 if st.session_state.current_page == "Dashboard":
     st.header("Commercial Real Estate Dashboard")
-    st.info("Welcome back, Admin. Tell DI on the sidebar where you want to go or ask it about the system.")
+    st.info("Welcome back, Admin. Tell DI on the sidebar where you want to go or ask it about the platform.")
     
-    # Overview Metrics Row
+    # System Status Metrics
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("DI Intelligence Core", "Active 🟢")
+    m1.metric("DI Core", "Active 🟢")
     m2.metric("System Health", "100%")
     m3.metric("Sole Admin", st.session_state.logged_in_user)
     m4.metric("Platform Version", "v1.0")
 
     st.markdown("---")
     
-    # Real Estate Analytics Engine
-    st.subheader("💡 Property Investment & Cap Rate Calculator")
+    # Analytics Engine Calculator
+    st.subheader("💡 Commercial Real Estate & Cap Rate Calculator")
     c1, c2 = st.columns(2)
     
     with c1:
@@ -143,7 +147,7 @@ if st.session_state.current_page == "Dashboard":
         
     if purchase_price > 0:
         cap_rate = (noi / purchase_price) * 100
-        st.metric("Calculated Capitalization Rate (Cap Rate)", f"{cap_rate:.2f}%")
+        st.metric("Calculated Cap Rate", f"{cap_rate:.2f}%")
 
 # --- 7. PAGE 2: EMBEDDED FORMULA BOARD ---
 elif st.session_state.current_page == "Embedded Formula Board":
