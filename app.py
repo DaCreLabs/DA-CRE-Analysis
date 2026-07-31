@@ -134,7 +134,7 @@ def execute_voice_output(text: str):
     components.html(speech_component, height=0, width=0)
 
 # -----------------------------------------------------------------------------
-# 4. MEMORY STORAGE (SESSION STATE)
+# 4. MEMORY STORAGE (SESSION STATE ENGINE)
 # -----------------------------------------------------------------------------
 if "users" not in st.session_state:
     st.session_state.users = {
@@ -164,10 +164,19 @@ if "logged_in_user" not in st.session_state:
 if "last_spoken_phrase" not in st.session_state:
     st.session_state.last_spoken_phrase = None
 
-if "captcha_v1" not in st.session_state:
-    st.session_state.captcha_v1 = random.randint(2, 9)
-    st.session_state.captcha_v2 = random.randint(2, 9)
+# Active Tab Navigation Index Variable
+if "active_portal_tab" not in st.session_state:
+    st.session_state.active_portal_tab = 0
 
+# Fullscreen Intercept State Tracking Flags
+if "show_fullscreen_captcha" not in st.session_state:
+    st.session_state.show_fullscreen_captcha = False
+
+if "captcha_quiz_options" not in st.session_state:
+    st.session_state.captcha_quiz_options = []
+    st.session_state.captcha_quiz_correct = ""
+
+# Audio Queue Engine Fire
 if st.session_state.last_spoken_phrase:
     execute_voice_output(st.session_state.last_spoken_phrase)
     st.session_state.last_spoken_phrase = None
@@ -189,43 +198,39 @@ with st.sidebar:
         st.write(f"Active Session: :cyan[**{st.session_state.logged_in_user.upper()}**]")
         if st.button("Disconnect Platform", use_container_width=True):
             st.session_state.logged_in_user = None
+            st.session_state.active_portal_tab = 0
             st.rerun()
     else:
         st.info("Authentication Gateway Online.")
 
 # -----------------------------------------------------------------------------
-# 6. GATEWAY WALL (LOGIN / SIGN UP)
+# INTERCEPT TRIGGER MODE: FULLSCREEN CAPTCHA SCREEN OVERTAKE
 # -----------------------------------------------------------------------------
-if not st.session_state.logged_in_user:
-    st.markdown(f'<div class="sky-title">{APP_NAME}</div>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-text">Welcome to the Starfall Ecosystem. Log in to deploy telemetry analytics and query independent network instances.</p>', unsafe_allow_html=True)
-
-    tab_login, tab_registration = st.tabs(["🔑 UNLOCK CORE PORTAL", "📝 PROVISION SECURITY INDEX"])
-
-    with tab_login:
-        st.markdown('<div class="sky-card">', unsafe_allow_html=True)
-        st.subheader("Identity Verification Check")
-        input_user = st.text_input("Username Reference Token", key="login_uid")
-        input_pass = st.text_input("Cryptographic Access Key", type="password", key="login_pkey")
+if st.session_state.show_fullscreen_captcha:
+    st.markdown("""
+        <style>
+        /* Force hiding of typical site shell navigation frames */
+        [data-testid="stSidebar"] { display: none !important; }
+        .stTabs { display: none !important; }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("<h1 style='text-align: center; color: #ff3366 !important; font-size: 3rem;'>🚨 SYSTEM SECURITY TAKEOVER</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-size: 1.2rem; color: #cbd5e1 !important;'>This account has already been added. Please sign in! Solve the anti-bot verification challenge to redirect back to the entry gateway automatically.</p>", unsafe_allow_html=True)
+    
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    
+    col_c1, col_c2, col_c3 = st.columns([1, 2, 1])
+    with col_c2:
+        st.markdown('<div class="sky-card" style="border: 2px solid #ff3366;">', unsafe_allow_html=True)
+        st.subheader("🛡️ CAPTCHA Verification Matrix Challenge")
+        st.write(f"**Question:** Select the item that matches this precise classification: **{st.session_state.captcha_quiz_correct.upper()}**")
         
-        if st.button("Establish Verified Interface Link"):
-            if input_user in st.session_state.users and st.session_state.users[input_user]["password"] == input_pass:
-                st.session_state.logged_in_user = input_user
-                if st.session_state.users[input_user]["role"] == "admin":
-                    st.session_state.last_spoken_phrase = f"Welcome back, Master {input_user}. Full executive administrative controls are now completely unlocked."
-                else:
-                    st.session_state.last_spoken_phrase = f"Connection successful. Operator dashboard online for user {input_user}."
+        user_selected_ans = st.radio("Available Environment Node Signatures:", st.session_state.captcha_quiz_options)
+        
+        if st.button("Submit Cryptographic Resolution Verification", use_container_width=True):
+            if user_selected_ans == st.session_state.captcha_quiz_correct:
+                st.toast("Verification Authorized. Security clearance validation active.")
+                st.session_state.show_fullscreen_captcha = False
+                st.session_state.active_portal_tab = 0  # Force index target switch straight to sign-in portal
                 st.rerun()
-            else:
-                st.error("Access Denied: Provided token mismatch.")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with tab_registration:
-        st.markdown('<div class="sky-card">', unsafe_allow_html=True)
-        st.subheader("Initialize Brand New System Account")
-        reg_user = st.text_input("Choose Operator Username", key="reg_uid")
-        reg_pass = st.text_input("Choose System Password", type="password", key="reg_pkey")
-        desired_di = st.text_input("Designate System DI Alias Node", value=f"DI-Nebula-{random.randint(1000, 9999)}")
-
-        st.markdown("<p style='font-weight:600;'>Security Matrix Sync Code Check</p>", unsafe_allow_html=True)
-        expected_sum = st.session_state.captcha_v1 + st.session_state.captcha_v2
