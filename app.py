@@ -14,7 +14,6 @@ MASTER_FULL_NAME = "David Emenike"
 MASTER_PASSKEY = "theWORDofGOD@111"
 LOGO_PATH = "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png"
 
-# Load Logo for Browser Tab Favicon
 try:
     logo_img = Image.open(LOGO_PATH)
     st.set_page_config(
@@ -32,13 +31,18 @@ except Exception:
     )
 
 # -----------------------------------------------------------------------------
-# 2. HIGH-VISIBILITY BOLD TEXT & CUSTOM ANIMATED THEME
+# 2. ULTRA-BOLD HIGH VISIBILITY THEME
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
-    /* Force ALL Text Across Entire App to be Bold and Visible */
-    html, body, [class*="st-"], p, span, div, label, h1, h2, h3, h4, h5, h6, input, button, select {
-        font-weight: 700 !important;
+    /* Force ABSOLUTELY ALL TEXT to be Ultra-Bold and Sharp White/Blue */
+    * {
+        font-weight: 900 !important;
+        -webkit-font-smoothing: antialiased;
+    }
+    
+    html, body, [class*="st-"], p, span, div, label, h1, h2, h3, h4, h5, h6, input, button, select, textarea, table, th, td {
+        font-weight: 900 !important;
         color: #ffffff !important;
     }
 
@@ -47,15 +51,15 @@ st.markdown("""
         background: linear-gradient(135deg, #0b1329 0%, #101d36 50%, #1a2942 100%) !important;
     }
 
-    /* Sidebar Styling & Bold Text */
+    /* Sidebar Styling */
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #090e1a 0%, #111a2e 100%) !important;
-        border-right: 2px solid #38bdf8 !important;
+        border-right: 2.5px solid #38bdf8 !important;
     }
 
     [data-testid="stSidebar"] *, [data-testid="stSidebar"] p, [data-testid="stSidebar"] span {
         color: #f8fafc !important;
-        font-weight: 700 !important;
+        font-weight: 900 !important;
     }
 
     /* Hero Header Title */
@@ -65,7 +69,7 @@ st.markdown("""
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         font-family: 'Space Grotesk', sans-serif;
-        font-size: 2.5rem;
+        font-size: 2.6rem;
         font-weight: 900 !important;
         letter-spacing: 1.2px;
         margin-bottom: 0.5rem;
@@ -76,19 +80,19 @@ st.markdown("""
         to { background-position: 200% center; }
     }
 
-    /* Input Fields - Bold White Text & Sharp Borders */
+    /* Input Fields */
     .stTextInput input, .stNumberInput input, .stSelectbox div {
         background-color: #1e293b !important;
         color: #ffffff !important;
-        font-weight: 700 !important;
+        font-weight: 900 !important;
         border: 2px solid #38bdf8 !important;
         border-radius: 8px !important;
     }
 
     /* Form Labels High Visibility */
     label, [data-testid="stWidgetLabel"] p {
-        font-size: 1.05rem !important;
-        font-weight: 800 !important;
+        font-size: 1.1rem !important;
+        font-weight: 900 !important;
         color: #38bdf8 !important;
     }
 
@@ -96,9 +100,9 @@ st.markdown("""
     .stButton>button {
         background: linear-gradient(135deg, #0284c7 0%, #1d4ed8 100%) !important;
         color: #ffffff !important;
-        font-size: 1.05rem !important;
+        font-size: 1.1rem !important;
         font-weight: 900 !important;
-        border: 1px solid #38bdf8 !important;
+        border: 2px solid #38bdf8 !important;
         border-radius: 8px !important;
         padding: 10px 20px !important;
         box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4) !important;
@@ -129,10 +133,10 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 3. DIRECT SPEECH SYNTHESIS ENGINE
+# 3. FAST DIRECT SPEECH SYNTHESIS ENGINE
 # -----------------------------------------------------------------------------
 def speak_now(text: str):
-    """Executes immediate browser TTS speech synthesis."""
+    """Executes immediate browser TTS and notifies speech receiver when done."""
     clean_text = text.replace("'", "\\'").replace("\n", " ")
     js_code = f"""
     <script>
@@ -140,9 +144,17 @@ def speak_now(text: str):
             if ('speechSynthesis' in window) {{
                 window.speechSynthesis.cancel();
                 var msg = new SpeechSynthesisUtterance('{clean_text}');
-                msg.rate = 1.1;
+                msg.rate = 1.15;
                 msg.pitch = 1.0;
                 msg.volume = 1.0;
+                
+                // Let the recognition system know when Di is talking
+                window.parent.isDiSpeaking = true;
+                
+                msg.onend = function() {{
+                    window.parent.isDiSpeaking = false;
+                }};
+                
                 window.speechSynthesis.speak(msg);
             }}
         }})();
@@ -186,12 +198,12 @@ if "current_nav_page" not in st.session_state:
 if "auth_mode" not in st.session_state:
     st.session_state.auth_mode = "🔑 Sign In"
 
-# Trigger startup greeting on first launch
+# Trigger startup greeting immediately on load
 if not st.session_state.logged_in_user and not st.session_state.has_greeted_on_load:
     st.session_state.last_di_speech = "Good day user! How are you doing today? Please sign in or sign up for us to start work."
     st.session_state.has_greeted_on_load = True
 
-# Speak queued speech directly
+# Execute speech immediately when queued
 if st.session_state.last_di_speech:
     speak_now(st.session_state.last_di_speech)
     st.session_state.last_di_speech = None
@@ -207,13 +219,13 @@ def save_current_df(df):
     st.session_state.user_datasets[u] = df.copy()
 
 # -----------------------------------------------------------------------------
-# 5. HUMAN-LIKE DIRECT VERBAL ROUTER
+# 5. HUMAN-LIKE FAST VERBAL ROUTER
 # -----------------------------------------------------------------------------
 def process_verbal_interaction(speech_input: str):
-    """Processes spoken commands, auto-switches portals, and speaks directly."""
+    """Processes spoken inputs, routes screens, and prepares spoken responses."""
     q = speech_input.lower().strip()
     
-    # Sign Up & Sign In Navigation Commands
+    # Navigation Commands
     if "where do i sign up" in q or "where is sign up" in q or "take me to sign up" in q or "sign up" in q:
         st.session_state.auth_mode = "📝 Sign Up"
         return "I am directing you right now. I have opened the Sign Up portal. Please enter your desired username, password, and full name to register."
@@ -222,23 +234,22 @@ def process_verbal_interaction(speech_input: str):
         st.session_state.auth_mode = "🔑 Sign In"
         return "Directing you to the Sign In portal. Please enter your credentials to log in."
 
-    # Conversational Responses
     elif "hello" in q or "hi" in q or "how are you" in q:
         user_ref = st.session_state.logged_in_user if st.session_state.logged_in_user else "user"
-        return f"Hello {user_ref}! I am doing great and ready for work! How can I assist you right now?"
+        return f"Hello {user_ref}! I am doing great and listening. What should we work on next?"
     elif "dashboard" in q or "workflow" in q:
         st.session_state.current_nav_page = "📊 Workflow Dashboard"
-        return "Opened Workflow Dashboard instantly. What dataset operations shall we run?"
+        return "Switched to Workflow Dashboard instantly. What dataset operations shall we run?"
     elif "preview" in q or "print" in q:
         st.session_state.current_nav_page = "📋 Data Preview & Print"
-        return "Switched to Data Preview. Do you want to download clean CSV or print out reports?"
+        return "Opened Data Preview. Do you want to download clean CSV or print out reports?"
     elif "presentation" in q or "slide" in q:
         st.session_state.current_nav_page = "📈 Customize Data & Analytics"
-        return "Presentation Hub active. Would you like me to start the presentation?"
+        return "Presentation Hub ready. Would you like me to start the presentation?"
     elif "who are you" in q or "master" in q:
         return f"I am your Dacre Assistant operating for Master {MASTER_FULL_NAME}. How can I assist you?"
     else:
-        return f"I heard you say: {speech_input}. How would you like me to execute this?"
+        return f"I heard you say: {speech_input}. How would you like me to process this?"
 
 # -----------------------------------------------------------------------------
 # 6. HEADER & SIDEBAR LOGO
@@ -252,7 +263,7 @@ with st.sidebar:
         pass
 
     st.markdown(f"### **{APP_NAME}**")
-    st.caption("**Bold Speech Assistant Enabled**")
+    st.caption("**Bold Voice Dialogue Mode Active**")
     st.markdown("---")
 
     if st.session_state.logged_in_user:
@@ -264,16 +275,20 @@ with st.sidebar:
             st.session_state.last_di_speech = "Logged out successfully. Have a great day!"
             st.rerun()
 
-# Instant Voice Receiver (Auto-Triggers & Auto-Clears Input Bar)
+# -----------------------------------------------------------------------------
+# CONTINUOUS SPEECH LISTENER & FAST RESPONDER
+# -----------------------------------------------------------------------------
 speech_receiver_code = """
-<div style="background: rgba(15, 23, 42, 0.85); border: 2px solid #38bdf8; padding: 12px; border-radius: 10px; margin-bottom: 12px;">
+<div style="background: rgba(15, 23, 42, 0.9); border: 2.5px solid #38bdf8; padding: 12px; border-radius: 10px; margin-bottom: 12px;">
     <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span style="color:#38bdf8; font-weight:900; font-size:1.1rem;">🎙️ DI Human Verbal Assistant Active</span>
-        <span style="color:#10b981; font-weight:900; font-size:1.1rem;">🟢 Listening Live</span>
+        <span style="color:#38bdf8; font-weight:900; font-size:1.15rem;">🎙️ DI Voice Interaction active</span>
+        <span style="color:#10b981; font-weight:900; font-size:1.15rem;" id="mic-status">🟢 Hearing You Live...</span>
     </div>
 </div>
 
 <script>
+window.parent.isDiSpeaking = window.parent.isDiSpeaking || false;
+
 window.addEventListener('DOMContentLoaded', (event) => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -283,12 +298,18 @@ window.addEventListener('DOMContentLoaded', (event) => {
         recognition.lang = 'en-US';
 
         recognition.onresult = (event) => {
+            // Ignore speech recognition while Di is speaking back to user
+            if (window.parent.isDiSpeaking) return;
+
             const transcript = event.results[event.results.length - 1][0].transcript.trim();
+            if (!transcript) return;
+
             const inputs = window.parent.document.querySelectorAll('input[type="text"]');
             if (inputs.length > 0) {
                 inputs[0].value = transcript;
                 inputs[0].dispatchEvent(new Event('input', { bubbles: true }));
                 
+                // Immediately trigger response action
                 setTimeout(() => {
                     const btns = window.parent.document.querySelectorAll('button');
                     for (let b of btns) {
@@ -297,22 +318,26 @@ window.addEventListener('DOMContentLoaded', (event) => {
                             break;
                         }
                     }
-                }, 250);
+                }, 150);
             }
         };
 
-        recognition.onend = () => { recognition.start(); };
-        recognition.start();
+        recognition.onend = () => { 
+            // Continuously restart listening immediately
+            try { recognition.start(); } catch(e) {} 
+        };
+
+        try { recognition.start(); } catch(e) {}
     }
 });
 </script>
 """
-components.html(speech_receiver_code, height=60)
+components.html(speech_receiver_code, height=65)
 
-# Input Command Row
+# Input Command Bar
 c_input, c_btn = st.columns([5, 1])
 with c_input:
-    user_speech_val = st.text_input("Voice Input Command:", key="live_voice_bar", placeholder="Speak verbally to talk directly...")
+    user_speech_val = st.text_input("Voice Input Command:", key="live_voice_bar", placeholder="Speak verbally to talk directly with Di...")
 with c_btn:
     st.write(" ")
     st.write(" ")
@@ -323,7 +348,7 @@ with c_btn:
             st.rerun()
 
 # -----------------------------------------------------------------------------
-# 7. AUTHENTICATION PORTAL (ADDRESSES USERNAME DIRECTLY ON SIGN UP)
+# 7. AUTHENTICATION PORTAL (ADDRESSES USERNAME ON SIGN UP)
 # -----------------------------------------------------------------------------
 if not st.session_state.logged_in_user:
     st.markdown("---")
@@ -355,8 +380,6 @@ if not st.session_state.logged_in_user:
                 if new_u and new_p:
                     st.session_state.db_users[new_u] = {"password": new_p, "full_name": new_full, "role": "user"}
                     st.session_state.logged_in_user = new_u
-                    
-                    # DI addresses the user directly by their registered Username
                     st.session_state.last_di_speech = f"Account created successfully! Welcome {new_u}. How can I assist your work today?"
                     st.rerun()
 
@@ -370,9 +393,7 @@ else:
 
     current_df = get_current_df()
 
-    # -------------------------------------------------------------------------
     # TAB 1: WORKFLOW DASHBOARD
-    # -------------------------------------------------------------------------
     if st.session_state.current_nav_page == "📊 Workflow Dashboard":
         st.subheader("📂 Collect Local Data File")
         uploaded_file = st.file_uploader("Collect Data Bar (CSV or Excel)", type=["csv", "xlsx"])
@@ -421,9 +442,7 @@ else:
             st.session_state.last_di_speech = "Grid modifications saved."
             st.success("Workflow saved!")
 
-    # -------------------------------------------------------------------------
     # TAB 2: DATA PREVIEW & PRINT
-    # -------------------------------------------------------------------------
     elif st.session_state.current_nav_page == "📋 Data Preview & Print":
         st.subheader("📋 Synchronized Read-Only Data Preview")
         st.dataframe(current_df, use_container_width=True)
@@ -442,9 +461,7 @@ else:
             if st.button("🖨️ Print Data Report", use_container_width=True):
                 components.html("<script>window.print();</script>", height=0)
 
-    # -------------------------------------------------------------------------
     # TAB 3: CUSTOMIZE DATA & ANALYTICS
-    # -------------------------------------------------------------------------
     elif st.session_state.current_nav_page == "📈 Customize Data & Analytics":
         st.subheader("📈 Business Analyst Reports & Presentation Engine")
 
@@ -476,7 +493,6 @@ else:
                 elif chart_type == "Area Chart":
                     st.area_chart(chart_df)
 
-        # Presentation Mode
         with sub_tab3:
             st.markdown("#### 🎬 Dedicated Dark Theme Dynamic Presentation Engine")
             if st.button("▶️ Launch Presentation", use_container_width=True):
@@ -491,15 +507,13 @@ else:
                         <div class="presentation-card">
                             <h2 style="color:#38bdf8;">{slide['title']}</h2>
                             <hr style="border-color:#38bdf8;">
-                            <p style="font-size:1.3rem; color:#ffffff; font-weight:700; margin-top:20px;">{slide['body']}</p>
+                            <p style="font-size:1.3rem; color:#ffffff; font-weight:900; margin-top:20px;">{slide['body']}</p>
                         </div>
                     """, unsafe_allow_html=True)
                     speak_now(slide['speech'])
                     time.sleep(4)
 
-    # -------------------------------------------------------------------------
     # TAB 4: MASTER ADMIN PORTAL
-    # -------------------------------------------------------------------------
     elif st.session_state.current_nav_page == "🛡️ Master Admin Portal":
         st.subheader("🛡️ Master Admin Security Portal")
         
