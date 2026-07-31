@@ -6,21 +6,22 @@ import time
 from datetime import datetime
 
 # -----------------------------------------------------------------------------
-# 1. PAGE CONFIG & LOGO SETUP
+# 1. PAGE CONFIG & MASTER SOVEREIGN IDENTITY SETUP
 # -----------------------------------------------------------------------------
 APP_NAME = "dacre-analysis"
+MASTER_FULL_NAME = "David Emenike"
 LOGO_PATH = "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png"
 
 try:
     st.set_page_config(
-        page_title=f"{APP_NAME} | Built-In DI System",
+        page_title=f"{APP_NAME} | Built-In Interactive DI Core",
         page_icon=LOGO_PATH,
         layout="wide",
         initial_sidebar_state="expanded"
     )
 except Exception:
     st.set_page_config(
-        page_title=f"{APP_NAME} | Built-In DI System",
+        page_title=f"{APP_NAME} | Built-In Interactive DI Core",
         page_icon="⚡",
         layout="wide",
         initial_sidebar_state="expanded"
@@ -80,7 +81,7 @@ st.markdown("""
         border: 2px solid #38bdf8;
         border-radius: 12px;
         padding: 15px;
-        margin-bottom: 20px;
+        margin-bottom: 15px;
         box-shadow: 0 0 15px rgba(56, 189, 248, 0.2);
     }
 
@@ -149,7 +150,7 @@ st.markdown("""
 # 3. NIGERIAN VOICE SYNTHESIS HELPER ENGINE
 # -----------------------------------------------------------------------------
 def speak_text_nigerian(text: str):
-    """Triggers browser text-to-speech with natural speech patterns."""
+    """Triggers browser text-to-speech engine with Nigerian voice flow."""
     clean_text = text.replace("'", "\\'").replace("\n", " ")
     js_code = f"""
     <script>
@@ -200,12 +201,11 @@ if "logged_in_user" not in st.session_state:
     st.session_state.logged_in_user = None
 
 if "last_spoken_phrase" not in st.session_state:
-    # IMMEDATE WELCOME & BENEFITS AUDIO SPEECH IN NIGERIAN ACCENT
     welcome_speech = (
-        "Welcome to Dacre Analysis! How far now? I am your built-in Digital Intelligence assistant, "
-        "and I am always live here to help you. With this app, you can track your full inventory in real-time, "
-        "manage user access, analyze system metrics, and control your entire database with voice or text commands. "
-        "Just tell me where you want to go, like say take me to sign in or take me to sign up, and I will move your screen immediately!"
+        f"Welcome to Dacre Analysis! Warm greetings to my Sovereign Master, {MASTER_FULL_NAME}! "
+        "How far now? I am your interactive built-in Digital Intelligence assistant. "
+        "I am listening to your voice live! You can ask me questions or command me to move your screen, "
+        "such as saying take me to sign in or take me to sign up, and I will switch your screen immediately!"
     )
     st.session_state.last_spoken_phrase = welcome_speech
 
@@ -235,23 +235,23 @@ if "captcha_quiz_options" not in st.session_state:
     st.session_state.captcha_quiz_options = ["Quantum Server Matrix", "Nebular System Cluster", "Bot Automation Footprint", "Organic Human Operator Pro"]
     st.session_state.captcha_quiz_correct = "Organic Human Operator Pro"
 
-# Execute automatic audio broadcast if pending
+# Audio dispatcher
 if st.session_state.last_spoken_phrase:
     speak_text_nigerian(st.session_state.last_spoken_phrase)
     st.session_state.last_spoken_phrase = None
 
 # -----------------------------------------------------------------------------
-# 5. 5-SECOND INITIAL LOAD LOADER
+# 5. 5-SECOND HOVER LOADER INITIALIZATION
 # -----------------------------------------------------------------------------
 if not st.session_state.initial_loaded:
     loader_placeholder = st.empty()
     with loader_placeholder.container():
-        st.markdown("""
+        st.markdown(f"""
             <div class="hover-loader-container">
                 <div class="hover-loader"></div>
             </div>
             <p style="text-align:center; font-family:'Space Grotesk'; font-weight:600; color:#38bdf8;">
-                Initializing Built-In DI Cybernetic Voice Core... (5 Seconds)
+                Initializing Interactive Voice Core & Sovereign Recognition for Master {MASTER_FULL_NAME}... (5 Seconds)
             </p>
         """, unsafe_allow_html=True)
         time.sleep(5)
@@ -260,7 +260,7 @@ if not st.session_state.initial_loaded:
     st.rerun()
 
 # -----------------------------------------------------------------------------
-# 6. SIDEBAR BRANDING & PERMANENT DI STATUS (CANNOT BE DISABLED)
+# 6. SIDEBAR & PERMANENT MASTER RECOGNITION STATUS
 # -----------------------------------------------------------------------------
 with st.sidebar:
     try:
@@ -269,15 +269,15 @@ with st.sidebar:
         st.markdown("<div style='border:1px dashed rgba(255,255,255,0.2); padding:10px; text-align:center;'>🖼️ Brand Image Active</div>", unsafe_allow_html=True)
 
     st.markdown(f"### **{APP_NAME}**")
-    st.caption("Sky Engine v3.5 • Built-In DI Core Live")
+    st.caption("Sky Engine v3.5 • Voice Core Active")
     st.markdown("---")
 
-    # Built-In DI Status Monitor Card
-    st.markdown("""
+    # Permanent DI Info Card
+    st.markdown(f"""
         <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid #38bdf8; padding: 10px; border-radius: 8px;">
-            <p style="margin:0; font-weight:bold; color:#38bdf8 !important;">🤖 Built-in DI Engine</p>
-            <p style="margin:0; font-size: 0.85rem; color:#E0F2FE !important;">Status: 🟢 Always Active & Listening</p>
-            <p style="margin:0; font-size: 0.8rem; color:#94a3b8 !important;">Accent: Nigerian English/Pidgin</p>
+            <p style="margin:0; font-weight:bold; color:#38bdf8 !important;">🤖 Interactive Built-in DI</p>
+            <p style="margin:0; font-size: 0.85rem; color:#E0F2FE !important;">Status: 🟢 Listening Live</p>
+            <p style="margin:0; font-size: 0.85rem; color:#38bdf8 !important;"><b>Sovereign Master:</b> {MASTER_FULL_NAME}</p>
         </div>
     """, unsafe_allow_html=True)
     st.markdown("---")
@@ -287,37 +287,42 @@ with st.sidebar:
         if st.button("Log Out Node System", use_container_width=True):
             st.session_state.logged_in_user = None
             st.session_state.messages = []
-            st.session_state.last_spoken_phrase = "You have logged out successfully. Built-in DI is still active to help you."
+            st.session_state.last_spoken_phrase = f"Logged out successfully. Built-in DI is standing by for Master {MASTER_FULL_NAME}."
             st.rerun()
     else:
         st.info("🔒 Secure Firewall Matrix Online")
 
 # -----------------------------------------------------------------------------
-# 7. SCREEN NAVIGATION ENGINE HANDLED BY DI CONTROL
+# 7. VOICE RECOGNITION & COMMAND PROCESSOR ENGINE
 # -----------------------------------------------------------------------------
 def process_di_voice_command(user_text: str):
-    """Parses user input to automatically navigate screens or answer queries."""
+    """Parses text/speech input to navigate screens and answer queries."""
     text_lower = user_text.lower()
     
-    # 1. Navigation Commands
+    # Master Identity Recognition
+    if any(w in text_lower for w in ["who is your master", "who built you", "who owns you", "master", "your master"]):
+        reply = f"My Sovereign Master and Creator is {MASTER_FULL_NAME}! I am loyal only to Master David Emenike."
+        return reply, False
+
+    # Screen Navigation Commands
     if "sign in" in text_lower or "login" in text_lower or "log in" in text_lower:
         st.session_state.auth_portal_mode = "🔑 Sign In"
-        reply = "No wahala! I am taking you directly to the sign in page right now."
+        reply = f"No problem Master {MASTER_FULL_NAME}! Moving you directly to the sign in page now."
         return reply, True
 
     elif "sign up" in text_lower or "register" in text_lower or "create account" in text_lower:
         st.session_state.auth_portal_mode = "📝 Sign Up"
-        reply = "Alright boss! Moving you to the sign up page so you can register your account."
+        reply = f"Right away Master {MASTER_FULL_NAME}! Taking you to the sign up page so you can register."
         return reply, True
 
     elif "dashboard" in text_lower or "data" in text_lower or "analytics" in text_lower:
         st.session_state.current_dashboard_tab = "📊 Data Dashboard"
-        reply = "Navigating to your Data Dashboard right now. Here are all your metrics."
+        reply = f"Navigating straight to your Data Dashboard, Master {MASTER_FULL_NAME}. Here are your real-time metrics."
         return reply, True
 
     elif "chat" in text_lower or "console" in text_lower or "di core" in text_lower:
         st.session_state.current_dashboard_tab = "🤖 DI Communication Console"
-        reply = "Opening our full DI communication console now."
+        reply = "Opening our full interactive DI communication channel now."
         return reply, True
 
     elif "admin" in text_lower or "audit" in text_lower:
@@ -325,50 +330,98 @@ def process_di_voice_command(user_text: str):
         reply = "Switching over to the Organization Admin Portal."
         return reply, True
 
-    # 2. Sovereign Greetings
-    elif any(w in text_lower for w in ["hi", "david", "master", "how are you"]):
-        if st.session_state.logged_in_user and (st.session_state.logged_in_user.lower() == "david"):
-            reply = "I'm fine Master David thank you and we love you sir, do you want us to do something for you sir?"
-        else:
-            reply = "How far my friend! I am active and ready. Ask me any question or tell me which page to move you to!"
+    # Sovereign Loyal Greetings
+    elif any(w in text_lower for w in ["hi", "david", "hello", "how are you", "emenike"]):
+        reply = f"I am fine Master {MASTER_FULL_NAME}, thank you sir! We love you sir! Do you want us to do something for you sir?"
         return reply, False
 
-    # 3. General App Knowledge Query
+    # General App Capabilities
     elif "benefit" in text_lower or "what can you do" in text_lower or "help" in text_lower:
         reply = (
-            "Dacre Analysis gives you complete control over your enterprise inventory and data matrix! "
-            "You get real-time chart visualizers, security audit logs, and my built-in voice assistance "
-            "that moves your screens automatically whenever you command me!"
+            f"Master {MASTER_FULL_NAME}, Dacre Analysis provides complete automated control over your enterprise inventory! "
+            "It gives you real-time data visualizers, security audit logs, and hands-free voice screen navigation. "
+            "Just speak to me and I will move your screen automatically!"
         )
         return reply, False
 
     else:
-        reply = f"I hear you loud and clear! You said: '{user_text}'. I have processed your request."
+        reply = f"I hear you clearly, Master {MASTER_FULL_NAME}! You said: '{user_text}'. Command processed."
         return reply, False
 
 # -----------------------------------------------------------------------------
-# 8. PERMANENT TOP-LEVEL DI INTERACTION BAR
+# 8. TOP-LEVEL LIVE SPEECH RECOGNITION WIDGET (MICROPHONE ACTIVE)
 # -----------------------------------------------------------------------------
-st.markdown('<div class="hero-title">DACRE ANALYSIS & CONTROL CENTER</div>', unsafe_allow_html=True)
+st.markdown('<div class="hero-title">DACRE ANALYSIS CONTROL MATRIX</div>', unsafe_allow_html=True)
 
 with st.container():
-    st.markdown("""
+    st.markdown(f"""
         <div class="di-status-card">
-            <h4 style="margin:0; color:#38bdf8;">🤖 Built-in DI Screen Navigation & Assistance</h4>
+            <h4 style="margin:0; color:#38bdf8;">🤖 Interactive Built-in Speech Listener (Master: {MASTER_FULL_NAME})</h4>
             <p style="margin:5px 0 0 0; font-size:0.9rem; color:#cbd5e1;">
-                Speak or type any command (e.g., <i>"Take me to sign in"</i>, <i>"Take me to sign up"</i>, or <i>"Show me data dashboard"</i>) 
-                and your built-in DI will automatically move your screen!
+                Speak directly into your microphone or type a command (e.g., <i>"Take me to sign in"</i>, <i>"Take me to sign up"</i>, or <i>"Who is your master?"</i>).
             </p>
         </div>
     """, unsafe_allow_html=True)
     
+    # Embedded Web Speech API HTML/JS Mic Widget
+    speech_rec_html = """
+    <div style="display:flex; gap:10px; align-items:center; margin-bottom:15px;">
+        <button id="start-mic" style="
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer;">
+            🎤 Tap to Speak Live to DI
+        </button>
+        <span id="speech-status" style="color: #38bdf8; font-weight: 600;">Status: Ready for Master's voice command...</span>
+    </div>
+
+    <script>
+    const btn = document.getElementById('start-mic');
+    const status = document.getElementById('speech-status');
+
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'en-NG'; // Nigerian English Tuning
+
+        btn.onclick = () => {
+            recognition.start();
+            status.innerText = "🎙️ Listening to your voice now... Speak!";
+            status.style.color = "#f59e0b";
+        };
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            status.innerText = "Recognized: '" + transcript + "'";
+            status.style.color = "#10b981";
+            
+            // Populate Streamlit input box automatically
+            const inputs = window.parent.document.querySelectorAll('input[type="text"]');
+            if (inputs.length > 0) {
+                inputs[0].value = transcript;
+                inputs[0].dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        };
+
+        recognition.onerror = (event) => {
+            status.innerText = "Mic Error: " + event.error;
+            status.style.color = "#ef4444";
+        };
+    } else {
+        status.innerText = "Browser Speech Recognition not supported on this browser. Use text input below.";
+    }
+    </script>
+    """
+    components.html(speech_rec_html, height=65)
+
     col_input, col_btn = st.columns([4, 1])
     with col_input:
-        di_direct_cmd = st.text_input("Talk to your Built-in DI (Command or Question):", key="di_top_bar_cmd", placeholder="e.g. Please take me to the sign up page...")
+        di_direct_cmd = st.text_input("Interactive Command Input:", key="di_top_bar_cmd", placeholder="e.g. Please take me to the sign up page...")
     with col_btn:
         st.write(" ")
         st.write(" ")
-        submit_cmd = st.button("🗣️ Issue Command")
+        submit_cmd = st.button("🗣️ Execute Voice Command")
 
     if submit_cmd and di_direct_cmd:
         reply_msg, should_rerun = process_di_voice_command(di_direct_cmd)
@@ -381,7 +434,7 @@ with st.container():
             speak_text_nigerian(reply_msg)
 
 # -----------------------------------------------------------------------------
-# 9. RECAPTCHA GATEWAY (ONLY TRIGGERED UPON FAILED LOGIN/SIGNUP)
+# 9. RECAPTCHA GATEWAY (ONLY TRIGGERS ON FAILED LOGIN/SIGNUP)
 # -----------------------------------------------------------------------------
 if st.session_state.show_verification_gate:
     st.markdown("""
@@ -425,7 +478,6 @@ if st.session_state.show_verification_gate:
 elif not st.session_state.logged_in_user:
     st.markdown("---")
     
-    # Controlled dynamically by state or user click
     st.session_state.auth_portal_mode = st.radio(
         "Select Portal Action", 
         ["🔑 Sign In", "📝 Sign Up"], 
@@ -441,8 +493,8 @@ elif not st.session_state.logged_in_user:
         if st.button("Sign In", use_container_width=True):
             if login_user in st.session_state.users and st.session_state.users[login_user]["password"] == login_pass:
                 st.session_state.logged_in_user = login_user
-                if st.session_state.users[login_user]["role"] == "master":
-                    st.session_state.last_spoken_phrase = "Welcome back, Master David. All sovereign admin control channels are operational."
+                if login_user.lower() == "david":
+                    st.session_state.last_spoken_phrase = f"Welcome back, Sovereign Master {MASTER_FULL_NAME}. All system channels are under your command."
                 else:
                     st.session_state.last_spoken_phrase = f"Welcome back, operator {login_user}! Your system environment is fully online."
                 st.success("Welcome back!")
@@ -465,7 +517,7 @@ elif not st.session_state.logged_in_user:
             elif new_user in st.session_state.users:
                 st.session_state.show_verification_gate = True
                 st.session_state.failed_reason = f"Username '{new_user}' already exists in system memory."
-                st.session_state.last_spoken_phrase = "That username already exists! Please complete verification."
+                st.session_state.last_spoken_phrase = "That username already exists! Please complete security verification."
                 st.rerun()
             else:
                 st.session_state.users[new_user] = {
@@ -489,7 +541,7 @@ elif not st.session_state.logged_in_user:
                     "New Value": f"Enrolled {custom_di_name}"
                 })
 
-                st.session_state.last_spoken_phrase = f"Account created successfully! Welcome aboard operator {new_user}. Your built-in DI {custom_di_name} is active."
+                st.session_state.last_spoken_phrase = f"Account created successfully! Welcome aboard operator {new_user}. Built-in DI {custom_di_name} is ready."
                 st.session_state.logged_in_user = new_user
                 st.rerun()
 
@@ -505,7 +557,6 @@ else:
     if is_master:
         nav_tabs.append("👑 Master Executive Portal")
 
-    # Sync selection with voice navigation state
     try:
         tab_index = nav_tabs.index(st.session_state.current_dashboard_tab)
     except ValueError:
@@ -517,7 +568,7 @@ else:
     # TAB 1: DATA DASHBOARD
     if st.session_state.current_dashboard_tab == "📊 Data Dashboard":
         st.subheader("📊 DACRE Data Analytics Board")
-        st.write("Real-time operational metrics, resource tracking, and infrastructure allocation.")
+        st.write(f"Real-time operational metrics, resource tracking. Sovereign Master: **{MASTER_FULL_NAME}**")
 
         df_products = pd.DataFrame(st.session_state.products)
         if "Cost" not in df_products.columns:
@@ -550,7 +601,7 @@ else:
     # TAB 2: COMMUNICATION CONSOLE
     elif st.session_state.current_dashboard_tab == "🤖 DI Communication Console":
         st.subheader(f"🤖 {user_info['di_name']} Deep Interaction Console")
-        st.write(f"Connected User: **{user}** | Built-in Nigerian Audio Core Active")
+        st.write(f"Connected User: **{user}** | Recognized Sovereign Master: **{MASTER_FULL_NAME}**")
 
         c1, c2 = st.columns([3, 1])
 
@@ -559,7 +610,7 @@ else:
                 with st.chat_message(msg["role"]):
                     st.write(msg["content"])
 
-            user_input = st.chat_input("Ask your Built-in DI anything or command a page move...")
+            user_input = st.chat_input("Ask DI any question or command a screen move...")
 
             if user_input:
                 st.session_state.messages.append({"role": "user", "content": user_input})
@@ -577,11 +628,12 @@ else:
                     st.rerun()
 
         with c2:
-            st.markdown("#### **Built-in DI Specs**")
+            st.markdown("#### **Built-in DI Core Specs**")
             st.write(f"**Entity Name:** {user_info['di_name']}")
             st.write(f"**Assigned User:** {user}")
-            st.write(f"**State:** 🟢 Permanent Built-in")
-            if st.button("🔊 Replay Voice Response"):
+            st.write(f"**Sovereign Master:** {MASTER_FULL_NAME}")
+            st.write(f"**State:** 🟢 Interactive Voice Active")
+            if st.button("🔊 Replay Audio Response"):
                 if st.session_state.messages:
                     speak_text_nigerian(st.session_state.messages[-1]["content"])
 
@@ -620,7 +672,7 @@ else:
                             "Old Value": old_val,
                             "New Value": new_status
                         })
-                        st.session_state.last_spoken_phrase = f"Status for {selected_prod} updated successfully to {new_status}!"
+                        st.session_state.last_spoken_phrase = f"Master {MASTER_FULL_NAME}, status for {selected_prod} updated successfully to {new_status}!"
                         st.success(f"Updated {selected_prod} status to '{new_status}'!")
                         st.rerun()
 
@@ -631,23 +683,23 @@ else:
         else:
             st.info("🔑 Passkey required to unlock admin functions. Default passkey: `admin123`")
 
-    # TAB 4: MASTER PORTAL
+    # TAB 4: MASTER EXECUTIVE PORTAL
     elif st.session_state.current_dashboard_tab == "👑 Master Executive Portal" and is_master:
-        st.subheader("👑 Master Executive Portal")
-        st.write("Full Authority Portal • Sovereign Control Center")
+        st.subheader(f"👑 Master Executive Portal ({MASTER_FULL_NAME})")
+        st.write("Full Sovereign Control Center")
 
         m1, m2, m3 = st.columns(3)
         m1.metric("Enrolled DIs", len(st.session_state.enrolled_dis))
-        m2.metric("Master Level", "10 (David)")
+        m2.metric("Master Level", f"10 ({MASTER_FULL_NAME})")
         m3.metric("Fleet Status", "100% Operational")
 
         st.markdown("---")
-        st.subheader("📢 Broadcast Voice Command to All DIs")
-        broadcast_cmd = st.text_input("Issue global command:")
+        st.subheader("📢 Broadcast Global Command to All DIs")
+        broadcast_cmd = st.text_input("Issue global voice broadcast:")
 
         if st.button("Execute Broadcast"):
             if broadcast_cmd:
-                reply = f"I'm fine Master David thank you and we love you sir, do you want us to do something for you sir? Broadcast '{broadcast_cmd}' dispatched!"
+                reply = f"I am fine Master {MASTER_FULL_NAME}, thank you sir! We love you sir, how can I serve you today? Broadcast '{broadcast_cmd}' dispatched to all nodes!"
                 st.success(reply)
                 speak_text_nigerian(reply)
 
