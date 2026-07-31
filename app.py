@@ -25,80 +25,78 @@ except Exception:
     )
 
 # -----------------------------------------------------------------------------
-# 2. CUSTOM UI: HIGH-CONTRAST TEXT & ANIMATED SKY BACKGROUND
+# 2. BALANCED CONTRAST BRAND UI STYLING ENGINE
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
     @import url('https://googleapis.com');
     
-    /* Animated Sky Background */
+    /* Smooth, Flat Deep Space Canvas Background */
     .stApp {
-        background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
-        color: #ffffff !important;
+        background-color: #0e1726 !important;
+        background-image: none !important;
         font-family: 'Plus Jakarta Sans', sans-serif;
     }
 
-    /* Floating Sky/Stars Effect */
-    @keyframes floatSky {
-        0% { background-position: 0 0; }
-        50% { background-position: 100px -100px; }
-        100% { background-position: 0 0; }
-    }
-    
-    .stApp::before {
-        content: "";
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: url('https://user-images.githubusercontent.com/2673119/31048080-86532e74-a612-11e7-8250-9343be34a781.png') repeat;
-        opacity: 0.25;
-        pointer-events: none;
-        animation: floatSky 60s infinite linear;
-        z-index: 0;
-    }
-
-    /* Glassmorphic Cards with High Contrast */
+    /* Clean Solid Slate Cards for Optimal Contrast Visibility */
     .glass-card {
-        background: rgba(15, 23, 42, 0.88) !important;
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 16px;
-        padding: 28px;
+        background: #1e293b !important;
+        border: 1px solid #334155 !important;
+        border-radius: 16px !important;
+        padding: 30px;
+        margin-top: 10px;
         margin-bottom: 24px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
     }
 
-    /* Force All Main Element Visibility */
-    p, label, span, h1, h2, h3, h4, h5, h6, [data-testid="stMarkdownContainer"] p {
+    /* Stark White Text for Complete Legibility */
+    h1, h2, h3, h4, h5, h6, p, label, span, div, [data-testid="stMarkdownContainer"] p {
         color: #ffffff !important;
     }
 
-    /* Input Field Visibility Modifications */
-    .stTextInput input, .stNumberInput input, .stSelectbox div {
-        background-color: #1e293b !important;
+    /* Clear High-Contrast Sidebar Labels */
+    [data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] h3 {
         color: #ffffff !important;
-        border: 2px solid #475569 !important;
-        border-radius: 10px !important;
     }
 
-    /* Hero Typography */
+    /* Dynamic Multi-Color Hero Typography */
     .hero-title {
         background: linear-gradient(90deg, #38bdf8 0%, #818cf8 50%, #f472b6 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         font-family: 'Space Grotesk', sans-serif;
-        font-size: 3.2rem;
+        font-size: 3rem;
         font-weight: 800;
-        margin-bottom: 0.2rem;
+        margin-bottom: 4px;
     }
 
     .hero-subtitle {
-        color: #cbd5e1 !important;
+        color: #94a3b8 !important;
         font-size: 1.1rem;
-        margin-bottom: 1.5rem;
+        margin-bottom: 25px;
     }
 
-    /* Custom Kinetic Command Buttons */
+    /* Solid White Input Fields for Perfect Form Ingestion */
+    .stTextInput input, .stNumberInput input, .stSelectbox div {
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        border: 2px solid #cbd5e1 !important;
+        border-radius: 10px !important;
+        padding: 10px !important;
+    }
+    
+    /* Interactive Navigation Tab Settings */
+    .stTabs [data-baseweb="tab"] {
+        color: #94a3b8 !important;
+        font-size: 1.1rem !important;
+        font-weight: 600 !important;
+    }
+    .stTabs [aria-selected="true"] {
+        color: #38bdf8 !important;
+        border-bottom-color: #38bdf8 !important;
+    }
+
+    /* Kinetic Action Command Buttons */
     .stButton>button {
         background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%) !important;
         color: #ffffff !important;
@@ -107,19 +105,19 @@ st.markdown("""
         padding: 12px 28px !important;
         font-family: 'Space Grotesk', sans-serif;
         font-weight: 700 !important;
-        transition: all 0.3s ease !important;
-        box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4) !important;
+        box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3) !important;
         width: 100%;
+        transition: all 0.2s ease;
     }
     .stButton>button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6) !important;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5) !important;
     }
 
-    /* Security Takeover Component Card Layout */
+    /* Security Component Alert Container Box */
     .recaptcha-box {
-        background: rgba(30, 41, 59, 0.85);
-        border: 2px solid #ff3366;
+        background: #1e293b !important;
+        border: 2px solid #ff3366 !important;
         border-radius: 12px;
         padding: 20px;
         margin: 15px 0;
@@ -128,7 +126,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 3. VOICE SYNTHESIS HELPER
+# 3. VERBAL AUDIO VOICE ENGINE
 # -----------------------------------------------------------------------------
 def speak_text(text: str):
     """Triggers browser native text-to-speech engine cleanly."""
@@ -185,13 +183,13 @@ if "captcha_quiz_options" not in st.session_state:
     st.session_state.captcha_quiz_options = []
     st.session_state.captcha_quiz_correct = ""
 
-# Dispatch pending verbal triggers
+# Execute browser voice triggers
 if st.session_state.last_spoken_phrase:
     speak_text(st.session_state.last_spoken_phrase)
     st.session_state.last_spoken_phrase = None
 
 # -----------------------------------------------------------------------------
-# 5. SIDEBAR BRANDING & AUTHENTICATION
+# 5. SIDEBAR BRANDING & OPERATOR PROTOCOLS
 # -----------------------------------------------------------------------------
 with st.sidebar:
     try:
@@ -204,15 +202,15 @@ with st.sidebar:
     st.markdown("---")
 
     if st.session_state.logged_in_user:
-        st.success(f"Authenticated: **{st.session_state.logged_in_user.upper()}**")
-        if st.button("Log Out Session", use_container_width=True):
+        st.write(f"Active Account: :cyan[**{st.session_state.logged_in_user.upper()}**]")
+        if st.button("Disconnect Session", use_container_width=True):
             st.session_state.logged_in_user = None
             st.rerun()
     else:
-        st.info("🔒 Secure Firewall Matrix Active")
+        st.markdown("<div style='background:rgba(56,189,248,0.1); border:1px solid #38bdf8; padding:10px; border-radius:8px; text-align:center; color:#38bdf8 !important; font-weight:600;'>🔒 Secure Firewall Active</div>", unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# FULL-SCREEN RECAPTCHA TAKEOVER INTERCEPT WINDOW
+# FULL-SCREEN RECAPTCHA TAKEOVER INTERCEPT LAYOUT
 # -----------------------------------------------------------------------------
 if st.session_state.show_fullscreen_captcha:
     st.markdown("""
@@ -223,10 +221,10 @@ if st.session_state.show_fullscreen_captcha:
     """, unsafe_allow_html=True)
     
     st.markdown("<h1 style='text-align: center; color: #ff3366 !important; font-size: 3rem;'>🚨 SYSTEM SECURITY CAPTCHA INTERCEPT</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; font-size: 1.2rem; color: #cbd5e1 !important;'>This account has already been added. Complete verification to redirect to login panel.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-size: 1.2rem;'>This account has already been added. Complete verification to return to entry hub.</p>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
     
-    _, col_c2, _ = st.columns([1, 2, 1])
+    _, col_c2, _ = st.columns()
     with col_c2:
         st.markdown('<div class="recaptcha-box">', unsafe_allow_html=True)
         st.subheader("🛡️ Multi-Choice Anti-Bot Query Challenge")
@@ -245,5 +243,3 @@ if st.session_state.show_fullscreen_captcha:
                 st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-# -----------------------------------------------------------------------------
-# 6. SIGN IN / SIGN UP GATEWAYS
