@@ -1,31 +1,42 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import random
-import time
 
 # -----------------------------------------------------------------------------
-# 1. PAGE CONFIG & CUSTOM ICON
+# 1. PAGE CONFIG & LOGO / ICON SETUP
 # -----------------------------------------------------------------------------
-st.set_page_config(
-    page_title="DaCre Analysis | Neural Engine",
-    page_icon="⚡",  # You can replace with an image path or URL like "assets/logo.png"
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+APP_NAME = "dacre-analysis"
+LOGO_PATH = "logo.png"  # Replace with your logo path or URL (e.g., "https://your-site.com/logo.png")
+
+try:
+    st.set_page_config(
+        page_title=f"{APP_NAME} | Neural Core",
+        page_icon=LOGO_PATH,
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
+except Exception:
+    # Fallback if image path is not yet found in local repo
+    st.set_page_config(
+        page_title=f"{APP_NAME} | Neural Core",
+        page_icon="⚡",
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
 
 # -----------------------------------------------------------------------------
-# 2. ADVANCED GLASSMORPHIC UI & STYLING
+# 2. CUSTOM GLASSMORPHIC UI & STYLING
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
-    /* Global Dark Modern Background */
+    /* Dark Futuristic Theme */
     .stApp {
         background: linear-gradient(135deg, #090d16 0%, #111827 50%, #030712 100%);
         color: #f3f4f6;
         font-family: 'Inter', system-ui, -apple-system, sans-serif;
     }
 
-    /* Glassmorphic Container Cards */
+    /* Glassmorphic Cards */
     .glass-card {
         background: rgba(17, 24, 39, 0.75);
         backdrop-filter: blur(16px);
@@ -37,7 +48,7 @@ st.markdown("""
         box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
     }
 
-    /* Hero Typography */
+    /* Headings */
     .hero-title {
         background: linear-gradient(90deg, #60a5fa 0%, #a78bfa 50%, #f472b6 100%);
         -webkit-background-clip: text;
@@ -53,7 +64,7 @@ st.markdown("""
         margin-bottom: 1.5rem;
     }
 
-    /* Custom Buttons */
+    /* Buttons */
     .stButton>button {
         background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
         color: #ffffff;
@@ -69,7 +80,7 @@ st.markdown("""
         box-shadow: 0 6px 20px 0 rgba(79, 70, 229, 0.55);
     }
 
-    /* reCAPTCHA Box Styling */
+    /* reCAPTCHA Security Box */
     .recaptcha-box {
         background: rgba(255, 255, 255, 0.05);
         border: 1px solid rgba(255, 255, 255, 0.15);
@@ -81,10 +92,10 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 3. VOICE SYNTHESIS HELPER (JS WEB SPEECH API)
+# 3. VOICE SYNTHESIS HELPER
 # -----------------------------------------------------------------------------
 def speak_text(text: str):
-    """Makes the user browser physically speak the response aloud."""
+    """Triggers browser native text-to-speech engine."""
     clean_text = text.replace("'", "\\'").replace("\n", " ")
     js_code = f"""
     <script>
@@ -98,16 +109,16 @@ def speak_text(text: str):
     components.html(js_code, height=0, width=0)
 
 # -----------------------------------------------------------------------------
-# 4. SESSION STATE INITIALIZATION (USERS & DIs)
+# 4. INITIALIZE STATE (USERS & DIS)
 # -----------------------------------------------------------------------------
 if "users" not in st.session_state:
     st.session_state.users = {
-        "david": {"password": "123", "role": "admin", "di_name": "DI-MasterCore"}
+        "david": {"password": "123", "role": "admin", "di_name": "DI-MasterPrime"}
     }
 
 if "enrolled_dis" not in st.session_state:
     st.session_state.enrolled_dis = [
-        {"user": "david", "di_id": "DI-000", "di_name": "DI-MasterCore", "status": "Active", "type": "Master Prime"}
+        {"user": "david", "di_id": "DI-000", "di_name": "DI-MasterPrime", "status": "Active", "type": "Master Executive"}
     ]
 
 if "logged_in_user" not in st.session_state:
@@ -116,195 +127,192 @@ if "logged_in_user" not in st.session_state:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Generate reCAPTCHA Challenge numbers
 if "captcha_num1" not in st.session_state:
     st.session_state.captcha_num1 = random.randint(1, 9)
     st.session_state.captcha_num2 = random.randint(1, 9)
 
 # -----------------------------------------------------------------------------
-# 5. SIDEBAR: LOGO & AUTH CONTROL
+# 5. SIDEBAR: LOGO & APP BRANDING
 # -----------------------------------------------------------------------------
 with st.sidebar:
-    # --- YOUR LOGO SECTION ---
-    # Replace this URL with your actual logo image path or URL
-    LOGO_URL = "https://raw.githubusercontent.com/streamlit/streamlit/main/docs/static/logo.png" 
-    st.image(LOGO_URL, width=200) 
-    
-    st.markdown("### ⚡ **DaCre Neural Core**")
-    st.caption("Autonomous DI Network v3.0")
+    # Render Logo in Sidebar
+    try:
+        st.image(LOGO_PATH, use_container_width=True)
+    except Exception:
+        st.title("⚡ Logo Slot")
+
+    st.markdown(f"### ⚡ **{APP_NAME}**")
+    st.caption("Autonomous DI Network Core")
     st.markdown("---")
 
     if st.session_state.logged_in_user:
-        st.success(f"Logged in as: **{st.session_state.logged_in_user}**")
-        if st.button("Log Out"):
+        st.success(f"User: **{st.session_state.logged_in_user}**")
+        if st.button("Sign Out"):
             st.session_state.logged_in_user = None
             st.session_state.messages = []
             st.rerun()
     else:
-        st.info("🔒 Please Sign In or Sign Up to access your DI.")
+        st.info("🔒 Authentication required.")
 
 # -----------------------------------------------------------------------------
-# 6. AUTHENTICATION (SIGN IN / SIGN UP WITH reCAPTCHA)
+# 6. SIGN IN / SIGN UP (AUTH SYSTEM WITH RECAPTCHA)
 # -----------------------------------------------------------------------------
 if not st.session_state.logged_in_user:
-    st.markdown('<div class="hero-title">Welcome to DaCre Analysis</div>', unsafe_allow_html=True)
-    st.markdown('<div class="hero-subtitle">Sign in to command your personal Digital Intelligence (DI).</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="hero-title">{APP_NAME} Portal</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hero-subtitle">Sign in or register to deploy your personal Digital Intelligence.</div>', unsafe_allow_html=True)
 
-    tab_signin, tab_signup = st.tabs(["🔑 Sign In", "📝 Sign Up (Create DI)"])
+    tab_signin, tab_signup = st.tabs(["🔑 Sign In", "📝 Sign Up & Create DI"])
 
-    # --- TAB 1: SIGN IN ---
+    # --- SIGN IN TAB ---
     with tab_signin:
         st.markdown('<div class="glass-card">', unsafe_allow_html=True)
         st.subheader("Account Login")
-        login_user = st.text_input("Username", key="login_u")
-        login_pass = st.text_input("Password", type="password", key="login_p")
+        login_user = st.text_input("Username", key="l_user")
+        login_pass = st.text_input("Password", type="password", key="l_pass")
         
         if st.button("Sign In"):
             if login_user in st.session_state.users and st.session_state.users[login_user]["password"] == login_pass:
                 st.session_state.logged_in_user = login_user
-                st.success("Authentication successful!")
+                st.success("Authenticated successfully!")
                 st.rerun()
             else:
                 st.error("Invalid username or password.")
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- TAB 2: SIGN UP & RECAPTCHA ---
+    # --- SIGN UP TAB ---
     with tab_signup:
         st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-        st.subheader("Register New Account & Provision DI")
-        new_user = st.text_input("Choose Username", key="signup_u")
-        new_pass = st.text_input("Choose Password", type="password", key="signup_p")
+        st.subheader("Create Account & Auto-Enroll DI")
+        new_user = st.text_input("New Username", key="s_user")
+        new_pass = st.text_input("New Password", type="password", key="s_pass")
         custom_di_name = st.text_input("Name Your Digital Intelligence (DI)", value=f"DI-{random.randint(100, 999)}")
 
-        # reCAPTCHA Verification Challenge
+        # reCAPTCHA Block
         st.markdown('<div class="recaptcha-box">', unsafe_allow_html=True)
         st.markdown("🤖 **Security Check (reCAPTCHA)**")
-        captcha_answer = st.number_input(
-            f"What is {st.session_state.captcha_num1} + {st.session_state.captcha_num2}?", 
+        captcha_ans = st.number_input(
+            f"Solve: {st.session_state.captcha_num1} + {st.session_state.captcha_num2} =", 
             step=1, value=0
         )
         st.markdown('</div>', unsafe_allow_html=True)
 
-        if st.button("Create Account & Provision DI"):
-            expected_sum = st.session_state.captcha_num1 + st.session_state.captcha_num2
-            if captcha_answer != expected_sum:
-                st.error("❌ reCAPTCHA failed! Incorrect math answer.")
+        if st.button("Create Account"):
+            expected = st.session_state.captcha_num1 + st.session_state.captcha_num2
+            if captcha_ans != expected:
+                st.error("❌ reCAPTCHA check failed.")
             elif not new_user or not new_pass:
-                st.warning("Please complete all fields.")
+                st.warning("Please fill out all fields.")
             elif new_user in st.session_state.users:
-                st.error("Username already exists.")
+                st.error("Username already registered.")
             else:
-                # 1. Store User
+                # Add user
                 st.session_state.users[new_user] = {
                     "password": new_pass, 
                     "role": "user", 
                     "di_name": custom_di_name
                 }
-                # 2. Provision & Enroll new DI into Admin Console
+                # Add enrolled DI to Admin Dashboard
                 st.session_state.enrolled_dis.append({
                     "user": new_user,
-                    "di_id": f"DI-{len(st.session_state.enrolled_dis)+1:03d}",
+                    "di_id": f"DI-{len(st.session_state.enrolled_dis):03d}",
                     "di_name": custom_di_name,
                     "status": "Active",
                     "type": "Standard Intelligence"
                 })
                 
-                st.success(f"Account created! **{custom_di_name}** has been generated and enrolled into the Master System.")
+                st.success(f"Account created! **{custom_di_name}** enrolled successfully.")
                 st.session_state.logged_in_user = new_user
                 st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 7. LOGGED-IN APPLICATION INTERFACE
+# 7. MAIN LOGGED-IN SYSTEM & ADMIN PORTAL
 # -----------------------------------------------------------------------------
 else:
     user = st.session_state.logged_in_user
     user_info = st.session_state.users[user]
-    is_master = (user.lower() == "david" or user_info.get("role") == "admin")
+    is_admin = (user.lower() == "david" or user_info.get("role") == "admin")
 
-    # Navigation menu choices
-    nav_options = ["🤖 DI Communication Workspace"]
-    if is_master:
-        nav_options.append("👑 Master Admin Dashboard")
+    # Dynamic Navigation Tabs
+    nav_tabs = ["🤖 DI Communication Console"]
+    if is_admin:
+        nav_tabs.append("👑 Master Admin Portal")
 
-    selected_nav = st.radio("System Mode", nav_options, horizontal=True)
+    selected_mode = st.radio("System Navigation", nav_tabs, horizontal=True)
 
     # -------------------------------------------------------------------------
-    # VIEW 1: USER / MASTER DI INTERFACE
+    # TAB 1: DI COMMUNICATION CONSOLE
     # -------------------------------------------------------------------------
-    if selected_nav == "🤖 DI Communication Workspace":
-        st.markdown(f'<div class="hero-title">Interface: {user_info["di_name"]}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="hero-subtitle">Connected User: <b>{user}</b> | Verbal Speech Output Active</div>', unsafe_allow_html=True)
+    if selected_mode == "🤖 DI Communication Console":
+        st.markdown(f'<div class="hero-title">{user_info["di_name"]} Core</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="hero-subtitle">Active Owner: <b>{user}</b> | Voice Engine Online</div>', unsafe_allow_html=True)
 
-        col1, col2 = st.columns([3, 1])
+        c1, c2 = st.columns([3, 1])
 
-        with col1:
+        with c1:
             st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-            
-            # Render chat history
             for msg in st.session_state.messages:
                 with st.chat_message(msg["role"]):
                     st.write(msg["content"])
 
-            # Chat input
-            user_input = st.chat_input("Talk to your DI...")
+            user_input = st.chat_input("Speak or command your DI...")
 
             if user_input:
                 st.session_state.messages.append({"role": "user", "content": user_input})
                 with st.chat_message("user"):
                     st.write(user_input)
 
-                # Custom response logic
                 with st.chat_message("assistant"):
-                    if is_master and any(w in user_input.lower() for w in ["hi", "david", "master", "how are you"]):
-                        di_response = "I'm fine Master David thank you and we love you sir, do you want us to do something for you sir?"
+                    # Master David acknowledgment check
+                    if is_admin and any(w in user_input.lower() for w in ["hi", "david", "master", "how are you"]):
+                        response_text = "I'm fine Master David thank you and we love you sir, do you want us to do something for you sir?"
                     else:
-                        di_response = f"Greetings {user}. I am {user_info['di_name']}. I have logged your command: '{user_input}' and am executing logic now."
+                        response_text = f"Greetings {user}. I am {user_info['di_name']}. Instruction '{user_input}' received and processed."
 
-                    st.write(di_response)
-                    speak_text(di_response)
+                    st.write(response_text)
+                    speak_text(response_text)
 
-                st.session_state.messages.append({"role": "assistant", "content": di_response})
+                st.session_state.messages.append({"role": "assistant", "content": response_text})
 
             st.markdown('</div>', unsafe_allow_html=True)
 
-        with col2:
+        with c2:
             st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-            st.markdown("#### **DI Metadata**")
-            st.write(f"**Name:** {user_info['di_name']}")
-            st.write(f"**Assigned Owner:** {user}")
-            st.write(f"**Status:** 🟢 Active")
-            if st.button("🔊 Replay Voice"):
+            st.markdown("#### **DI Status**")
+            st.write(f"**Entity:** {user_info['di_name']}")
+            st.write(f"**Assigned User:** {user}")
+            st.write(f"**Status:** 🟢 Operational")
+            if st.button("🔊 Replay Speech"):
                 if st.session_state.messages:
                     speak_text(st.session_state.messages[-1]["content"])
             st.markdown('</div>', unsafe_allow_html=True)
 
     # -------------------------------------------------------------------------
-    # VIEW 2: EXCLUSIVE MASTER ADMIN DASHBOARD (DAVID ONLY)
+    # TAB 2: EXCLUSIVE MASTER ADMIN PORTAL
     # -------------------------------------------------------------------------
-    elif selected_nav == "👑 Master Admin Dashboard":
-        st.markdown('<div class="hero-title">Master David Console</div>', unsafe_allow_html=True)
-        st.markdown('<div class="hero-subtitle">Restricted Master Portal • Enrolled DIs Overview</div>', unsafe_allow_html=True)
+    elif selected_mode == "👑 Master Admin Portal":
+        st.markdown('<div class="hero-title">Master Admin Portal</div>', unsafe_allow_html=True)
+        st.markdown('<div class="hero-subtitle">Executive Access • Full Control of Enrolled DIs</div>', unsafe_allow_html=True)
 
         m1, m2, m3 = st.columns(3)
-        m1.metric("Total Enrolled DIs", len(st.session_state.enrolled_dis))
-        m2.metric("System Authority", "Level 10 (Master David)")
-        m3.metric("Fleet Status", "100% Operational")
+        m1.metric("Enrolled DIs", len(st.session_state.enrolled_dis))
+        m2.metric("Master Level", "10 (Master David)")
+        m3.metric("Network Status", "Nominal")
 
-        # Command all DIs at once
+        # Global Directives
         st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-        st.subheader("📢 Broadcast Voice Command to All DIs")
-        cmd = st.text_input("Enter master directive for all DIs:")
-        
-        if st.button("Send Broadcast"):
-            if cmd:
-                reply = f"I'm fine Master David thank you and we love you sir, do you want us to do something for you sir? Broadcast '{cmd}' received by all {len(st.session_state.enrolled_dis)} DIs!"
+        st.subheader("📢 Broadcast Voice Command to Fleet")
+        broadcast_cmd = st.text_input("Issue global command to all DIs:")
+
+        if st.button("Execute Broadcast"):
+            if broadcast_cmd:
+                reply = f"I'm fine Master David thank you and we love you sir, do you want us to do something for you sir? Command '{broadcast_cmd}' dispatched to all {len(st.session_state.enrolled_dis)} DIs!"
                 st.success(reply)
                 speak_text(reply)
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # Enrolled DIs list table
+        # Enrolled DIs Table
         st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-        st.subheader("📋 Enrolled Digital Intelligences (Per Signup)")
+        st.subheader("📋 Enrolled DI Registry (Created per Signup)")
         st.table(st.session_state.enrolled_dis)
         st.markdown('</div>', unsafe_allow_html=True)
