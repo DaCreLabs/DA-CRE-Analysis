@@ -8,7 +8,9 @@ from datetime import datetime
 # 1. PAGE INITIALIZATION & CONFIGURATION
 # -----------------------------------------------------------------------------
 APP_NAME = "DA-CRE-Analysis"
-LOGO_PATH = "IMG_20260729_135217.jpg"
+
+# ⬇️ CHOOSE THE EXACT RENAMED LOGO DIRECTORY AS THE HOOK ⬇️
+LOGO_PATH = "my_logo.png"
 
 try:
     st.set_page_config(
@@ -46,35 +48,37 @@ st.markdown("""
         100% { background-position: 100% 10%; }
     }
     
-    /* Premium Glassmorphic Cards with Float Actions */
+    /* Premium Glassmorphic Cards with High Contrast Visibility Borders */
     .sky-card {
-        background: rgba(10, 17, 34, 0.75);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border: 1px solid rgba(0, 242, 254, 0.18);
+        background: rgba(13, 22, 47, 0.9) !important;
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        border: 2px solid rgba(0, 242, 254, 0.4) !important;
         border-radius: 20px;
-        padding: 30px;
+        padding: 35px;
+        margin-top: 15px;
         margin-bottom: 24px;
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5), inset 0 0 15px rgba(0, 242, 254, 0.03);
-        transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .sky-card:hover {
-        transform: translateY(-5px);
-        border-color: rgba(0, 242, 254, 0.45);
-        box-shadow: 0 20px 45px rgba(0, 242, 254, 0.12), inset 0 0 25px rgba(0, 242, 254, 0.05);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), inset 0 0 20px rgba(0, 242, 254, 0.05);
     }
     
-    /* Super-High Contrast Global Override for Text Visibility */
-    h1, h2, h3, h4, h5, h6, p, label, span, div {
+    /* Absolute Force Global Text Colors for Clear Legibility */
+    h1, h2, h3, h4, h5, h6, p, span, label, .stMarkdown div {
         color: #ffffff !important;
     }
+    
+    .sidebar-text {
+        color: #ffffff !important;
+        font-weight: 600 !important;
+        font-size: 1.1rem !important;
+    }
+    
     .sub-text {
-        color: #cbd5e1 !important;
-        font-size: 1.05rem;
+        color: #e2e8f0 !important;
+        font-size: 1.1rem;
         line-height: 1.6;
     }
     
-    /* Stunning Kinetic Headers */
+    /* Stunning Kinetic Title */
     .sky-title {
         font-family: 'Space Grotesk', sans-serif;
         background: linear-gradient(135deg, #00f2fe 0%, #3b82f6 50%, #a78bfa 100%);
@@ -87,30 +91,44 @@ st.markdown("""
         margin-bottom: 12px;
     }
     
-    /* Customized Form Inputs for Legibility */
+    /* Enhanced Input Layout Structure */
     .stTextInput>div>div>input {
-        background-color: rgba(15, 23, 42, 0.8) !important;
+        background-color: #0b1120 !important;
         color: #ffffff !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        border-radius: 10px !important;
+        border: 2px solid rgba(0, 242, 254, 0.3) !important;
+        border-radius: 12px !important;
+        padding: 10px !important;
+        font-size: 1.05rem !important;
     }
     
-    /* Interactive Cybernetic Buttons */
+    /* Custom Interactive Navigation Elements */
+    .stTabs [data-baseweb="tab"] {
+        color: #cbd5e1 !important;
+        font-size: 1.1rem !important;
+        font-weight: 600 !important;
+    }
+    .stTabs [aria-selected="true"] {
+        color: #00f2fe !important;
+        border-bottom-color: #00f2fe !important;
+    }
+    
+    /* Kinetic Action Buttons */
     .stButton>button {
         background: linear-gradient(135deg, #00f2fe 0%, #3b82f6 100%) !important;
         color: #020617 !important;
         border: none !important;
         border-radius: 12px !important;
-        padding: 12px 28px !important;
+        padding: 14px 32px !important;
         font-family: 'Space Grotesk', sans-serif;
         font-weight: 700 !important;
         letter-spacing: 0.5px;
-        box-shadow: 0 8px 20px rgba(0, 242, 254, 0.25) !important;
+        box-shadow: 0 8px 25px rgba(0, 242, 254, 0.3) !important;
         transition: all 0.3s ease !important;
+        width: 100%;
     }
     .stButton>button:hover {
         transform: translateY(-2px) !important;
-        box-shadow: 0 12px 28px rgba(0, 242, 254, 0.45) !important;
+        box-shadow: 0 14px 35px rgba(0, 242, 254, 0.5) !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -164,11 +182,6 @@ if "logged_in_user" not in st.session_state:
 if "last_spoken_phrase" not in st.session_state:
     st.session_state.last_spoken_phrase = None
 
-# Active Tab Navigation Index Variable
-if "active_portal_tab" not in st.session_state:
-    st.session_state.active_portal_tab = 0
-
-# Fullscreen Intercept State Tracking Flags
 if "show_fullscreen_captcha" not in st.session_state:
     st.session_state.show_fullscreen_captcha = False
 
@@ -176,7 +189,6 @@ if "captcha_quiz_options" not in st.session_state:
     st.session_state.captcha_quiz_options = []
     st.session_state.captcha_quiz_correct = ""
 
-# Audio Queue Engine Fire
 if st.session_state.last_spoken_phrase:
     execute_voice_output(st.session_state.last_spoken_phrase)
     st.session_state.last_spoken_phrase = None
@@ -188,49 +200,45 @@ with st.sidebar:
     try:
         st.image(LOGO_PATH, use_container_width=True)
     except Exception:
-        st.error("System Log: Logo image asset missing from root folder directory.")
+        st.markdown("<div style='border:1px dashed rgba(255,255,255,0.2); padding:10px; text-align:center;'>🖼️ Waiting for my_logo.png file sync...</div>", unsafe_allow_html=True)
 
-    st.markdown(f"### **{APP_NAME}**")
-    st.markdown("<p style='color:#cbd5e1 !important;'>Starfall Cybernetic Mesh</p>", unsafe_allow_html=True)
+    st.markdown(f"<h2>{APP_NAME}</h2>", unsafe_allow_html=True)
+    st.markdown("<p class='sidebar-text'>Starfall Cybernetic Mesh</p>", unsafe_allow_html=True)
     st.markdown("---")
 
     if st.session_state.logged_in_user:
         st.write(f"Active Session: :cyan[**{st.session_state.logged_in_user.upper()}**]")
         if st.button("Disconnect Platform", use_container_width=True):
             st.session_state.logged_in_user = None
-            st.session_state.active_portal_tab = 0
             st.rerun()
     else:
-        st.info("Authentication Gateway Online.")
+        st.markdown("<div style='background:rgba(0,242,254,0.1); border:1px solid #00f2fe; padding:10px; border-radius:8px; text-align:center;'>🔒 Security Firewall Active</div>", unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# INTERCEPT TRIGGER MODE: FULLSCREEN CAPTCHA SCREEN OVERTAKE
+# INTERCEPT MODAL: FULLSCREEN SECURITY CAPTCHA OVERTAKE
 # -----------------------------------------------------------------------------
 if st.session_state.show_fullscreen_captcha:
     st.markdown("""
         <style>
-        /* Force hiding of typical site shell navigation frames */
         [data-testid="stSidebar"] { display: none !important; }
         .stTabs { display: none !important; }
         </style>
     """, unsafe_allow_html=True)
     
     st.markdown("<h1 style='text-align: center; color: #ff3366 !important; font-size: 3rem;'>🚨 SYSTEM SECURITY TAKEOVER</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; font-size: 1.2rem; color: #cbd5e1 !important;'>This account has already been added. Please sign in! Solve the anti-bot verification challenge to redirect back to the entry gateway automatically.</p>", unsafe_allow_html=True)
-    
+    st.markdown("<p style='text-align: center; font-size: 1.2rem;'>This account has already been added. Solve the challenge to return to the sign-in hub.</p>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
     
-    col_c1, col_c2, col_c3 = st.columns([1, 2, 1])
+    _, col_c2, _ = st.columns([1, 2, 1])
     with col_c2:
-        st.markdown('<div class="sky-card" style="border: 2px solid #ff3366;">', unsafe_allow_html=True)
+        st.markdown('<div class="sky-card" style="border: 2px solid #ff3366 !important;">', unsafe_allow_html=True)
         st.subheader("🛡️ CAPTCHA Verification Matrix Challenge")
-        st.write(f"**Question:** Select the item that matches this precise classification: **{st.session_state.captcha_quiz_correct.upper()}**")
+        st.write(f"**Question:** Select the item matching classification: **{st.session_state.captcha_quiz_correct.upper()}**")
         
-        user_selected_ans = st.radio("Available Environment Node Signatures:", st.session_state.captcha_quiz_options)
+        user_selected_ans = st.radio("Available Signatures:", st.session_state.captcha_quiz_options)
         
-        if st.button("Submit Cryptographic Resolution Verification", use_container_width=True):
+        if st.button("Submit Cryptographic Resolution Verification"):
             if user_selected_ans == st.session_state.captcha_quiz_correct:
-                st.toast("Verification Authorized. Security clearance validation active.")
                 st.session_state.show_fullscreen_captcha = False
-                st.session_state.active_portal_tab = 0  # Force index target switch straight to sign-in portal
                 st.rerun()
+            else:
