@@ -3,104 +3,135 @@ import streamlit.components.v1 as components
 import random
 
 # -----------------------------------------------------------------------------
-# 1. PAGE CONFIG & LOGO SETUP
+# 1. PAGE CONFIGURATION & LOGO INITIALIZATION
 # -----------------------------------------------------------------------------
-APP_NAME = "dacre-analysis"
+APP_NAME = "DA-CRE-Analysis"
+LOGO_PATH = "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png"
 
-# ⬇️ UPDATED TO MATCH YOUR GITHUB FILENAME ⬇️
-LOGO_PATH = "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png" 
-
-# Set Page Config with Logo as Page Icon
 try:
     st.set_page_config(
-        page_title=f"{APP_NAME} | Neural Core",
+        page_title=f"{APP_NAME} // Cybernetic Intelligence Grid",
         page_icon=LOGO_PATH,
         layout="wide",
         initial_sidebar_state="expanded"
     )
 except Exception:
     st.set_page_config(
-        page_title=f"{APP_NAME} | Neural Core",
-        page_icon="⚡",
+        page_title=f"{APP_NAME} // Cybernetic Intelligence Grid",
         layout="wide",
         initial_sidebar_state="expanded"
     )
 
 # -----------------------------------------------------------------------------
-# 2. CUSTOM UI & GLASSMORPHIC STYLING
+# 2. ULTRA-NEXT-GEN SYSTEM STYLING (HTML/CSS ENGINE)
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
+    @import url('https://googleapis.com');
+    
     .stApp {
-        background: linear-gradient(135deg, #090d16 0%, #111827 50%, #030712 100%);
-        color: #f3f4f6;
-        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        background: radial-gradient(circle at 50% 0%, #0a1128 0%, #040814 70%, #010206 100%);
+        color: #e2e8f0;
+        font-family: 'Plus Jakarta Sans', sans-serif;
     }
-    .glass-card {
-        background: rgba(17, 24, 39, 0.75);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 16px;
-        padding: 24px;
-        margin-bottom: 20px;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+    
+    /* Neon Cyber Matrix Card */
+    .cyber-card {
+        background: rgba(6, 11, 25, 0.65);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        border: 1px solid rgba(0, 242, 254, 0.15);
+        border-radius: 24px;
+        padding: 32px;
+        margin-bottom: 24px;
+        box-shadow: 0 0 40px rgba(0, 242, 254, 0.05), inset 0 0 20px rgba(0, 242, 254, 0.02);
+        transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .hero-title {
-        background: linear-gradient(90deg, #60a5fa 0%, #a78bfa 50%, #f472b6 100%);
+    .cyber-card:hover {
+        border-color: rgba(0, 242, 254, 0.3);
+        box-shadow: 0 0 50px rgba(0, 242, 254, 0.1), inset 0 0 30px rgba(0, 242, 254, 0.05);
+    }
+    
+    /* Admin Matrix Shield Card */
+    .admin-card {
+        background: rgba(15, 6, 25, 0.7);
+        backdrop-filter: blur(24px);
+        border: 1px solid rgba(167, 139, 250, 0.25);
+        border-radius: 24px;
+        padding: 32px;
+        box-shadow: 0 0 40px rgba(167, 139, 250, 0.08);
+    }
+    
+    /* Out-Of-The-Box Experimental Typography */
+    .cyber-title {
+        font-family: 'Space Grotesk', sans-serif;
+        background: linear-gradient(135deg, #00f2fe 0%, #4facfe 40%, #a78bfa 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        font-size: 2.5rem;
+        font-size: 3.5rem;
         font-weight: 800;
-        margin-bottom: 0.2rem;
+        letter-spacing: -2px;
+        line-height: 1.1;
+        margin-bottom: 8px;
     }
-    .hero-subtitle {
-        color: #9ca3af;
-        font-size: 1rem;
-        margin-bottom: 1.5rem;
+    .cyber-subtitle {
+        color: #94a3b8;
+        font-size: 1.15rem;
+        font-weight: 300;
+        margin-bottom: 40px;
+        letter-spacing: 0.5px;
     }
+    
+    /* Interactive Cybernetic Inputs & Buttons */
     .stButton>button {
-        background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
-        color: #ffffff;
+        background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+        color: #020617 !important;
         border: none;
-        border-radius: 10px;
-        padding: 10px 24px;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 14px 0 rgba(79, 70, 229, 0.39);
+        border-radius: 12px;
+        padding: 12px 30px;
+        font-family: 'Space Grotesk', sans-serif;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        box-shadow: 0 8px 20px rgba(0, 242, 254, 0.25);
     }
     .stButton>button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px 0 rgba(79, 70, 229, 0.55);
+        transform: translateY(-3px);
+        box-shadow: 0 12px 28px rgba(0, 242, 254, 0.45);
     }
-    .recaptcha-box {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        border-radius: 8px;
-        padding: 12px;
-        margin: 10px 0;
+    
+    /* Custom Data Metrics */
+    .metric-value {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 2.2rem;
+        font-weight: 700;
+        color: #00f2fe;
     }
     </style>
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 3. VOICE SYNTHESIS HELPER
+# 3. VERBAL AUDIO SYNTHESIS PIPELINE
 # -----------------------------------------------------------------------------
-def speak_text(text: str):
-    clean_text = text.replace("'", "\\'").replace("\n", " ")
-    js_code = f"""
+def execute_voice_output(text: str):
+    """Generates localized speech synthesis arrays dynamically across the browser context."""
+    escaped_text = text.replace("'", "\\'").replace("\n", " ")
+    speech_component = f"""
     <script>
-        var msg = new SpeechSynthesisUtterance('{clean_text}');
-        msg.rate = 1.0;
-        msg.pitch = 1.0;
-        msg.volume = 1.0;
-        window.speechSynthesis.speak(msg);
+        if ('speechSynthesis' in window) {{
+            window.speechSynthesis.cancel(); 
+            var voiceUtterance = new SpeechSynthesisUtterance('{escaped_text}');
+            voiceUtterance.rate = 1.05;
+            voiceUtterance.pitch = 0.95;
+            voiceUtterance.volume = 1.0;
+            window.speechSynthesis.speak(voiceUtterance);
+        }}
     </script>
     """
-    components.html(js_code, height=0, width=0)
+    components.html(speech_component, height=0, width=0)
 
 # -----------------------------------------------------------------------------
-# 4. INITIALIZE SESSION STATE
+# 4. DISTRIBUTED HIVE DATA ARCHITECTURE
 # -----------------------------------------------------------------------------
 if "users" not in st.session_state:
     st.session_state.users = {
@@ -109,103 +140,94 @@ if "users" not in st.session_state:
 
 if "enrolled_dis" not in st.session_state:
     st.session_state.enrolled_dis = [
-        {"user": "david", "di_id": "DI-000", "di_name": "DI-MasterPrime", "status": "Active", "type": "Master Executive"}
+        {"user": "david", "di_id": "DI-000", "di_name": "DI-MasterPrime", "status": "Active", "type": "Quantum Executive Core"}
     ]
 
 if "logged_in_user" not in st.session_state:
     st.session_state.logged_in_user = None
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+if "last_spoken_phrase" not in st.session_state:
+    st.session_state.last_spoken_phrase = None
 
-if "captcha_num1" not in st.session_state:
-    st.session_state.captcha_num1 = random.randint(1, 9)
-    st.session_state.captcha_num2 = random.randint(1, 9)
+if "captcha_v1" not in st.session_state:
+    st.session_state.captcha_v1 = random.randint(2, 9)
+    st.session_state.captcha_v2 = random.randint(2, 9)
+
+# Trigger verbal audio queues upon session transitions
+if st.session_state.last_spoken_phrase:
+    execute_voice_output(st.session_state.last_spoken_phrase)
+    st.session_state.last_spoken_phrase = None
 
 # -----------------------------------------------------------------------------
-# 5. SIDEBAR: LOGO DISPLAY & BRANDING
+# 5. SIDEBAR ENVIRONMENT
 # -----------------------------------------------------------------------------
 with st.sidebar:
-    # Render Logo Image in Sidebar
+    # Explicit Logo Rendering Core
     try:
         st.image(LOGO_PATH, use_container_width=True)
     except Exception:
-        st.info("🖼️ Place your logo file in your GitHub repository to display your logo here.")
+        st.error("System Notification: Logo asset file unreadable or missing from repo directory.")
 
-    st.markdown(f"### ⚡ **{APP_NAME}**")
-    st.caption("Autonomous DI Network Core")
+    st.markdown(f"### **{APP_NAME}**")
+    st.caption("Autonomous DI Grid Network")
     st.markdown("---")
 
     if st.session_state.logged_in_user:
-        st.success(f"User: **{st.session_state.logged_in_user}**")
-        if st.button("Sign Out"):
+        st.write(f"System Operator: :cyan[**{st.session_state.logged_in_user.upper()}**]")
+        if st.button("Terminate Session", use_container_width=True):
             st.session_state.logged_in_user = None
-            st.session_state.messages = []
             st.rerun()
     else:
-        st.info("🔒 Authentication Required")
+        st.info("🔒 Secure Firewall Active. Authentication Required.")
 
 # -----------------------------------------------------------------------------
-# 6. AUTHENTICATION & RECAPTCHA
+# 6. APP MAIN PORTAL VIEW
 # -----------------------------------------------------------------------------
 if not st.session_state.logged_in_user:
-    st.markdown(f'<div class="hero-title">{APP_NAME} Portal</div>', unsafe_allow_html=True)
-    st.markdown('<div class="hero-subtitle">Sign in or register to deploy your personal Digital Intelligence.</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="cyber-title">{APP_NAME}</div>', unsafe_allow_html=True)
+    st.markdown('<div class="cyber-subtitle">Integrated Interface Engine for Advanced Exploratory Analytics & Core Intelligence Deployments.</div>', unsafe_allow_html=True)
 
-    tab_signin, tab_signup = st.tabs(["🔑 Sign In", "📝 Sign Up & Create DI"])
+    tab_login, tab_registration = st.tabs(["🔒 SECURE GATEWAY", "🧬 CONSTRUCT DIGITAL INTELLIGENCE"])
 
-    with tab_signin:
-        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-        st.subheader("Account Login")
-        login_user = st.text_input("Username", key="l_user")
-        login_pass = st.text_input("Password", type="password", key="l_pass")
+    with tab_login:
+        st.markdown('<div class="cyber-card">', unsafe_allow_html=True)
+        st.subheader("Operator Login Verification")
+        input_user = st.text_input("Operator Username Identifier", key="login_uid")
+        input_pass = st.text_input("Cryptographic Security Key", type="password", key="login_pkey")
         
-        if st.button("Sign In"):
-            if login_user in st.session_state.users and st.session_state.users[login_user]["password"] == login_pass:
-                st.session_state.logged_in_user = login_user
-                st.success("Authenticated successfully!")
+        if st.button("Initialize Authentication"):
+            if input_user in st.session_state.users and st.session_state.users[input_user]["password"] == input_pass:
+                st.session_state.logged_in_user = input_user
+                if input_user == "david":
+                    st.session_state.last_spoken_phrase = "Welcome back, Master David. Omni Admin Access granted. Your network systems are online."
+                else:
+                    st.session_state.last_spoken_phrase = f"Access authorized. Welcome to the neural matrix, {input_user}."
                 st.rerun()
             else:
-                st.error("Invalid username or password.")
+                st.error("Authentication rejected: Invalid identity token mapping.")
         st.markdown('</div>', unsafe_allow_html=True)
 
-    with tab_signup:
-        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-        st.subheader("Create Account & Auto-Enroll DI")
-        new_user = st.text_input("New Username", key="s_user")
-        new_pass = st.text_input("New Password", type="password", key="s_pass")
-        custom_di_name = st.text_input("Name Your Digital Intelligence (DI)", value=f"DI-{random.randint(100, 999)}")
+    with tab_registration:
+        st.markdown('<div class="cyber-card">', unsafe_allow_html=True)
+        st.subheader("Provision New Identity Space")
+        reg_user = st.text_input("Register Unique Operator Username", key="reg_uid")
+        reg_pass = st.text_input("Establish System Passcode String", type="password", key="reg_pkey")
+        desired_di = st.text_input("Designate Digital Intelligence Identifier Token (DI Name)", value=f"DI-Nexus-{random.randint(1000, 9999)}")
 
-        st.markdown('<div class="recaptcha-box">', unsafe_allow_html=True)
-        st.markdown("🤖 **Security Check (reCAPTCHA)**")
-        captcha_ans = st.number_input(
-            f"Solve: {st.session_state.captcha_num1} + {st.session_state.captcha_num2} =", 
-            step=1, value=0
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("🌐 **Cryptographic Handshake Architecture (reCAPTCHA Verification)**")
+        expected_sum = st.session_state.captcha_v1 + st.session_state.captcha_v2
+        user_sum = st.number_input(f"Compute Verification Hex Matrix: {st.session_state.captcha_v1} + {st.session_state.captcha_v2} =", step=1, value=0)
 
-        if st.button("Create Account"):
-            expected = st.session_state.captcha_num1 + st.session_state.captcha_num2
-            if captcha_ans != expected:
-                st.error("❌ reCAPTCHA check failed.")
-            elif not new_user or not new_pass:
-                st.warning("Please fill out all fields.")
-            elif new_user in st.session_state.users:
-                st.error("Username already registered.")
+        if st.button("Execute Core Compilation"):
+            if user_sum != expected_sum:
+                st.error("Handshake Failed: Cryptographic mathematical resolution mismatch.")
+            elif not reg_user or not reg_pass:
+                st.warning("Action Deferred: Registration fields cannot contain null matrix data.")
+            elif reg_user in st.session_state.users:
+                st.error("Identity Collision: Operator identifier sequence already structurally cataloged.")
             else:
-                st.session_state.users[new_user] = {
-                    "password": new_pass, 
-                    "role": "user", 
-                    "di_name": custom_di_name
-                }
+                # Add user to memory matrix
+                st.session_state.users[reg_user] = {"password": reg_pass, "role": "user", "di_name": desired_di}
+                # Create corresponding Intelligence Node automatically
                 st.session_state.enrolled_dis.append({
-                    "user": new_user,
-                    "di_id": f"DI-{len(st.session_state.enrolled_dis):03d}",
-                    "di_name": custom_di_name,
-                    "status": "Active",
-                    "type": "Standard Intelligence"
-                })
-                
-                st.success(f"Account created! **{custom_di_name}** enrolled successfully.")
-                st.session_state.logged_in_user = new_user
-                st.rerun()
+                    "user": reg_user,
