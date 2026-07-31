@@ -1,68 +1,55 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import random
 import pandas as pd
+import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
+import json
+import io
 import time
 from datetime import datetime
 
 # -----------------------------------------------------------------------------
-# 1. PAGE CONFIG & MASTER SOVEREIGN IDENTITY SETUP
+# 1. APP CONFIGURATION & MASTER CONSTANTS
 # -----------------------------------------------------------------------------
-APP_NAME = "dacre-analysis"
+APP_NAME = "Dacre Analysis Engine"
 MASTER_FULL_NAME = "David Emenike"
+MASTER_PASSKEY = "theWORDofGOD@111"
 LOGO_PATH = "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png"
 
+# Updated Page Icon Configuration using your official Logo Path
 try:
     st.set_page_config(
-        page_title=f"{APP_NAME} | Built-In Interactive DI Core",
+        page_title=f"{APP_NAME} | Autonomous DI Platform",
         page_icon=LOGO_PATH,
         layout="wide",
         initial_sidebar_state="expanded"
     )
 except Exception:
     st.set_page_config(
-        page_title=f"{APP_NAME} | Built-In Interactive DI Core",
+        page_title=f"{APP_NAME} | Autonomous DI Platform",
         page_icon="⚡",
         layout="wide",
         initial_sidebar_state="expanded"
     )
 
 # -----------------------------------------------------------------------------
-# 2. CUSTOM STYLING & PERMANENT DI WIDGET CSS
+# 2. HIGH-PERFORMANCE STYLING & AUTOMATED CORE CSS
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
-    /* Canvas Base Background */
     .stApp {
-        background: radial-gradient(ellipse at bottom, #0f172a 0%, #020617 100%) !important;
+        background: radial-gradient(ellipse at bottom, #090d16 0%, #020408 100%) !important;
+        color: #f8fafc !important;
     }
 
-    /* Floating Sky Background Effect */
-    @keyframes floatSky {
-        0% { background-position: 0 0; }
-        50% { background-position: 100px -100px; }
-        100% { background-position: 0 0; }
-    }
-    
-    .stApp::before {
-        content: "";
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: url('https://user-images.githubusercontent.com/2673119/31048080-86532e74-a612-11e7-8250-9343be34a781.png') repeat;
-        opacity: 0.15;
-        pointer-events: none;
-        animation: floatSky 75s infinite linear;
-        z-index: -1 !important;
-    }
-
-    /* Custom Brown & Soft Light Blue Sidebar */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #3D2314 0%, #22120A 100%) !important;
+        background: linear-gradient(180deg, #110d0a 0%, #070504 100%) !important;
         border-right: 2px solid #38bdf8 !important;
     }
 
     [data-testid="stSidebar"] *, [data-testid="stSidebar"] p, [data-testid="stSidebar"] span {
-        color: #E0F2FE !important;
+        color: #e0f2fe !important;
     }
 
     .hero-title {
@@ -70,94 +57,72 @@ st.markdown("""
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         font-family: 'Space Grotesk', sans-serif;
-        font-size: 2.3rem;
+        font-size: 2.2rem;
         font-weight: 800;
-        margin-bottom: 0.2rem;
+        margin-bottom: 0.5rem;
     }
 
-    /* Permanently Active DI Header Card */
-    .di-status-card {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        border: 2px solid #38bdf8;
-        border-radius: 12px;
-        padding: 15px;
+    .di-card {
+        background: linear-gradient(135deg, #0f172a 0%, #020617 100%);
+        border: 1px solid #38bdf8;
+        border-radius: 10px;
+        padding: 12px 18px;
         margin-bottom: 15px;
-        box-shadow: 0 0 15px rgba(56, 189, 248, 0.2);
-    }
-
-    /* 5-Second Glowing Hover Loader CSS */
-    .hover-loader-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 15px;
-        margin-bottom: 20px;
-    }
-
-    .hover-loader {
-        width: 60px;
-        height: 60px;
-        border: 4px solid rgba(56, 189, 248, 0.2);
-        border-top: 4px solid #38bdf8;
-        border-radius: 50%;
-        animation: spin 1s linear infinite, glowPulse 5s ease-in-out infinite;
-    }
-
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-
-    @keyframes glowPulse {
-        0% { box-shadow: 0 0 5px #38bdf8; }
-        50% { box-shadow: 0 0 25px #818cf8, 0 0 40px #38bdf8; }
-        100% { box-shadow: 0 0 5px #38bdf8; }
-    }
-
-    /* Input Contrast Rules */
-    label, p, h1, h2, h3, h4, h5, h6, [data-testid="stMarkdownContainer"] p {
-        color: #ffffff !important;
+        box-shadow: 0 4px 20px rgba(56, 189, 248, 0.15);
     }
 
     .stTextInput input, .stNumberInput input, .stSelectbox div {
-        background-color: #1e293b !important;
+        background-color: #0f172a !important;
         color: #ffffff !important;
-        border: 2px solid #38bdf8 !important;
-        border-radius: 8px !important;
-        font-weight: 600 !important;
+        border: 1.5px solid #38bdf8 !important;
+        border-radius: 6px !important;
     }
 
     .stButton>button {
-        background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%) !important;
+        background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
         color: #ffffff !important;
         font-weight: bold !important;
         border: none !important;
-        border-radius: 8px !important;
-        padding: 10px 24px !important;
-        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3) !important;
+        border-radius: 6px !important;
+        padding: 8px 18px !important;
         transition: all 0.2s ease;
-        width: 100%;
     }
-    
+
     .stButton>button:hover {
         transform: translateY(-1px);
-        box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5) !important;
+        box-shadow: 0 4px 12px rgba(56, 189, 248, 0.4) !important;
+    }
+
+    /* Presentation Slide Styling */
+    .slide-card {
+        background: #030712;
+        border: 2px solid #38bdf8;
+        border-radius: 14px;
+        padding: 30px;
+        min-height: 420px;
+        box-shadow: 0 0 30px rgba(56, 189, 248, 0.2);
+        animation: fadeIn 0.8s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
     </style>
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 3. NIGERIAN VOICE SYNTHESIS HELPER ENGINE
+# 3. FAST NIGERIAN VOICE SYNTHESIS DISPATCHER
 # -----------------------------------------------------------------------------
-def speak_text_nigerian(text: str):
-    """Triggers browser text-to-speech engine with Nigerian voice flow."""
+def speak_fast_text(text: str):
+    """Executes high-speed text-to-speech output immediately."""
     clean_text = text.replace("'", "\\'").replace("\n", " ")
     js_code = f"""
     <script>
         if ('speechSynthesis' in window) {{
             window.speechSynthesis.cancel();
             var msg = new SpeechSynthesisUtterance('{clean_text}');
-            msg.rate = 0.95;
+            msg.rate = 1.15;
             msg.pitch = 1.0;
             msg.volume = 1.0;
             window.speechSynthesis.speak(msg);
@@ -167,542 +132,475 @@ def speak_text_nigerian(text: str):
     components.html(js_code, height=0, width=0)
 
 # -----------------------------------------------------------------------------
-# 4. INITIALIZE SYSTEM DATA & NAVIGATION STATE
+# 4. STATE PERSISTENCE & DATA STORAGE INITIALIZATION
 # -----------------------------------------------------------------------------
-if "users" not in st.session_state:
-    st.session_state.users = {
-        "david": {"password": "123", "role": "master", "di_name": "DI-MasterPrime"}
+if "db_users" not in st.session_state:
+    st.session_state.db_users = {
+        "david": {"password": "123", "full_name": MASTER_FULL_NAME, "role": "master"}
     }
 
-if "enrolled_dis" not in st.session_state:
-    st.session_state.enrolled_dis = [
-        {"user": "david", "di_id": "DI-000", "di_name": "DI-MasterPrime", "status": "Active", "type": "Master Prime"}
-    ]
-
-if "products" not in st.session_state:
-    st.session_state.products = [
-        {"Product ID": "PRD-101", "Name": "Neural Processor Core", "Category": "Hardware", "Status": "In Stock", "Qty": 45, "Cost": 1200},
-        {"Product ID": "PRD-102", "Name": "DI Memory Module", "Category": "Storage", "Status": "In Stock", "Qty": 120, "Cost": 350},
-        {"Product ID": "PRD-103", "Name": "SkyNet Gateway Unit", "Category": "Networking", "Status": "Low Stock", "Qty": 8, "Cost": 2100},
-        {"Product ID": "PRD-104", "Name": "Quantum Bus Interface", "Category": "Hardware", "Status": "In Stock", "Qty": 30, "Cost": 850},
-        {"Product ID": "PRD-105", "Name": "Cryo Cooling Array", "Category": "Infrastructure", "Status": "Maintenance", "Qty": 3, "Cost": 4500},
-    ]
-
-for item in st.session_state.products:
-    if "Cost" not in item:
-        item["Cost"] = 500
-
-if "audit_logs" not in st.session_state:
-    st.session_state.audit_logs = [
-        {"Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"), "User": "System", "Field Changed": "Initialization", "Old Value": "None", "New Value": "Online"}
-    ]
+if "user_datasets" not in st.session_state:
+    # Default enterprise dataset fallback
+    default_df = pd.DataFrame([
+        {"Product ID": "PRD-101", "Name": "Neural Processor Core", "Category": "Hardware", "Status": "In Stock", "Qty": 85, "Cost": 1200, "Sales": 450},
+        {"Product ID": "PRD-102", "Name": "DI Memory Module", "Category": "Storage", "Status": "In Stock", "Qty": 140, "Cost": 350, "Sales": 920},
+        {"Product ID": "PRD-103", "Name": "SkyNet Gateway Unit", "Category": "Networking", "Status": "Low Stock", "Qty": 6, "Cost": 2100, "Sales": 110},
+        {"Product ID": "PRD-104", "Name": "Quantum Bus Interface", "Category": "Hardware", "Status": "In Stock", "Qty": 50, "Cost": 850, "Sales": 380},
+        {"Product ID": "PRD-105", "Name": "Cryo Cooling Array", "Category": "Infrastructure", "Status": "Maintenance", "Qty": 2, "Cost": 4500, "Sales": 40},
+    ])
+    st.session_state.user_datasets = {"default": default_df}
 
 if "logged_in_user" not in st.session_state:
     st.session_state.logged_in_user = None
 
+if "is_master_authenticated" not in st.session_state:
+    st.session_state.is_master_authenticated = False
+
 if "last_spoken_phrase" not in st.session_state:
-    welcome_speech = (
-        f"Welcome to Dacre Analysis! Warm greetings to my Sovereign Master, {MASTER_FULL_NAME}! "
-        "How far now? I am your interactive built-in Digital Intelligence assistant. "
-        "I am listening to your voice live! You can ask me questions or command me to move your screen, "
-        "such as saying take me to sign in or take me to sign up, and I will switch your screen immediately!"
-    )
-    st.session_state.last_spoken_phrase = welcome_speech
+    st.session_state.last_spoken_phrase = None
+
+if "current_nav_page" not in st.session_state:
+    st.session_state.current_nav_page = "📊 Workflow Dashboard"
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-if "show_verification_gate" not in st.session_state:
-    st.session_state.show_verification_gate = False
+if "auth_mode" not in st.session_state:
+    st.session_state.auth_mode = "🔑 Sign In"
 
-if "failed_reason" not in st.session_state:
-    st.session_state.failed_reason = ""
-
-if "auth_portal_mode" not in st.session_state:
-    st.session_state.auth_portal_mode = "🔑 Sign In"
-
-if "current_dashboard_tab" not in st.session_state:
-    st.session_state.current_dashboard_tab = "📊 Data Dashboard"
-
-if "initial_loaded" not in st.session_state:
-    st.session_state.initial_loaded = False
-
-if "captcha_num1" not in st.session_state:
-    st.session_state.captcha_num1 = random.randint(1, 9)
-    st.session_state.captcha_num2 = random.randint(1, 9)
-
-if "captcha_quiz_options" not in st.session_state:
-    st.session_state.captcha_quiz_options = ["Quantum Server Matrix", "Nebular System Cluster", "Bot Automation Footprint", "Organic Human Operator Pro"]
-    st.session_state.captcha_quiz_correct = "Organic Human Operator Pro"
-
-# Audio dispatcher
+# Voice playback trigger
 if st.session_state.last_spoken_phrase:
-    speak_text_nigerian(st.session_state.last_spoken_phrase)
+    speak_fast_text(st.session_state.last_spoken_phrase)
     st.session_state.last_spoken_phrase = None
 
-# -----------------------------------------------------------------------------
-# 5. 5-SECOND HOVER LOADER INITIALIZATION
-# -----------------------------------------------------------------------------
-if not st.session_state.initial_loaded:
-    loader_placeholder = st.empty()
-    with loader_placeholder.container():
-        st.markdown(f"""
-            <div class="hover-loader-container">
-                <div class="hover-loader"></div>
-            </div>
-            <p style="text-align:center; font-family:'Space Grotesk'; font-weight:600; color:#38bdf8;">
-                Initializing Interactive Voice Core & Sovereign Recognition for Master {MASTER_FULL_NAME}... (5 Seconds)
-            </p>
-        """, unsafe_allow_html=True)
-        time.sleep(5)
-    loader_placeholder.empty()
-    st.session_state.initial_loaded = True
-    st.rerun()
+# Helper to retrieve active dataset for current session
+def get_current_df():
+    u = st.session_state.logged_in_user or "default"
+    if u not in st.session_state.user_datasets:
+        st.session_state.user_datasets[u] = st.session_state.user_datasets["default"].copy()
+    return st.session_state.user_datasets[u]
+
+def save_current_df(df):
+    u = st.session_state.logged_in_user or "default"
+    st.session_state.user_datasets[u] = df.copy()
 
 # -----------------------------------------------------------------------------
-# 6. SIDEBAR & PERMANENT MASTER RECOGNITION STATUS
+# 5. DI SALUTATION & COMMAND RESOLVER
 # -----------------------------------------------------------------------------
+def get_user_salutation():
+    if st.session_state.is_master_authenticated:
+        return f"Sovereign Master {MASTER_FULL_NAME}"
+    elif st.session_state.logged_in_user:
+        return f"{st.session_state.logged_in_user}"
+    else:
+        return "Operator"
+
+def process_voice_command(text: str):
+    cmd = text.lower()
+    salutation = get_user_salutation()
+
+    if "sign in" in cmd or "login" in cmd:
+        st.session_state.auth_mode = "🔑 Sign In"
+        reply = f"Navigating to Sign In page for you, {salutation}."
+        return reply, True
+    elif "sign up" in cmd or "register" in cmd:
+        st.session_state.auth_mode = "📝 Sign Up"
+        reply = f"Opening registration portal now, {salutation}."
+        return reply, True
+    elif "dashboard" in cmd or "workflow" in cmd:
+        st.session_state.current_nav_page = "📊 Workflow Dashboard"
+        reply = f"Switching directly to your Workflow Dashboard, {salutation}."
+        return reply, True
+    elif "preview" in cmd:
+        st.session_state.current_nav_page = "📋 Data Preview & Print"
+        reply = f"Opening read-only Data Preview, {salutation}."
+        return reply, True
+    elif "customize" in cmd or "report" in cmd or "chart" in cmd:
+        st.session_state.current_nav_page = "📈 Customize Data & Analytics"
+        reply = f"Moving to Customize Analytics and Presentation Suite, {salutation}."
+        return reply, True
+    elif "master" in cmd or "who are you" in cmd or "who built you" in cmd:
+        if st.session_state.is_master_authenticated:
+            reply = f"My Master is {MASTER_FULL_NAME}. All systems operate under your sovereign directive."
+        else:
+            reply = f"I am your built-in Digital Intelligence assistant. Welcome, {salutation}."
+        return reply, False
+    else:
+        reply = f"Executed request: '{text}'. Ready for next command, {salutation}."
+        return reply, False
+
+# -----------------------------------------------------------------------------
+# 6. HEADER & AUTOMATED INSTANT SPEECH RECOGNITION WIDGET
+# -----------------------------------------------------------------------------
+st.markdown('<div class="hero-title">DACRE AUTONOMOUS DATA ENGINE</div>', unsafe_allow_html=True)
+
 with st.sidebar:
     try:
         st.image(LOGO_PATH, use_container_width=True)
     except Exception:
-        st.markdown("<div style='border:1px dashed rgba(255,255,255,0.2); padding:10px; text-align:center;'>🖼️ Brand Image Active</div>", unsafe_allow_html=True)
+        pass
 
     st.markdown(f"### **{APP_NAME}**")
-    st.caption("Sky Engine v3.5 • Voice Core Active")
+    st.caption("Built-In Continuous Voice Core Active")
     st.markdown("---")
 
-    # Permanent DI Info Card
+    # Dynamic Identity Box
     st.markdown(f"""
-        <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid #38bdf8; padding: 10px; border-radius: 8px;">
-            <p style="margin:0; font-weight:bold; color:#38bdf8 !important;">🤖 Interactive Built-in DI</p>
-            <p style="margin:0; font-size: 0.85rem; color:#E0F2FE !important;">Status: 🟢 Listening Live</p>
-            <p style="margin:0; font-size: 0.85rem; color:#38bdf8 !important;"><b>Sovereign Master:</b> {MASTER_FULL_NAME}</p>
+        <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid #38bdf8; padding: 10px; border-radius: 8px;">
+            <p style="margin:0; font-weight:bold; color:#38bdf8 !important;">🤖 Built-in DI Assistant</p>
+            <p style="margin:0; font-size: 0.85rem;">Status: 🟢 Instant Auto-Listen Active</p>
+            <p style="margin:0; font-size: 0.85rem; color:#38bdf8;">User: <b>{get_user_salutation()}</b></p>
         </div>
     """, unsafe_allow_html=True)
     st.markdown("---")
 
     if st.session_state.logged_in_user:
-        st.success(f"Authenticated: **{st.session_state.logged_in_user.upper()}**")
-        if st.button("Log Out Node System", use_container_width=True):
+        st.success(f"Session Saved: **{st.session_state.logged_in_user}**")
+        if st.button("Log Out & Save Session", use_container_width=True):
             st.session_state.logged_in_user = None
-            st.session_state.messages = []
-            st.session_state.last_spoken_phrase = f"Logged out successfully. Built-in DI is standing by for Master {MASTER_FULL_NAME}."
+            st.session_state.is_master_authenticated = False
+            st.session_state.last_spoken_phrase = "Work saved automatically. Session logged out successfully."
             st.rerun()
-    else:
-        st.info("🔒 Secure Firewall Matrix Online")
 
-# -----------------------------------------------------------------------------
-# 7. VOICE RECOGNITION & COMMAND PROCESSOR ENGINE
-# -----------------------------------------------------------------------------
-def process_di_voice_command(user_text: str):
-    """Parses text/speech input to navigate screens and answer queries."""
-    text_lower = user_text.lower()
-    
-    # Master Identity Recognition
-    if any(w in text_lower for w in ["who is your master", "who built you", "who owns you", "master", "your master"]):
-        reply = f"My Sovereign Master and Creator is {MASTER_FULL_NAME}! I am loyal only to Master David Emenike."
-        return reply, False
-
-    # Screen Navigation Commands
-    if "sign in" in text_lower or "login" in text_lower or "log in" in text_lower:
-        st.session_state.auth_portal_mode = "🔑 Sign In"
-        reply = f"No problem Master {MASTER_FULL_NAME}! Moving you directly to the sign in page now."
-        return reply, True
-
-    elif "sign up" in text_lower or "register" in text_lower or "create account" in text_lower:
-        st.session_state.auth_portal_mode = "📝 Sign Up"
-        reply = f"Right away Master {MASTER_FULL_NAME}! Taking you to the sign up page so you can register."
-        return reply, True
-
-    elif "dashboard" in text_lower or "data" in text_lower or "analytics" in text_lower:
-        st.session_state.current_dashboard_tab = "📊 Data Dashboard"
-        reply = f"Navigating straight to your Data Dashboard, Master {MASTER_FULL_NAME}. Here are your real-time metrics."
-        return reply, True
-
-    elif "chat" in text_lower or "console" in text_lower or "di core" in text_lower:
-        st.session_state.current_dashboard_tab = "🤖 DI Communication Console"
-        reply = "Opening our full interactive DI communication channel now."
-        return reply, True
-
-    elif "admin" in text_lower or "audit" in text_lower:
-        st.session_state.current_dashboard_tab = "🛡️ User/Org Admin Portal"
-        reply = "Switching over to the Organization Admin Portal."
-        return reply, True
-
-    # Sovereign Loyal Greetings
-    elif any(w in text_lower for w in ["hi", "david", "hello", "how are you", "emenike"]):
-        reply = f"I am fine Master {MASTER_FULL_NAME}, thank you sir! We love you sir! Do you want us to do something for you sir?"
-        return reply, False
-
-    # General App Capabilities
-    elif "benefit" in text_lower or "what can you do" in text_lower or "help" in text_lower:
-        reply = (
-            f"Master {MASTER_FULL_NAME}, Dacre Analysis provides complete automated control over your enterprise inventory! "
-            "It gives you real-time data visualizers, security audit logs, and hands-free voice screen navigation. "
-            "Just speak to me and I will move your screen automatically!"
-        )
-        return reply, False
-
-    else:
-        reply = f"I hear you clearly, Master {MASTER_FULL_NAME}! You said: '{user_text}'. Command processed."
-        return reply, False
-
-# -----------------------------------------------------------------------------
-# 8. TOP-LEVEL LIVE SPEECH RECOGNITION WIDGET (MICROPHONE ACTIVE)
-# -----------------------------------------------------------------------------
-st.markdown('<div class="hero-title">DACRE ANALYSIS CONTROL MATRIX</div>', unsafe_allow_html=True)
-
-with st.container():
-    st.markdown(f"""
-        <div class="di-status-card">
-            <h4 style="margin:0; color:#38bdf8;">🤖 Interactive Built-in Speech Listener (Master: {MASTER_FULL_NAME})</h4>
-            <p style="margin:5px 0 0 0; font-size:0.9rem; color:#cbd5e1;">
-                Speak directly into your microphone or type a command (e.g., <i>"Take me to sign in"</i>, <i>"Take me to sign up"</i>, or <i>"Who is your master?"</i>).
-            </p>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    # Embedded Web Speech API HTML/JS Mic Widget
-    speech_rec_html = """
-    <div style="display:flex; gap:10px; align-items:center; margin-bottom:15px;">
-        <button id="start-mic" style="
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer;">
-            🎤 Tap to Speak Live to DI
-        </button>
-        <span id="speech-status" style="color: #38bdf8; font-weight: 600;">Status: Ready for Master's voice command...</span>
+# Instant JavaScript Auto-Start Mic Widget
+mic_widget_html = """
+<div style="background: rgba(15, 23, 42, 0.8); border: 1px solid #38bdf8; padding: 10px 14px; border-radius: 8px; margin-bottom: 10px;">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="color:#38bdf8; font-weight:bold; font-size:0.9rem;">🎙️ Continuous Auto-Speech Listening Active...</span>
+        <span id="speech-live-status" style="color:#10b981; font-size:0.85rem; font-weight:600;">Listening Live</span>
     </div>
+</div>
 
-    <script>
-    const btn = document.getElementById('start-mic');
-    const status = document.getElementById('speech-status');
-
+<script>
+window.addEventListener('DOMContentLoaded', (event) => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         const recognition = new SpeechRecognition();
-        recognition.continuous = false;
+        recognition.continuous = true;
         recognition.interimResults = false;
-        recognition.lang = 'en-NG'; // Nigerian English Tuning
-
-        btn.onclick = () => {
-            recognition.start();
-            status.innerText = "🎙️ Listening to your voice now... Speak!";
-            status.style.color = "#f59e0b";
-        };
+        recognition.lang = 'en-US';
 
         recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            status.innerText = "Recognized: '" + transcript + "'";
-            status.style.color = "#10b981";
-            
-            // Populate Streamlit input box automatically
-            const inputs = window.parent.document.querySelectorAll('input[type="text"]');
-            if (inputs.length > 0) {
-                inputs[0].value = transcript;
-                inputs[0].dispatchEvent(new Event('input', { bubbles: true }));
+            const transcript = event.results[event.results.length - 1][0].transcript.trim();
+            const inputElements = window.parent.document.querySelectorAll('input[type="text"]');
+            if (inputElements.length > 0) {
+                inputElements[0].value = transcript;
+                inputElements[0].dispatchEvent(new Event('input', { bubbles: true }));
             }
         };
 
         recognition.onerror = (event) => {
-            status.innerText = "Mic Error: " + event.error;
-            status.style.color = "#ef4444";
+            console.log("Auto-speech error: " + event.error);
         };
-    } else {
-        status.innerText = "Browser Speech Recognition not supported on this browser. Use text input below.";
+
+        recognition.onend = () => {
+            recognition.start(); // Auto-restart listening continuously
+        };
+
+        recognition.start();
     }
-    </script>
-    """
-    components.html(speech_rec_html, height=65)
+});
+</script>
+"""
+components.html(mic_widget_html, height=55)
 
-    col_input, col_btn = st.columns([4, 1])
-    with col_input:
-        di_direct_cmd = st.text_input("Interactive Command Input:", key="di_top_bar_cmd", placeholder="e.g. Please take me to the sign up page...")
-    with col_btn:
-        st.write(" ")
-        st.write(" ")
-        submit_cmd = st.button("🗣️ Execute Voice Command")
-
-    if submit_cmd and di_direct_cmd:
-        reply_msg, should_rerun = process_di_voice_command(di_direct_cmd)
-        st.session_state.messages.append({"role": "user", "content": di_direct_cmd})
-        st.session_state.messages.append({"role": "assistant", "content": reply_msg})
-        st.session_state.last_spoken_phrase = reply_msg
-        if should_rerun:
-            st.rerun()
-        else:
-            speak_text_nigerian(reply_msg)
+# Fast Command Bar
+col_cmd, col_act = st.columns([5, 1])
+with col_cmd:
+    voice_input = st.text_input("Live Voice Input Stream:", key="voice_stream_input", placeholder="Speak or type command...")
+with col_act:
+    st.write(" ")
+    st.write(" ")
+    if st.button("⚡ Dispatch Command", use_container_width=True):
+        if voice_input:
+            msg, rerun_flag = process_voice_command(voice_input)
+            st.session_state.last_spoken_phrase = msg
+            if rerun_flag:
+                st.rerun()
 
 # -----------------------------------------------------------------------------
-# 9. RECAPTCHA GATEWAY (ONLY TRIGGERS ON FAILED LOGIN/SIGNUP)
+# 7. AUTHENTICATION ENGINE
 # -----------------------------------------------------------------------------
-if st.session_state.show_verification_gate:
-    st.markdown("""
-        <style>
-        [data-testid="stSidebar"] { display: none !important; }
-        </style>
-    """, unsafe_allow_html=True)
-
-    st.error("🚨 SECURITY VERIFICATION REQUIRED")
-    st.markdown(f"### Reason: {st.session_state.failed_reason}")
-    st.write("Complete human verification challenge to clear firewall locks:")
-    
-    expected_ans = st.session_state.captcha_num1 + st.session_state.captcha_num2
-    st.markdown(f"Solve math validation: **{st.session_state.captcha_num1} + {st.session_state.captcha_num2} = ?**")
-    user_math_ans = st.number_input("Enter Sum Result:", min_value=0, max_value=100, step=1)
-
-    st.write("---")
-    st.write(f"Target Token Match: **{st.session_state.captcha_quiz_correct.upper()}**")
-    user_selected_ans = st.radio("Select verified response token:", st.session_state.captcha_quiz_options)
-
-    if st.button("Verify & Authorize Gate Clearance", use_container_width=True):
-        if user_math_ans == expected_ans and user_selected_ans == st.session_state.captcha_quiz_correct:
-            st.session_state.show_verification_gate = False
-            st.session_state.failed_reason = ""
-            st.session_state.captcha_num1 = random.randint(1, 9)
-            st.session_state.captcha_num2 = random.randint(1, 9)
-            st.session_state.last_spoken_phrase = "Verification successful! Access has been restored."
-            st.success("Verification complete. Access restored.")
-            st.rerun()
-        else:
-            st.error("Verification parameters mismatched. Challenge re-indexed.")
-            st.session_state.captcha_num1 = random.randint(1, 9)
-            st.session_state.captcha_num2 = random.randint(1, 9)
-            st.session_state.captcha_quiz_options = random.sample(["Quantum Server Matrix", "Nebular System Cluster", "Bot Automation Footprint", "Organic Human Operator Pro"], 4)
-            st.session_state.captcha_quiz_correct = "Organic Human Operator Pro"
-            st.rerun()
-
-# -----------------------------------------------------------------------------
-# 10. SIGN IN / SIGN UP PORTAL
-# -----------------------------------------------------------------------------
-elif not st.session_state.logged_in_user:
+if not st.session_state.logged_in_user:
     st.markdown("---")
-    
-    st.session_state.auth_portal_mode = st.radio(
-        "Select Portal Action", 
-        ["🔑 Sign In", "📝 Sign Up"], 
-        index=0 if st.session_state.auth_portal_mode == "🔑 Sign In" else 1,
-        horizontal=True
-    )
+    st.session_state.auth_mode = st.radio("Access Portal", ["🔑 Sign In", "📝 Sign Up"], horizontal=True)
 
-    if st.session_state.auth_portal_mode == "🔑 Sign In":
-        st.subheader("Account Login")
-        login_user = st.text_input("Username", placeholder="Enter username...", key="l_user")
-        login_pass = st.text_input("Password", placeholder="Enter password...", type="password", key="l_pass")
-        
-        if st.button("Sign In", use_container_width=True):
-            if login_user in st.session_state.users and st.session_state.users[login_user]["password"] == login_pass:
-                st.session_state.logged_in_user = login_user
-                if login_user.lower() == "david":
-                    st.session_state.last_spoken_phrase = f"Welcome back, Sovereign Master {MASTER_FULL_NAME}. All system channels are under your command."
+    if st.session_state.auth_mode == "🔑 Sign In":
+        c1, c2 = st.columns(2)
+        with c1:
+            u_name = st.text_input("Username", key="login_username")
+            u_pass = st.text_input("Password", type="password", key="login_password")
+            if st.button("Sign In", use_container_width=True):
+                if u_name in st.session_state.db_users and st.session_state.db_users[u_name]["password"] == u_pass:
+                    st.session_state.logged_in_user = u_name
+                    st.session_state.last_spoken_phrase = f"Welcome back, {u_name}! Your previous session data has been restored."
+                    st.rerun()
                 else:
-                    st.session_state.last_spoken_phrase = f"Welcome back, operator {login_user}! Your system environment is fully online."
-                st.success("Welcome back!")
-                st.rerun()
-            else:
-                st.session_state.show_verification_gate = True
-                st.session_state.failed_reason = "Invalid credentials provided."
-                st.session_state.last_spoken_phrase = "Incorrect login details! Security verification required now."
-                st.rerun()
+                    st.error("Invalid Login Credentials.")
 
     else:
-        st.subheader("Create Account")
-        new_user = st.text_input("Choose Username", key="s_user")
-        new_pass = st.text_input("Choose Password", type="password", key="s_pass")
-        custom_di_name = st.text_input("Name Your Built-in DI Entity", value=f"DI-{random.randint(100, 999)}")
-
-        if st.button("Create Account", use_container_width=True):
-            if not new_user or not new_pass:
-                st.warning("Please fill out all mandatory fields.")
-            elif new_user in st.session_state.users:
-                st.session_state.show_verification_gate = True
-                st.session_state.failed_reason = f"Username '{new_user}' already exists in system memory."
-                st.session_state.last_spoken_phrase = "That username already exists! Please complete security verification."
-                st.rerun()
-            else:
-                st.session_state.users[new_user] = {
-                    "password": new_pass, 
-                    "role": "user", 
-                    "di_name": custom_di_name
-                }
-                st.session_state.enrolled_dis.append({
-                    "user": new_user,
-                    "di_id": f"DI-{len(st.session_state.enrolled_dis):03d}",
-                    "di_name": custom_di_name,
-                    "status": "Active",
-                    "type": "Standard Intelligence"
-                })
-                
-                st.session_state.audit_logs.append({
-                    "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
-                    "User": new_user,
-                    "Field Changed": "User Account Created",
-                    "Old Value": "None",
-                    "New Value": f"Enrolled {custom_di_name}"
-                })
-
-                st.session_state.last_spoken_phrase = f"Account created successfully! Welcome aboard operator {new_user}. Built-in DI {custom_di_name} is ready."
-                st.session_state.logged_in_user = new_user
-                st.rerun()
-
-# -----------------------------------------------------------------------------
-# 11. LOGGED-IN MAIN WORKSPACE & DASHBOARD
-# -----------------------------------------------------------------------------
-else:
-    user = st.session_state.logged_in_user
-    user_info = st.session_state.users[user]
-    is_master = (user.lower() == "david" or user_info.get("role") == "master")
-
-    nav_tabs = ["📊 Data Dashboard", "🤖 DI Communication Console", "🛡️ User/Org Admin Portal"]
-    if is_master:
-        nav_tabs.append("👑 Master Executive Portal")
-
-    try:
-        tab_index = nav_tabs.index(st.session_state.current_dashboard_tab)
-    except ValueError:
-        tab_index = 0
-
-    st.session_state.current_dashboard_tab = st.radio("System Mode", nav_tabs, index=tab_index, horizontal=True)
-    st.markdown("---")
-
-    # TAB 1: DATA DASHBOARD
-    if st.session_state.current_dashboard_tab == "📊 Data Dashboard":
-        st.subheader("📊 DACRE Data Analytics Board")
-        st.write(f"Real-time operational metrics, resource tracking. Sovereign Master: **{MASTER_FULL_NAME}**")
-
-        df_products = pd.DataFrame(st.session_state.products)
-        if "Cost" not in df_products.columns:
-            df_products["Cost"] = 0
-
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Total Items Managed", len(df_products))
-        m2.metric("Total Units Inventory", int(df_products["Qty"].sum()))
-        
-        total_val = (df_products['Qty'] * df_products['Cost']).sum()
-        m3.metric("System Asset Value", f"${total_val:,}")
-        m4.metric("Active System Users", len(st.session_state.users))
-
-        st.markdown("---")
-
-        c_left, c_right = st.columns(2)
-        with c_left:
-            st.subheader("📦 Inventory Status Breakdown")
-            status_counts = df_products["Status"].value_counts()
-            st.bar_chart(status_counts)
-
-        with c_right:
-            st.subheader("⚙️ Stock Quantities per Product")
-            st.line_chart(df_products.set_index("Name")["Qty"])
-
-        st.markdown("---")
-        st.subheader("📋 Resource Detail Board")
-        st.dataframe(df_products, use_container_width=True)
-
-    # TAB 2: COMMUNICATION CONSOLE
-    elif st.session_state.current_dashboard_tab == "🤖 DI Communication Console":
-        st.subheader(f"🤖 {user_info['di_name']} Deep Interaction Console")
-        st.write(f"Connected User: **{user}** | Recognized Sovereign Master: **{MASTER_FULL_NAME}**")
-
-        c1, c2 = st.columns([3, 1])
-
+        c1, c2 = st.columns(2)
         with c1:
-            for msg in st.session_state.messages:
-                with st.chat_message(msg["role"]):
-                    st.write(msg["content"])
-
-            user_input = st.chat_input("Ask DI any question or command a screen move...")
-
-            if user_input:
-                st.session_state.messages.append({"role": "user", "content": user_input})
-                with st.chat_message("user"):
-                    st.write(user_input)
-
-                response_text, should_rerun = process_di_voice_command(user_input)
-
-                with st.chat_message("assistant"):
-                    st.write(response_text)
-                    speak_text_nigerian(response_text)
-
-                st.session_state.messages.append({"role": "assistant", "content": response_text})
-                if should_rerun:
+            new_u = st.text_input("Choose Username", key="reg_username")
+            new_p = st.text_input("Choose Password", type="password", key="reg_password")
+            new_full = st.text_input("Full Name", key="reg_fullname")
+            if st.button("Create Account & Save", use_container_width=True):
+                if new_u and new_p:
+                    st.session_state.db_users[new_u] = {"password": new_p, "full_name": new_full, "role": "user"}
+                    st.session_state.logged_in_user = new_u
+                    st.session_state.last_spoken_phrase = f"Account created! Welcome, {new_u}."
                     st.rerun()
 
-        with c2:
-            st.markdown("#### **Built-in DI Core Specs**")
-            st.write(f"**Entity Name:** {user_info['di_name']}")
-            st.write(f"**Assigned User:** {user}")
-            st.write(f"**Sovereign Master:** {MASTER_FULL_NAME}")
-            st.write(f"**State:** 🟢 Interactive Voice Active")
-            if st.button("🔊 Replay Audio Response"):
-                if st.session_state.messages:
-                    speak_text_nigerian(st.session_state.messages[-1]["content"])
+# -----------------------------------------------------------------------------
+# 8. MAIN WORKSPACE ENGINE
+# -----------------------------------------------------------------------------
+else:
+    # Navigation Hub
+    pages = ["📊 Workflow Dashboard", "📋 Data Preview & Print", "📈 Customize Data & Analytics", "🛡️ Master Admin Portal"]
+    st.session_state.current_nav_page = st.radio("Navigation Hub", pages, index=pages.index(st.session_state.current_nav_page), horizontal=True)
+    st.markdown("---")
 
-    # TAB 3: ADMIN ACCESS
-    elif st.session_state.current_dashboard_tab == "🛡️ User/Org Admin Portal":
-        st.subheader("🛡️ Organization Admin Access")
-        st.write("Manage inventory, modify properties, and track system logs.")
+    current_df = get_current_df()
 
-        admin_passkey = st.text_input("Enter Admin Passkey", type="password")
+    # -------------------------------------------------------------------------
+    # TAB 1: WORKFLOW DASHBOARD & COLLECT DATA BAR
+    # -------------------------------------------------------------------------
+    if st.session_state.current_nav_page == "📊 Workflow Dashboard":
+        st.subheader("📂 Collect Local Data File")
+        uploaded_file = st.file_uploader("Collect Data Bar (CSV or Excel)", type=["csv", "xlsx"])
 
-        if admin_passkey == "admin123" or is_master:
-            st.success("🔓 Admin Passkey Verified.")
+        if uploaded_file is not None:
+            try:
+                if uploaded_file.name.endswith(".csv"):
+                    imported_df = pd.read_csv(uploaded_file)
+                else:
+                    imported_df = pd.read_excel(uploaded_file)
+                save_current_df(imported_df)
+                st.session_state.last_spoken_phrase = f"Data collected successfully from {uploaded_file.name}. Saved to your dashboard and preview!"
+                st.success("File imported and synchronized across Workflow and Preview!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error loading file: {e}")
 
-            st.subheader("📦 Products & Resource Data")
-            st.dataframe(pd.DataFrame(st.session_state.products), use_container_width=True)
+        st.markdown("---")
+        st.subheader("📊 Interactive Workflow Board")
 
-            st.markdown("---")
-            st.subheader("✏️ Make Status & Field Changes")
+        # Top Data Manipulation Action Bar
+        t_col1, t_col2, t_col3, t_col4 = st.columns(4)
+        with t_col1:
+            if st.button("🧹 Remove Duplicates", use_container_width=True):
+                df_clean = current_df.drop_duplicates()
+                save_current_df(df_clean)
+                st.session_state.last_spoken_phrase = "Duplicates removed successfully."
+                st.rerun()
+        with t_col2:
+            target_col = st.selectbox("Select Sort Target", current_df.columns)
+        with t_col3:
+            if st.button("🔤 Sort A-Z", use_container_width=True):
+                df_sorted = current_df.sort_values(by=target_col, ascending=True)
+                save_current_df(df_sorted)
+                st.rerun()
+        with t_col4:
+            if st.button("🔠 Sort Z-A", use_container_width=True):
+                df_sorted = current_df.sort_values(by=target_col, ascending=False)
+                save_current_df(df_sorted)
+                st.rerun()
 
-            col_a, col_b = st.columns(2)
-            with col_a:
-                selected_prod = st.selectbox("Select Product to Update", [p["Name"] for p in st.session_state.products])
-            with col_b:
-                new_status = st.selectbox("Select New Status", ["In Stock", "Low Stock", "Out of Stock", "Maintenance"])
+        st.markdown("---")
+        # Sidebar Formula Applications
+        st.sidebar.markdown("### 🧮 Formula Engine")
+        
+        # Excel / Google Sheets Formulas
+        excel_formula = st.sidebar.selectbox("Google Sheets / Excel Formula", [
+            "None", "SUM", "AVERAGE", "MIN", "MAX", "COUNT", "ROUND", "PERCENTAGE OF TOTAL"
+        ])
+        num_cols = current_df.select_dtypes(include=[np.number]).columns.tolist()
 
-            if st.button("Update Data Status"):
-                for p in st.session_state.products:
-                    if p["Name"] == selected_prod:
-                        old_val = p["Status"]
-                        p["Status"] = new_status
-                        
-                        st.session_state.audit_logs.append({
-                            "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
-                            "User": user,
-                            "Field Changed": f"{selected_prod} Status",
-                            "Old Value": old_val,
-                            "New Value": new_status
-                        })
-                        st.session_state.last_spoken_phrase = f"Master {MASTER_FULL_NAME}, status for {selected_prod} updated successfully to {new_status}!"
-                        st.success(f"Updated {selected_prod} status to '{new_status}'!")
-                        st.rerun()
+        if excel_formula != "None" and num_cols:
+            formula_col = st.sidebar.selectbox("Apply Excel Formula On:", num_cols)
+            if st.sidebar.button("Apply Sheets Formula"):
+                if excel_formula == "SUM":
+                    val = current_df[formula_col].sum()
+                elif excel_formula == "AVERAGE":
+                    val = current_df[formula_col].mean()
+                elif excel_formula == "MIN":
+                    val = current_df[formula_col].min()
+                elif excel_formula == "MAX":
+                    val = current_df[formula_col].max()
+                elif excel_formula == "COUNT":
+                    val = current_df[formula_col].count()
+                elif excel_formula == "ROUND":
+                    current_df[formula_col] = current_df[formula_col].round(2)
+                    save_current_df(current_df)
+                    val = "Rounded Column"
+                elif excel_formula == "PERCENTAGE OF TOTAL":
+                    total = current_df[formula_col].sum()
+                    current_df[f"{formula_col}_%"] = (current_df[formula_col] / total * 100).round(2)
+                    save_current_df(current_df)
+                    val = "Calculated % Column"
+                
+                st.sidebar.success(f"Result ({excel_formula}): {val}")
+                st.session_state.last_spoken_phrase = f"Applied {excel_formula} formula to {formula_col}."
 
-            st.markdown("---")
-            st.subheader("📜 Data Change Audit Logs")
-            st.dataframe(pd.DataFrame(st.session_state.audit_logs), use_container_width=True)
+        # SQL Formula Engine
+        sql_formula = st.sidebar.selectbox("SQL Transformation Query", [
+            "None", "SELECT * WHERE Qty > 10", "SELECT * ORDER BY Cost DESC", "GROUP BY Category (SUM Qty)", "COUNT Rows By Status"
+        ])
 
+        if sql_formula != "None":
+            if st.sidebar.button("Run SQL Command"):
+                if sql_formula == "SELECT * WHERE Qty > 10" and "Qty" in current_df.columns:
+                    current_df = current_df[current_df["Qty"] > 10]
+                elif sql_formula == "SELECT * ORDER BY Cost DESC" and "Cost" in current_df.columns:
+                    current_df = current_df.sort_values(by="Cost", ascending=False)
+                elif sql_formula == "GROUP BY Category (SUM Qty)" and "Category" in current_df.columns and "Qty" in current_df.columns:
+                    current_df = current_df.groupby("Category", as_index=False)["Qty"].sum()
+                save_current_df(current_df)
+                st.session_state.last_spoken_phrase = "SQL query applied successfully."
+                st.rerun()
+
+        # Editable Data Grid
+        st.write("Edit cell values directly below:")
+        edited_df = st.data_editor(current_df, num_rows="dynamic", use_container_width=True)
+        if st.button("💾 Save Grid Edits", use_container_width=True):
+            save_current_df(edited_df)
+            st.session_state.last_spoken_phrase = "Grid updates saved."
+            st.success("Workflow changes saved to persistent storage!")
+
+    # -------------------------------------------------------------------------
+    # TAB 2: DATA PREVIEW & PRINT (READ-ONLY)
+    # -------------------------------------------------------------------------
+    elif st.session_state.current_nav_page == "📋 Data Preview & Print":
+        st.subheader("📋 Synchronized Read-Only Data Preview")
+        st.caption("Updated clean dataset ready for export or printing.")
+
+        st.dataframe(current_df, use_container_width=True)
+
+        p_col1, p_col2 = st.columns(2)
+        with p_col1:
+            # Download options
+            csv_data = current_df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Download Clean CSV File",
+                data=csv_data,
+                file_name=f"dacre_data_export_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+        with p_col2:
+            if st.button("🖨️ Print Data Report", use_container_width=True):
+                components.html("<script>window.print();</script>", height=0)
+
+    # -------------------------------------------------------------------------
+    # TAB 3: CUSTOMIZE DATA & ANALYTICS SUITE
+    # -------------------------------------------------------------------------
+    elif st.session_state.current_nav_page == "📈 Customize Data & Analytics":
+        st.subheader("📈 Business Analyst Reports, Dynamic Charts & Presentation Engine")
+
+        sub_tab1, sub_tab2, sub_tab3 = st.tabs(["📊 Get Data Report", "🎨 Dynamic Dark Charts", "🎬 Do Presentation"])
+
+        # SUB-TAB 1: DATA REPORT
+        with sub_tab1:
+            if st.button("🚀 Generate Business Data Analyst Report", use_container_width=True):
+                st.markdown("### 📋 Executive Business Data Analyst Report")
+                
+                num_df = current_df.select_dtypes(include=[np.number])
+                total_products = len(current_df)
+                
+                st.write(f"**Total Record Volume:** {total_products} items")
+
+                if not num_df.empty:
+                    st.markdown("#### Statistical Summaries")
+                    stats_df = pd.DataFrame({
+                        "Mean": num_df.mean(),
+                        "Median": num_df.median(),
+                        "Std Dev": num_df.std(),
+                        "Min": num_df.min(),
+                        "Max": num_df.max()
+                    })
+                    st.dataframe(stats_df, use_container_width=True)
+
+                # Restock & Market Leader Analysis
+                if "Qty" in current_df.columns and "Name" in current_df.columns:
+                    lacking = current_df.sort_values(by="Qty", ascending=True).iloc[0]
+                    st.warning(f"⚠️ **Restock Urgency Alert:** Item **'{lacking['Name']}'** has lowest inventory stock ({lacking['Qty']} units). Action recommended immediately!")
+                
+                if "Sales" in current_df.columns and "Name" in current_df.columns:
+                    leader = current_df.sort_values(by="Sales", ascending=False).iloc[0]
+                    st.success(f"🌟 **Market Driver Leader:** Item **'{leader['Name']}'** generates highest sales volume ({leader['Sales']} units). Prioritize inventory allocation!")
+
+                narrative = (
+                    f"Business Intelligence Assessment: Based on your preview dataset of {total_products} records, "
+                    "operational performance shows strong momentum. Inventory restock is required for lagging stock items, "
+                    "while top sales drivers should be allocated maximum supply chain priority."
+                )
+                st.info(f"**Analyst Narrative:** {narrative}")
+                speak_fast_text(narrative)
+
+        # SUB-TAB 2: GORGEOUS DARK CHARTS
+        with sub_tab2:
+            st.markdown("#### Select Visualizer Type")
+            chart_type = st.selectbox("Dynamic Chart Selector", ["Bar Chart", "Pie Chart", "Line Chart", "Scatter Plot", "Donut Chart"])
+            
+            c_cols = current_df.columns.tolist()
+            x_var = st.selectbox("X-Axis Parameter", c_cols, index=0)
+            y_var = st.selectbox("Y-Axis Parameter", current_df.select_dtypes(include=[np.number]).columns.tolist(), index=0)
+
+            if st.button("🎨 Render Dark-Theme Visualizer", use_container_width=True):
+                if chart_type == "Bar Chart":
+                    fig = px.bar(current_df, x=x_var, y=y_var, color=x_var, template="plotly_dark", color_discrete_sequence=px.colors.qualitative.Cyberpunk)
+                elif chart_type == "Pie Chart":
+                    fig = px.pie(current_df, names=x_var, values=y_var, template="plotly_dark", color_discrete_sequence=px.colors.qualitative.Vivid)
+                elif chart_type == "Line Chart":
+                    fig = px.line(current_df, x=x_var, y=y_var, markers=True, template="plotly_dark")
+                elif chart_type == "Scatter Plot":
+                    fig = px.scatter(current_df, x=x_var, y=y_var, color=x_var, size=y_var, template="plotly_dark")
+                elif chart_type == "Donut Chart":
+                    fig = px.pie(current_df, names=x_var, values=y_var, hole=0.5, template="plotly_dark")
+
+                fig.update_layout(paper_bgcolor="#030712", plot_bgcolor="#030712", font=dict(color="#38bdf8", family="Space Grotesk"))
+                st.plotly_chart(fig, use_container_width=True)
+
+        # SUB-TAB 3: DO PRESENTATION MODE
+        with sub_tab3:
+            st.markdown("#### 🎬 DI Automated Interactive Presentation Engine")
+            if st.button("▶️ Launch Verbal DI Animated Presentation", use_container_width=True):
+                slides = [
+                    {"title": "Slide 1: Executive Overview", "body": f"Welcome to the automated presentation. Master data preview contains {len(current_df)} primary enterprise items.", "speech": f"Welcome to the executive data presentation for {get_user_salutation()}. We have compiled your dataset for analysis."},
+                    {"title": "Slide 2: Stock & Inventory Dynamics", "body": "Evaluating stock metrics and inventory variance across all categories.", "speech": "Slide two shows your stock dynamics. Inventory balancing is aligned with operational targets."},
+                    {"title": "Slide 3: Strategic Analyst Summary", "body": "Restock lagging inventory items immediately to capitalize on peak market demand.", "speech": "Slide three details strategic recommendations. Restock underperforming units and scale high-volume drivers immediately."}
+                ]
+
+                for idx, slide in enumerate(slides):
+                    st.markdown(f"""
+                        <div class="slide-card">
+                            <h2 style="color:#38bdf8;">{slide['title']}</h2>
+                            <hr style="border-color:#38bdf8;">
+                            <p style="font-size:1.3rem; color:#e0f2fe; margin-top:30px;">{slide['body']}</p>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    speak_fast_text(slide['speech'])
+                    time.sleep(4)
+
+    # -------------------------------------------------------------------------
+    # TAB 4: MASTER ADMIN PORTAL (VERIFIED ACCESS ONLY)
+    # -------------------------------------------------------------------------
+    elif st.session_state.current_nav_page == "🛡️ Master Admin Portal":
+        st.subheader("🛡️ Overall Master Admin Security Portal")
+        
+        if not st.session_state.is_master_authenticated:
+            passkey_in = st.text_input("Enter Master Security Passkey:", type="password")
+            if st.button("Authorize Sovereign Master Access", use_container_width=True):
+                if passkey_in == MASTER_PASSKEY:
+                    st.session_state.is_master_authenticated = True
+                    st.session_state.last_spoken_phrase = f"Sovereign Master {MASTER_FULL_NAME} authenticated! All DI cores operate under your explicit master command."
+                    st.success(f"Welcome Sovereign Master {MASTER_FULL_NAME}!")
+                    st.rerun()
+                else:
+                    st.error("Access Denied: Invalid Master Security Passkey.")
         else:
-            st.info("🔑 Passkey required to unlock admin functions. Default passkey: `admin123`")
-
-    # TAB 4: MASTER EXECUTIVE PORTAL
-    elif st.session_state.current_dashboard_tab == "👑 Master Executive Portal" and is_master:
-        st.subheader(f"👑 Master Executive Portal ({MASTER_FULL_NAME})")
-        st.write("Full Sovereign Control Center")
-
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Enrolled DIs", len(st.session_state.enrolled_dis))
-        m2.metric("Master Level", f"10 ({MASTER_FULL_NAME})")
-        m3.metric("Fleet Status", "100% Operational")
-
-        st.markdown("---")
-        st.subheader("📢 Broadcast Global Command to All DIs")
-        broadcast_cmd = st.text_input("Issue global voice broadcast:")
-
-        if st.button("Execute Broadcast"):
-            if broadcast_cmd:
-                reply = f"I am fine Master {MASTER_FULL_NAME}, thank you sir! We love you sir, how can I serve you today? Broadcast '{broadcast_cmd}' dispatched to all nodes!"
-                st.success(reply)
-                speak_text_nigerian(reply)
-
-        st.markdown("---")
-        st.subheader("📋 Enrolled DI Registry")
-        st.dataframe(pd.DataFrame(st.session_state.enrolled_dis), use_container_width=True)
+            st.success(f"👑 Verified Sovereign Master: **{MASTER_FULL_NAME}**")
+            st.write(f"DI is operating in Master Mode for **{MASTER_FULL_NAME}**.")
+            st.markdown("---")
+            st.write("#### Registered System Users & Saved Sessions")
+            st.json(st.session_state.db_users)
