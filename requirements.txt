@@ -1,3 +1,4 @@
 streamlit
-gtts
-audio-recorder-streamlit
+pandas
+numpy
+openpyxl
