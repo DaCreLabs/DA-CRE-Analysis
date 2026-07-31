@@ -3,11 +3,14 @@ import streamlit.components.v1 as components
 import random
 
 # -----------------------------------------------------------------------------
-# 1. PAGE CONFIG & LOGO / ICON SETUP
+# 1. PAGE CONFIG & LOGO SETUP
 # -----------------------------------------------------------------------------
 APP_NAME = "dacre-analysis"
-LOGO_PATH = "logo.png"  # Replace with your logo path or URL (e.g., "https://your-site.com/logo.png")
 
+# ⬇️ PUT YOUR LOGO FILE OR URL HERE ⬇️
+LOGO_PATH = "logo.png" 
+
+# Set Page Config with Logo as Page Icon
 try:
     st.set_page_config(
         page_title=f"{APP_NAME} | Neural Core",
@@ -16,7 +19,6 @@ try:
         initial_sidebar_state="expanded"
     )
 except Exception:
-    # Fallback if image path is not yet found in local repo
     st.set_page_config(
         page_title=f"{APP_NAME} | Neural Core",
         page_icon="⚡",
@@ -25,18 +27,15 @@ except Exception:
     )
 
 # -----------------------------------------------------------------------------
-# 2. CUSTOM GLASSMORPHIC UI & STYLING
+# 2. CUSTOM UI & GLASSMORPHIC STYLING
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
-    /* Dark Futuristic Theme */
     .stApp {
         background: linear-gradient(135deg, #090d16 0%, #111827 50%, #030712 100%);
         color: #f3f4f6;
         font-family: 'Inter', system-ui, -apple-system, sans-serif;
     }
-
-    /* Glassmorphic Cards */
     .glass-card {
         background: rgba(17, 24, 39, 0.75);
         backdrop-filter: blur(16px);
@@ -47,8 +46,6 @@ st.markdown("""
         margin-bottom: 20px;
         box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
     }
-
-    /* Headings */
     .hero-title {
         background: linear-gradient(90deg, #60a5fa 0%, #a78bfa 50%, #f472b6 100%);
         -webkit-background-clip: text;
@@ -57,14 +54,11 @@ st.markdown("""
         font-weight: 800;
         margin-bottom: 0.2rem;
     }
-
     .hero-subtitle {
         color: #9ca3af;
         font-size: 1rem;
         margin-bottom: 1.5rem;
     }
-
-    /* Buttons */
     .stButton>button {
         background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
         color: #ffffff;
@@ -79,8 +73,6 @@ st.markdown("""
         transform: translateY(-2px);
         box-shadow: 0 6px 20px 0 rgba(79, 70, 229, 0.55);
     }
-
-    /* reCAPTCHA Security Box */
     .recaptcha-box {
         background: rgba(255, 255, 255, 0.05);
         border: 1px solid rgba(255, 255, 255, 0.15);
@@ -95,7 +87,6 @@ st.markdown("""
 # 3. VOICE SYNTHESIS HELPER
 # -----------------------------------------------------------------------------
 def speak_text(text: str):
-    """Triggers browser native text-to-speech engine."""
     clean_text = text.replace("'", "\\'").replace("\n", " ")
     js_code = f"""
     <script>
@@ -109,7 +100,7 @@ def speak_text(text: str):
     components.html(js_code, height=0, width=0)
 
 # -----------------------------------------------------------------------------
-# 4. INITIALIZE STATE (USERS & DIS)
+# 4. INITIALIZE SESSION STATE
 # -----------------------------------------------------------------------------
 if "users" not in st.session_state:
     st.session_state.users = {
@@ -132,14 +123,14 @@ if "captcha_num1" not in st.session_state:
     st.session_state.captcha_num2 = random.randint(1, 9)
 
 # -----------------------------------------------------------------------------
-# 5. SIDEBAR: LOGO & APP BRANDING
+# 5. SIDEBAR: LOGO DISPLAY & BRANDING
 # -----------------------------------------------------------------------------
 with st.sidebar:
-    # Render Logo in Sidebar
+    # Render Logo Image in Sidebar
     try:
         st.image(LOGO_PATH, use_container_width=True)
     except Exception:
-        st.title("⚡ Logo Slot")
+        st.info("🖼️ Place your `logo.png` file in your GitHub repository to display your logo here.")
 
     st.markdown(f"### ⚡ **{APP_NAME}**")
     st.caption("Autonomous DI Network Core")
@@ -152,10 +143,10 @@ with st.sidebar:
             st.session_state.messages = []
             st.rerun()
     else:
-        st.info("🔒 Authentication required.")
+        st.info("🔒 Authentication Required")
 
 # -----------------------------------------------------------------------------
-# 6. SIGN IN / SIGN UP (AUTH SYSTEM WITH RECAPTCHA)
+# 6. AUTHENTICATION & RECAPTCHA
 # -----------------------------------------------------------------------------
 if not st.session_state.logged_in_user:
     st.markdown(f'<div class="hero-title">{APP_NAME} Portal</div>', unsafe_allow_html=True)
@@ -163,7 +154,6 @@ if not st.session_state.logged_in_user:
 
     tab_signin, tab_signup = st.tabs(["🔑 Sign In", "📝 Sign Up & Create DI"])
 
-    # --- SIGN IN TAB ---
     with tab_signin:
         st.markdown('<div class="glass-card">', unsafe_allow_html=True)
         st.subheader("Account Login")
@@ -179,7 +169,6 @@ if not st.session_state.logged_in_user:
                 st.error("Invalid username or password.")
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- SIGN UP TAB ---
     with tab_signup:
         st.markdown('<div class="glass-card">', unsafe_allow_html=True)
         st.subheader("Create Account & Auto-Enroll DI")
@@ -187,7 +176,6 @@ if not st.session_state.logged_in_user:
         new_pass = st.text_input("New Password", type="password", key="s_pass")
         custom_di_name = st.text_input("Name Your Digital Intelligence (DI)", value=f"DI-{random.randint(100, 999)}")
 
-        # reCAPTCHA Block
         st.markdown('<div class="recaptcha-box">', unsafe_allow_html=True)
         st.markdown("🤖 **Security Check (reCAPTCHA)**")
         captcha_ans = st.number_input(
@@ -205,13 +193,11 @@ if not st.session_state.logged_in_user:
             elif new_user in st.session_state.users:
                 st.error("Username already registered.")
             else:
-                # Add user
                 st.session_state.users[new_user] = {
                     "password": new_pass, 
                     "role": "user", 
                     "di_name": custom_di_name
                 }
-                # Add enrolled DI to Admin Dashboard
                 st.session_state.enrolled_dis.append({
                     "user": new_user,
                     "di_id": f"DI-{len(st.session_state.enrolled_dis):03d}",
@@ -226,23 +212,19 @@ if not st.session_state.logged_in_user:
         st.markdown('</div>', unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 7. MAIN LOGGED-IN SYSTEM & ADMIN PORTAL
+# 7. LOGGED-IN SYSTEM & MASTER ADMIN PORTAL
 # -----------------------------------------------------------------------------
 else:
     user = st.session_state.logged_in_user
     user_info = st.session_state.users[user]
     is_admin = (user.lower() == "david" or user_info.get("role") == "admin")
 
-    # Dynamic Navigation Tabs
     nav_tabs = ["🤖 DI Communication Console"]
     if is_admin:
         nav_tabs.append("👑 Master Admin Portal")
 
     selected_mode = st.radio("System Navigation", nav_tabs, horizontal=True)
 
-    # -------------------------------------------------------------------------
-    # TAB 1: DI COMMUNICATION CONSOLE
-    # -------------------------------------------------------------------------
     if selected_mode == "🤖 DI Communication Console":
         st.markdown(f'<div class="hero-title">{user_info["di_name"]} Core</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="hero-subtitle">Active Owner: <b>{user}</b> | Voice Engine Online</div>', unsafe_allow_html=True)
@@ -263,7 +245,6 @@ else:
                     st.write(user_input)
 
                 with st.chat_message("assistant"):
-                    # Master David acknowledgment check
                     if is_admin and any(w in user_input.lower() for w in ["hi", "david", "master", "how are you"]):
                         response_text = "I'm fine Master David thank you and we love you sir, do you want us to do something for you sir?"
                     else:
@@ -287,9 +268,6 @@ else:
                     speak_text(st.session_state.messages[-1]["content"])
             st.markdown('</div>', unsafe_allow_html=True)
 
-    # -------------------------------------------------------------------------
-    # TAB 2: EXCLUSIVE MASTER ADMIN PORTAL
-    # -------------------------------------------------------------------------
     elif selected_mode == "👑 Master Admin Portal":
         st.markdown('<div class="hero-title">Master Admin Portal</div>', unsafe_allow_html=True)
         st.markdown('<div class="hero-subtitle">Executive Access • Full Control of Enrolled DIs</div>', unsafe_allow_html=True)
@@ -299,7 +277,6 @@ else:
         m2.metric("Master Level", "10 (Master David)")
         m3.metric("Network Status", "Nominal")
 
-        # Global Directives
         st.markdown('<div class="glass-card">', unsafe_allow_html=True)
         st.subheader("📢 Broadcast Voice Command to Fleet")
         broadcast_cmd = st.text_input("Issue global command to all DIs:")
@@ -311,7 +288,6 @@ else:
                 speak_text(reply)
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # Enrolled DIs Table
         st.markdown('<div class="glass-card">', unsafe_allow_html=True)
         st.subheader("📋 Enrolled DI Registry (Created per Signup)")
         st.table(st.session_state.enrolled_dis)
