@@ -2,12 +2,11 @@ import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
-import plotly.express as px
-import plotly.graph_objects as go
 import json
 import io
 import time
 from datetime import datetime
+from PIL import Image
 
 # -----------------------------------------------------------------------------
 # 1. APP CONFIGURATION & MASTER CONSTANTS
@@ -17,11 +16,12 @@ MASTER_FULL_NAME = "David Emenike"
 MASTER_PASSKEY = "theWORDofGOD@111"
 LOGO_PATH = "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png"
 
-# Updated Page Icon Configuration using your official Logo Path
+# Safe Page Icon Loading
 try:
+    logo_img = Image.open(LOGO_PATH)
     st.set_page_config(
         page_title=f"{APP_NAME} | Autonomous DI Platform",
-        page_icon=LOGO_PATH,
+        page_icon=logo_img,
         layout="wide",
         initial_sidebar_state="expanded"
     )
@@ -60,15 +60,6 @@ st.markdown("""
         font-size: 2.2rem;
         font-weight: 800;
         margin-bottom: 0.5rem;
-    }
-
-    .di-card {
-        background: linear-gradient(135deg, #0f172a 0%, #020617 100%);
-        border: 1px solid #38bdf8;
-        border-radius: 10px;
-        padding: 12px 18px;
-        margin-bottom: 15px;
-        box-shadow: 0 4px 20px rgba(56, 189, 248, 0.15);
     }
 
     .stTextInput input, .stNumberInput input, .stSelectbox div {
@@ -140,7 +131,6 @@ if "db_users" not in st.session_state:
     }
 
 if "user_datasets" not in st.session_state:
-    # Default enterprise dataset fallback
     default_df = pd.DataFrame([
         {"Product ID": "PRD-101", "Name": "Neural Processor Core", "Category": "Hardware", "Status": "In Stock", "Qty": 85, "Cost": 1200, "Sales": 450},
         {"Product ID": "PRD-102", "Name": "DI Memory Module", "Category": "Storage", "Status": "In Stock", "Qty": 140, "Cost": 350, "Sales": 920},
@@ -161,9 +151,6 @@ if "last_spoken_phrase" not in st.session_state:
 
 if "current_nav_page" not in st.session_state:
     st.session_state.current_nav_page = "📊 Workflow Dashboard"
-
-if "messages" not in st.session_state:
-    st.session_state.messages = []
 
 if "auth_mode" not in st.session_state:
     st.session_state.auth_mode = "🔑 Sign In"
@@ -294,7 +281,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
         };
 
         recognition.onend = () => {
-            recognition.start(); // Auto-restart listening continuously
+            recognition.start();
         };
 
         recognition.start();
@@ -355,7 +342,6 @@ if not st.session_state.logged_in_user:
 # 8. MAIN WORKSPACE ENGINE
 # -----------------------------------------------------------------------------
 else:
-    # Navigation Hub
     pages = ["📊 Workflow Dashboard", "📋 Data Preview & Print", "📈 Customize Data & Analytics", "🛡️ Master Admin Portal"]
     st.session_state.current_nav_page = st.radio("Navigation Hub", pages, index=pages.index(st.session_state.current_nav_page), horizontal=True)
     st.markdown("---")
@@ -478,7 +464,6 @@ else:
 
         p_col1, p_col2 = st.columns(2)
         with p_col1:
-            # Download options
             csv_data = current_df.to_csv(index=False).encode('utf-8')
             st.download_button(
                 label="📥 Download Clean CSV File",
@@ -520,7 +505,6 @@ else:
                     })
                     st.dataframe(stats_df, use_container_width=True)
 
-                # Restock & Market Leader Analysis
                 if "Qty" in current_df.columns and "Name" in current_df.columns:
                     lacking = current_df.sort_values(by="Qty", ascending=True).iloc[0]
                     st.warning(f"⚠️ **Restock Urgency Alert:** Item **'{lacking['Name']}'** has lowest inventory stock ({lacking['Qty']} units). Action recommended immediately!")
@@ -537,29 +521,25 @@ else:
                 st.info(f"**Analyst Narrative:** {narrative}")
                 speak_fast_text(narrative)
 
-        # SUB-TAB 2: GORGEOUS DARK CHARTS
+        # SUB-TAB 2: GORGEOUS NATIVE DARK CHARTS
         with sub_tab2:
             st.markdown("#### Select Visualizer Type")
-            chart_type = st.selectbox("Dynamic Chart Selector", ["Bar Chart", "Pie Chart", "Line Chart", "Scatter Plot", "Donut Chart"])
+            chart_type = st.selectbox("Dynamic Chart Selector", ["Bar Chart", "Line Chart", "Area Chart", "Scatter Plot"])
             
             c_cols = current_df.columns.tolist()
             x_var = st.selectbox("X-Axis Parameter", c_cols, index=0)
             y_var = st.selectbox("Y-Axis Parameter", current_df.select_dtypes(include=[np.number]).columns.tolist(), index=0)
 
-            if st.button("🎨 Render Dark-Theme Visualizer", use_container_width=True):
+            if st.button("🎨 Render Dynamic Visualizer", use_container_width=True):
+                chart_df = current_df.set_index(x_var)[y_var]
                 if chart_type == "Bar Chart":
-                    fig = px.bar(current_df, x=x_var, y=y_var, color=x_var, template="plotly_dark", color_discrete_sequence=px.colors.qualitative.Cyberpunk)
-                elif chart_type == "Pie Chart":
-                    fig = px.pie(current_df, names=x_var, values=y_var, template="plotly_dark", color_discrete_sequence=px.colors.qualitative.Vivid)
+                    st.bar_chart(chart_df)
                 elif chart_type == "Line Chart":
-                    fig = px.line(current_df, x=x_var, y=y_var, markers=True, template="plotly_dark")
+                    st.line_chart(chart_df)
+                elif chart_type == "Area Chart":
+                    st.area_chart(chart_df)
                 elif chart_type == "Scatter Plot":
-                    fig = px.scatter(current_df, x=x_var, y=y_var, color=x_var, size=y_var, template="plotly_dark")
-                elif chart_type == "Donut Chart":
-                    fig = px.pie(current_df, names=x_var, values=y_var, hole=0.5, template="plotly_dark")
-
-                fig.update_layout(paper_bgcolor="#030712", plot_bgcolor="#030712", font=dict(color="#38bdf8", family="Space Grotesk"))
-                st.plotly_chart(fig, use_container_width=True)
+                    st.scatter_chart(current_df, x=x_var, y=y_var)
 
         # SUB-TAB 3: DO PRESENTATION MODE
         with sub_tab3:
