@@ -7,8 +7,8 @@ import random
 # -----------------------------------------------------------------------------
 APP_NAME = "dacre-analysis"
 
-# ⬇️ PUT YOUR LOGO FILE OR URL HERE ⬇️
-LOGO_PATH = "logo.png" 
+# ⬇️ UPDATED TO MATCH YOUR GITHUB FILENAME ⬇️
+LOGO_PATH = "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png" 
 
 # Set Page Config with Logo as Page Icon
 try:
@@ -130,7 +130,7 @@ with st.sidebar:
     try:
         st.image(LOGO_PATH, use_container_width=True)
     except Exception:
-        st.info("🖼️ Place your `logo.png` file in your GitHub repository to display your logo here.")
+        st.info("🖼️ Place your logo file in your GitHub repository to display your logo here.")
 
     st.markdown(f"### ⚡ **{APP_NAME}**")
     st.caption("Autonomous DI Network Core")
@@ -192,7 +192,7 @@ if not st.session_state.logged_in_user:
                 st.warning("Please fill out all fields.")
             elif new_user in st.session_state.users:
                 st.error("Username already registered.")
-            else:
+            else{
                 st.session_state.users[new_user] = {
                     "password": new_pass, 
                     "role": "user", 
@@ -209,86 +209,3 @@ if not st.session_state.logged_in_user:
                 st.success(f"Account created! **{custom_di_name}** enrolled successfully.")
                 st.session_state.logged_in_user = new_user
                 st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-
-# -----------------------------------------------------------------------------
-# 7. LOGGED-IN SYSTEM & MASTER ADMIN PORTAL
-# -----------------------------------------------------------------------------
-else:
-    user = st.session_state.logged_in_user
-    user_info = st.session_state.users[user]
-    is_admin = (user.lower() == "david" or user_info.get("role") == "admin")
-
-    nav_tabs = ["🤖 DI Communication Console"]
-    if is_admin:
-        nav_tabs.append("👑 Master Admin Portal")
-
-    selected_mode = st.radio("System Navigation", nav_tabs, horizontal=True)
-
-    if selected_mode == "🤖 DI Communication Console":
-        st.markdown(f'<div class="hero-title">{user_info["di_name"]} Core</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="hero-subtitle">Active Owner: <b>{user}</b> | Voice Engine Online</div>', unsafe_allow_html=True)
-
-        c1, c2 = st.columns([3, 1])
-
-        with c1:
-            st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-            for msg in st.session_state.messages:
-                with st.chat_message(msg["role"]):
-                    st.write(msg["content"])
-
-            user_input = st.chat_input("Speak or command your DI...")
-
-            if user_input:
-                st.session_state.messages.append({"role": "user", "content": user_input})
-                with st.chat_message("user"):
-                    st.write(user_input)
-
-                with st.chat_message("assistant"):
-                    if is_admin and any(w in user_input.lower() for w in ["hi", "david", "master", "how are you"]):
-                        response_text = "I'm fine Master David thank you and we love you sir, do you want us to do something for you sir?"
-                    else:
-                        response_text = f"Greetings {user}. I am {user_info['di_name']}. Instruction '{user_input}' received and processed."
-
-                    st.write(response_text)
-                    speak_text(response_text)
-
-                st.session_state.messages.append({"role": "assistant", "content": response_text})
-
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        with c2:
-            st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-            st.markdown("#### **DI Status**")
-            st.write(f"**Entity:** {user_info['di_name']}")
-            st.write(f"**Assigned User:** {user}")
-            st.write(f"**Status:** 🟢 Operational")
-            if st.button("🔊 Replay Speech"):
-                if st.session_state.messages:
-                    speak_text(st.session_state.messages[-1]["content"])
-            st.markdown('</div>', unsafe_allow_html=True)
-
-    elif selected_mode == "👑 Master Admin Portal":
-        st.markdown('<div class="hero-title">Master Admin Portal</div>', unsafe_allow_html=True)
-        st.markdown('<div class="hero-subtitle">Executive Access • Full Control of Enrolled DIs</div>', unsafe_allow_html=True)
-
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Enrolled DIs", len(st.session_state.enrolled_dis))
-        m2.metric("Master Level", "10 (Master David)")
-        m3.metric("Network Status", "Nominal")
-
-        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-        st.subheader("📢 Broadcast Voice Command to Fleet")
-        broadcast_cmd = st.text_input("Issue global command to all DIs:")
-
-        if st.button("Execute Broadcast"):
-            if broadcast_cmd:
-                reply = f"I'm fine Master David thank you and we love you sir, do you want us to do something for you sir? Command '{broadcast_cmd}' dispatched to all {len(st.session_state.enrolled_dis)} DIs!"
-                st.success(reply)
-                speak_text(reply)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-        st.subheader("📋 Enrolled DI Registry (Created per Signup)")
-        st.table(st.session_state.enrolled_dis)
-        st.markdown('</div>', unsafe_allow_html=True)
