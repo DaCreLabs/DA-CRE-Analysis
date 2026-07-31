@@ -5,150 +5,171 @@ import pandas as pd
 from datetime import datetime
 
 # -----------------------------------------------------------------------------
-# 1. PAGE INITIALIZATION & CONFIGURATION
+# 1. PAGE CONFIG & LOGO SETUP
 # -----------------------------------------------------------------------------
-APP_NAME = "DA-CRE-Analysis"
+APP_NAME = "dacre-analysis"
 LOGO_PATH = "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png"
 
 try:
     st.set_page_config(
-        page_title=f"{APP_NAME} | Analytics Core",
+        page_title=f"{APP_NAME} | Neural Core",
         page_icon=LOGO_PATH,
         layout="wide",
         initial_sidebar_state="expanded"
     )
 except Exception:
     st.set_page_config(
-        page_title=f"{APP_NAME} | Analytics Core",
+        page_title=f"{APP_NAME} | Neural Core",
         layout="wide",
         initial_sidebar_state="expanded"
     )
 
 # -----------------------------------------------------------------------------
-# 2. PREMIUM LIGHT BLUE & INDIGO BRAND UI ENGINE
+# 2. CUSTOM UI: HIGH-CONTRAST TEXT & ANIMATED SKY BACKGROUND
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
     @import url('https://googleapis.com');
     
+    /* Animated Sky Background */
     .stApp {
-        background: linear-gradient(135deg, #f4f7fe 0%, #e0e8f9 100%);
-        color: #1e293b !important;
+        background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+        color: #ffffff !important;
         font-family: 'Plus Jakarta Sans', sans-serif;
     }
+
+    /* Floating Sky/Stars Effect */
+    @keyframes floatSky {
+        0% { background-position: 0 0; }
+        50% { background-position: 100px -100px; }
+        100% { background-position: 0 0; }
+    }
     
-    .brand-card {
-        background: #ffffff !important;
-        border: 1px solid #cbd5e1 !important;
-        border-top: 5px solid #3b82f6 !important;
-        border-radius: 16px !important;
+    .stApp::before {
+        content: "";
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: url('https://user-images.githubusercontent.com/2673119/31048080-86532e74-a612-11e7-8250-9343be34a781.png') repeat;
+        opacity: 0.25;
+        pointer-events: none;
+        animation: floatSky 60s infinite linear;
+        z-index: 0;
+    }
+
+    /* Glassmorphic Cards with High Contrast */
+    .glass-card {
+        background: rgba(15, 23, 42, 0.88) !important;
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 16px;
         padding: 28px;
         margin-bottom: 24px;
-        box-shadow: 0 10px 25px rgba(59, 130, 246, 0.04);
-        transition: all 0.3s ease;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
     }
-    .brand-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 16px 35px rgba(59, 130, 246, 0.09);
-        border-top-color: #4f46e5 !important;
+
+    /* Force All Main Element Visibility */
+    p, label, span, h1, h2, h3, h4, h5, h6, [data-testid="stMarkdownContainer"] p {
+        color: #ffffff !important;
     }
-    
-    h1, h2, h3, h4, h5, h6 {
-        color: #1e1b4b !important;
-        font-family: 'Space Grotesk', sans-serif !important;
-        font-weight: 700 !important;
-    }
-    p, label, span {
-        color: #334155 !important;
-        font-weight: 500 !important;
-    }
-    
-    .brand-title {
-        background: linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-size: 3rem;
-        font-weight: 800;
-        letter-spacing: -1.5px;
-        margin-bottom: 6px;
-    }
-    
-    .stTextInput>div>div>input {
-        background-color: #ffffff !important;
-        color: #0f172a !important;
-        border: 2px solid #cbd5e1 !important;
+
+    /* Input Field Visibility Modifications */
+    .stTextInput input, .stNumberInput input, .stSelectbox div {
+        background-color: #1e293b !important;
+        color: #ffffff !important;
+        border: 2px solid #475569 !important;
         border-radius: 10px !important;
     }
-    
+
+    /* Hero Typography */
+    .hero-title {
+        background: linear-gradient(90deg, #38bdf8 0%, #818cf8 50%, #f472b6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 3.2rem;
+        font-weight: 800;
+        margin-bottom: 0.2rem;
+    }
+
+    .hero-subtitle {
+        color: #cbd5e1 !important;
+        font-size: 1.1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    /* Custom Kinetic Command Buttons */
     .stButton>button {
-        background: linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%) !important;
+        background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%) !important;
         color: #ffffff !important;
         border: none !important;
         border-radius: 10px !important;
         padding: 12px 28px !important;
         font-family: 'Space Grotesk', sans-serif;
         font-weight: 700 !important;
-        box-shadow: 0 4px 14px rgba(79, 70, 229, 0.25) !important;
-        transition: all 0.2s ease !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4) !important;
         width: 100%;
     }
     .stButton>button:hover {
-        transform: translateY(-1px) !important;
-        box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6) !important;
     }
-    
-    .stTabs [data-baseweb="tab"] {
-        color: #64748b !important;
-        font-weight: 600 !important;
-    }
-    .stTabs [aria-selected="true"] {
-        color: #4f46e5 !important;
-        border-bottom-color: #4f46e5 !important;
+
+    /* Security Takeover Component Card Layout */
+    .recaptcha-box {
+        background: rgba(30, 41, 59, 0.85);
+        border: 2px solid #ff3366;
+        border-radius: 12px;
+        padding: 20px;
+        margin: 15px 0;
     }
     </style>
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 3. VERBAL AUDIO VOICE SYSTEM
+# 3. VOICE SYNTHESIS HELPER
 # -----------------------------------------------------------------------------
-def execute_voice_output(text: str):
-    escaped_text = text.replace("'", "\\'").replace("\n", " ")
-    speech_component = f"""
+def speak_text(text: str):
+    """Triggers browser native text-to-speech engine cleanly."""
+    clean_text = text.replace("'", "\\'").replace("\n", " ")
+    js_code = f"""
     <script>
         if ('speechSynthesis' in window) {{
-            window.speechSynthesis.cancel(); 
-            var voiceUtterance = new SpeechSynthesisUtterance('{escaped_text}');
-            voiceUtterance.rate = 1.05;
-            voiceUtterance.volume = 1.0;
-            window.speechSynthesis.speak(voiceUtterance);
+            window.speechSynthesis.cancel();
+            var msg = new SpeechSynthesisUtterance('{clean_text}');
+            msg.rate = 1.05;
+            msg.pitch = 1.0;
+            msg.volume = 1.0;
+            window.speechSynthesis.speak(msg);
         }}
     </script>
     """
-    components.html(speech_component, height=0, width=0)
+    components.html(js_code, height=0, width=0)
 
 # -----------------------------------------------------------------------------
-# 4. DATA ENGINE REPOSITORIES
+# 4. INITIALIZE SYSTEM DATA & STATE
 # -----------------------------------------------------------------------------
 if "users" not in st.session_state:
     st.session_state.users = {
-        "david": {"password": "123", "role": "admin", "di_name": "DI-MasterPrime"}
+        "david": {"password": "123", "role": "master", "di_name": "DI-MasterPrime"}
     }
 
 if "enrolled_dis" not in st.session_state:
     st.session_state.enrolled_dis = [
-        {"user": "david", "di_id": "DI-000", "di_name": "DI-MasterPrime", "status": "Active", "type": "Quantum Core"}
+        {"user": "david", "di_id": "DI-000", "di_name": "DI-MasterPrime", "status": "Active", "type": "Master Prime"}
     ]
 
-if "products_db" not in st.session_state:
-    st.session_state.products_db = [
-        {"Product ID": "P-101", "Product Name": "Neural Network Node", "Category": "Hardware", "Status": "Operational", "Assigned Field": "Quantum Computing"},
-        {"Product ID": "P-102", "Product Name": "Starfall Analytics Suite", "Category": "Software", "Status": "Optimization", "Assigned Field": "Data Processing"},
-        {"Product ID": "P-103", "Product Name": "Sovereign Link Matrix", "Category": "Network", "Status": "Deploying", "Assigned Field": "Security"}
+if "products" not in st.session_state:
+    st.session_state.products = [
+        {"Product ID": "PRD-101", "Name": "Neural Processor Core", "Category": "Hardware", "Status": "In Stock", "Qty": 45},
+        {"Product ID": "PRD-102", "Name": "DI Memory Module", "Category": "Storage", "Status": "In Stock", "Qty": 120},
+        {"Product ID": "PRD-103", "Name": "SkyNet Gateway Unit", "Category": "Networking", "Status": "Low Stock", "Qty": 8},
     ]
 
 if "audit_logs" not in st.session_state:
     st.session_state.audit_logs = [
-        {"Timestamp": "2026-07-31 12:00:00", "User": "System", "Action": "Initialized Hive Environment", "Details": "All system parameters optimal."}
+        {"Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"), "User": "System", "Field Changed": "Initialization", "Old Value": "None", "New Value": "Online"}
     ]
 
 if "logged_in_user" not in st.session_state:
@@ -164,72 +185,65 @@ if "captcha_quiz_options" not in st.session_state:
     st.session_state.captcha_quiz_options = []
     st.session_state.captcha_quiz_correct = ""
 
+# Dispatch pending verbal triggers
 if st.session_state.last_spoken_phrase:
-    execute_voice_output(st.session_state.last_spoken_phrase)
+    speak_text(st.session_state.last_spoken_phrase)
     st.session_state.last_spoken_phrase = None
 
 # -----------------------------------------------------------------------------
-# 5. SIDEBAR NAVIGATION
+# 5. SIDEBAR BRANDING & AUTHENTICATION
 # -----------------------------------------------------------------------------
 with st.sidebar:
     try:
         st.image(LOGO_PATH, use_container_width=True)
     except Exception:
-        st.info("ℹ️ Secure logo link placeholder active.")
+        st.markdown("<div style='border:1px dashed rgba(255,255,255,0.2); padding:10px; text-align:center;'>🖼️ Brand Image Sync Active...</div>", unsafe_allow_html=True)
 
-    st.title(APP_NAME)
-    st.markdown("<p style='color:#64748b;'>Data Today, Smarter Tomorrows</p>", unsafe_allow_html=True)
+    st.markdown(f"### **{APP_NAME}**")
+    st.caption("Sky Engine v3.5 • High Visibility UI")
     st.markdown("---")
 
     if st.session_state.logged_in_user:
-        st.success(f"Operator: **{st.session_state.logged_in_user.upper()}**")
-        if st.button("Close Active Session", use_container_width=True):
+        st.success(f"Authenticated: **{st.session_state.logged_in_user.upper()}**")
+        if st.button("Log Out Session", use_container_width=True):
             st.session_state.logged_in_user = None
             st.rerun()
     else:
-        st.info("🔒 Identity Verification Protocol Online")
+        st.info("🔒 Secure Firewall Matrix Active")
 
 # -----------------------------------------------------------------------------
-# SECURITY INTERCEPT POPUP
+# FULL-SCREEN RECAPTCHA TAKEOVER INTERCEPT WINDOW
 # -----------------------------------------------------------------------------
 if st.session_state.show_fullscreen_captcha:
-    st.warning("🚨 SECURITY LOG: IDENTITY CONFLICT DETECTED")
-    st.markdown("### This account has already been added. Please sign in!")
-    st.write(f"To continue, confirm classification matching parameter: **{st.session_state.captcha_quiz_correct}**")
+    st.markdown("""
+        <style>
+        [data-testid="stSidebar"] { display: none !important; }
+        .stTabs { display: none !important; }
+        </style>
+    """, unsafe_allow_html=True)
     
-    user_selected_ans = st.radio("Select verified response signature:", st.session_state.captcha_quiz_options)
+    st.markdown("<h1 style='text-align: center; color: #ff3366 !important; font-size: 3rem;'>🚨 SYSTEM SECURITY CAPTCHA INTERCEPT</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-size: 1.2rem; color: #cbd5e1 !important;'>This account has already been added. Complete verification to redirect to login panel.</p>", unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
     
-    if st.button("Submit Verification Check", use_container_width=True):
-        if user_selected_ans == st.session_state.captcha_quiz_correct:
-            st.session_state.show_fullscreen_captcha = False
-            st.rerun()
-        else:
-            st.error("Verification mismatch. Re-syncing anti-bot token challenges.")
-            st.session_state.captcha_quiz_options = random.sample(["Quantum Server", "Cyber Grid Node", "System Bot Core", "Human Operator Asset"], 4)
-            st.session_state.captcha_quiz_correct = "Human Operator Asset"
-            st.rerun()
-
-# -----------------------------------------------------------------------------
-# 6. ENTRANCE GATEWAY INTERFACE
-# -----------------------------------------------------------------------------
-elif not st.session_state.logged_in_user:
-    st.markdown(f'<div class="brand-title">{APP_NAME} Hub</div>', unsafe_allow_html=True)
-    st.write("Deploy deep metrics telemetry, query analytics pipelines, and connect seamlessly to operational intelligence frameworks.")
-    
-    tab_login, tab_registration = st.tabs(["🔑 CORE SYSTEM ACCESS", "📝 INITIALIZE NEW CORE PROFILE"])
-    
-    with tab_login:
-        st.markdown('<div class="brand-card">', unsafe_allow_html=True)
-        st.subheader("Sign In Verification")
-        input_user = st.text_input("Account Identifier Token", placeholder="Enter username sequence...", key="login_uid")
-        input_pass = st.text_input("Security Key Verification String", placeholder="Enter account passkey code...", type="password", key="login_pkey")
+    _, col_c2, _ = st.columns([1, 2, 1])
+    with col_c2:
+        st.markdown('<div class="recaptcha-box">', unsafe_allow_html=True)
+        st.subheader("🛡️ Multi-Choice Anti-Bot Query Challenge")
+        st.write(f"**Verification Parameter Request:** Select the item that represents: **{st.session_state.captcha_quiz_correct.upper()}**")
         
-        if st.button("Authorize Connection Link", use_container_width=True):
-            if input_user in st.session_state.users and st.session_state.users[input_user]["password"] == input_pass:
-                st.session_state.logged_in_user = input_user
-                if st.session_state.users[input_user]["role"] == "admin":
-                    st.session_state.last_spoken_phrase = f"Welcome back, Master {input_user}. Full executive administrative controls are now completely unlocked."
-                else:
-                    st.session_state.last_spoken_phrase = f"Connection successful. Operator dashboard online for user {input_user}."
+        user_selected_ans = st.radio("Available Signatures:", st.session_state.captcha_quiz_options)
+        
+        if st.button("Authorize Resolution Core Sync"):
+            if user_selected_ans == st.session_state.captcha_quiz_correct:
+                st.session_state.show_fullscreen_captcha = False
                 st.rerun()
             else:
+                st.error("Challenge Rejected. Regenerating target network challenges.")
+                st.session_state.captcha_quiz_options = random.sample(["Quantum Server Node", "Space Nebular Loop", "Bot Application Script", "Organic Human Operator Pro"], 4)
+                st.session_state.captcha_quiz_correct = "Organic Human Operator Pro"
+                st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+# -----------------------------------------------------------------------------
+# 6. SIGN IN / SIGN UP GATEWAYS
