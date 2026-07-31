@@ -8,133 +8,24 @@ from datetime import datetime
 # 1. PAGE INITIALIZATION & CONFIGURATION
 # -----------------------------------------------------------------------------
 APP_NAME = "DA-CRE-Analysis"
-
-# ⬇️ CHOOSE THE EXACT RENAMED LOGO DIRECTORY AS THE HOOK ⬇️
 LOGO_PATH = "my_logo.png"
 
 try:
     st.set_page_config(
-        page_title=f"{APP_NAME} // Starfall Analytics Core",
+        page_title=f"{APP_NAME} | Analytics Core",
         page_icon=LOGO_PATH,
         layout="wide",
         initial_sidebar_state="expanded"
     )
 except Exception:
     st.set_page_config(
-        page_title=f"{APP_NAME} // Starfall Analytics Core",
+        page_title=f"{APP_NAME} | Analytics Core",
         layout="wide",
         initial_sidebar_state="expanded"
     )
 
 # -----------------------------------------------------------------------------
-# 2. EXPERIMENTAL HOVERING SKY ANIMATION ENGINE & HIGH-CONTRAST TYPOGRAPHY
-# -----------------------------------------------------------------------------
-st.markdown("""
-    <style>
-    @import url('https://googleapis.com');
-    
-    /* Cosmic Animated Background */
-    .stApp {
-        background: radial-gradient(circle at 50% 10%, #0d1527 0%, #050914 50%, #02040a 100%);
-        background-size: 200% 200%;
-        animation: starSkyMovement 25s ease infinite alternate;
-        color: #ffffff !important;
-        font-family: 'Plus Jakarta Sans', sans-serif;
-    }
-    
-    @keyframes starSkyMovement {
-        0% { background-position: 0% 10%; }
-        50% { background-position: 50% 80%; }
-        100% { background-position: 100% 10%; }
-    }
-    
-    /* Premium Glassmorphic Cards with High Contrast Visibility Borders */
-    .sky-card {
-        background: rgba(13, 22, 47, 0.9) !important;
-        backdrop-filter: blur(24px);
-        -webkit-backdrop-filter: blur(24px);
-        border: 2px solid rgba(0, 242, 254, 0.4) !important;
-        border-radius: 20px;
-        padding: 35px;
-        margin-top: 15px;
-        margin-bottom: 24px;
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), inset 0 0 20px rgba(0, 242, 254, 0.05);
-    }
-    
-    /* Absolute Force Global Text Colors for Clear Legibility */
-    h1, h2, h3, h4, h5, h6, p, span, label, .stMarkdown div {
-        color: #ffffff !important;
-    }
-    
-    .sidebar-text {
-        color: #ffffff !important;
-        font-weight: 600 !important;
-        font-size: 1.1rem !important;
-    }
-    
-    .sub-text {
-        color: #e2e8f0 !important;
-        font-size: 1.1rem;
-        line-height: 1.6;
-    }
-    
-    /* Stunning Kinetic Title */
-    .sky-title {
-        font-family: 'Space Grotesk', sans-serif;
-        background: linear-gradient(135deg, #00f2fe 0%, #3b82f6 50%, #a78bfa 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-size: 3.8rem;
-        font-weight: 800;
-        letter-spacing: -2px;
-        line-height: 1.1;
-        margin-bottom: 12px;
-    }
-    
-    /* Enhanced Input Layout Structure */
-    .stTextInput>div>div>input {
-        background-color: #0b1120 !important;
-        color: #ffffff !important;
-        border: 2px solid rgba(0, 242, 254, 0.3) !important;
-        border-radius: 12px !important;
-        padding: 10px !important;
-        font-size: 1.05rem !important;
-    }
-    
-    /* Custom Interactive Navigation Elements */
-    .stTabs [data-baseweb="tab"] {
-        color: #cbd5e1 !important;
-        font-size: 1.1rem !important;
-        font-weight: 600 !important;
-    }
-    .stTabs [aria-selected="true"] {
-        color: #00f2fe !important;
-        border-bottom-color: #00f2fe !important;
-    }
-    
-    /* Kinetic Action Buttons */
-    .stButton>button {
-        background: linear-gradient(135deg, #00f2fe 0%, #3b82f6 100%) !important;
-        color: #020617 !important;
-        border: none !important;
-        border-radius: 12px !important;
-        padding: 14px 32px !important;
-        font-family: 'Space Grotesk', sans-serif;
-        font-weight: 700 !important;
-        letter-spacing: 0.5px;
-        box-shadow: 0 8px 25px rgba(0, 242, 254, 0.3) !important;
-        transition: all 0.3s ease !important;
-        width: 100%;
-    }
-    .stButton>button:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 14px 35px rgba(0, 242, 254, 0.5) !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-# -----------------------------------------------------------------------------
-# 3. VERBAL AUDIO VOICE SYSTEM
+# 2. VERBAL AUDIO VOICE SYSTEM
 # -----------------------------------------------------------------------------
 def execute_voice_output(text: str):
     escaped_text = text.replace("'", "\\'").replace("\n", " ")
@@ -152,7 +43,7 @@ def execute_voice_output(text: str):
     components.html(speech_component, height=0, width=0)
 
 # -----------------------------------------------------------------------------
-# 4. MEMORY STORAGE (SESSION STATE ENGINE)
+# 3. SYSTEM STATE STORAGE ENGINE
 # -----------------------------------------------------------------------------
 if "users" not in st.session_state:
     st.session_state.users = {
@@ -194,51 +85,110 @@ if st.session_state.last_spoken_phrase:
     st.session_state.last_spoken_phrase = None
 
 # -----------------------------------------------------------------------------
-# 5. SIDEBAR BRANDING
+# 4. SIDEBAR LOGO AND NAVIGATION
 # -----------------------------------------------------------------------------
 with st.sidebar:
     try:
         st.image(LOGO_PATH, use_container_width=True)
     except Exception:
-        st.markdown("<div style='border:1px dashed rgba(255,255,255,0.2); padding:10px; text-align:center;'>🖼️ Waiting for my_logo.png file sync...</div>", unsafe_allow_html=True)
+        st.info("ℹ️ my_logo.png not found. Upload it to GitHub to show your brand logo here.")
 
-    st.markdown(f"<h2>{APP_NAME}</h2>", unsafe_allow_html=True)
-    st.markdown("<p class='sidebar-text'>Starfall Cybernetic Mesh</p>", unsafe_allow_html=True)
+    st.title(APP_NAME)
+    st.caption("Cybernetic Mesh Engine")
     st.markdown("---")
 
     if st.session_state.logged_in_user:
-        st.write(f"Active Session: :cyan[**{st.session_state.logged_in_user.upper()}**]")
-        if st.button("Disconnect Platform", use_container_width=True):
+        st.success(f"Active: **{st.session_state.logged_in_user.upper()}**")
+        if st.button("Sign Out System", use_container_width=True):
             st.session_state.logged_in_user = None
             st.rerun()
     else:
-        st.markdown("<div style='background:rgba(0,242,254,0.1); border:1px solid #00f2fe; padding:10px; border-radius:8px; text-align:center;'>🔒 Security Firewall Active</div>", unsafe_allow_html=True)
+        st.warning("🔒 Secure Login Required")
 
 # -----------------------------------------------------------------------------
-# INTERCEPT MODAL: FULLSCREEN SECURITY CAPTCHA OVERTAKE
+# INTERCEPT TRIGGER MODE: FULLSCREEN CAPTCHA OVERTAKE
 # -----------------------------------------------------------------------------
 if st.session_state.show_fullscreen_captcha:
-    st.markdown("""
-        <style>
-        [data-testid="stSidebar"] { display: none !important; }
-        .stTabs { display: none !important; }
-        </style>
-    """, unsafe_allow_html=True)
+    st.error("🚨 SECURITY CLEARANCE INTERCEPT TRIGGERED")
+    st.subheader("This account has already been added. Please sign in!")
+    st.write(f"Verification Challenge: Select the classification mapping exactly matching: **{st.session_state.captcha_quiz_correct}**")
     
-    st.markdown("<h1 style='text-align: center; color: #ff3366 !important; font-size: 3rem;'>🚨 SYSTEM SECURITY TAKEOVER</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; font-size: 1.2rem;'>This account has already been added. Solve the challenge to return to the sign-in hub.</p>", unsafe_allow_html=True)
-    st.markdown("<br><br>", unsafe_allow_html=True)
+    user_selected_ans = st.radio("Select matching matrix sequence:", st.session_state.captcha_quiz_options)
     
-    _, col_c2, _ = st.columns([1, 2, 1])
-    with col_c2:
-        st.markdown('<div class="sky-card" style="border: 2px solid #ff3366 !important;">', unsafe_allow_html=True)
-        st.subheader("🛡️ CAPTCHA Verification Matrix Challenge")
-        st.write(f"**Question:** Select the item matching classification: **{st.session_state.captcha_quiz_correct.upper()}**")
+    if st.button("Verify Identity Credentials", use_container_width=True):
+        if user_selected_ans == st.session_state.captcha_quiz_correct:
+            st.session_state.show_fullscreen_captcha = False
+            st.rerun()
+        else:
+            st.error("Verification failed. Regenerating tracking parameters.")
+            st.session_state.captcha_quiz_options = random.sample(["Quantum Server", "Cyber Grid Node", "System Bot Core", "Human Operator Asset"], 4)
+            st.session_state.captcha_quiz_correct = "Human Operator Asset"
+            st.rerun()
+
+# -----------------------------------------------------------------------------
+# 5. ENTRY SECURITY GATEWAY (LOGIN / REGISTRATION PROMPTS)
+# -----------------------------------------------------------------------------
+elif not st.session_state.logged_in_user:
+    st.title(f"Welcome to {APP_NAME}")
+    st.write("Access your safe multi-tenant sandbox space and monitor real-time analytical telemetry matrices below.")
+    
+    tab_login, tab_registration = st.tabs(["🔑 SYSTEM LOG-IN GATEWAY", "📝 REGISTER ACCOUNT NODE"])
+    
+    with tab_login:
+        st.subheader("Operator Identity Gateway Check")
+        input_user = st.text_input("Account Username Token", placeholder="Type username reference here...", key="login_uid")
+        input_pass = st.text_input("Cryptographic Secure Key", placeholder="Type passkey credentials here...", type="password", key="login_pkey")
         
-        user_selected_ans = st.radio("Available Signatures:", st.session_state.captcha_quiz_options)
-        
-        if st.button("Submit Cryptographic Resolution Verification"):
-            if user_selected_ans == st.session_state.captcha_quiz_correct:
-                st.session_state.show_fullscreen_captcha = False
+        if st.button("Establish Verified Interface Access Connection", use_container_width=True):
+            if input_user in st.session_state.users and st.session_state.users[input_user]["password"] == input_pass:
+                st.session_state.logged_in_user = input_user
+                if st.session_state.users[input_user]["role"] == "admin":
+                    st.session_state.last_spoken_phrase = f"Welcome back, Master {input_user}. Full executive administrative controls are now completely unlocked."
+                else:
+                    st.session_state.last_spoken_phrase = f"Connection successful. Operator dashboard online for user {input_user}."
                 st.rerun()
             else:
+                st.error("Authentication Error: Checked values do not match registered records.")
+
+    with tab_registration:
+        st.subheader("Provision New Active Account Node")
+        reg_user = st.text_input("Choose Unique Account Username", placeholder="e.g., david_analytics", key="reg_uid")
+        reg_pass = st.text_input("Choose Secure Code Password", placeholder="Type security passkey sequence...", type="password", key="reg_pkey")
+        desired_di = st.text_input("Name Your Assigned DI Node", placeholder="Choose custom intelligence name...", value=f"DI-Nebula-{random.randint(1000, 9999)}")
+
+        if st.button("Compile Global Node Profile Structure", use_container_width=True):
+            if not reg_user or not reg_pass:
+                st.warning("Action Cancelled: Empty parameter verification parameters processed.")
+            elif reg_user in st.session_state.users:
+                st.session_state.last_spoken_phrase = "This account has already been added. Please sign in immediately."
+                st.session_state.captcha_quiz_options = random.sample(["Quantum Server", "Cyber Grid Node", "System Bot Core", "Human Operator Asset"], 4)
+                st.session_state.captcha_quiz_correct = "Human Operator Asset"
+                st.session_state.show_fullscreen_captcha = True
+                st.rerun()
+            else:
+                st.session_state.users[reg_user] = {"password": reg_pass, "role": "user", "di_name": desired_di}
+                st.session_state.enrolled_dis.append({
+                    "user": reg_user, "di_id": f"DI-{random.randint(100,999)}", "di_name": desired_di, "status": "Active", "type": "Subscriber Node"
+                })
+                st.session_state.audit_logs.append({
+                    "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "User": reg_user, "Action": "Account Creation", "Details": f"New user signed up and created intelligence node: {desired_di}"
+                })
+                st.session_state.logged_in_user = reg_user
+                st.session_state.last_spoken_phrase = f"Registration finalized. Welcome to the tracking interface."
+                st.rerun()
+
+# -----------------------------------------------------------------------------
+# 6. HIGH-PRIVILEGE EXECUTIVE ADMINISTRATOR CONSOLE
+# -----------------------------------------------------------------------------
+elif st.session_state.users[st.session_state.logged_in_user]["role"] == "admin":
+    st.title("🛡️ Master Control Dashboard")
+    st.caption("Global Multi-Tenant Hub Overview")
+    st.markdown("---")
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Active Subscribed DI Nodes", len(st.session_state.enrolled_dis))
+    col2.metric("Total Cataloged Products", len(st.session_state.products_db))
+    col3.metric("System Core Status", "OPTIMAL")
+
+    st.markdown("---")
+    st.subheader("🔮 Sovereign Hive Mind Vocal Interlink")
