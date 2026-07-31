@@ -25,7 +25,7 @@ except Exception:
     )
 
 # -----------------------------------------------------------------------------
-# 2. SKY ANIMATION BACKGROUND & VISIBILITY CSS
+# 2. SKY ANIMATION BACKGROUND & VISIBILITY CSS ENGINE
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
@@ -40,12 +40,11 @@ st.markdown("""
         100% { background-position: 0 0; }
     }
     
-    /* Fixed background container placement to prevent structural form masking */
     .stApp::before {
         content: "";
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
-        background: url('https://user-images.githubusercontent.com/2673119/31048080-86532e74-a612-11e7-8250-9343be34a781.png') repeat;
+        background: url('https://githubusercontent.com') repeat;
         opacity: 0.15;
         pointer-events: none;
         animation: floatSky 75s infinite linear;
@@ -62,31 +61,32 @@ st.markdown("""
         margin-bottom: 0.2rem;
     }
     
-    /* High contrast container styling for perfect element projection */
+    /* Solid High-Contrast Contrast Card Background for Form Controls */
     .auth-card {
-        background: rgba(30, 41, 59, 0.7) !important;
-        border: 1px solid rgba(255, 255, 255, 0.15) !important;
-        padding: 24px;
-        border-radius: 12px;
-        margin-top: 15px;
+        background-color: #1e293b !important;
+        border: 2px solid #334155 !important;
+        padding: 30px !important;
+        border-radius: 12px !important;
+        margin-top: 20px !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
     }
 
-    /* Force visibility overrides across elements */
+    /* Force Stark White Text Across Dynamic Component Matrices */
     h1, h2, h3, h4, h5, h6, p, label, span, div, [data-testid="stMarkdownContainer"] p {
         color: #ffffff !important;
     }
 
-    /* Keep native sidebar labels fully white */
     [data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] h3 {
         color: #ffffff !important;
     }
 
-    /* Custom form styling overrides for crisp display */
+    /* Crisp White Form Input Styling with Total Contrast Black Text */
     .stTextInput input, .stNumberInput input, .stSelectbox div {
         background-color: #ffffff !important;
-        color: #0f172a !important;
+        color: #000000 !important;
         border: 2px solid #cbd5e1 !important;
         border-radius: 8px !important;
+        font-weight: 600 !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -152,7 +152,6 @@ if "captcha_num1" not in st.session_state:
     st.session_state.captcha_num1 = random.randint(1, 9)
     st.session_state.captcha_num2 = random.randint(1, 9)
 
-# Execute pending audio queue statements
 if st.session_state.last_spoken_phrase:
     speak_text(st.session_state.last_spoken_phrase)
     st.session_state.last_spoken_phrase = None
@@ -191,37 +190,38 @@ if st.session_state.show_fullscreen_captcha:
     
     st.error("🚨 SECURITY OVERRIDE TRIGGERED: CONFLICT ENCOUNTERED")
     st.markdown("### This account has already been added. Please sign in!")
-    st.write(f"Verification Check: Select the exact metric flag definition matching: **{st.session_state.captcha_quiz_correct.upper()}**")
+    st.write(f"Verification Check: Select the exact core option matching: **{st.session_state.captcha_quiz_correct.upper()}**")
     
-    user_selected_ans = st.radio("Available Environment Node Tokens:", st.session_state.captcha_quiz_options)
+    user_selected_ans = st.radio("Node Verification Matrix Options:", st.session_state.captcha_quiz_options)
     
-    if st.button("Submit System Clearance Matrix Verification", use_container_width=True):
+    if st.button("Submit Clearance Check", use_container_width=True):
         if user_selected_ans == st.session_state.captcha_quiz_correct:
             st.session_state.show_fullscreen_captcha = False
             st.rerun()
         else:
-            st.error("Verification parameters rejected. Regenerating dynamic signatures.")
+            st.error("Verification match signature failed. Regenerating tracking parameters.")
             st.session_state.captcha_quiz_options = random.sample(["Quantum Server Matrix", "Cyber Nebula Instance", "Bot Footprint Signature", "Organic Human Core Pro"], 4)
             st.session_state.captcha_quiz_correct = "Organic Human Core Pro"
             st.rerun()
 
 # -----------------------------------------------------------------------------
-# 6. SIGN IN / SIGN UP PORTAL VIEW
+# 6. ENTRANCE ACCESS SWITCH GATEWAY (SIGN IN / SIGN UP)
 # -----------------------------------------------------------------------------
 elif not st.session_state.logged_in_user:
     st.markdown(f'<div class="hero-title">{APP_NAME} Portal</div>', unsafe_allow_html=True)
     st.write("Sign in or register an account to deploy your Digital Intelligence.")
     st.markdown("---")
 
-    auth_action = st.radio("Select Portal Action", ["🔑 Sign In", "📝 Sign Up & Deploy DI"], horizontal=True)
+    # ⬇️ REMOVED THE "DEPLOY DI" EXTRA BRANDING CHARACTERS FROM SELECTION ⬇️
+    auth_action = st.radio("Select Portal Action", ["🔑 Sign In", "📝 Sign Up"], horizontal=True)
 
     if auth_action == "🔑 Sign In":
         st.markdown('<div class="auth-card">', unsafe_allow_html=True)
-        st.subheader("Account Login")
-        login_user = st.text_input("Username", placeholder="Type account username identifier...", key="l_user")
-        login_pass = st.text_input("Password", placeholder="Type secret passcode string...", type="password", key="l_pass")
+        st.subheader("Account Login Verification")
+        login_user = st.text_input("Username Identifier", placeholder="Enter your username...", key="l_user")
+        login_pass = st.text_input("Account Password", placeholder="Enter your password...", type="password", key="l_pass")
         
-        if st.button("Sign In"):
+        if st.button("Verify Identity Credentials", use_container_width=True):
             if login_user in st.session_state.users and st.session_state.users[login_user]["password"] == login_pass:
                 st.session_state.logged_in_user = login_user
                 if st.session_state.users[login_user]["role"] == "master":
@@ -230,4 +230,3 @@ elif not st.session_state.logged_in_user:
                     st.session_state.last_spoken_phrase = f"Access permitted. Studio node online for operator {login_user}."
                 st.rerun()
             else:
-                st.error("Invalid username or password configuration parameters.")
