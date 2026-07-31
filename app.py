@@ -26,15 +26,16 @@ except Exception:
     )
 
 # -----------------------------------------------------------------------------
-# 2. SKY ANIMATION BACKGROUND & HIGH-VISIBILITY FORM STYLING
+# 2. CUSTOM STYLING (BROWN & LIGHT BLUE SIDEBAR + HIGH VISIBILITY CONTRAST)
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
-    /* Floating Celestial Sky Background */
+    /* Main Canvas Background */
     .stApp {
         background: radial-gradient(ellipse at bottom, #0f172a 0%, #020617 100%) !important;
     }
 
+    /* Floating Sky Background Effect */
     @keyframes floatSky {
         0% { background-position: 0 0; }
         50% { background-position: 100px -100px; }
@@ -52,6 +53,16 @@ st.markdown("""
         z-index: 0 !important;
     }
 
+    /* Custom Brown and Very Light Blue Sidebar Styling */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #3D2314 0%, #22120A 100%) !important;
+        border-right: 2px solid #38bdf8 !important;
+    }
+
+    [data-testid="stSidebar"] *, [data-testid="stSidebar"] p, [data-testid="stSidebar"] span {
+        color: #E0F2FE !important; /* Very light blue text */
+    }
+
     .hero-title {
         background: linear-gradient(90deg, #38bdf8 0%, #818cf8 100%);
         -webkit-background-clip: text;
@@ -62,13 +73,13 @@ st.markdown("""
         margin-bottom: 0.2rem;
     }
 
-    /* Force Form Elements & Labels to be 100% Visible */
+    /* General High Contrast Text Labels */
     label, p, h1, h2, h3, h4, h5, h6, [data-testid="stMarkdownContainer"] p {
         color: #ffffff !important;
     }
 
-    /* High Visibility Form Input Fields */
-    .stTextInput input, .stNumberInput input {
+    /* High Visibility Form Inputs */
+    .stTextInput input, .stNumberInput input, .stSelectbox div {
         background-color: #1e293b !important;
         color: #ffffff !important;
         border: 2px solid #38bdf8 !important;
@@ -89,6 +100,12 @@ st.markdown("""
     .stButton>button:hover {
         transform: translateY(-1px);
         box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5) !important;
+    }
+
+    /* Metric Cards Styling */
+    div[data-testid="stMetricValue"] {
+        color: #38bdf8 !important;
+        font-weight: bold !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -128,9 +145,11 @@ if "enrolled_dis" not in st.session_state:
 
 if "products" not in st.session_state:
     st.session_state.products = [
-        {"Product ID": "PRD-101", "Name": "Neural Processor Core", "Category": "Hardware", "Status": "In Stock", "Qty": 45},
-        {"Product ID": "PRD-102", "Name": "DI Memory Module", "Category": "Storage", "Status": "In Stock", "Qty": 120},
-        {"Product ID": "PRD-103", "Name": "SkyNet Gateway Unit", "Category": "Networking", "Status": "Low Stock", "Qty": 8},
+        {"Product ID": "PRD-101", "Name": "Neural Processor Core", "Category": "Hardware", "Status": "In Stock", "Qty": 45, "Cost": 1200},
+        {"Product ID": "PRD-102", "Name": "DI Memory Module", "Category": "Storage", "Status": "In Stock", "Qty": 120, "Cost": 350},
+        {"Product ID": "PRD-103", "Name": "SkyNet Gateway Unit", "Category": "Networking", "Status": "Low Stock", "Qty": 8, "Cost": 2100},
+        {"Product ID": "PRD-104", "Name": "Quantum Bus Interface", "Category": "Hardware", "Status": "In Stock", "Qty": 30, "Cost": 850},
+        {"Product ID": "PRD-105", "Name": "Cryo Cooling Array", "Category": "Infrastructure", "Status": "Maintenance", "Qty": 3, "Cost": 4500},
     ]
 
 if "audit_logs" not in st.session_state:
@@ -147,16 +166,15 @@ if "last_spoken_phrase" not in st.session_state:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-if "show_fullscreen_captcha" not in st.session_state:
-    st.session_state.show_fullscreen_captcha = False
+if "show_verification_gate" not in st.session_state:
+    st.session_state.show_verification_gate = False
+
+if "failed_reason" not in st.session_state:
+    st.session_state.failed_reason = ""
 
 if "captcha_quiz_options" not in st.session_state:
     st.session_state.captcha_quiz_options = ["Quantum Server Matrix", "Nebular System Cluster", "Bot Automation Footprint", "Organic Human Operator Pro"]
     st.session_state.captcha_quiz_correct = "Organic Human Operator Pro"
-
-if "captcha_num1" not in st.session_state:
-    st.session_state.captcha_num1 = random.randint(1, 9)
-    st.session_state.captcha_num2 = random.randint(1, 9)
 
 # Voice output trigger
 if st.session_state.last_spoken_phrase:
@@ -170,10 +188,10 @@ with st.sidebar:
     try:
         st.image(LOGO_PATH, use_container_width=True)
     except Exception:
-        st.title("⚡ Logo")
+        st.title("⚡ DACRE")
 
     st.markdown(f"### **{APP_NAME}**")
-    st.caption("Sky Engine v3.5 • Neural Core")
+    st.caption("Sky Engine v3.5 • Neural Suite")
     st.markdown("---")
 
     if st.session_state.logged_in_user:
@@ -186,46 +204,48 @@ with st.sidebar:
         st.info("🔒 Secure Firewall Matrix Online")
 
 # -----------------------------------------------------------------------------
-# FULL-SCREEN INTERCEPT WINDOW FOR DUPLICATED ACCOUNT COLLISIONS
+# 6. CONDITIONAL RECAPTCHA INTERCEPT (ONLY FIRES ON WRONG CREDENTIALS)
 # -----------------------------------------------------------------------------
-if st.session_state.show_fullscreen_captcha:
+if st.session_state.show_verification_gate:
     st.markdown("""
         <style>
         [data-testid="stSidebar"] { display: none !important; }
-        [data-testid="stRadio"] { display: none !important; }
         </style>
     """, unsafe_allow_html=True)
     
-    st.error("🚨 SECURITY OVERRIDE TRIGGERED: IDENTITY CONFLICT ENCOUNTERED")
-    st.markdown("### This account has already been added. Please sign in!")
-    st.write(f"Verification Parameter Checklist request matching category: **{st.session_state.captcha_quiz_correct.upper()}**")
+    st.error("🚨 SECURITY VERIFICATION REQUIRED")
+    st.markdown(f"### Reason: {st.session_state.failed_reason}")
+    st.write("Please complete human verification to continue:")
+    st.write(f"Target Parameter Token: **{st.session_state.captcha_quiz_correct.upper()}**")
     
-    user_selected_ans = st.radio("Select verified response token:", st.session_state.captcha_quiz_options)
+    user_selected_ans = st.radio("Select response token:", st.session_state.captcha_quiz_options)
     
-    if st.button("Authorize Gate Entry Clearance Re-route Link", use_container_width=True):
+    if st.button("Verify & Authorize Clearance", use_container_width=True):
         if user_selected_ans == st.session_state.captcha_quiz_correct:
-            st.session_state.show_fullscreen_captcha = False
+            st.session_state.show_verification_gate = False
+            st.session_state.failed_reason = ""
+            st.success("Verification complete. Please retry your action.")
             st.rerun()
         else:
-            st.error("Verification parameters mismatched. Re-indexing tracking challenges.")
+            st.error("Verification failed. Tokens randomized. Try again.")
             st.session_state.captcha_quiz_options = random.sample(["Quantum Server Matrix", "Nebular System Cluster", "Bot Automation Footprint", "Organic Human Operator Pro"], 4)
             st.session_state.captcha_quiz_correct = "Organic Human Operator Pro"
             st.rerun()
 
 # -----------------------------------------------------------------------------
-# 6. SIGN IN / SIGN UP PORTAL
+# 7. SIGN IN / SIGN UP PORTAL
 # -----------------------------------------------------------------------------
 elif not st.session_state.logged_in_user:
     st.markdown(f'<div class="hero-title">{APP_NAME} Portal</div>', unsafe_allow_html=True)
-    st.write("Sign in or register an account to deploy your Digital Intelligence.")
+    st.write("Sign in or register an account to access the platform.")
     st.markdown("---")
 
     auth_action = st.radio("Select Portal Action", ["🔑 Sign In", "📝 Sign Up"], horizontal=True)
 
     if auth_action == "🔑 Sign In":
         st.subheader("Account Login")
-        login_user = st.text_input("Username", placeholder="Enter your operator username...", key="l_user")
-        login_pass = st.text_input("Password", placeholder="Enter your cryptographic code...", type="password", key="l_pass")
+        login_user = st.text_input("Username", placeholder="Enter your username...", key="l_user")
+        login_pass = st.text_input("Password", placeholder="Enter password...", type="password", key="l_pass")
         
         if st.button("Sign In"):
             if login_user in st.session_state.users and st.session_state.users[login_user]["password"] == login_pass:
@@ -237,7 +257,10 @@ elif not st.session_state.logged_in_user:
                 st.success("Welcome back!")
                 st.rerun()
             else:
-                st.error("Invalid username or password.")
+                # Trigger reCAPTCHA screen only on failed attempts
+                st.session_state.show_verification_gate = True
+                st.session_state.failed_reason = "Invalid username or password entered."
+                st.rerun()
 
     else:
         st.subheader("Create Account")
@@ -245,21 +268,13 @@ elif not st.session_state.logged_in_user:
         new_pass = st.text_input("Choose Password", type="password", key="s_pass")
         custom_di_name = st.text_input("Name Your DI Entity", value=f"DI-{random.randint(100, 999)}")
 
-        st.markdown("---")
-        st.write("🤖 **Security Check (reCAPTCHA)**")
-        captcha_ans = st.number_input(
-            f"Solve: {st.session_state.captcha_num1} + {st.session_state.captcha_num2} =", 
-            step=1, value=0
-        )
-
         if st.button("Create Account"):
-            expected = st.session_state.captcha_num1 + st.session_state.captcha_num2
-            if captcha_ans != expected:
-                st.error("❌ reCAPTCHA check failed. Incorrect answer.")
-            elif not new_user or not new_pass:
+            if not new_user or not new_pass:
                 st.warning("Please complete all fields.")
             elif new_user in st.session_state.users:
-                st.session_state.show_fullscreen_captcha = True
+                # Trigger reCAPTCHA if username already exists
+                st.session_state.show_verification_gate = True
+                st.session_state.failed_reason = f"Account '{new_user}' already exists."
                 st.rerun()
             else:
                 st.session_state.users[new_user] = {
@@ -288,22 +303,54 @@ elif not st.session_state.logged_in_user:
                 st.rerun()
 
 # -----------------------------------------------------------------------------
-# 7. LOGGED-IN SYSTEM WORKSPACE & ADMIN CONTROLS
+# 8. LOGGED-IN SYSTEM WORKSPACE & BUILT-IN FEATURES
 # -----------------------------------------------------------------------------
 else:
     user = st.session_state.logged_in_user
     user_info = st.session_state.users[user]
     is_master = (user.lower() == "david" or user_info.get("role") == "master")
 
-    nav_tabs = ["🤖 DI Communication Console", "🛡️ User/Org Admin Portal"]
+    nav_tabs = ["📊 Data Dashboard", "🤖 DI Communication Console", "🛡️ User/Org Admin Portal"]
     if is_master:
         nav_tabs.append("👑 Master Executive Portal")
 
     selected_mode = st.radio("System Mode", nav_tabs, horizontal=True)
     st.markdown("---")
 
-    # TAB 1: CONSOLE
-    if selected_mode == "🤖 DI Communication Console":
+    # TAB 1: DATA DASHBOARD (BUILT-IN FEATURES)
+    if selected_mode == "📊 Data Dashboard":
+        st.markdown('<div class="hero-title">DACRE Data Analytics Board</div>', unsafe_allow_html=True)
+        st.write("Real-time metrics, system performance, and active resource allocations.")
+
+        df_products = pd.DataFrame(st.session_state.products)
+
+        # Top Metric Cards
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Total Items Managed", len(df_products))
+        m2.metric("Total Units Inventory", int(df_products["Qty"].sum()))
+        m3.metric("Total System Asset Value", f"${(df_products['Qty'] * df_products['Cost']).sum():,}")
+        m4.metric("Active System Users", len(st.session_state.users))
+
+        st.markdown("---")
+
+        # Category and Inventory Visual Charts
+        c_left, c_right = st.columns(2)
+        
+        with c_left:
+            st.subheader("📦 Inventory by Status")
+            status_counts = df_products["Status"].value_counts()
+            st.bar_chart(status_counts)
+
+        with c_right:
+            st.subheader("⚙️ Stock Quantities per Product")
+            st.line_chart(df_products.set_index("Name")["Qty"])
+
+        st.markdown("---")
+        st.subheader("📋 Resource Detail Board")
+        st.dataframe(df_products, use_container_width=True)
+
+    # TAB 2: COMMUNICATION CONSOLE
+    elif selected_mode == "🤖 DI Communication Console":
         st.markdown(f'<div class="hero-title">{user_info["di_name"]} Core</div>', unsafe_allow_html=True)
         st.write(f"Connected User: **{user}** | Voice Engine Online")
 
@@ -341,7 +388,7 @@ else:
                 if st.session_state.messages:
                     speak_text(st.session_state.messages[-1]["content"])
 
-    # TAB 2: ADMIN ACCESS
+    # TAB 3: ADMIN ACCESS
     elif selected_mode == "🛡️ User/Org Admin Portal":
         st.markdown('<div class="hero-title">Organization Admin Access</div>', unsafe_allow_html=True)
         st.write("Manage products, modify data fields, and view audit trails.")
@@ -386,7 +433,7 @@ else:
         else:
             st.info("🔑 Passkey required to unlock admin functions. Default passkey: `admin123`")
 
-    # TAB 3: MASTER PORTAL
+    # TAB 4: MASTER PORTAL
     elif selected_mode == "👑 Master Executive Portal" and is_master:
         st.markdown('<div class="hero-title">Master Executive Portal</div>', unsafe_allow_html=True)
         st.write("Full Authority Portal • Enrolled Fleet Overview")
