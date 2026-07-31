@@ -25,7 +25,100 @@ except Exception:
     )
 
 # -----------------------------------------------------------------------------
-# 2. VERBAL AUDIO VOICE SYSTEM
+# 2. PREMIUM LIGHT BLUE & INDIGO BRAND UI ENGINE
+# -----------------------------------------------------------------------------
+st.markdown("""
+    <style>
+    @import url('https://googleapis.com');
+    
+    /* Clean Light Palette Setup */
+    .stApp {
+        background: linear-gradient(135deg, #f4f7fe 0%, #e0e8f9 100%);
+        color: #1e293b !important;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    
+    /* Beautiful Indigo Cards */
+    .brand-card {
+        background: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        border-top: 5px solid #3b82f6 !important;
+        border-radius: 16px !important;
+        padding: 28px;
+        margin-bottom: 24px;
+        box-shadow: 0 10px 25px rgba(59, 130, 246, 0.04);
+        transition: all 0.3s ease;
+    }
+    .brand-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 16px 35px rgba(59, 130, 246, 0.09);
+        border-top-color: #4f46e5 !important;
+    }
+    
+    /* Typography Overrides for High Visibility */
+    h1, h2, h3, h4, h5, h6 {
+        color: #1e1b4b !important;
+        font-family: 'Space Grotesk', sans-serif !important;
+        font-weight: 700 !important;
+    }
+    p, label, span {
+        color: #334155 !important;
+        font-weight: 500 !important;
+    }
+    
+    /* Dynamic Indigo Gradient Titles */
+    .brand-title {
+        background: linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-size: 3rem;
+        font-weight: 800;
+        letter-spacing: -1.5px;
+        margin-bottom: 6px;
+    }
+    
+    /* Crisp Inputs */
+    .stTextInput>div>div>input {
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        border: 2px solid #cbd5e1 !important;
+        border-radius: 10px !important;
+    }
+    .stTextInput>div>div>input:focus {
+        border-color: #3b82f6 !important;
+    }
+    
+    /* Solid Indigo Action Buttons */
+    .stButton>button {
+        background: linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%) !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 10px !important;
+        padding: 12px 28px !important;
+        font-family: 'Space Grotesk', sans-serif;
+        font-weight: 700 !important;
+        box-shadow: 0 4px 14px rgba(79, 70, 229, 0.25) !important;
+        transition: all 0.2s ease !important;
+    }
+    .stButton>button:hover {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4) !important;
+    }
+    
+    /* Tabs Customization */
+    .stTabs [data-baseweb="tab"] {
+        color: #64748b !important;
+        font-weight: 600 !important;
+    }
+    .stTabs [aria-selected="true"] {
+        color: #4f46e5 !important;
+        border-bottom-color: #4f46e5 !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# -----------------------------------------------------------------------------
+# 3. VERBAL AUDIO VOICE SYSTEM
 # -----------------------------------------------------------------------------
 def execute_voice_output(text: str):
     escaped_text = text.replace("'", "\\'").replace("\n", " ")
@@ -43,7 +136,7 @@ def execute_voice_output(text: str):
     components.html(speech_component, height=0, width=0)
 
 # -----------------------------------------------------------------------------
-# 3. SYSTEM STATE STORAGE ENGINE
+# 4. DATA ENGINE REPOSITORIES
 # -----------------------------------------------------------------------------
 if "users" not in st.session_state:
     st.session_state.users = {
@@ -85,110 +178,62 @@ if st.session_state.last_spoken_phrase:
     st.session_state.last_spoken_phrase = None
 
 # -----------------------------------------------------------------------------
-# 4. SIDEBAR LOGO AND NAVIGATION
+# 5. SIDEBAR NAVIGATION
 # -----------------------------------------------------------------------------
 with st.sidebar:
     try:
         st.image(LOGO_PATH, use_container_width=True)
     except Exception:
-        st.info("ℹ️ my_logo.png not found. Upload it to GitHub to show your brand logo here.")
+        st.info("ℹ️ Secure logo link placeholder active.")
 
     st.title(APP_NAME)
-    st.caption("Cybernetic Mesh Engine")
+    st.markdown("<p style='color:#64748b;'>Data Today, Smarter Tomorrows</p>", unsafe_allow_html=True)
     st.markdown("---")
 
     if st.session_state.logged_in_user:
-        st.success(f"Active: **{st.session_state.logged_in_user.upper()}**")
-        if st.button("Sign Out System", use_container_width=True):
+        st.success(f"Operator: **{st.session_state.logged_in_user.upper()}**")
+        if st.button("Close Active Session", use_container_width=True):
             st.session_state.logged_in_user = None
             st.rerun()
     else:
-        st.warning("🔒 Secure Login Required")
+        st.info("🔒 Identity Verification Protocol Online")
 
 # -----------------------------------------------------------------------------
-# INTERCEPT TRIGGER MODE: FULLSCREEN CAPTCHA OVERTAKE
+# SECURITY INTERCEPT POPUP
 # -----------------------------------------------------------------------------
 if st.session_state.show_fullscreen_captcha:
-    st.error("🚨 SECURITY CLEARANCE INTERCEPT TRIGGERED")
-    st.subheader("This account has already been added. Please sign in!")
-    st.write(f"Verification Challenge: Select the classification mapping exactly matching: **{st.session_state.captcha_quiz_correct}**")
+    st.warning("🚨 SECURITY LOG: IDENTITY CONFLICT DETECTED")
+    st.markdown("### This account has already been added. Please sign in!")
+    st.write(f"To continue, confirm classification matching parameter: **{st.session_state.captcha_quiz_correct}**")
     
-    user_selected_ans = st.radio("Select matching matrix sequence:", st.session_state.captcha_quiz_options)
+    user_selected_ans = st.radio("Select verified response signature:", st.session_state.captcha_quiz_options)
     
-    if st.button("Verify Identity Credentials", use_container_width=True):
+    if st.button("Submit Verification Check", use_container_width=True):
         if user_selected_ans == st.session_state.captcha_quiz_correct:
             st.session_state.show_fullscreen_captcha = False
             st.rerun()
         else:
-            st.error("Verification failed. Regenerating tracking parameters.")
+            st.error("Verification mismatch. Re-syncing anti-bot token challenges.")
             st.session_state.captcha_quiz_options = random.sample(["Quantum Server", "Cyber Grid Node", "System Bot Core", "Human Operator Asset"], 4)
             st.session_state.captcha_quiz_correct = "Human Operator Asset"
             st.rerun()
 
 # -----------------------------------------------------------------------------
-# 5. ENTRY SECURITY GATEWAY (LOGIN / REGISTRATION PROMPTS)
+# 6. ENTRANCE GATEWAY INTERFACE
 # -----------------------------------------------------------------------------
 elif not st.session_state.logged_in_user:
-    st.title(f"Welcome to {APP_NAME}")
-    st.write("Access your safe multi-tenant sandbox space and monitor real-time analytical telemetry matrices below.")
+    st.markdown(f'<div class="brand-title">{APP_NAME} Hub</div>', unsafe_allow_html=True)
+    st.write("Deploy deep metrics telemetry, query analytics pipelines, and connect seamlessly to operational intelligence frameworks.")
     
-    tab_login, tab_registration = st.tabs(["🔑 SYSTEM LOG-IN GATEWAY", "📝 REGISTER ACCOUNT NODE"])
+    tab_login, tab_registration = st.tabs(["🔑 CORE SYSTEM ACCESS", "📝 INITIALIZE NEW CORE PROFILE"])
     
     with tab_login:
-        st.subheader("Operator Identity Gateway Check")
-        input_user = st.text_input("Account Username Token", placeholder="Type username reference here...", key="login_uid")
-        input_pass = st.text_input("Cryptographic Secure Key", placeholder="Type passkey credentials here...", type="password", key="login_pkey")
+        st.markdown('<div class="brand-card">', unsafe_allow_html=True)
+        st.subheader("Sign In Verification")
+        input_user = st.text_input("Account Identifier Token", placeholder="Enter username sequence...", key="login_uid")
+        input_pass = st.text_input("Security Key Verification String", placeholder="Enter account passkey code...", type="password", key="login_pkey")
         
-        if st.button("Establish Verified Interface Access Connection", use_container_width=True):
+        if st.button("Authorize Connection Link", use_container_width=True):
             if input_user in st.session_state.users and st.session_state.users[input_user]["password"] == input_pass:
                 st.session_state.logged_in_user = input_user
                 if st.session_state.users[input_user]["role"] == "admin":
-                    st.session_state.last_spoken_phrase = f"Welcome back, Master {input_user}. Full executive administrative controls are now completely unlocked."
-                else:
-                    st.session_state.last_spoken_phrase = f"Connection successful. Operator dashboard online for user {input_user}."
-                st.rerun()
-            else:
-                st.error("Authentication Error: Checked values do not match registered records.")
-
-    with tab_registration:
-        st.subheader("Provision New Active Account Node")
-        reg_user = st.text_input("Choose Unique Account Username", placeholder="e.g., david_analytics", key="reg_uid")
-        reg_pass = st.text_input("Choose Secure Code Password", placeholder="Type security passkey sequence...", type="password", key="reg_pkey")
-        desired_di = st.text_input("Name Your Assigned DI Node", placeholder="Choose custom intelligence name...", value=f"DI-Nebula-{random.randint(1000, 9999)}")
-
-        if st.button("Compile Global Node Profile Structure", use_container_width=True):
-            if not reg_user or not reg_pass:
-                st.warning("Action Cancelled: Empty parameter verification parameters processed.")
-            elif reg_user in st.session_state.users:
-                st.session_state.last_spoken_phrase = "This account has already been added. Please sign in immediately."
-                st.session_state.captcha_quiz_options = random.sample(["Quantum Server", "Cyber Grid Node", "System Bot Core", "Human Operator Asset"], 4)
-                st.session_state.captcha_quiz_correct = "Human Operator Asset"
-                st.session_state.show_fullscreen_captcha = True
-                st.rerun()
-            else:
-                st.session_state.users[reg_user] = {"password": reg_pass, "role": "user", "di_name": desired_di}
-                st.session_state.enrolled_dis.append({
-                    "user": reg_user, "di_id": f"DI-{random.randint(100,999)}", "di_name": desired_di, "status": "Active", "type": "Subscriber Node"
-                })
-                st.session_state.audit_logs.append({
-                    "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "User": reg_user, "Action": "Account Creation", "Details": f"New user signed up and created intelligence node: {desired_di}"
-                })
-                st.session_state.logged_in_user = reg_user
-                st.session_state.last_spoken_phrase = f"Registration finalized. Welcome to the tracking interface."
-                st.rerun()
-
-# -----------------------------------------------------------------------------
-# 6. HIGH-PRIVILEGE EXECUTIVE ADMINISTRATOR CONSOLE
-# -----------------------------------------------------------------------------
-elif st.session_state.users[st.session_state.logged_in_user]["role"] == "admin":
-    st.title("🛡️ Master Control Dashboard")
-    st.caption("Global Multi-Tenant Hub Overview")
-    st.markdown("---")
-
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Active Subscribed DI Nodes", len(st.session_state.enrolled_dis))
-    col2.metric("Total Cataloged Products", len(st.session_state.products_db))
-    col3.metric("System Core Status", "OPTIMAL")
-
-    st.markdown("---")
-    st.subheader("🔮 Sovereign Hive Mind Vocal Interlink")
