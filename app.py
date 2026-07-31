@@ -8,7 +8,7 @@ from datetime import datetime
 # 1. PAGE INITIALIZATION & CONFIGURATION
 # -----------------------------------------------------------------------------
 APP_NAME = "DA-CRE-Analysis"
-LOGO_PATH = "my_logo.png"
+LOGO_PATH = "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png"
 
 try:
     st.set_page_config(
