@@ -7,13 +7,14 @@ from datetime import datetime
 from PIL import Image
 
 # -----------------------------------------------------------------------------
-# 1. APP CONFIGURATION & FAVICON LOGO SETUP
+# 1. APP CONFIGURATION & LOGO PAGE ICON SETUP
 # -----------------------------------------------------------------------------
 APP_NAME = "Dacre Analysis Engine"
 MASTER_FULL_NAME = "David Emenike"
 MASTER_PASSKEY = "theWORDofGOD@111"
 LOGO_PATH = "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png"
 
+# Load the exact logo image for the page icon / favicon
 try:
     logo_img = Image.open(LOGO_PATH)
     st.set_page_config(
@@ -25,7 +26,7 @@ try:
 except Exception:
     st.set_page_config(
         page_title=f"{APP_NAME} | Autonomous DI Platform",
-        page_icon="⚡",
+        page_icon=LOGO_PATH,
         layout="wide",
         initial_sidebar_state="expanded"
     )
@@ -114,7 +115,7 @@ st.markdown("""
         box-shadow: 0 6px 20px rgba(56, 189, 248, 0.8) !important;
     }
 
-    /* Dark Theme Card strictly for Presentation Slides */
+    /* Dark Theme Card for Presentation Slides */
     .presentation-card {
         background: rgba(15, 23, 42, 0.95) !important;
         border: 2px solid #38bdf8 !important;
@@ -133,10 +134,10 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 3. FAST DIRECT SPEECH SYNTHESIS ENGINE
+# 3. ULTRA-FAST SPEECH ENGINE (ZERO DELAY)
 # -----------------------------------------------------------------------------
 def speak_now(text: str):
-    """Executes immediate browser TTS and notifies speech receiver when done."""
+    """Executes immediate browser TTS with zero delay."""
     clean_text = text.replace("'", "\\'").replace("\n", " ")
     js_code = f"""
     <script>
@@ -148,7 +149,6 @@ def speak_now(text: str):
                 msg.pitch = 1.0;
                 msg.volume = 1.0;
                 
-                // Let the recognition system know when Di is talking
                 window.parent.isDiSpeaking = true;
                 
                 msg.onend = function() {{
@@ -198,12 +198,12 @@ if "current_nav_page" not in st.session_state:
 if "auth_mode" not in st.session_state:
     st.session_state.auth_mode = "🔑 Sign In"
 
-# Trigger startup greeting immediately on load
+# Initial startup greeting queue
 if not st.session_state.logged_in_user and not st.session_state.has_greeted_on_load:
     st.session_state.last_di_speech = "Good day user! How are you doing today? Please sign in or sign up for us to start work."
     st.session_state.has_greeted_on_load = True
 
-# Execute speech immediately when queued
+# Speak immediately when speech is queued
 if st.session_state.last_di_speech:
     speak_now(st.session_state.last_di_speech)
     st.session_state.last_di_speech = None
@@ -219,13 +219,12 @@ def save_current_df(df):
     st.session_state.user_datasets[u] = df.copy()
 
 # -----------------------------------------------------------------------------
-# 5. HUMAN-LIKE FAST VERBAL ROUTER
+# 5. HUMAN-LIKE VERBAL ROUTER
 # -----------------------------------------------------------------------------
 def process_verbal_interaction(speech_input: str):
-    """Processes spoken inputs, routes screens, and prepares spoken responses."""
+    """Processes spoken inputs, routes screens, and prepares immediate spoken responses."""
     q = speech_input.lower().strip()
     
-    # Navigation Commands
     if "where do i sign up" in q or "where is sign up" in q or "take me to sign up" in q or "sign up" in q:
         st.session_state.auth_mode = "📝 Sign Up"
         return "I am directing you right now. I have opened the Sign Up portal. Please enter your desired username, password, and full name to register."
@@ -263,7 +262,7 @@ with st.sidebar:
         pass
 
     st.markdown(f"### **{APP_NAME}**")
-    st.caption("**Bold Voice Dialogue Mode Active**")
+    st.caption("**Ultra-Fast Voice Mode Active**")
     st.markdown("---")
 
     if st.session_state.logged_in_user:
@@ -281,7 +280,7 @@ with st.sidebar:
 speech_receiver_code = """
 <div style="background: rgba(15, 23, 42, 0.9); border: 2.5px solid #38bdf8; padding: 12px; border-radius: 10px; margin-bottom: 12px;">
     <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span style="color:#38bdf8; font-weight:900; font-size:1.15rem;">🎙️ DI Voice Interaction active</span>
+        <span style="color:#38bdf8; font-weight:900; font-size:1.15rem;">🎙️ DI Voice Interaction Active</span>
         <span style="color:#10b981; font-weight:900; font-size:1.15rem;" id="mic-status">🟢 Hearing You Live...</span>
     </div>
 </div>
@@ -298,7 +297,6 @@ window.addEventListener('DOMContentLoaded', (event) => {
         recognition.lang = 'en-US';
 
         recognition.onresult = (event) => {
-            // Ignore speech recognition while Di is speaking back to user
             if (window.parent.isDiSpeaking) return;
 
             const transcript = event.results[event.results.length - 1][0].transcript.trim();
@@ -309,7 +307,6 @@ window.addEventListener('DOMContentLoaded', (event) => {
                 inputs[0].value = transcript;
                 inputs[0].dispatchEvent(new Event('input', { bubbles: true }));
                 
-                // Immediately trigger response action
                 setTimeout(() => {
                     const btns = window.parent.document.querySelectorAll('button');
                     for (let b of btns) {
@@ -318,12 +315,11 @@ window.addEventListener('DOMContentLoaded', (event) => {
                             break;
                         }
                     }
-                }, 150);
+                }, 100);
             }
         };
 
         recognition.onend = () => { 
-            // Continuously restart listening immediately
             try { recognition.start(); } catch(e) {} 
         };
 
