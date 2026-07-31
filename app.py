@@ -31,14 +31,12 @@ st.markdown("""
     <style>
     @import url('https://googleapis.com');
     
-    /* Clean Light Palette Setup */
     .stApp {
         background: linear-gradient(135deg, #f4f7fe 0%, #e0e8f9 100%);
         color: #1e293b !important;
         font-family: 'Plus Jakarta Sans', sans-serif;
     }
     
-    /* Beautiful Indigo Cards */
     .brand-card {
         background: #ffffff !important;
         border: 1px solid #cbd5e1 !important;
@@ -55,7 +53,6 @@ st.markdown("""
         border-top-color: #4f46e5 !important;
     }
     
-    /* Typography Overrides for High Visibility */
     h1, h2, h3, h4, h5, h6 {
         color: #1e1b4b !important;
         font-family: 'Space Grotesk', sans-serif !important;
@@ -66,7 +63,6 @@ st.markdown("""
         font-weight: 500 !important;
     }
     
-    /* Dynamic Indigo Gradient Titles */
     .brand-title {
         background: linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%);
         -webkit-background-clip: text;
@@ -77,18 +73,13 @@ st.markdown("""
         margin-bottom: 6px;
     }
     
-    /* Crisp Inputs */
     .stTextInput>div>div>input {
         background-color: #ffffff !important;
         color: #0f172a !important;
         border: 2px solid #cbd5e1 !important;
         border-radius: 10px !important;
     }
-    .stTextInput>div>div>input:focus {
-        border-color: #3b82f6 !important;
-    }
     
-    /* Solid Indigo Action Buttons */
     .stButton>button {
         background: linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%) !important;
         color: #ffffff !important;
@@ -99,13 +90,13 @@ st.markdown("""
         font-weight: 700 !important;
         box-shadow: 0 4px 14px rgba(79, 70, 229, 0.25) !important;
         transition: all 0.2s ease !important;
+        width: 100%;
     }
     .stButton>button:hover {
         transform: translateY(-1px) !important;
         box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4) !important;
     }
     
-    /* Tabs Customization */
     .stTabs [data-baseweb="tab"] {
         color: #64748b !important;
         font-weight: 600 !important;
@@ -237,3 +228,8 @@ elif not st.session_state.logged_in_user:
             if input_user in st.session_state.users and st.session_state.users[input_user]["password"] == input_pass:
                 st.session_state.logged_in_user = input_user
                 if st.session_state.users[input_user]["role"] == "admin":
+                    st.session_state.last_spoken_phrase = f"Welcome back, Master {input_user}. Full executive administrative controls are now completely unlocked."
+                else:
+                    st.session_state.last_spoken_phrase = f"Connection successful. Operator dashboard online for user {input_user}."
+                st.rerun()
+            else:
