@@ -2504,3 +2504,4 @@ if st.session_state.chat:
         ):
             st.markdown(
                 f"**{speaker}:** {text}"
+            )
