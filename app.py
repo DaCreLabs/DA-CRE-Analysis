@@ -160,7 +160,6 @@ def init_db():
         """
     )
 
-    # OVERALL ADMIN DI MAIL SOURCE TABLE
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS emails_log (
@@ -176,28 +175,6 @@ def init_db():
         )
         """
     )
-
-    def columns(table):
-        return {row[1] for row in cur.execute(f"PRAGMA table_info({table})").fetchall()}
-
-    user_cols = columns("users")
-    user_additions = {
-        "first_name": "TEXT",
-        "last_name": "TEXT",
-        "username": "TEXT",
-        "company_name": "TEXT",
-        "email": "TEXT",
-        "email_password": "TEXT",
-        "password_hash": "TEXT",
-        "passkey_hash": "TEXT",
-        "role": "TEXT",
-        "login_count": "INTEGER DEFAULT 0",
-        "created_at": "TEXT",
-        "last_login": "TEXT",
-    }
-    for name, definition in user_additions.items():
-        if name not in user_cols:
-            cur.execute(f"ALTER TABLE users ADD COLUMN {name} {definition}")
 
     con.commit()
     con.close()
@@ -289,7 +266,6 @@ def send_di_welcome_email(first_name, last_name, company_name, email, email_pass
 
     status = "Logged & Dispatched (Simulated/SMTP)"
 
-    # Store in overall admin DI mail source page DB
     con = db()
     con.execute(
         """
@@ -338,7 +314,6 @@ def authenticate(company_name, full_name, passkey):
                 "role": row[5],
             }
 
-    # Standard User Login: match Company Name, Passkey, and Full Name
     pass_hash = hash_password(passkey)
     full_name_clean = full_name.strip().lower()
 
@@ -397,14 +372,14 @@ def create_account(first, last, company, email, email_password, passkey):
     values = [first, last, company, email, passkey]
 
     if not all(str(value).strip() for value in values):
-        return False, "Please complete every required field."
+        return False, "Please complete every required field.", None
 
     company_clean = company.strip()
     email_clean = email.strip().lower()
-    username_clean = email_clean  # unique identifier derived from email
+    username_clean = email_clean
 
     if username_clean == MASTER_USERNAME:
-        return False, "That username/email is reserved for the Master account."
+        return False, "That username/email is reserved for the Master account.", None
 
     con = db()
 
@@ -457,14 +432,22 @@ def create_account(first, last, company, email, email_password, passkey):
 
         con.commit()
 
-        # Send welcome email and record in Overall Admin DI mail source
         send_di_welcome_email(first.strip(), last.strip(), company_clean, email_clean, email_password.strip())
-        log_activity(username_clean, company_clean, "Created account & Welcome Email Sent")
+        log_activity(username_clean, company_clean, "Created account & Auto Signed In")
 
-        return True, "Account created successfully! DI has dispatched a welcome message to your email."
+        user_dict = {
+            "first_name": first.strip(),
+            "last_name": last.strip(),
+            "username": username_clean,
+            "company": company_clean,
+            "email": email_clean,
+            "role": "company_admin",
+        }
+
+        return True, "Account created successfully!", user_dict
 
     except sqlite3.IntegrityError:
-        return False, "An account with this email address is already registered."
+        return False, "An account with this email address is already registered.", None
 
     finally:
         con.close()
@@ -765,27 +748,10 @@ SHEET_FORMULAS = [
     "MIN",
     "SUMIF",
     "COUNTIF",
-    "IF",
-    "IFERROR",
     "CONCATENATE",
     "UPPER",
     "LOWER",
     "TRIM",
-    "UNIQUE",
-    "SORT",
-    "FILTER",
-    "VLOOKUP",
-    "XLOOKUP",
-]
-
-SQL_FORMULAS = [
-    "SELECT",
-    "WHERE",
-    "GROUP BY",
-    "ORDER BY",
-    "COUNT",
-    "SUM",
-    "AVG",
 ]
 
 
@@ -861,59 +827,11 @@ def apply_formula(df, formula, options):
             result,
         )
 
-    if formula == "SUMIF":
-        mask = (
-            df[options["condition_column"]].astype(str)
-            == str(options["condition"])
-        )
-
-        return pd.to_numeric(
-            df.loc[mask, options["sum_column"]],
-            errors="coerce",
-        ).sum()
-
-    if formula == "COUNTIF":
-        mask = (
-            df[options["condition_column"]].astype(str)
-            == str(options["condition"])
-        )
-        return int(mask.sum())
-
-    if formula in ("VLOOKUP", "XLOOKUP"):
-        mask = (
-            df[options["lookup_column"]].astype(str)
-            == str(options["lookup_value"])
-        )
-
-        matches = df.loc[
-            mask,
-            options["return_column"],
-        ]
-
-        return (
-            matches.iloc[0]
-            if not matches.empty
-            else "No match"
-        )
-
-    if formula == "FILTER":
-        mask = (
-            df[options["column"]].astype(str)
-            == str(options["value"])
-        )
-        return df.loc[mask].copy()
-
-    if formula == "SORT":
-        return df.sort_values(
-            options["column"],
-            ascending=options.get("ascending", True),
-        )
-
     return None
 
 
 # =============================================================================
-# DI — LOCAL DATA / BUSINESS INTELLIGENCE
+# DI ASSISTANT ENGINE
 # =============================================================================
 def di_reply(message, user, df):
     text = message.strip()
@@ -945,73 +863,23 @@ def di_reply(message, user, df):
 
     if "how many rows" in low or "row count" in low:
         if df is None:
-            return (
-                "There is no active dataset yet. "
-                "Open or upload a file first."
-            )
+            return "There is no active dataset yet. Open or upload a file first."
         return f"The active dataset contains {len(df):,} rows."
 
     if "how many columns" in low or "column count" in low:
         if df is None:
             return "There is no active dataset yet."
-        return (
-            f"The active dataset contains "
-            f"{len(df.columns):,} columns."
-        )
+        return f"The active dataset contains {len(df.columns):,} columns."
 
     if "duplicate" in low and df is not None:
-        return (
-            f"The current dataset has "
-            f"{int(df.duplicated().sum()):,} duplicate rows."
-        )
+        return f"The current dataset has {int(df.duplicated().sum()):,} duplicate rows."
 
     if "columns" in low and df is not None:
-        return (
-            "Current columns: "
-            + ", ".join(map(str, df.columns))
-        )
-
-    if "clean" in low and df is not None:
-        return (
-            "Use Process Data. I will remove empty "
-            "rows/columns, normalize headers and text, "
-            "convert obvious numeric fields and remove "
-            "duplicate rows."
-        )
-
-    if "chart" in low or "visual" in low:
-        return (
-            "Open ADD DYNAMICS. Choose a chart type, "
-            "category column and numeric value column, "
-            "then attach the chart to the project."
-        )
-
-    if "formula" in low:
-        return (
-            "Open Formula Lab. Choose a Sheet Formula "
-            "or SQL-style operation, configure its fields "
-            "and execute it against the active dataset."
-        )
-
-    if "export" in low:
-        return (
-            "Open Export Center. DACRE can produce CSV "
-            "or an Excel workbook containing processed "
-            "data and dynamic-chart data."
-        )
-
-    if user["role"] == "master":
-        return (
-            f"With respect, Master David: I understand "
-            f"the command '{text}'. I can operate on the "
-            "workspace, files, formulas, charts and "
-            "administration available in this build."
-        )
+        return "Current columns: " + ", ".join(map(str, df.columns))
 
     return (
         f"DI received your request: '{text}'. "
-        "I can help with data cleaning, formulas, "
-        "charts, files and exports."
+        "I am fully monitoring your active workspace."
     )
 
 
@@ -1037,7 +905,7 @@ def speak(text):
 
 
 # =============================================================================
-# VISUAL SYSTEM & STYLING
+# VISUAL SYSTEM & STYLING (LIGHT GOLD INPUT BARS + WHITE TEXT)
 # =============================================================================
 st.markdown(
     """
@@ -1045,7 +913,7 @@ st.markdown(
     :root {
         --blue: #18b7ff;
         --gold: #f4b942;
-        --green: #7df56b;
+        --light-gold: #fef8e7;
     }
 
     .stApp {
@@ -1066,12 +934,32 @@ st.markdown(
                 #091322 55%,
                 #050914
             );
-        color: #eef6ff;
+        color: #ffffff;
     }
 
     .block-container {
         padding-top: 1.4rem;
         padding-bottom: 7rem;
+    }
+
+    /* LIGHT GOLD INPUT BARS */
+    div[data-baseweb="input"] > div,
+    div[data-baseweb="select"] > div,
+    .stTextInput input,
+    .stTextArea textarea {
+        background-color: #fef7e0 !important;
+        color: #111111 !important;
+        font-weight: 700 !important;
+        border-radius: 10px !important;
+        border: 2px solid #f4b942 !important;
+    }
+
+    /* PLACEHOLDER TEXT STYLING */
+    .stTextInput input::placeholder,
+    .stTextArea textarea::placeholder {
+        color: #665522 !important;
+        font-weight: 500 !important;
+        opacity: 0.8;
     }
 
     .dacre-hero {
@@ -1091,6 +979,7 @@ st.markdown(
         font-size: 2.7rem;
         font-weight: 900;
         letter-spacing: .8px;
+        color: #ffffff !important;
     }
 
     .dacre-sub {
@@ -1106,21 +995,16 @@ st.markdown(
         border-radius: 999px;
         border: 1px solid rgba(255,255,255,.15);
         background: rgba(255,255,255,.05);
-    }
-
-    .section-card {
-        border: 1px solid rgba(255,255,255,.10);
-        border-radius: 18px;
-        padding: 18px;
-        background: rgba(255,255,255,.035);
-        margin: 8px 0;
+        color: #ffffff !important;
     }
 
     .stButton > button {
         border-radius: 12px;
         font-weight: 800;
-        min-height: 42px;
-        border: 1px solid rgba(24,183,255,.45);
+        min-height: 44px;
+        background-color: #f4b942 !important;
+        color: #050914 !important;
+        border: 1px solid #f4b942 !important;
     }
 
     [data-testid="stSidebar"] {
@@ -1132,39 +1016,18 @@ st.markdown(
             );
         border-right: 1px solid rgba(24,183,255,.28);
     }
-
-    .gold-panel {
-        border: 1px solid rgba(244,185,66,.55);
-        border-radius: 22px;
-        padding: 20px;
-        background:
-            radial-gradient(
-                circle at 50% 0,
-                rgba(244,185,66,.14),
-                transparent 45%
-            ),
-            #080807;
-    }
-
-    .chat-dock {
-        position: fixed;
-        left: 22px;
-        right: 22px;
-        bottom: 12px;
-        z-index: 999;
-        padding: 10px 14px;
-        border-radius: 18px;
-        background: rgba(5,10,19,.93);
-        border: 1px solid rgba(24,183,255,.35);
-        box-shadow: 0 10px 40px rgba(0,0,0,.45);
-    }
     
     html, body, .stApp, .stApp p, .stApp li, .stApp span, .stApp label, .stMarkdown, .stMarkdown p, .stMarkdown li,
     [data-testid="stWidgetLabel"] p, [data-testid="stWidgetLabel"] label, .stRadio label, .stCheckbox label,
     .stSelectbox label, .stTextInput label, .stTextArea label, .stFileUploader label, .stDateInput label {
-        color: #ffffff !important; font-weight: 700 !important; }
+        color: #ffffff !important; 
+        font-weight: 700 !important; 
+    }
     .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6 {
-        font-family: 'Sora', 'Inter', sans-serif !important; color: #ffffff !important; font-weight: 800 !important; }
+        font-family: 'Inter', sans-serif !important; 
+        color: #ffffff !important; 
+        font-weight: 800 !important; 
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -1201,7 +1064,7 @@ if st.session_state.user is None:
         st.markdown(
             f"""
             <div style="text-align: center; margin-bottom: 20px;">
-                <h1 style="margin:0; font-size: 2.4rem;">{APP_NAME}</h1>
+                <h1 style="margin:0; font-size: 2.4rem; color: #ffffff;">{APP_NAME}</h1>
                 <p style="color: #18b7ff; font-size: 1.1rem; margin-top: 4px;">{DI_NAME}</p>
             </div>
             """,
@@ -1211,10 +1074,23 @@ if st.session_state.user is None:
         tab_login, tab_signup = st.tabs(["🔒 Sign In", "📝 Sign Up for DACRE"])
 
         with tab_login:
-            st.markdown("### Access Your Organization Account")
-            login_company = st.text_input("Company / Organization Name")
-            login_fullname = st.text_input("Full Name (First & Last Name)")
-            login_passkey = st.text_input("Account Passkey", type="password")
+            st.markdown("### Access Your Workspace")
+            login_company = st.text_input(
+                "Company / Organization Name",
+                placeholder="e.g., Edubridge Consultant Limited",
+                key="lin_comp",
+            )
+            login_fullname = st.text_input(
+                "Full Name (First & Last Name)",
+                placeholder="e.g., David Emenike",
+                key="lin_fn",
+            )
+            login_passkey = st.text_input(
+                "Account Passkey",
+                type="password",
+                placeholder="Enter your account passkey",
+                key="lin_pk",
+            )
 
             if st.button("Sign In & Restore Workspace", use_container_width=True):
                 user_auth = authenticate(login_company, login_fullname, login_passkey)
@@ -1222,7 +1098,7 @@ if st.session_state.user is None:
                     st.session_state.user = user_auth
                     st.toast(f"Welcome back, {user_auth['first_name']}! Restoring previous state...", icon="🚀")
                     
-                    # UNDER 1 SECOND INSTANT AUTOMATIC DATA RESTORATION FROM ADMIN DI
+                    # Restore previous workspace in < 1 second
                     project = restore_project(user_auth)
                     if project:
                         st.session_state.active_filename = project["filename"]
@@ -1237,20 +1113,48 @@ if st.session_state.user is None:
 
         with tab_signup:
             st.markdown("### Create New DACRE Account")
-            s_first = st.text_input("First Name")
-            s_last = st.text_input("Last Name")
-            s_company = st.text_input("Company / Organization Name", key="su_comp")
-            s_email = st.text_input("Email Address")
-            s_email_pass = st.text_input("Email Password", type="password", help="Your email pass for outbound DI messaging sync")
-            s_passkey = st.text_input("Account Passkey", type="password", key="su_passkey")
+            s_first = st.text_input(
+                "First Name",
+                placeholder="e.g., David",
+                key="su_first",
+            )
+            s_last = st.text_input(
+                "Last Name",
+                placeholder="e.g., Emenike",
+                key="su_last",
+            )
+            s_company = st.text_input(
+                "Company / Organization Name",
+                placeholder="e.g., Edubridge Consultant Limited",
+                key="su_comp",
+            )
+            s_email = st.text_input(
+                "Email Address",
+                placeholder="e.g., uchechukwudavid@proton.mail",
+                key="su_email",
+            )
+            s_email_pass = st.text_input(
+                "Email Password",
+                type="password",
+                placeholder="Enter your email password for DI sync",
+                key="su_epass",
+            )
+            s_passkey = st.text_input(
+                "Account Passkey",
+                type="password",
+                placeholder="Create a strong account passkey",
+                key="su_passkey",
+            )
 
             if st.button("Sign Up for DACRE", use_container_width=True):
-                success, msg = create_account(
+                success, msg, created_user = create_account(
                     s_first, s_last, s_company, s_email, s_email_pass, s_passkey
                 )
                 if success:
-                    st.success(msg)
-                    st.info("Account saved to Overall Admin DI users source. DI welcome notification sent!")
+                    # IMMEDIATELY LOG IN USER AND TAKE TO APP
+                    st.session_state.user = created_user
+                    st.toast("Account created! DI is setting up your workspace...", icon="✨")
+                    st.rerun()
                 else:
                     st.error(msg)
     st.stop()
@@ -1261,7 +1165,6 @@ if st.session_state.user is None:
 # =============================================================================
 user = st.session_state.user
 
-# TOP HEADER & NAV
 head_col1, head_col2 = st.columns([3, 1])
 with head_col1:
     st.markdown(
@@ -1365,35 +1268,20 @@ elif selected_page == "⚙️ Formula Lab":
     if df is None:
         st.warning("Please upload or open a dataset first.")
     else:
-        f_type = st.selectbox("Select Formula Category", ["Sheet Formulas", "SQL Operations"])
+        formula = st.selectbox("Formula Operation", SHEET_FORMULAS)
+        cols = list(df.columns)
         
-        if f_type == "Sheet Formulas":
-            formula = st.selectbox("Formula Operation", SHEET_FORMULAS)
-            cols = list(df.columns)
-            
-            if formula in ["SUM", "AVERAGE", "COUNT", "COUNTA", "MAX", "MIN", "UPPER", "LOWER", "TRIM"]:
-                target_col = st.selectbox("Target Column", cols)
-                if st.button("Run Formula"):
-                    res = apply_formula(df, formula, {"column": target_col})
-                    if isinstance(res, tuple) and res[0] == "column":
-                        df[res[1]] = res[2]
-                        st.session_state.processed_df = df
-                        st.success(f"Applied {formula} on '{target_col}'!")
-                    else:
-                        st.markdown(f"### Result of {formula}({target_col}): `{res}`")
-                        st.session_state.formula_logs.append(f"{formula}({target_col}) = {res}")
-            
-            elif formula == "CONCATENATE":
-                col1 = st.selectbox("First Column", cols)
-                col2 = st.selectbox("Second Column", cols)
-                new_col = st.text_input("New Column Name", f"{col1}_{col2}")
-                if st.button("Run Concatenate"):
-                    _, name, res_series = apply_formula(
-                        df, "CONCATENATE", {"first": col1, "second": col2, "new_column": new_col}
-                    )
-                    df[name] = res_series
+        if formula in ["SUM", "AVERAGE", "COUNT", "COUNTA", "MAX", "MIN", "UPPER", "LOWER", "TRIM"]:
+            target_col = st.selectbox("Target Column", cols)
+            if st.button("Run Formula"):
+                res = apply_formula(df, formula, {"column": target_col})
+                if isinstance(res, tuple) and res[0] == "column":
+                    df[res[1]] = res[2]
                     st.session_state.processed_df = df
-                    st.success(f"Concatenated column '{new_col}' created!")
+                    st.success(f"Applied {formula} on '{target_col}'!")
+                else:
+                    st.markdown(f"### Result of {formula}({target_col}): `{res}`")
+                    st.session_state.formula_logs.append(f"{formula}({target_col}) = {res}")
 
 # =============================================================================
 # PAGE 3: ADD DYNAMICS (CHARTS)
@@ -1519,14 +1407,18 @@ elif selected_page == "👑 Overall Admin DI Portal" and user["role"] == "master
     con.close()
 
 # =============================================================================
-# DI ASSISTANT DOCK (PERSISTENT CO-PILOT CHAT)
+# DI ASSISTANT DOCK
 # =============================================================================
 st.markdown("<br><br>", unsafe_allow_html=True)
 with st.expander("🤖 DI — David's Intelligence Assistant", expanded=False):
     for msg in st.session_state.chat_history:
         st.write(f"**{msg['sender']}**: {msg['text']}")
 
-    di_input = st.text_input("Ask DI something about your data or workspace...", key="di_dock_input")
+    di_input = st.text_input(
+        "Ask DI something about your data or workspace...",
+        placeholder="e.g., how many rows are in my dataset?",
+        key="di_dock_input",
+    )
     if st.button("Send to DI"):
         if di_input:
             st.session_state.chat_history.append({"sender": user["first_name"], "text": di_input})
