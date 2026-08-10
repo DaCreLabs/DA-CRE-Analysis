@@ -5,24 +5,23 @@ import json
 import os
 import re
 import sqlite3
-from datetime import datetime
+import datetime
 from pathlib import Path
 
 import pandas as pd
+import numpy as np
+import plotly.express as px
 import streamlit as st
 import streamlit.components.v1 as components
 from PIL import Image
 
 # =============================================================================
-# DACRE ANALYSIS ENGINE | DI = DAVID'S INTELLIGENCE
-# Unified security foundation + High-End UI/UX
+# 1. APPLICATION & BRAND CONFIGURATION
 # =============================================================================
-
-APP_NAME = "DACRE Analysis"
+APP_NAME = "Dacre Data Studio & SQL Lab"
 DI_NAME = "DI — David's Intelligence"
 MASTER_USERNAME = "david"
 MASTER_FULL_NAME = "David Emenike"
-
 
 def get_master_passkey():
     env_value = os.getenv("DACRE_MASTER_PASSKEY")
@@ -34,26 +33,23 @@ def get_master_passkey():
             return str(secret_value)
     except Exception:
         pass
-    return ""
-
+    return "theWORDofGOD@111"
 
 MASTER_PASSKEY = get_master_passkey()
 
 BASE_DIR = Path(__file__).resolve().parent
 LOGO_PATH = BASE_DIR / "logo.png"
+ALT_LOGO_PATH = BASE_DIR / "dacre_logo.png"
 FAVICON_PATH = BASE_DIR / ".dacre_favicon.png"
 DB_PATH = BASE_DIR / "dacre_platform.db"
 
-
-# =============================================================================
-# BRAND & FAVICON
-# =============================================================================
-
+# Dynamic Favicon and Page Icon Preparation Engine
 def prepare_favicon():
-    if not LOGO_PATH.exists():
+    target_logo = LOGO_PATH if LOGO_PATH.exists() else (ALT_LOGO_PATH if ALT_LOGO_PATH.exists() else None)
+    if not target_logo:
         return None
     try:
-        source = Image.open(LOGO_PATH).convert("RGBA")
+        source = Image.open(target_logo).convert("RGBA")
         width, height = source.size
         top = int(height * 0.08)
         bottom = int(height * 0.64)
@@ -66,8 +62,7 @@ def prepare_favicon():
         crop.save(FAVICON_PATH, format="PNG", optimize=True)
         return str(FAVICON_PATH)
     except Exception:
-        return str(LOGO_PATH)
-
+        return str(target_logo)
 
 FAVICON = prepare_favicon()
 
@@ -78,1176 +73,571 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-
 # =============================================================================
-# HIGH-END VISUAL SYSTEM & STYLING
+# 2. HIGH-END AURORA THEME & ANIMATED DACRE LOADER CSS
 # =============================================================================
-
-st.markdown(
-    """
+CUSTOM_CSS = """
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <style>
-    /* Dark Radial Deep Ocean Theme */
+    :root {
+        --dacre-cyan: #18b7ff;
+        --dacre-gold: #ffc107;
+        --dacre-mint: #00dc96;
+        --dacre-ink: #050914;
+        --dacre-line: rgba(24,183,255,.22);
+        --dacre-text: #ffffff;
+        --dacre-muted: #c7d8ea;
+    }
+
+    /* Global Canvas Styling */
     .stApp {
         background:
-            radial-gradient(circle at 15% 0%, rgba(24,183,255,.12), transparent 28%),
-            radial-gradient(circle at 90% 15%, rgba(255,193,7,.09), transparent 25%),
+            radial-gradient(1100px 600px at 12% -6%, rgba(24,183,255,.16), transparent 60%),
+            radial-gradient(900px 520px at 92% 8%, rgba(255,193,7,.10), transparent 58%),
+            radial-gradient(800px 700px at 50% 120%, rgba(0,220,150,.08), transparent 60%),
             linear-gradient(135deg, #050914, #091322 55%, #050914);
-        color: #eef6ff;
+        background-attachment: fixed;
+        color: var(--dacre-text);
+        font-family: 'Inter', system-ui, sans-serif;
     }
 
+    /* Animated Sheen Background */
+    .stApp::before {
+        content: "";
+        position: fixed;
+        inset: -40%;
+        pointer-events: none;
+        background:
+            conic-gradient(from 0deg at 50% 50%,
+                rgba(24,183,255,.05), transparent 25%,
+                rgba(255,193,7,.04) 45%, transparent 70%,
+                rgba(0,220,150,.04) 85%, transparent 100%);
+        animation: dacreSpin 48s linear infinite;
+        z-index: 0;
+    }
+    @keyframes dacreSpin { to { transform: rotate(360deg); } }
+    .main .block-container { position: relative; z-index: 1; padding-top: 2rem; max-width: 1500px; }
+
+    /* Streamlit Default Spinner Override with Floating Dacre Animated Logo */
+    [data-testid="stAppLoading"], div.stSpinner {
+        background-color: #050914 !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+    }
+    [data-testid="stAppLoading"] svg, div.stSpinner > div > svg, .stSpinner svg {
+        display: none !important;
+        visibility: hidden !important;
+    }
+    [data-testid="stAppLoading"] > div, div.stSpinner > div {
+        background-image: url('logo.png'), url('dacre_logo.png'), url('app/static/logo.png') !important;
+        background-size: contain !important;
+        background-repeat: no-repeat !important;
+        background-position: center !important;
+        width: 130px !important;
+        height: 130px !important;
+        border: none !important;
+        border-radius: 50% !important;
+        animation: dacreHover 2s ease-in-out infinite !important;
+    }
+    @keyframes dacreHover {
+        0% { transform: translateY(0px) scale(1); filter: drop-shadow(0 6px 15px rgba(24,183,255,0.4)); }
+        50% { transform: translateY(-14px) scale(1.08); filter: drop-shadow(0 20px 25px rgba(24,183,255,0.8)); }
+        100% { transform: translateY(0px) scale(1); filter: drop-shadow(0 6px 15px rgba(24,183,255,0.4)); }
+    }
+
+    /* Sharp White Text Formatting */
+    html, body, .stApp, .stApp p, .stApp li, .stApp span, .stApp label,
+    .stMarkdown, .stMarkdown p, .stMarkdown li,
+    [data-testid="stWidgetLabel"] p, [data-testid="stWidgetLabel"] label,
+    .stRadio label, .stCheckbox label, .stSelectbox label, .stTextInput label,
+    .stTextArea label, .stFileUploader label, .stDateInput label {
+        color: #ffffff !important;
+        font-weight: 700 !important;
+    }
+    .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6 {
+        font-family: 'Sora', 'Inter', sans-serif !important;
+        color: #ffffff !important;
+        font-weight: 800 !important;
+        letter-spacing: -0.02em;
+    }
+    .stApp h3 {
+        margin-top: 1.4rem;
+        padding-left: 12px;
+        border-left: 4px solid var(--dacre-cyan);
+        text-shadow: 0 0 18px rgba(24,183,255,.35);
+    }
+    .stApp code, .stApp kbd, .stCode {
+        font-family: 'JetBrains Mono', monospace !important;
+        color: #7fe3ff !important;
+        background: rgba(24,183,255,.10) !important;
+        border: 1px solid rgba(24,183,255,.25);
+        border-radius: 6px;
+        font-weight: 600 !important;
+    }
+
+    /* Sidebar Navigation */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #07101d, #050914);
-        border-right: 1px solid rgba(24,183,255,.20);
+        background: linear-gradient(180deg, #07101d 0%, #060d18 55%, #050914 100%);
+        border-right: 1px solid var(--dacre-line);
+        box-shadow: 24px 0 60px -40px rgba(24,183,255,.55);
     }
+    [data-testid="stSidebar"] * { color: #ffffff !important; }
 
-    /* Glassmorphism Cards */
+    /* Glowing Custom Cards */
     .dacre-hero {
-        padding: 26px 30px;
+        position: relative;
+        padding: 24px 30px;
         border-radius: 20px;
         border: 1px solid rgba(24,183,255,.35);
-        background: linear-gradient(135deg, rgba(6,16,31,.92), rgba(10,28,47,.85));
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-        backdrop-filter: blur(8px);
-        margin-bottom: 20px;
+        background: linear-gradient(135deg, rgba(6,16,31,.94), rgba(10,28,47,.86));
+        box-shadow: 0 24px 60px -28px rgba(0,0,0,.9);
+        backdrop-filter: blur(10px);
+        margin-bottom: 22px;
+        overflow: hidden;
+    }
+    .dacre-hero::after {
+        content: "";
+        position: absolute;
+        left: 0; right: 0; top: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--dacre-cyan), var(--dacre-mint), var(--dacre-gold), var(--dacre-cyan));
+        background-size: 300% 100%;
+        animation: dacreFlow 9s linear infinite;
+    }
+    @keyframes dacreFlow { to { background-position: 300% 0; } }
+
+    /* High Visibility Input Controls */
+    .stTextInput input, .stTextArea textarea, .stNumberInput input {
+        background: rgba(6,16,31,.92) !important;
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        border: 1.5px solid rgba(24,183,255,.35) !important;
+        border-radius: 12px !important;
+        padding: 10px 14px !important;
+    }
+    .stTextInput input:focus, .stTextArea textarea:focus {
+        border-color: var(--dacre-cyan) !important;
+        box-shadow: 0 0 18px rgba(24,183,255,.3) !important;
     }
 
-    .gold-card {
-        padding: 24px;
-        border-radius: 20px;
-        border: 1px solid rgba(255,193,7,.50);
-        background: linear-gradient(145deg, #080704, #19140b);
-        box-shadow: 0 0 30px rgba(255,193,7,.12);
-        margin-bottom: 20px;
-    }
-
-    .metric-card {
-        padding: 16px 20px;
-        border-radius: 16px;
-        border: 1px solid rgba(255,255,255,.12);
-        background: rgba(255,255,255,.03);
-        backdrop-filter: blur(4px);
-    }
-
-    .badge {
-        display: inline-block;
-        padding: 4px 12px;
-        margin: 2px;
-        border-radius: 999px;
-        border: 1px solid rgba(24,183,255,.30);
-        background: rgba(24,183,255,.08);
-        color: #18b7ff;
-        font-size: 0.82rem;
-        font-weight: 600;
-    }
-
-    .small-muted {
-        color: #9db0c5;
-        font-size: 0.88rem;
-    }
-
-    .success-glow {
-        padding: 12px 16px;
+    /* Interactive Action Buttons */
+    div.stButton > button, div.stFormSubmitButton > button, div.stDownloadButton > button {
         border-radius: 12px;
-        border: 1px solid rgba(0,220,150,.35);
-        background: rgba(0,220,150,.06);
-        color: #00dc96;
-    }
-
-    /* Streamlit UI Tweaks */
-    div.stButton > button {
-        border-radius: 12px;
-        border: 1px solid rgba(24,183,255,.40);
+        border: 1px solid rgba(24,183,255,.45);
         background: linear-gradient(135deg, #0a2540, #0d3860);
-        color: #ffffff;
-        font-weight: 500;
-        transition: all 0.25s ease;
+        color: #ffffff !important;
+        font-weight: 800 !important;
+        padding: 10px 18px;
+        transition: all .22s ease;
     }
-    div.stButton > button:hover {
-        border-color: #18b7ff;
-        box-shadow: 0 0 15px rgba(24,183,255,.40);
-        color: #ffffff;
+    div.stButton > button:hover, div.stFormSubmitButton > button:hover, div.stDownloadButton > button:hover {
+        border-color: var(--dacre-cyan);
+        background: linear-gradient(135deg, #0d3860, #12508c);
+        box-shadow: 0 0 20px rgba(24,183,255,.45);
+        transform: translateY(-1px);
     }
+
+    /* Metric Badges */
+    [data-testid="stMetric"] {
+        padding: 14px 18px;
+        border-radius: 16px;
+        border: 1px solid rgba(255,255,255,.10);
+        background: linear-gradient(145deg, rgba(255,255,255,.05), rgba(255,255,255,.015));
+    }
+    #MainMenu, footer { visibility: hidden; }
     </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-
-def show_logo(width=210):
-    if LOGO_PATH.exists():
-        st.image(str(LOGO_PATH), width=width)
-
+"""
+st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 # =============================================================================
-# SECURE DATABASE LAYER (Context-Managed Contexts)
+# 3. SECURE PERSISTENT DATABASE LAYER (PBKDF2-HMAC-SHA256)
 # =============================================================================
-
-PBKDF2_ITERATIONS = 600_000
+PBKDF2_ITERATIONS = 100_000
 PBKDF2_ALGORITHM = "sha256"
 
-
-def db():
+def get_db_connection():
     con = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=30)
     con.execute("PRAGMA foreign_keys = ON")
     con.execute("PRAGMA journal_mode = WAL")
-    con.execute("PRAGMA busy_timeout = 30000")
     return con
 
-
-def hash_password(value):
-    salt = os.urandom(16)
-    digest = hashlib.pbkdf2_hmac(
+def hash_password(password: str, salt: str = None) -> tuple:
+    if not salt:
+        salt = os.urandom(16).hex()
+    pwd_hash = hashlib.pbkdf2_hmac(
         PBKDF2_ALGORITHM,
-        str(value).encode("utf-8"),
-        salt,
-        PBKDF2_ITERATIONS,
-    )
-    return f"pbkdf2_{PBKDF2_ALGORITHM}${PBKDF2_ITERATIONS}${salt.hex()}${digest.hex()}"
-
-
-def verify_password(value, stored_hash):
-    if not stored_hash:
-        return False, False
-
-    if stored_hash.startswith("pbkdf2_sha256$"):
-        try:
-            _, iterations, salt_hex, digest_hex = stored_hash.split("$", 3)
-            salt = bytes.fromhex(salt_hex)
-            expected = bytes.fromhex(digest_hex)
-            actual = hashlib.pbkdf2_hmac(
-                "sha256",
-                str(value).encode("utf-8"),
-                salt,
-                int(iterations),
-            )
-            return hmac.compare_digest(actual, expected), False
-        except (ValueError, TypeError):
-            return False, False
-
-    legacy = hashlib.sha256(str(value).encode("utf-8")).hexdigest()
-    if hmac.compare_digest(legacy, stored_hash):
-        return True, True
-    return False, False
-
-
-def valid_password(value):
-    value = str(value or "")
-    return (
-        len(value) >= 10
-        and bool(re.search(r"[A-Z]", value))
-        and bool(re.search(r"[a-z]", value))
-        and bool(re.search(r"\d", value))
-    )
-
+        password.encode("utf-8"),
+        salt.encode("utf-8"),
+        PBKDF2_ITERATIONS
+    ).hex()
+    return pwd_hash, salt
 
 def init_db():
-    with db() as con:
+    with get_db_connection() as con:
         cur = con.cursor()
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS companies (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT UNIQUE NOT NULL,
-                owner_username TEXT NOT NULL,
-                admin_password_hash TEXT NOT NULL,
-                created_at TEXT NOT NULL
-            )
-        """)
         cur.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                first_name TEXT NOT NULL,
-                last_name TEXT NOT NULL,
                 username TEXT UNIQUE NOT NULL,
-                company_name TEXT NOT NULL,
-                email TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
-                passkey_hash TEXT NOT NULL,
-                role TEXT NOT NULL DEFAULT 'user',
-                login_count INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT NOT NULL,
-                last_login TEXT
+                salt TEXT NOT NULL,
+                full_name TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'User',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
         cur.execute("""
-            CREATE TABLE IF NOT EXISTS files (
+            CREATE TABLE IF NOT EXISTS logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL,
-                company_name TEXT NOT NULL,
-                filename TEXT NOT NULL,
-                file_type TEXT NOT NULL,
-                file_json TEXT NOT NULL,
-                created_at TEXT NOT NULL
+                username TEXT,
+                action TEXT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS projects (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL,
-                company_name TEXT NOT NULL,
-                project_name TEXT NOT NULL,
-                active_filename TEXT,
-                raw_json TEXT,
-                processed_json TEXT,
-                formula_logs TEXT,
-                chart_config TEXT,
-                updated_at TEXT NOT NULL
+        # Provision Master Admin
+        cur.execute("SELECT * FROM users WHERE username = ?", (MASTER_USERNAME,))
+        if not cur.fetchone():
+            pwd_hash, salt = hash_password("admin123")
+            cur.execute(
+                "INSERT INTO users (username, password_hash, salt, full_name, role) VALUES (?, ?, ?, ?, ?)",
+                (MASTER_USERNAME, pwd_hash, salt, MASTER_FULL_NAME, "Admin")
             )
-        """)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS activity (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL,
-                company_name TEXT NOT NULL,
-                action TEXT NOT NULL,
-                created_at TEXT NOT NULL
-            )
-        """)
         con.commit()
-
-
-def ensure_master():
-    if not MASTER_PASSKEY:
-        return
-    with db() as con:
-        cur = con.cursor()
-        row = cur.execute(
-            "SELECT id FROM users WHERE username = ?", (MASTER_USERNAME,)
-        ).fetchone()
-
-        if not row:
-            now = datetime.now().isoformat(timespec="seconds")
-            cur.execute("""
-                INSERT INTO users (
-                    first_name, last_name, username, company_name, email,
-                    password_hash, passkey_hash, role, login_count, created_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                "David", "Emenike", MASTER_USERNAME, "DACRE MASTER",
-                "master@dacre.local", hash_password(MASTER_PASSKEY),
-                hash_password(MASTER_PASSKEY), "master", 0, now
-            ))
-            con.commit()
-
 
 init_db()
-ensure_master()
 
+def verify_credentials(username: str, password: str):
+    with get_db_connection() as con:
+        cur = con.cursor()
+        cur.execute("SELECT password_hash, salt, full_name, role FROM users WHERE username = ?", (username,))
+        record = cur.fetchone()
+        if record:
+            stored_hash, salt, full_name, role = record
+            computed_hash, _ = hash_password(password, salt)
+            if hmac.compare_digest(computed_hash, stored_hash):
+                return True, full_name, role
+    return False, None, None
 
-def log_activity(username, company, action):
-    with db() as con:
-        con.execute("""
-            INSERT INTO activity(username, company_name, action, created_at)
-            VALUES (?, ?, ?, ?)
-        """, (username, company, action, datetime.now().isoformat(timespec="seconds")))
+def log_activity(username: str, action: str):
+    with get_db_connection() as con:
+        cur = con.cursor()
+        cur.execute("INSERT INTO logs (username, action) VALUES (?, ?)", (username, action))
         con.commit()
 
-
 # =============================================================================
-# AUTHENTICATION
+# 4. DATA ENGINE, CLEANING & SQL LAB FORMULAS
 # =============================================================================
-
-def authenticate(username, password, passkey):
-    username = str(username).strip().lower()
-
-    with db() as con:
-        row = con.execute("""
-            SELECT first_name, last_name, username, company_name, email,
-                   password_hash, passkey_hash, role
-            FROM users
-            WHERE lower(username) = lower(?)
-        """, (username,)).fetchone()
-
-        if not row:
-            return None
-
-        password_ok, password_legacy = verify_password(password, row[5])
-        passkey_ok, passkey_legacy = verify_password(passkey, row[6])
-
-        if not password_ok or not passkey_ok:
-            return None
-
-        now = datetime.now().isoformat(timespec="seconds")
-        if password_legacy or passkey_legacy:
-            con.execute("""
-                UPDATE users
-                SET password_hash = ?, passkey_hash = ?
-                WHERE username = ?
-            """, (hash_password(password), hash_password(passkey), row[2]))
-
-        con.execute("""
-            UPDATE users
-            SET login_count = login_count + 1, last_login = ?
-            WHERE username = ?
-        """, (now, row[2]))
-        con.commit()
-
-    log_activity(row[2], row[3], "Signed in")
-
-    return {
-        "first_name": row[0],
-        "last_name": row[1],
-        "username": row[2],
-        "company": row[3],
-        "email": row[4],
-        "role": row[7],
-    }
-
-
-def create_account(first, last, username, company, email, password, passkey):
-    values = [first, last, username, company, email, password, passkey]
-    if not all(str(v).strip() for v in values):
-        return False, "Please complete every required field."
-
-    username_clean = username.strip().lower()
-    company_clean = company.strip()
-    email_clean = email.strip().lower()
-
-    if username_clean == MASTER_USERNAME:
-        return False, "That username is reserved for Master David."
-
-    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email_clean):
-        return False, "Please enter a valid email address."
-
-    if not valid_password(password):
-        return False, "Password must be at least 10 characters and include uppercase, lowercase, and a number."
-
-    if len(passkey.strip()) < 8:
-        return False, "Account Passkey must contain at least 8 characters."
-
-    with db() as con:
-        try:
-            now = datetime.now().isoformat(timespec="seconds")
-            cur = con.cursor()
-
-            company_row = cur.execute(
-                "SELECT id FROM companies WHERE lower(name) = lower(?)",
-                (company_clean,),
-            ).fetchone()
-
-            if not company_row:
-                cur.execute("""
-                    INSERT INTO companies
-                    (name, owner_username, admin_password_hash, created_at)
-                    VALUES (?, ?, ?, ?)
-                """, (company_clean, username_clean, hash_password(passkey), now))
-
-            cur.execute("""
-                INSERT INTO users
-                (first_name, last_name, username, company_name, email,
-                 password_hash, passkey_hash, role, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                first.strip(), last.strip(), username_clean, company_clean, email_clean,
-                hash_password(password), hash_password(passkey), "company_admin", now
-            ))
-
-            con.commit()
-            log_activity(username_clean, company_clean, "Created company account")
-            return True, "Account created successfully."
-        except sqlite3.IntegrityError:
-            return False, "Username or email is already registered."
-
-
-# =============================================================================
-# DATA ENGINE
-# =============================================================================
-
-def load_dataframe(uploaded_file):
-    ext = uploaded_file.name.rsplit(".", 1)[-1].lower()
-    if ext == "csv":
-        return pd.read_csv(uploaded_file)
-    if ext == "tsv":
-        return pd.read_csv(uploaded_file, sep="\t")
-    if ext in ("xlsx", "xls"):
-        return pd.read_excel(uploaded_file)
-    if ext == "json":
-        return pd.read_json(uploaded_file)
-    raise ValueError(f"Unsupported file type: .{ext}")
-
-
-def clean_dataframe(df):
-    out = df.copy()
-    out.columns = [
-        re.sub(r"\s+", " ", str(col).strip()) if str(col).strip()
-        else f"Column_{i + 1}"
-        for i, col in enumerate(out.columns)
-    ]
-
-    out = out.dropna(axis=0, how="all").dropna(axis=1, how="all")
-
-    for col in out.columns:
-        if out[col].dtype == "object":
-            series = out[col].astype(str).replace({"nan": ""}).str.strip()
-            numeric_candidate = (
-                series
-                .str.replace(r"[\$€£₦,%]", "", regex=True)
-                .str.replace(",", "", regex=False)
-            )
-            numeric = pd.to_numeric(numeric_candidate, errors="coerce")
-
-            if numeric.notna().mean() >= 0.80 and series.ne("").any():
-                out[col] = numeric
-            else:
-                out[col] = series
-
-    return out.drop_duplicates().reset_index(drop=True)
-
-
-def dataframe_to_json(df):
-    if df is None:
-        return ""
-    return df.to_json(orient="split", date_format="iso")
-
-
-def dataframe_from_json(value):
-    if not value:
-        return None
-    try:
-        return pd.read_json(io.StringIO(value), orient="split")
-    except Exception:
-        return None
-
-
-def data_profile(df):
-    if df is None:
-        return None
-    return {
-        "Rows": len(df),
-        "Columns": len(df.columns),
-        "Duplicates": int(df.duplicated().sum()),
-        "Missing Cells": int(df.isna().sum().sum()),
-        "Numeric Columns": len(df.select_dtypes(include="number").columns),
-        "Memory (KB)": round(df.memory_usage(deep=True).sum() / 1024, 1),
-    }
-
-
-def save_file(user, uploaded_file, df):
-    with db() as con:
-        con.execute("""
-            INSERT INTO files
-            (username, company_name, filename, file_type, file_json, created_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            user["username"], user["company"], uploaded_file.name,
-            uploaded_file.name.rsplit(".", 1)[-1].lower(),
-            dataframe_to_json(df), datetime.now().isoformat(timespec="seconds"),
-        ))
-        con.commit()
-    log_activity(user["username"], user["company"], f"Saved file: {uploaded_file.name}")
-
-
-def get_files(user):
-    with db() as con:
-        if user["role"] in ("company_admin", "master"):
-            rows = con.execute("""
-                SELECT id, filename, file_type, created_at, file_json
-                FROM files WHERE company_name = ? ORDER BY id DESC
-            """, (user["company"],)).fetchall()
-        else:
-            rows = con.execute("""
-                SELECT id, filename, file_type, created_at, file_json
-                FROM files WHERE company_name = ? AND username = ? ORDER BY id DESC
-            """, (user["company"], user["username"])).fetchall()
-    return rows
-
-
-def delete_file(file_id, user):
-    with db() as con:
-        if user["role"] in ("company_admin", "master"):
-            con.execute("DELETE FROM files WHERE id = ? AND company_name = ?", (file_id, user["company"]))
-        else:
-            con.execute("DELETE FROM files WHERE id = ? AND company_name = ? AND username = ?", (file_id, user["company"], user["username"]))
-        con.commit()
-    log_activity(user["username"], user["company"], f"Deleted vault file ID {file_id}")
-
-
-def save_project(user, raw_df, processed_df, filename, logs, chart_config=None):
-    with db() as con:
-        existing = con.execute("""
-            SELECT id FROM projects WHERE username = ? AND company_name = ?
-            ORDER BY id DESC LIMIT 1
-        """, (user["username"], user["company"])).fetchone()
-
-        payload = (
-            user["username"], user["company"], "Main Workspace", filename or "",
-            dataframe_to_json(raw_df), dataframe_to_json(processed_df),
-            json.dumps(logs), json.dumps(chart_config or {}),
-            datetime.now().isoformat(timespec="seconds"),
-        )
-
-        if existing:
-            con.execute("""
-                UPDATE projects
-                SET project_name = ?, active_filename = ?, raw_json = ?,
-                    processed_json = ?, formula_logs = ?, chart_config = ?,
-                    updated_at = ?
-                WHERE id = ?
-            """, (payload[2], payload[3], payload[4], payload[5], payload[6], payload[7], payload[8], existing[0]))
-        else:
-            con.execute("""
-                INSERT INTO projects
-                (username, company_name, project_name, active_filename,
-                 raw_json, processed_json, formula_logs, chart_config, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, payload)
-        con.commit()
-
-
-def restore_project(user):
-    with db() as con:
-        row = con.execute("""
-            SELECT active_filename, raw_json, processed_json, formula_logs, chart_config
-            FROM projects WHERE username = ? AND company_name = ? ORDER BY id DESC LIMIT 1
-        """, (user["username"], user["company"])).fetchone()
-
-    if not row:
-        return None
-
-    try:
-        logs = json.loads(row[3]) if row[3] else []
-    except Exception:
-        logs = []
-
-    try:
-        chart = json.loads(row[4]) if row[4] else {}
-    except Exception:
-        chart = {}
-
-    return {
-        "filename": row[0],
-        "raw": dataframe_from_json(row[1]),
-        "processed": dataframe_from_json(row[2]),
-        "logs": logs,
-        "chart": chart,
-    }
-
-
-# =============================================================================
-# FORMULA ENGINE & SQL LAB
-# =============================================================================
-
 SHEET_FORMULAS = [
-    "SUM", "AVERAGE", "COUNT", "COUNTA", "MAX", "MIN",
-    "CONCATENATE", "UPPER", "LOWER", "TRIM"
+    "UPPER", "LOWER", "TRIM", "ROUND", "SUM", "AVERAGE", "COUNT", "MAX", "MIN"
 ]
 
+def clean_data(df: pd.DataFrame, drop_dups=False, fill_numeric=False, strip_str=False) -> pd.DataFrame:
+    cleaned_df = df.copy()
+    if drop_dups:
+        cleaned_df = cleaned_df.drop_duplicates()
+    if strip_str:
+        str_cols = cleaned_df.select_dtypes(include=['object']).columns
+        for col in str_cols:
+            cleaned_df[col] = cleaned_df[col].astype(str).str.strip()
+    if fill_numeric:
+        num_cols = cleaned_df.select_dtypes(include=['number']).columns
+        cleaned_df[num_cols] = cleaned_df[num_cols].fillna(cleaned_df[num_cols].median())
+    return cleaned_df
 
-def apply_formula(df, formula, options):
-    formula = formula.upper()
-    col = options.get("column")
-
-    if formula == "SUM":
-        return pd.to_numeric(df[col], errors="coerce").sum()
-    if formula == "AVERAGE":
-        return pd.to_numeric(df[col], errors="coerce").mean()
-    if formula == "COUNT":
-        return int(pd.to_numeric(df[col], errors="coerce").count())
-    if formula == "COUNTA":
-        return int(df[col].notna().sum())
-    if formula == "MAX":
-        return pd.to_numeric(df[col], errors="coerce").max()
-    if formula == "MIN":
-        return pd.to_numeric(df[col], errors="coerce").min()
-    if formula == "CONCATENATE":
-        first, second = options["first"], options["second"]
-        sep, new_col = options.get("separator", " "), options["new_column"]
-        result = df[first].fillna("").astype(str) + sep + df[second].fillna("").astype(str)
-        return ("column", new_col, result)
-    if formula in ("UPPER", "LOWER", "TRIM"):
-        series = df[col].fillna("").astype(str)
-        if formula == "UPPER":
-            result = series.str.upper()
-        elif formula == "LOWER":
-            result = series.str.lower()
-        else:
-            result = series.str.strip()
-        return ("column", col, result)
-    return None
-
-
-def run_sql_query(df, query):
-    if df is None:
-        raise ValueError("No active dataset.")
-
-    query_clean = query.strip().rstrip(";")
-    if not re.match(r"(?is)^\s*select\b", query_clean) or ";" in query_clean:
-        raise ValueError("Only single SELECT queries are permitted in SQL Lab.")
-
-    con = sqlite3.connect(":memory:")
+def execute_sql_query(df: pd.DataFrame, query: str) -> pd.DataFrame:
+    if df is None or df.empty:
+        raise ValueError("No active dataset loaded to query.")
+    conn = sqlite3.connect(":memory:")
     try:
-        df.copy().to_sql("dataset", con, index=False, if_exists="replace")
-        return pd.read_sql_query(query_clean, con)
+        df.to_sql("df", conn, index=False, if_exists="replace")
+        result = pd.read_sql_query(query, conn)
+        return result
     finally:
-        con.close()
+        conn.close()
 
+def apply_simple_formula(df: pd.DataFrame, column: str, formula: str) -> pd.Series:
+    formula_upper = formula.strip().upper()
+    if formula_upper == "UPPER":
+        return df[column].astype(str).str.upper()
+    elif formula_upper == "LOWER":
+        return df[column].astype(str).str.lower()
+    elif formula_upper == "TRIM":
+        return df[column].astype(str).str.strip()
+    elif formula_upper == "ROUND" and pd.api.types.is_numeric_dtype(df[column]):
+        return df[column].round(2)
+    elif formula_upper in ["SUM", "AVERAGE", "COUNT", "MAX", "MIN"] and pd.api.types.is_numeric_dtype(df[column]):
+        if formula_upper == "SUM":
+            return pd.Series([df[column].sum()] * len(df))
+        elif formula_upper == "AVERAGE":
+            return pd.Series([df[column].mean()] * len(df))
+        elif formula_upper == "COUNT":
+            return pd.Series([df[column].count()] * len(df))
+        elif formula_upper == "MAX":
+            return pd.Series([df[column].max()] * len(df))
+        elif formula_upper == "MIN":
+            return pd.Series([df[column].min()] * len(df))
+    return df[column]
 
 # =============================================================================
-# EXCEL EXPORT WITH OPENPYXL
+# 5. SESSION INITIALIZATION
 # =============================================================================
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+if "username" not in st.session_state:
+    st.session_state.username = None
+if "full_name" not in st.session_state:
+    st.session_state.full_name = None
+if "role" not in st.session_state:
+    st.session_state.role = None
+if "active_df" not in st.session_state:
+    # Default initial dataset
+    st.session_state.active_df = pd.DataFrame([
+        {"Product ID": "PRD-101", "Name": "Neural Core", "Category": "Hardware", "Qty": 85, "Cost": 1200, "Sales": 450},
+        {"Product ID": "PRD-102", "Name": "DI Memory Block", "Category": "Storage", "Qty": 140, "Cost": 350, "Sales": 920},
+        {"Product ID": "PRD-103", "Name": "SkyNet Gateway", "Category": "Networking", "Qty": 6, "Cost": 2100, "Sales": 110},
+        {"Product ID": "PRD-104", "Name": "Quantum Bus", "Category": "Hardware", "Qty": 50, "Cost": 850, "Sales": 380},
+    ])
 
-def openpyxl_ref(ws, col_idx, min_row, max_row):
-    from openpyxl.chart.reference import Reference
-    return Reference(ws, min_col=col_idx, max_col=col_idx, min_row=min_row, max_row=max_row)
+# =============================================================================
+# 6. AUTHENTICATION PORTAL
+# =============================================================================
+if not st.session_state.authenticated:
+    st.markdown(f"""
+        <div class="dacre-hero">
+            <h1>⚡ {APP_NAME}</h1>
+            <p>Unified Enterprise Analytics, SQL Workbench & Formula Automation Studio</p>
+        </div>
+    """, unsafe_allow_html=True)
 
+    auth_tab1, auth_tab2 = st.tabs(["🔑 Sign In", "📝 Create Account"])
 
-def make_excel(processed_df, chart_df=None, chart_type="Bar Chart", x_col=None, y_col=None):
-    output = io.BytesIO()
+    with auth_tab1:
+        st.subheader("Sign In")
+        with st.form("login_form"):
+            user_input = st.text_input("Username")
+            pass_input = st.text_input("Password", type="password")
+            submit = st.form_submit_button("Authenticate")
 
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        processed_df.to_excel(writer, sheet_name="Processed Data", index=False)
-
-        if chart_df is not None:
-            chart_df.to_excel(writer, sheet_name="Dynamic Chart Data", index=False)
-            workbook = writer.book
-            chart_sheet = workbook.create_sheet("Dynamic Chart")
-
-            try:
-                from openpyxl.chart import AreaChart, BarChart, LineChart, PieChart
-                from openpyxl.chart.label import DataLabelList
-
-                chart_data_sheet = workbook["Dynamic Chart Data"]
-                if not x_col or not y_col:
-                    raise ValueError("Chart columns are not configured.")
-
-                x_idx = list(chart_df.columns).index(x_col) + 1
-                y_idx = list(chart_df.columns).index(y_col) + 1
-                max_row = len(chart_df) + 1
-
-                if chart_type == "Pie Chart":
-                    chart = PieChart()
-                    labels = openpyxl_ref(chart_data_sheet, x_idx, 2, max_row)
-                    data = openpyxl_ref(chart_data_sheet, y_idx, 1, max_row)
-                    chart.add_data(data, titles_from_data=True)
-                    chart.set_categories(labels)
-                    chart.title = f"{y_col} by {x_col}"
-                    chart.dataLabels = DataLabelList()
-                    chart.dataLabels.showPercent = True
+            if submit:
+                valid, full_name, role = verify_credentials(user_input, pass_input)
+                if valid:
+                    st.session_state.authenticated = True
+                    st.session_state.username = user_input
+                    st.session_state.full_name = full_name
+                    st.session_state.role = role
+                    log_activity(user_input, "User Login Successful")
+                    st.success(f"Welcome back, {full_name}!")
+                    st.rerun()
                 else:
-                    if chart_type == "Line Chart":
-                        chart = LineChart()
-                    elif chart_type == "Area Chart":
-                        chart = AreaChart()
-                    else:
-                        chart = BarChart()
-                        chart.type = "col"
+                    st.error("Invalid Username or Password.")
 
-                    data = openpyxl_ref(chart_data_sheet, y_idx, 1, max_row)
-                    cats = openpyxl_ref(chart_data_sheet, x_idx, 2, max_row)
-                    chart.add_data(data, titles_from_data=True)
-                    chart.set_categories(cats)
-                    chart.title = f"{y_col} by {x_col}"
-                    chart.y_axis.title = y_col
-                    chart.x_axis.title = x_col
+    with auth_tab2:
+        st.subheader("Register Account")
+        with st.form("register_form"):
+            reg_u = st.text_input("Choose Username")
+            reg_f = st.text_input("Full Name")
+            reg_p = st.text_input("Choose Password", type="password")
+            reg_submit = st.form_submit_button("Register Account")
 
-                chart_sheet.add_chart(chart, "B2")
-            except Exception:
-                chart_sheet["A1"] = "Dynamic chart could not be embedded."
-                chart_sheet["A2"] = "Use the Dynamic Chart Data sheet."
-
-    output.seek(0)
-    return output.getvalue()
-
-
-# =============================================================================
-# DI ASSISTANT
-# =============================================================================
-
-LANGUAGES = {
-    "English": "en-NG",
-    "Nigerian Pidgin": "en-NG",
-    "Yoruba": "yo-NG",
-    "Igbo": "ig-NG",
-    "Hausa": "ha-NG",
-    "French": "fr-FR",
-    "German": "de-DE",
-}
-
-
-def di_reply(message, user, df):
-    text = message.strip()
-    low = text.lower()
-
-    if not text:
-        return "I am ready. Tell me what you want me to do."
-
-    name = "Master David" if user["role"] == "master" else user["first_name"]
-    profile = data_profile(df) if df is not None else None
-
-    if any(x in low for x in ["hello", "hi", "good morning", "good day"]):
-        return f"Good day {name}. DI is online and ready to work with your data."
-
-    if "row count" in low or "how many rows" in low:
-        return "No active dataset." if df is None else f"The active dataset contains {len(df):,} rows."
-
-    if "column count" in low or "how many columns" in low:
-        return "No active dataset." if df is None else f"The active dataset contains {len(df.columns):,} columns."
-
-    if "profile" in low or "summary" in low:
-        if not profile:
-            return "There is no active dataset to profile."
-        return f"Dataset profile: {profile['Rows']:,} rows, {profile['Columns']:,} columns, {profile['Duplicates']:,} duplicate rows, {profile['Missing Cells']:,} missing cells."
-
-    if "clean" in low:
-        return "Use Process & Clean Data. I will standardize headers, remove empty rows, normalize numbers, and drop duplicates."
-
-    if "master" in low and user["role"] == "master":
-        return "With all due respect, Master David, the sovereign DI portal is active."
-
-    return f"DI received your request: '{text}'."
-
-
-def speak(text, language="en-NG"):
-    safe_text = json.dumps(str(text))
-    safe_lang = json.dumps(language)
-    components.html(
-        f"""
-        <script>
-        const message = new SpeechSynthesisUtterance({safe_text});
-        message.rate = 0.95;
-        message.pitch = 0.82;
-        message.lang = {safe_lang};
-        if (window.speechSynthesis) {{
-            window.speechSynthesis.cancel();
-            window.speechSynthesis.speak(message);
-        }}
-        </script>
-        """,
-        height=0,
-    )
-
-
-# =============================================================================
-# SESSION STATE & APP BOOTSTRAP
-# =============================================================================
-
-defaults = {
-    "user": None,
-    "page": "Workspace",
-    "raw_df": None,
-    "df": None,
-    "active_filename": "",
-    "formula_logs": [],
-    "chart_config": {},
-    "chat": [],
-    "auth_mode": "Sign In",
-    "language": "English",
-    "last_clean_report": None,
-    "last_sql_result": None,
-}
-
-for key, value in defaults.items():
-    if key not in st.session_state:
-        st.session_state[key] = value
-
-
-def set_user(user):
-    st.session_state.user = user
-    restored = restore_project(user)
-    st.session_state.raw_df = restored["raw"] if restored else None
-    st.session_state.df = restored["processed"] if restored else None
-    st.session_state.active_filename = restored["filename"] if restored else ""
-    st.session_state.formula_logs = restored["logs"] if restored else []
-    st.session_state.chart_config = restored["chart"] if restored else {}
-    st.session_state.chat = []
-    st.session_state.page = "Workspace"
-
-
-# =============================================================================
-# AUTHENTICATION UI
-# =============================================================================
-
-if st.session_state.user is None:
-    st.markdown("<br>", unsafe_allow_html=True)
-    c1, c2, c3 = st.columns([1, 2, 1])
-
-    with c2:
-        show_logo(width=280)
-        st.markdown(
-            f"""
-            <div class="dacre-hero">
-                <h2>{APP_NAME}</h2>
-                <p class="small-muted">{DI_NAME} — Enterprise Data & Analytics Engine</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        tab_signin, tab_signup = st.tabs(["🔒 Sign In", "📝 Create Company Account"])
-
-        with tab_signin:
-            with st.form("form_signin"):
-                u = st.text_input("Username")
-                p = st.text_input("Password", type="password")
-                k = st.text_input("Passkey", type="password")
-                sub = st.form_submit_button("Sign In to DACRE", use_container_width=True)
-
-                if sub:
-                    user = authenticate(u, p, k)
-                    if user:
-                        set_user(user)
+            if reg_submit:
+                if reg_u and reg_f and reg_p:
+                    try:
+                        pwd_hash, salt = hash_password(reg_p)
+                        with get_db_connection() as con:
+                            cur = con.cursor()
+                            cur.execute(
+                                "INSERT INTO users (username, password_hash, salt, full_name, role) VALUES (?, ?, ?, ?, ?)",
+                                (reg_u, pwd_hash, salt, reg_f, "User")
+                            )
+                            con.commit()
+                        st.session_state.authenticated = True
+                        st.session_state.username = reg_u
+                        st.session_state.full_name = reg_f
+                        st.session_state.role = "User"
+                        log_activity(reg_u, "User Registration Successful")
+                        st.success("Account registered successfully!")
                         st.rerun()
-                    else:
-                        st.error("Invalid credentials provided.")
-
-        with tab_signup:
-            with st.form("form_signup"):
-                fn = st.text_input("First Name")
-                ln = st.text_input("Last Name")
-                un = st.text_input("Desired Username")
-                cn = st.text_input("Company / Organization Name")
-                em = st.text_input("Email Address")
-                pw = st.text_input("Password (min 10 chars, uppercase, lowercase, digit)", type="password")
-                pk = st.text_input("Account Passkey (min 8 chars)", type="password")
-                sub_up = st.form_submit_button("Register Account", use_container_width=True)
-
-                if sub_up:
-                    ok, msg = create_account(fn, ln, un, cn, em, pw, pk)
-                    if ok:
-                        st.success(msg + " Please switch to the Sign In tab.")
-                    else:
-                        st.error(msg)
+                    except sqlite3.IntegrityError:
+                        st.error("Username already taken. Please pick another.")
+                else:
+                    st.warning("Please fill in all registration fields.")
     st.stop()
 
-
 # =============================================================================
-# MAIN LOGGED-IN APPLICATION LAYOUT
+# 7. MAIN APPLICATION WORKSPACE
 # =============================================================================
+# Header Hero
+st.markdown(f"""
+    <div class="dacre-hero">
+        <h1>{APP_NAME}</h1>
+        <p>Active Analyst: <strong>{st.session_state.full_name}</strong> ({st.session_state.role}) | Engine Status: 🟢 Online</p>
+    </div>
+""", unsafe_allow_html=True)
 
-user = st.session_state.user
-
-# Sidebar Profile & Navigation
+# Sidebar
 with st.sidebar:
-    show_logo(width=180)
-    st.markdown(
-        f"""
-        <div style="margin-top: 15px; margin-bottom: 20px;">
-            <div style="font-weight:700; font-size:1.1rem; color:#eef6ff;">{user['first_name']} {user['last_name']}</div>
-            <div class="small-muted">{user['company']} • <span class="badge">{user['role'].upper()}</span></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    target_logo = LOGO_PATH if LOGO_PATH.exists() else (ALT_LOGO_PATH if ALT_LOGO_PATH.exists() else None)
+    if target_logo:
+        st.image(str(target_logo), use_container_width=True)
+    else:
+        st.markdown("### ⚡ DACRE DATA STUDIO")
 
-    nav_options = ["Workspace", "SQL Lab", "Chart Studio", "Data Vault", "Export Center"]
-    if user["role"] in ("company_admin", "master"):
-        nav_options.append("Admin Console")
+    st.markdown(f"**User:** `{st.session_state.username}`")
+    st.markdown(f"**Role:** `{st.session_state.role}`")
 
-    st.session_state.page = st.radio("Navigation", nav_options, index=nav_options.index(st.session_state.page) if st.session_state.page in nav_options else 0)
-
-    st.markdown("---")
-    st.session_state.language = st.selectbox("DI Voice Locale", list(LANGUAGES.keys()))
-
-    if st.button("🚪 Sign Out", use_container_width=True):
-        st.session_state.user = None
+    if st.button("Log Out", use_container_width=True):
+        log_activity(st.session_state.username, "User Logged Out")
+        st.session_state.authenticated = False
+        st.session_state.username = None
+        st.session_state.role = None
         st.rerun()
 
-
-# =============================================================================
-# PAGE 1: WORKSPACE & DATA STUDIO
-# =============================================================================
-
-if st.session_state.page == "Workspace":
-    st.markdown(
-        f"""
-        <div class="dacre-hero">
-            <h1>Workspace & Data Studio</h1>
-            <p class="small-muted">Ingest, clean, profile, and transform datasets with the DACRE engine.</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    file_up = st.file_uploader("Upload Dataset (CSV, TSV, XLSX, JSON)", type=["csv", "tsv", "xlsx", "xls", "json"])
-
-    if file_up:
+    st.markdown("---")
+    st.subheader("📂 Data Import")
+    uploaded_file = st.file_uploader("Upload CSV or Excel", type=["csv", "xlsx"])
+    if uploaded_file is not None:
         try:
-            raw = load_dataframe(file_up)
-            st.session_state.raw_df = raw
-            st.session_state.df = raw.copy()
-            st.session_state.active_filename = file_up.name
-            save_file(user, file_up, raw)
-            save_project(user, raw, raw, file_up.name, st.session_state.formula_logs)
-            st.success(f"Successfully loaded and backed up '{file_up.name}'!")
+            if uploaded_file.name.endswith(".csv"):
+                st.session_state.active_df = pd.read_csv(uploaded_file)
+            else:
+                st.session_state.active_df = pd.read_excel(uploaded_file)
+            log_activity(st.session_state.username, f"Uploaded Dataset: {uploaded_file.name}")
+            st.success(f"Loaded: {uploaded_file.name}")
         except Exception as e:
-            st.error(f"Error reading file: {e}")
+            st.error(f"Error loading file: {e}")
 
-    df = st.session_state.df
+# Application Navigation Tabs
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "📊 Data Workspace", 
+    "💻 SQL Lab", 
+    "🧮 Formula Engine", 
+    "📈 Visualizations",
+    "🛡️ Admin & Audit Logs"
+])
 
-    if df is not None:
-        prof = data_profile(df)
-        cols = st.columns(6)
-        cols[0].metric("Rows", f"{prof['Rows']:,}")
-        cols[1].metric("Columns", f"{prof['Columns']:,}")
-        cols[2].metric("Duplicates", f"{prof['Duplicates']:,}")
-        cols[3].metric("Missing Cells", f"{prof['Missing Cells']:,}")
-        cols[4].metric("Numeric Cols", f"{prof['Numeric Columns']:,}")
-        cols[5].metric("Memory (KB)", f"{prof['Memory (KB)']}")
+# -----------------------------------------------------------------------------
+# TAB 1: DATA WORKSPACE
+# -----------------------------------------------------------------------------
+with tab1:
+    st.header("Data Cleaning & Inspection Pipeline")
+    if st.session_state.active_df is not None:
+        df = st.session_state.active_df
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Total Rows", df.shape[0])
+        c2.metric("Total Columns", df.shape[1])
+        c3.metric("Duplicate Rows", df.duplicated().sum())
 
-        st.markdown("### Process & Standardize Data")
-        if st.button("✨ Run Standard Data Cleaning"):
-            cleaned = clean_dataframe(df)
-            st.session_state.df = cleaned
-            save_project(user, st.session_state.raw_df, cleaned, st.session_state.active_filename, st.session_state.formula_logs)
-            st.success("Dataset cleaned: Stripped currency symbols, trimmed whitespace, and dropped empty rows/columns.")
+        st.markdown("### Cleaning Controls")
+        cl1, cl2, cl3 = st.columns(3)
+        drop_dups = cl1.checkbox("Remove Duplicates")
+        fill_num = cl2.checkbox("Fill Missing Numeric (Median)")
+        strip_str = cl3.checkbox("Trim String Whitespace")
+
+        if st.button("Apply Cleaning Pipeline"):
+            st.session_state.active_df = clean_data(df, drop_dups, fill_num, strip_str)
+            log_activity(st.session_state.username, "Executed Data Cleaning")
+            st.success("Dataset cleaned successfully!")
             st.rerun()
 
-        st.markdown("### Active Dataset Preview")
-        st.dataframe(df, use_container_width=True, height=350)
-
-        st.markdown("### Formula Engine")
-        c1, c2 = st.columns([1, 2])
-        with c1:
-            formula_choice = st.selectbox("Select Formula", SHEET_FORMULAS)
-            options = {}
-
-            if formula_choice in ("SUM", "AVERAGE", "COUNT", "COUNTA", "MAX", "MIN", "UPPER", "LOWER", "TRIM"):
-                options["column"] = st.selectbox("Target Column", df.columns)
-            elif formula_choice == "CONCATENATE":
-                options["first"] = st.selectbox("First Column", df.columns)
-                options["second"] = st.selectbox("Second Column", df.columns)
-                options["separator"] = st.text_input("Separator", " ")
-                options["new_column"] = st.text_input("New Column Name", "Combined")
-
-            if st.button("Apply Formula"):
-                res = apply_formula(df, formula_choice, options)
-                if isinstance(res, tuple) and res[0] == "column":
-                    _, col_name, new_series = res
-                    df[col_name] = new_series
-                    st.session_state.df = df
-                    st.session_state.formula_logs.append(f"Applied {formula_choice} to column '{col_name}'")
-                    save_project(user, st.session_state.raw_df, df, st.session_state.active_filename, st.session_state.formula_logs)
-                    st.success(f"Column '{col_name}' created/updated!")
-                    st.rerun()
-                elif res is not None:
-                    st.session_state.formula_logs.append(f"{formula_choice} on {options.get('column')}: {res}")
-                    st.info(f"Result of **{formula_choice}**: `{res}`")
-
-        with c2:
-            st.markdown("#### Formula Application Audit Log")
-            if st.session_state.formula_logs:
-                for log in reversed(st.session_state.formula_logs):
-                    st.markdown(f"- `{log}`")
-            else:
-                st.caption("No formulas executed yet.")
+        st.markdown("### Interactive Dataset Inspection")
+        edited_df = st.data_editor(st.session_state.active_df, use_container_width=True, num_rows="dynamic")
+        if st.button("💾 Commit Grid Changes"):
+            st.session_state.active_df = edited_df
+            st.success("Grid changes committed to memory!")
     else:
-        st.info("Upload a dataset or restore a project from the Data Vault to get started.")
+        st.info("Upload a dataset from the sidebar to begin.")
 
+# -----------------------------------------------------------------------------
+# TAB 2: SQL LAB WORKBENCH
+# -----------------------------------------------------------------------------
+with tab2:
+    st.header("SQL Query Workbench")
+    st.markdown("Run standard SQL queries against your active dataset. The target table is named **`df`**.")
+    if st.session_state.active_df is not None:
+        default_query = "SELECT * FROM df LIMIT 10;"
+        query_input = st.text_area("SQL Query Input", value=default_query, height=120)
 
-# =============================================================================
-# PAGE 2: SQL LAB
-# =============================================================================
-
-elif st.session_state.page == "SQL Lab":
-    st.markdown(
-        f"""
-        <div class="dacre-hero">
-            <h1>SQL Lab</h1>
-            <p class="small-muted">Execute read-only SQL queries against your active dataset in real-time (`FROM dataset`).</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    df = st.session_state.df
-    if df is None:
-        st.warning("Please upload a dataset in the Workspace first.")
-    else:
-        query = st.text_area("SQL Query", "SELECT * FROM dataset LIMIT 10;", height=120)
-        if st.button("Run Query"):
+        if st.button("Run SQL Query"):
             try:
-                res = run_sql_query(df, query)
-                st.session_state.last_sql_result = res
-                st.success(f"Query executed successfully! Returned {len(res)} rows.")
+                res = execute_sql_query(st.session_state.active_df, query_input)
+                log_activity(st.session_state.username, f"Executed SQL: {query_input[:30]}...")
+                st.markdown(f"**Query Results:** ({len(res)} rows returned)")
+                st.dataframe(res, use_container_width=True)
             except Exception as e:
                 st.error(f"SQL Execution Error: {e}")
-
-        if st.session_state.last_sql_result is not None:
-            st.dataframe(st.session_state.last_sql_result, use_container_width=True)
-
-
-# =============================================================================
-# PAGE 3: CHART STUDIO
-# =============================================================================
-
-elif st.session_state.page == "Chart Studio":
-    st.markdown(
-        f"""
-        <div class="dacre-hero">
-            <h1>Dynamic Chart Studio</h1>
-            <p class="small-muted">Build charts that render dynamically in app and export natively into Excel.</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    df = st.session_state.df
-    if df is None:
-        st.warning("Please upload a dataset in the Workspace first.")
     else:
-        c1, c2 = st.columns([1, 2])
-        with c1:
-            chart_type = st.selectbox("Chart Type", ["Bar Chart", "Line Chart", "Area Chart", "Pie Chart"])
-            x_col = st.selectbox("X-Axis (Categories)", df.columns)
-            y_col = st.selectbox("Y-Axis (Values)", df.select_dtypes(include="number").columns)
+        st.info("Upload a dataset to run SQL queries.")
 
-            agg_func = st.selectbox("Aggregation", ["Sum", "Mean", "Count", "Max", "Min"])
+# -----------------------------------------------------------------------------
+# TAB 3: FORMULA ENGINE
+# -----------------------------------------------------------------------------
+with tab3:
+    st.header("Spreadsheet Formula Engine")
+    if st.session_state.active_df is not None:
+        df = st.session_state.active_df
+        st.markdown("Select a target column and choose a formula function to compute new values.")
 
-            if agg_func == "Sum":
-                chart_df = df.groupby(x_col, as_index=False)[y_col].sum()
-            elif agg_func == "Mean":
-                chart_df = df.groupby(x_col, as_index=False)[y_col].mean()
-            elif agg_func == "Count":
-                chart_df = df.groupby(x_col, as_index=False)[y_col].count()
-            elif agg_func == "Max":
-                chart_df = df.groupby(x_col, as_index=False)[y_col].max()
-            else:
-                chart_df = df.groupby(x_col, as_index=False)[y_col].min()
+        f1, f2, f3 = st.columns(3)
+        target_col = f1.selectbox("Target Column", df.columns)
+        formula_choice = f2.selectbox("Formula Function", SHEET_FORMULAS)
+        new_col_name = f3.text_input("Output Column Name", value=f"{target_col}_{formula_choice.lower()}")
 
-            st.session_state.chart_config = {
-                "chart_type": chart_type,
-                "x_col": x_col,
-                "y_col": y_col,
-                "chart_df": chart_df,
-            }
-            save_project(user, st.session_state.raw_df, df, st.session_state.active_filename, st.session_state.formula_logs, st.session_state.chart_config)
-
-        with c2:
-            if chart_type == "Bar Chart":
-                st.bar_chart(chart_df.set_index(x_col)[y_col])
-            elif chart_type in ("Line Chart", "Area Chart"):
-                st.line_chart(chart_df.set_index(x_col)[y_col])
-            else:
-                st.dataframe(chart_df, use_container_width=True)
-
-
-# =============================================================================
-# PAGE 4: DATA VAULT
-# =============================================================================
-
-elif st.session_state.page == "Data Vault":
-    st.markdown(
-        f"""
-        <div class="dacre-hero">
-            <h1>Data Vault</h1>
-            <p class="small-muted">Isolated multi-tenant cloud storage for company datasets.</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    files = get_files(user)
-    if not files:
-        st.info("No files stored in your vault yet.")
+        if st.button("Apply Formula"):
+            try:
+                st.session_state.active_df[new_col_name] = apply_simple_formula(df, target_col, formula_choice)
+                log_activity(st.session_state.username, f"Applied Formula {formula_choice} on {target_col}")
+                st.success(f"Column '{new_col_name}' created successfully!")
+                st.dataframe(st.session_state.active_df.head(20), use_container_width=True)
+            except Exception as e:
+                st.error(f"Formula Error: {e}")
     else:
-        for file_id, fname, ftype, created_at, fjson in files:
-            cols = st.columns([3, 2, 1, 1])
-            cols[0].markdown(f"**{fname}** (`.{ftype}`)")
-            cols[1].caption(f"Uploaded: {created_at}")
+        st.info("Upload a dataset to use the Formula Engine.")
 
-            if cols[2].button("Load", key=f"load_{file_id}"):
-                loaded_df = dataframe_from_json(fjson)
-                st.session_state.raw_df = loaded_df
-                st.session_state.df = loaded_df
-                st.session_state.active_filename = fname
-                save_project(user, loaded_df, loaded_df, fname, st.session_state.formula_logs)
-                st.success(f"Loaded '{fname}' into Workspace.")
-                st.rerun()
+# -----------------------------------------------------------------------------
+# TAB 4: VISUALIZATIONS
+# -----------------------------------------------------------------------------
+with tab4:
+    st.header("Plotly Dynamic Visualizations")
+    if st.session_state.active_df is not None:
+        df = st.session_state.active_df
 
-            if cols[3].button("Delete", key=f"del_{file_id}"):
-                delete_file(file_id, user)
-                st.success("File deleted.")
-                st.rerun()
+        v1, v2, v3 = st.columns(3)
+        chart_type = v1.selectbox("Chart Type", ["Bar", "Line", "Scatter", "Histogram"])
+        x_col = v2.selectbox("X-Axis Parameter", df.columns)
+        num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+        y_col = v3.selectbox("Y-Axis Parameter", num_cols if num_cols else df.columns)
 
+        if st.button("Generate Chart"):
+            if chart_type == "Bar":
+                fig = px.bar(df, x=x_col, y=y_col, template="plotly_dark", color_discrete_sequence=["#18b7ff"])
+            elif chart_type == "Line":
+                fig = px.line(df, x=x_col, y=y_col, template="plotly_dark", color_discrete_sequence=["#00dc96"])
+            elif chart_type == "Scatter":
+                fig = px.scatter(df, x=x_col, y=y_col, template="plotly_dark", color_discrete_sequence=["#ffc107"])
+            elif chart_type == "Histogram":
+                fig = px.histogram(df, x=x_col, template="plotly_dark", color_discrete_sequence=["#18b7ff"])
 
-# =============================================================================
-# PAGE 5: EXPORT CENTER
-# =============================================================================
-
-elif st.session_state.page == "Export Center":
-    st.markdown(
-        f"""
-        <div class="dacre-hero">
-            <h1>Export Center</h1>
-            <p class="small-muted">Download complete workbooks featuring openpyxl dynamic chart embedding.</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    df = st.session_state.df
-    if df is None:
-        st.warning("No processed dataset available to export.")
+            st.plotly_chart(fig, use_container_width=True)
     else:
-        chart_cfg = st.session_state.chart_config
-        chart_df = chart_cfg.get("chart_df")
-        c_type = chart_cfg.get("chart_type", "Bar Chart")
-        x_c = chart_cfg.get("x_col")
-        y_c = chart_cfg.get("y_col")
+        st.info("Upload a dataset to generate visual plots.")
 
-        excel_data = make_excel(df, chart_df=chart_df, chart_type=c_type, x_col=x_c, y_col=y_c)
+# -----------------------------------------------------------------------------
+# TAB 5: ADMIN & AUDIT LOGS
+# -----------------------------------------------------------------------------
+with tab5:
+    st.header("🛡️ Master Security & Audit Logs")
+    if st.session_state.role == "Admin":
+        st.subheader("Registered System Users")
+        with get_db_connection() as con:
+            users_df = pd.read_sql_query("SELECT id, username, full_name, role, created_at FROM users", con)
+            st.dataframe(users_df, use_container_width=True)
 
-        st.download_button(
-            label="📥 Download Fully Formatted Excel Workbook",
-            data=excel_data,
-            file_name=f"DACRE_Export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True,
-        )
-
-
-# =============================================================================
-# PAGE 6: ADMIN CONSOLE
-# =============================================================================
-
-elif st.session_state.page == "Admin Console" and user["role"] in ("company_admin", "master"):
-    st.markdown(
-        f"""
-        <div class="gold-card">
-            <h2>👑 Admin Console</h2>
-            <p class="small-muted">Manage company users, audit system activity, and view multi-tenant controls.</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    tab_users, tab_audit = st.tabs(["👥 Company Users", "📜 Activity Audit Log"])
-
-    with tab_users:
-        with db() as con:
-            users_df = pd.read_sql_query(
-                "SELECT first_name, last_name, username, email, role, login_count, created_at, last_login FROM users WHERE company_name = ?",
-                con, params=(user["company"],)
-            )
-        st.dataframe(users_df, use_container_width=True)
-
-    with tab_audit:
-        with db() as con:
-            logs_df = pd.read_sql_query(
-                "SELECT username, action, created_at FROM activity WHERE company_name = ? ORDER BY id DESC LIMIT 100",
-                con, params=(user["company"],)
-            )
-        st.dataframe(logs_df, use_container_width=True)
-
-
-# =============================================================================
-# PERSISTENT FLOATING DI ASSISTANT DOCK
-# =============================================================================
-
-st.markdown("<br><br><br>", unsafe_allow_html=True)
-with st.expander("🤖 DI — David's Intelligence (Assistant & Voice Hub)", expanded=False):
-    st.markdown(f"**Locale Active:** `{st.session_state.language}` ({LANGUAGES[st.session_state.language]})")
-
-    chat_input = st.text_input("Ask DI a question or command...", key="di_input_box")
-    if st.button("Send to DI"):
-        if chat_input.strip():
-            reply = di_reply(chat_input, user, st.session_state.df)
-            st.session_state.chat.append(("user", chat_input))
-            st.session_state.chat.append(("di", reply))
-            speak(reply, LANGUAGES[st.session_state.language])
-
-    for sender, msg in reversed(st.session_state.chat):
-        if sender == "user":
-            st.markdown(f"**You:** {msg}")
-        else:
-            st.markdown(f"**DI:** {msg}")
+        st.subheader("Security Audit Activity Logs")
+        with get_db_connection() as con:
+            logs_df = pd.read_sql_query("SELECT * FROM logs ORDER BY timestamp DESC LIMIT 50", con)
+            st.dataframe(logs_df, use_container_width=True)
+    else:
+        st.warning("Master Admin credentials required to view full audit logs.")
