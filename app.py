@@ -46,6 +46,14 @@ LOGO_PATH = next((BASE_DIR / x for x in LOGO_CANDIDATES if (BASE_DIR / x).exists
 FAVICON_PATH = BASE_DIR / ".dacre_favicon.png"
 DB_PATH = BASE_DIR / "dacre_platform.db"
 
+ONLINE_IMAGES = {
+    "analytics": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=82",
+    "cleaning": "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=82",
+    "charts": "https://images.unsplash.com/photo-1543286386-713bdd548da4?auto=format&fit=crop&w=1200&q=82",
+    "conversation": "https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1200&q=82",
+}
+DI_AVATAR_PATH = BASE_DIR / "di_avatar.png"
+
 # =============================================================================
 # BRAND / FAVICON
 # =============================================================================
@@ -309,56 +317,57 @@ def send_di_welcome_email(first_name, last_name, company_name, email, email_pass
 # AUTHENTICATION
 # =============================================================================
 
-def authenticate(company_name, full_name, passkey):
+def authenticate(company_name, full_name, passkey, email=""):
+    company_clean = (company_name or "").strip().lower()
+    full_name_clean = (full_name or "").strip().lower()
+    email_clean = (email or "").strip().lower()
+    passkey_clean = (passkey or "").strip()
+
+    if not passkey_clean:
+        return None, "Please enter your Account Passkey."
+    if not company_clean and not email_clean:
+        return None, "Please enter your Company / Organization Name or Email Address."
+
     con = db()
-    company_clean = company_name.strip().lower()
-    full_name_clean = full_name.strip().lower()
-    pass_hash = hash_password(passkey.strip())
+    try:
+        if (company_clean == "dacre master" or full_name_clean == "david emenike" or email_clean == "master@dacre.local") and passkey_clean == MASTER_PASSKEY:
+            row = con.execute("SELECT first_name,last_name,username,company_name,email,role FROM users WHERE username=?", (MASTER_USERNAME,)).fetchone()
+            if row:
+                return dict(row), None
 
-    if not company_clean or not passkey.strip():
+        pass_hash = hash_password(passkey_clean)
+        if email_clean:
+            rows = con.execute("SELECT first_name,last_name,username,company_name,email,passkey_hash,role FROM users WHERE lower(email)=? AND passkey_hash=?", (email_clean, pass_hash)).fetchall()
+        else:
+            rows = con.execute("SELECT first_name,last_name,username,company_name,email,passkey_hash,role FROM users WHERE lower(company_name)=? AND passkey_hash=?", (company_clean, pass_hash)).fetchall()
+
+        if not rows:
+            if email_clean:
+                exists = con.execute("SELECT 1 FROM users WHERE lower(email)=? LIMIT 1", (email_clean,)).fetchone()
+            else:
+                exists = con.execute("SELECT 1 FROM users WHERE lower(company_name)=? LIMIT 1", (company_clean,)).fetchone()
+            if exists:
+                return None, "This account has already been created, but the passkey does not match. Please check your passkey and try again."
+            return None, "This account has not been created. Please go to the Sign Up page and create your account to access DACRE Analysis."
+
+        matched = None
+        for r in rows:
+            candidate = f"{r['first_name']} {r['last_name']}".strip().lower()
+            if not full_name_clean or candidate == full_name_clean:
+                matched = r
+                break
+        if matched is None:
+            return None, "The account exists, but the Full Name does not match the account. Please enter the name used during Sign Up."
+
+        now = datetime.now().isoformat(timespec="seconds")
+        con.execute("UPDATE users SET login_count=login_count+1,last_login=? WHERE username=?", (now, matched["username"]))
+        con.commit()
+        result = {"first_name":matched["first_name"],"last_name":matched["last_name"],"username":matched["username"],"company":matched["company_name"],"email":matched["email"],"role":matched["role"]}
+    finally:
         con.close()
-        return None, "Please enter your Company / Organization Name and Account Passkey."
 
-    if (company_clean == "dacre master" or full_name_clean == "david emenike") and passkey == MASTER_PASSKEY:
-        row = con.execute(
-            "SELECT first_name,last_name,username,company_name,email,role FROM users WHERE username=?",
-            (MASTER_USERNAME,),
-        ).fetchone()
-        con.close()
-        if row:
-            return dict(row), None
-
-    rows = con.execute("""
-        SELECT first_name,last_name,username,company_name,email,passkey_hash,role
-        FROM users
-        WHERE lower(company_name)=? AND passkey_hash=?
-    """, (company_clean, pass_hash)).fetchall()
-
-    matched = None
-    for r in rows:
-        user_fullname = f"{r['first_name']} {r['last_name']}".strip().lower()
-        if user_fullname == full_name_clean or r["first_name"].lower() in full_name_clean or not full_name_clean:
-            matched = r
-            break
-    if not matched and rows:
-        matched = rows[0]
-    if not matched:
-        con.close()
-        company_exists = con.execute("SELECT 1 FROM companies WHERE lower(name)=? LIMIT 1", (company_clean,)).fetchone()
-        con.close()
-        if company_exists:
-            return None, "This account has not been created with those details. Please go to the Sign Up page and create your account to access DACRE Analysis."
-        return None, "This account has not been created. Please go to the Sign Up page and create your account to access DACRE Analysis."
-
-    now = datetime.now().isoformat(timespec="seconds")
-    con.execute("UPDATE users SET login_count=login_count+1,last_login=? WHERE username=?", (now, matched["username"]))
-    con.commit()
-    con.close()
-    log_activity(matched["username"], matched["company_name"], "Signed in", notify_admin=matched["role"] != "master")
-    return {
-        "first_name": matched["first_name"], "last_name": matched["last_name"], "username": matched["username"],
-        "company": matched["company_name"], "email": matched["email"], "role": matched["role"],
-    }, None
+    log_activity(result["username"], result["company"], "Signed in", notify_admin=result["role"] != "master")
+    return result, None
 
 
 def create_account(first, last, company, email, email_password, passkey):
@@ -711,7 +720,7 @@ html,body,.stApp,.stApp p,.stApp li,.stApp span,.stApp label,.stMarkdown,.stMark
 @keyframes dacreFlow{to{background-position:300% 0}}
 .dacre-title{font-size:clamp(2.2rem,5vw,4.2rem);font-weight:900;letter-spacing:-.04em;color:#fff}
 .dacre-sub{font-size:1.08rem;color:#9edcff!important;font-weight:700}
-.feature-card{padding:18px;border:1px solid rgba(255,255,255,.12);border-radius:16px;background:rgba(255,255,255,.045);min-height:145px}
+.feature-card{padding:18px;border:1px solid rgba(255,255,255,.12);border-radius:16px;background:rgba(255,255,255,.045);min-height:145px}.image-card{padding:0;overflow:hidden;min-height:270px}.image-card img{width:100%;height:150px;object-fit:cover;display:block}.image-card-body{padding:16px 18px}.image-card-body h3{margin-top:0}.di-avatar{width:92px;height:92px;border-radius:50%;object-fit:cover;border:3px solid rgba(24,183,255,.65);box-shadow:0 0 28px rgba(24,183,255,.35)}
 .chat-card{padding:16px 18px;border-radius:18px;border:1px solid rgba(24,183,255,.25);background:rgba(4,12,24,.72);margin:8px 0}
 .stTextInput input,.stTextArea textarea,.stNumberInput input{background:rgba(6,16,31,.92)!important;color:#fff!important;font-weight:700!important;border:1.5px solid rgba(24,183,255,.35)!important;border-radius:12px!important;padding:10px 14px!important}
 .stTextInput input::placeholder,.stTextArea textarea::placeholder{color:#9aa4b2!important;font-weight:500!important}
@@ -761,9 +770,10 @@ def landing_page():
                 st.markdown("### Access your workspace")
                 login_company=st.text_input("Company / Organization Name",placeholder="e.g. Edubridge Consultant Limited",key="lin_comp")
                 login_fullname=st.text_input("Full Name",placeholder="e.g. David Emenike",key="lin_fn")
+                login_email=st.text_input("Email Address (recommended)",placeholder="Use the email you registered with",key="lin_email")
                 login_passkey=st.text_input("Account Passkey",type="password",placeholder="Enter your account passkey",key="lin_pk")
                 if st.button("Sign In & Restore Workspace",use_container_width=True):
-                    auth, auth_message=authenticate(login_company,login_fullname,login_passkey)
+                    auth, auth_message=authenticate(login_company,login_fullname,login_passkey,login_email)
                     if auth:
                         st.session_state.user=auth
                         project=restore_project(auth)
@@ -808,9 +818,10 @@ def landing_page():
     st.write("DI is designed to communicate naturally with users, understand the DACRE workspace, explain data in plain business language, and help users move from a question to an actionable answer.")
 
     cols=st.columns(4)
-    cards=[("📊","Analyse","Upload CSV, Excel, TSV or JSON data and inspect it quickly."),("🧹","Clean","Clean headers, empty rows/columns, numeric fields and duplicates."),("📈","Visualise","Build bar, line and area charts from your active dataset."),("🤖","Talk to DI","Chat with DI about your data, your workspace or a wider business question.")]
-    for c,(icon,title,desc) in zip(cols,cards):
-        with c: st.markdown(f'<div class="feature-card"><h3>{icon} {title}</h3><p>{desc}</p></div>',unsafe_allow_html=True)
+    cards=[("analytics","Analyse","Upload CSV, Excel, TSV or JSON data and inspect it quickly."),("cleaning","Clean","Clean headers, empty rows/columns, numeric fields and duplicates."),("charts","Visualise","Build bar, line and area charts from your active dataset."),("conversation","Talk to DI","Chat naturally with DI about your data, workspace or wider business questions.")]
+    for c,(image_key,title,desc) in zip(cols,cards):
+        with c:
+            st.markdown(f'<div class="feature-card image-card"><img src="{ONLINE_IMAGES[image_key]}" alt="{title}"/><div class="image-card-body"><h3>{title}</h3><p>{desc}</p></div></div>',unsafe_allow_html=True)
 
     st.markdown("### Built for organizations")
     st.write("Each organization gets its own workspace. The first account that creates a new organization becomes that organization's admin. Organization admins can monitor users, account creation, sign-ins and workspace changes for their organization. The master portal remains separate.")
@@ -860,7 +871,13 @@ with st.sidebar:
 # =============================================================================
 
 if selected_page=="🏠 DI Home":
-    st.header("🤖 Chat with DI")
+    avatar_path = DI_AVATAR_PATH if DI_AVATAR_PATH.exists() else LOGO_PATH
+    if avatar_path.exists():
+        av1,av2=st.columns([1,8])
+        with av1: st.image(str(avatar_path), width=92)
+        with av2: st.header("Chat with DI")
+    else:
+        st.header("Chat with DI")
     st.markdown("<div class='dacre-hero'><div class='dacre-title' style='font-size:2.2rem'>Talk to DI like a business partner.</div><div class='dacre-sub'>Ask about your data, DACRE, your workflow, or a public/current question. DI will use the active workspace when it can and can attempt an online lookup for current topics.</div></div>",unsafe_allow_html=True)
 
     if not st.session_state.chat_history:
@@ -886,7 +903,7 @@ if selected_page=="🏠 DI Home":
             if speak_back: speak(reply)
             st.rerun()
 
-    st.markdown("### 🎙️ Voice input")
+    st.markdown("### Voice input")
     st.caption("Your browser/Streamlit version must support audio input. For automatic speech-to-text, configure an external transcription service such as an OpenAI-compatible API; without one, the recording can still be captured but cannot be reliably transcribed inside Python.")
     try:
         audio_value=st.audio_input("Speak to DI")
