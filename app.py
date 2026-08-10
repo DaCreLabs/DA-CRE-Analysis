@@ -3,38 +3,31 @@ import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
 import time
-import os
 from datetime import datetime
 from PIL import Image
+import os
 
 # -----------------------------------------------------------------------------
-# 1. APP CONFIGURATION & EXACT DACRE LOGO PAGE ICON
+# 1. APP CONFIGURATION & PERMANENT LOGO PAGE ICON SETUP
 # -----------------------------------------------------------------------------
 APP_NAME = "Dacre Analysis Engine"
 MASTER_FULL_NAME = "David Emenike"
 MASTER_PASSKEY = "theWORDofGOD@111"
 
-# This is the EXACT logo image you uploaded.
-# Put this PNG in the SAME GitHub folder as app.py.
-LOGO_FILENAME = "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png"
+# Target logo image file in your GitHub root folder
+LOGO_PATH = "logo.png"
 
-# Resolve the image relative to app.py.
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-LOGO_PATH = os.path.join(BASE_DIR, LOGO_FILENAME)
-
-# Use the actual Dacre logo as the Streamlit browser page icon.
-# There is NO embedded base64 image and NO replacement emoji.
-if not os.path.isfile(LOGO_PATH):
-    raise FileNotFoundError(
-        f"Required Dacre logo not found: {LOGO_FILENAME}. "
-        "Upload the PNG beside app.py in GitHub."
-    )
-
-logo_img = Image.open(LOGO_PATH)
+# Load the permanent logo image for the browser tab favicon (page_icon)
+page_favicon = "📊"
+if os.path.exists(LOGO_PATH):
+    try:
+        page_favicon = Image.open(LOGO_PATH)
+    except Exception:
+        page_favicon = LOGO_PATH
 
 st.set_page_config(
     page_title=f"{APP_NAME} | Autonomous DI Platform",
-    page_icon=logo_img,
+    page_icon=page_favicon,
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -264,10 +257,11 @@ def process_verbal_interaction(speech_input: str):
 st.markdown('<div class="hero-title">DACRE AUTONOMOUS DATA ENGINE</div>', unsafe_allow_html=True)
 
 with st.sidebar:
-    try:
-        st.image(LOGO_PATH, use_container_width=True)
-    except Exception:
-        pass
+    if os.path.exists(LOGO_PATH):
+        try:
+            st.image(LOGO_PATH, use_container_width=True)
+        except Exception:
+            pass
 
     st.markdown(f"### **{APP_NAME}**")
     st.caption("**Ultra-Fast Voice Mode Active**")
