@@ -8,42 +8,33 @@ from datetime import datetime
 from PIL import Image
 
 # -----------------------------------------------------------------------------
-# 1. APP CONFIGURATION & DACRE LOGO PAGE ICON
+# 1. APP CONFIGURATION & EXACT DACRE LOGO PAGE ICON
 # -----------------------------------------------------------------------------
 APP_NAME = "Dacre Analysis Engine"
 MASTER_FULL_NAME = "David Emenike"
 MASTER_PASSKEY = "theWORDofGOD@111"
 
-# Original full Dacre artwork used inside the application.
+# This is the EXACT logo image you uploaded.
+# Put this PNG in the SAME GitHub folder as app.py.
 LOGO_FILENAME = "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png"
 
-# Dedicated browser favicon made directly from the DA logo in the artwork.
-# The unique filename helps avoid the old Streamlit favicon being reused from
-# browser cache after deployment.
-FAVICON_FILENAME = "dacre_favicon_20260810.png"
-
+# Resolve the image relative to app.py.
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOGO_PATH = os.path.join(BASE_DIR, LOGO_FILENAME)
-FAVICON_PATH = os.path.join(BASE_DIR, FAVICON_FILENAME)
 
-# The favicon is intentionally a clean square crop of YOUR DA logo, rather
-# than the entire poster image. At browser-tab size, the DA emblem remains
-# recognizable.
-if not os.path.isfile(FAVICON_PATH):
-    raise FileNotFoundError(
-        f"Missing Dacre favicon: {FAVICON_FILENAME}. "
-        "Upload this file to the same GitHub folder as app.py."
-    )
-
+# Use the actual Dacre logo as the Streamlit browser page icon.
+# There is NO embedded base64 image and NO replacement emoji.
 if not os.path.isfile(LOGO_PATH):
     raise FileNotFoundError(
-        f"Missing Dacre logo artwork: {LOGO_FILENAME}. "
-        "Upload this file to the same GitHub folder as app.py."
+        f"Required Dacre logo not found: {LOGO_FILENAME}. "
+        "Upload the PNG beside app.py in GitHub."
     )
+
+logo_img = Image.open(LOGO_PATH)
 
 st.set_page_config(
     page_title=f"{APP_NAME} | Autonomous DI Platform",
-    page_icon=FAVICON_PATH,
+    page_icon=logo_img,
     layout="wide",
     initial_sidebar_state="expanded"
 )
