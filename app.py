@@ -8,39 +8,36 @@ from datetime import datetime
 from PIL import Image
 
 # -----------------------------------------------------------------------------
-# 1. APP CONFIGURATION & EXACT CHATGPT IMAGE PAGE ICON SETUP
+# 1. APP CONFIGURATION & EXACT DACRE CHATGPT IMAGE PAGE ICON
 # -----------------------------------------------------------------------------
 APP_NAME = "Dacre Analysis Engine"
 MASTER_FULL_NAME = "David Emenike"
 MASTER_PASSKEY = "theWORDofGOD@111"
 
-# EXACT filename of the ChatGPT-generated Dacre logo image
-# uploaded in the same GitHub root folder as app.py.
+# EXACT image from the GitHub repository.
+# Keep this file in the same folder as app.py.
 LOGO_FILENAME = "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png"
 
-# Build the path from the location of app.py so Streamlit Cloud can find it
-# reliably even when the working directory changes.
+# Resolve the image relative to app.py so Streamlit Cloud can find it reliably.
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOGO_PATH = os.path.join(BASE_DIR, LOGO_FILENAME)
 
-# Use the EXACT ChatGPT image as the browser tab/page icon.
-try:
-    logo_img = Image.open(LOGO_PATH)
+# Use the EXACT ChatGPT image as the Streamlit browser-tab/page icon.
+# No emoji or replacement icon is used when the image is present.
+if not os.path.isfile(LOGO_PATH):
+    raise FileNotFoundError(
+        f"Required page icon was not found: {LOGO_FILENAME}. "
+        "Make sure the image is uploaded to the same GitHub folder as app.py."
+    )
 
-    st.set_page_config(
-        page_title=f"{APP_NAME} | Autonomous DI Platform",
-        page_icon=logo_img,
-        layout="wide",
-        initial_sidebar_state="expanded"
-    )
-except Exception:
-    # Safe fallback if the image cannot be found temporarily.
-    st.set_page_config(
-        page_title=f"{APP_NAME} | Autonomous DI Platform",
-        page_icon="📊",
-        layout="wide",
-        initial_sidebar_state="expanded"
-    )
+logo_img = Image.open(LOGO_PATH)
+
+st.set_page_config(
+    page_title=f"{APP_NAME} | Autonomous DI Platform",
+    page_icon=logo_img,
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
 # -----------------------------------------------------------------------------
 # 2. ULTRA-BOLD HIGH VISIBILITY THEME
