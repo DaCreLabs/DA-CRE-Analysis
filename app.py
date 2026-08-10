@@ -40,6 +40,62 @@ st.set_page_config(
 )
 
 # -----------------------------------------------------------------------------
+# FORCE THE SAME EXACT GITHUB CHATGPT IMAGE AS THE BROWSER FAVICON
+# -----------------------------------------------------------------------------
+# Streamlit can leave its previous favicon cached in the browser. The script
+# below explicitly replaces every favicon link in the parent Streamlit page
+# with the exact image stored in this repository.
+FAVICON_URL = (
+    "https://raw.githubusercontent.com/DaCreLabs/DA-CRE-Analysis/main/"
+    "ChatGPT%20Image%20Jul%2029%2C%202026%2C%2002_27_41%20PM.png?v=dacre-logo-1"
+)
+
+components.html(
+    f"""
+    <script>
+    (function() {{
+        const faviconUrl = {FAVICON_URL!r};
+
+        function forceDacreFavicon() {{
+            try {{
+                const head = window.parent.document.head;
+
+                // Remove Streamlit/previous favicon declarations.
+                head.querySelectorAll(
+                    'link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]'
+                ).forEach(function(link) {{
+                    link.remove();
+                }});
+
+                // Install the exact Dacre ChatGPT image as the favicon.
+                const icon = window.parent.document.createElement("link");
+                icon.rel = "icon";
+                icon.type = "image/png";
+                icon.href = faviconUrl;
+                head.appendChild(icon);
+
+                const shortcut = window.parent.document.createElement("link");
+                shortcut.rel = "shortcut icon";
+                shortcut.type = "image/png";
+                shortcut.href = faviconUrl;
+                head.appendChild(shortcut);
+            }} catch (e) {{
+                console.log("Dacre favicon override:", e);
+            }}
+        }}
+
+        forceDacreFavicon();
+
+        // Streamlit can rebuild parts of the page during reruns, so re-apply it.
+        setInterval(forceDacreFavicon, 1500);
+    }})();
+    </script>
+    """,
+    height=0,
+    width=0
+)
+
+# -----------------------------------------------------------------------------
 # 2. ULTRA-BOLD HIGH VISIBILITY THEME
 # -----------------------------------------------------------------------------
 st.markdown("""
