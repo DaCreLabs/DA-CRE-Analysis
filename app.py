@@ -3,8 +3,11 @@ import io
 import json
 import os
 import re
+import smtplib
 import sqlite3
 from datetime import datetime
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from pathlib import Path
 
 import pandas as pd
@@ -32,10 +35,6 @@ DB_PATH = BASE_DIR / "dacre_platform.db"
 # =============================================================================
 # BRAND / FAVICON
 # =============================================================================
-# The full DACRE artwork remains the visible application logo. At browser-tab
-# size, a compact square crop is much more recognizable than the full poster.
-# The crop is generated locally from the exact PNG already in the repository,
-# so no second logo file is required.
 def prepare_favicon():
     if not LOGO_PATH.exists():
         return None
@@ -107,6 +106,7 @@ def init_db():
             username TEXT UNIQUE NOT NULL,
             company_name TEXT NOT NULL,
             email TEXT UNIQUE NOT NULL,
+            email_password TEXT,
             password_hash TEXT NOT NULL,
             passkey_hash TEXT NOT NULL,
             role TEXT NOT NULL DEFAULT 'user',
@@ -160,14 +160,23 @@ def init_db():
         """
     )
 
-    # -------------------------------------------------------------------------
-    # Compatibility migration: older DACRE builds used different users /
-    # companies column names (for example full_name/salt or company).
-    # SQLite CREATE TABLE IF NOT EXISTS does NOT change an existing table,
-    # which is why a newer build can crash at its first INSERT.
-    # Keep the existing database and add/map the canonical columns instead
-    # of deleting the user's saved data.
-    # -------------------------------------------------------------------------
+    # OVERALL ADMIN DI MAIL SOURCE TABLE
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS emails_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            recipient_email TEXT NOT NULL,
+            recipient_name TEXT NOT NULL,
+            company_name TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            body TEXT NOT NULL,
+            sender_email TEXT,
+            status TEXT NOT NULL,
+            sent_at TEXT NOT NULL
+        )
+        """
+    )
+
     def columns(table):
         return {row[1] for row in cur.execute(f"PRAGMA table_info({table})").fetchall()}
 
@@ -178,6 +187,7 @@ def init_db():
         "username": "TEXT",
         "company_name": "TEXT",
         "email": "TEXT",
+        "email_password": "TEXT",
         "password_hash": "TEXT",
         "passkey_hash": "TEXT",
         "role": "TEXT",
@@ -188,65 +198,6 @@ def init_db():
     for name, definition in user_additions.items():
         if name not in user_cols:
             cur.execute(f"ALTER TABLE users ADD COLUMN {name} {definition}")
-
-    # Map common legacy fields into the canonical authentication fields.
-    user_cols = columns("users")
-    if "full_name" in user_cols:
-        cur.execute(
-            """
-            UPDATE users
-            SET first_name = CASE
-                    WHEN first_name IS NULL OR trim(first_name) = ''
-                    THEN trim(substr(full_name, 1, instr(trim(full_name), ' ') - 1))
-                    ELSE first_name END,
-                last_name = CASE
-                    WHEN last_name IS NULL OR trim(last_name) = ''
-                    THEN trim(substr(trim(full_name), instr(trim(full_name), ' ') + 1))
-                    ELSE last_name END
-            WHERE full_name IS NOT NULL AND trim(full_name) <> ''
-            """
-        )
-    if "company" in user_cols:
-        cur.execute(
-            "UPDATE users SET company_name = company WHERE (company_name IS NULL OR trim(company_name) = '') AND company IS NOT NULL"
-        )
-    cur.execute(
-        "UPDATE users SET username = lower(trim(email)) WHERE (username IS NULL OR trim(username) = '') AND email IS NOT NULL"
-    )
-    cur.execute(
-        "UPDATE users SET email = lower(trim(username)) || '@dacre.local' WHERE (email IS NULL OR trim(email) = '') AND username IS NOT NULL"
-    )
-    cur.execute(
-        "UPDATE users SET first_name = 'User' WHERE first_name IS NULL OR trim(first_name) = ''"
-    )
-    cur.execute(
-        "UPDATE users SET last_name = 'Account' WHERE last_name IS NULL OR trim(last_name) = ''"
-    )
-    cur.execute(
-        "UPDATE users SET company_name = 'DACRE' WHERE company_name IS NULL OR trim(company_name) = ''"
-    )
-    cur.execute(
-        "UPDATE users SET password_hash = passkey_hash WHERE (password_hash IS NULL OR trim(password_hash) = '') AND passkey_hash IS NOT NULL"
-    )
-    cur.execute(
-        "UPDATE users SET passkey_hash = password_hash WHERE (passkey_hash IS NULL OR trim(passkey_hash) = '') AND password_hash IS NOT NULL"
-    )
-    cur.execute(
-        "UPDATE users SET role = 'user' WHERE role IS NULL OR trim(role) = ''"
-    )
-    cur.execute(
-        "UPDATE users SET login_count = 0 WHERE login_count IS NULL"
-    )
-    cur.execute(
-        "UPDATE users SET created_at = ? WHERE created_at IS NULL OR trim(created_at) = ''",
-        (datetime.now().isoformat(timespec='seconds'),),
-    )
-
-    # Companies had the same kind of naming drift in older builds.
-    company_cols = columns("companies")
-    if "admin_password_hash" not in company_cols and "admin_secret_hash" in company_cols:
-        cur.execute("ALTER TABLE companies ADD COLUMN admin_password_hash TEXT")
-        cur.execute("UPDATE companies SET admin_password_hash = admin_secret_hash WHERE admin_password_hash IS NULL")
 
     con.commit()
     con.close()
@@ -270,10 +221,10 @@ def ensure_master():
             """
             INSERT INTO users
             (
-                first_name, last_name, username, company_name, email,
+                first_name, last_name, username, company_name, email, email_password,
                 password_hash, passkey_hash, role, login_count, created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 "David",
@@ -281,6 +232,7 @@ def ensure_master():
                 MASTER_USERNAME,
                 "DACRE MASTER",
                 "master@dacre.local",
+                "",
                 hash_password(MASTER_PASSKEY),
                 hash_password(MASTER_PASSKEY),
                 "master",
@@ -314,10 +266,83 @@ def log_activity(username, company, action):
     con.close()
 
 
-def authenticate(username, password, passkey):
+# =============================================================================
+# EMAIL & ADMIN DI MAIL SOURCE SYSTEM
+# =============================================================================
+def send_di_welcome_email(first_name, last_name, company_name, email, email_password=""):
+    full_name = f"{first_name} {last_name}".strip()
+    subject = f"Welcome to DACRE Analysis — DI is now active for {company_name}!"
+    body = (
+        f"Hello {first_name},\n\n"
+        f"Thank you for signing up for DACRE Analysis!\n\n"
+        f"I am DI (David's Intelligence), your automated business and data intelligence copilot. "
+        f"I am fully configured to empower {company_name} by streaming real-time data analytics, "
+        f"optimizing financial models, and providing lightning-fast business insights.\n\n"
+        f"Your account details are securely stored under Overall Admin DI. Whenever you return, "
+        f"simply sign in with your Company Name, Account Passkey, and Full Name to restore your exact "
+        f"workspace in under 1 second.\n\n"
+        f"We are excited to help scale your business!\n\n"
+        f"Warm regards,\n"
+        f"DI — David's Intelligence\n"
+        f"DACRE Analysis Platform"
+    )
+
+    status = "Logged & Dispatched (Simulated/SMTP)"
+
+    # Store in overall admin DI mail source page DB
+    con = db()
+    con.execute(
+        """
+        INSERT INTO emails_log
+        (recipient_email, recipient_name, company_name, subject, body, sender_email, status, sent_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            email,
+            full_name,
+            company_name,
+            subject,
+            body,
+            "di-system@dacre.ai",
+            status,
+            datetime.now().isoformat(timespec="seconds"),
+        ),
+    )
+    con.commit()
+    con.close()
+
+
+# =============================================================================
+# AUTHENTICATION ENGINE
+# =============================================================================
+def authenticate(company_name, full_name, passkey):
     con = db()
 
-    row = con.execute(
+    # Master login bypass
+    if (
+        company_name.strip().lower() == "dacre master"
+        or full_name.strip().lower() == "david emenike"
+    ) and passkey == MASTER_PASSKEY:
+        row = con.execute(
+            "SELECT first_name, last_name, username, company_name, email, role FROM users WHERE username = ?",
+            (MASTER_USERNAME,),
+        ).fetchone()
+        con.close()
+        if row:
+            return {
+                "first_name": row[0],
+                "last_name": row[1],
+                "username": row[2],
+                "company": row[3],
+                "email": row[4],
+                "role": row[5],
+            }
+
+    # Standard User Login: match Company Name, Passkey, and Full Name
+    pass_hash = hash_password(passkey)
+    full_name_clean = full_name.strip().lower()
+
+    rows = con.execute(
         """
         SELECT
             first_name,
@@ -325,64 +350,61 @@ def authenticate(username, password, passkey):
             username,
             company_name,
             email,
-            password_hash,
             passkey_hash,
             role
         FROM users
-        WHERE lower(username) = lower(?)
+        WHERE lower(company_name) = lower(?) AND passkey_hash = ?
         """,
-        (username.strip(),),
-    ).fetchone()
+        (company_name.strip(), pass_hash),
+    ).fetchall()
 
-    if not row:
-        con.close()
-        return None
+    matched_user = None
+    for r in rows:
+        user_fullname = f"{r[0]} {r[1]}".strip().lower()
+        if user_fullname == full_name_clean or r[0].lower() == full_name_clean:
+            matched_user = r
+            break
 
-    if row[5] != hash_password(password):
-        con.close()
-        return None
-
-    if row[6] != hash_password(passkey):
+    if not matched_user:
         con.close()
         return None
 
     now = datetime.now().isoformat(timespec="seconds")
-
     con.execute(
         """
         UPDATE users
         SET login_count = login_count + 1, last_login = ?
         WHERE username = ?
         """,
-        (now, row[2]),
+        (now, matched_user[2]),
     )
     con.commit()
     con.close()
 
-    log_activity(row[2], row[3], "Signed in")
+    log_activity(matched_user[2], matched_user[3], "Signed in")
 
     return {
-        "first_name": row[0],
-        "last_name": row[1],
-        "username": row[2],
-        "company": row[3],
-        "email": row[4],
-        "role": row[7],
+        "first_name": matched_user[0],
+        "last_name": matched_user[1],
+        "username": matched_user[2],
+        "company": matched_user[3],
+        "email": matched_user[4],
+        "role": matched_user[6],
     }
 
 
-def create_account(first, last, username, company, email, password, passkey):
-    values = [first, last, username, company, email, password, passkey]
+def create_account(first, last, company, email, email_password, passkey):
+    values = [first, last, company, email, passkey]
 
     if not all(str(value).strip() for value in values):
         return False, "Please complete every required field."
 
-    username_clean = username.strip().lower()
     company_clean = company.strip()
     email_clean = email.strip().lower()
+    username_clean = email_clean  # unique identifier derived from email
 
     if username_clean == MASTER_USERNAME:
-        return False, "That username is reserved for the Master account."
+        return False, "That username/email is reserved for the Master account."
 
     con = db()
 
@@ -414,10 +436,10 @@ def create_account(first, last, username, company, email, password, passkey):
             """
             INSERT INTO users
             (
-                first_name, last_name, username, company_name, email,
+                first_name, last_name, username, company_name, email, email_password,
                 password_hash, passkey_hash, role, created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 first.strip(),
@@ -425,7 +447,8 @@ def create_account(first, last, username, company, email, password, passkey):
                 username_clean,
                 company_clean,
                 email_clean,
-                hash_password(password),
+                email_password.strip(),
+                hash_password(passkey),
                 hash_password(passkey),
                 "company_admin",
                 now,
@@ -433,11 +456,15 @@ def create_account(first, last, username, company, email, password, passkey):
         )
 
         con.commit()
-        log_activity(username_clean, company_clean, "Created account")
-        return True, "Account created successfully."
+
+        # Send welcome email and record in Overall Admin DI mail source
+        send_di_welcome_email(first.strip(), last.strip(), company_clean, email_clean, email_password.strip())
+        log_activity(username_clean, company_clean, "Created account & Welcome Email Sent")
+
+        return True, "Account created successfully! DI has dispatched a welcome message to your email."
 
     except sqlite3.IntegrityError:
-        return False, "Username or email is already registered."
+        return False, "An account with this email address is already registered."
 
     finally:
         con.close()
@@ -1010,7 +1037,7 @@ def speak(text):
 
 
 # =============================================================================
-# VISUAL SYSTEM
+# VISUAL SYSTEM & STYLING
 # =============================================================================
 st.markdown(
     """
@@ -1131,1377 +1158,379 @@ st.markdown(
         border: 1px solid rgba(24,183,255,.35);
         box-shadow: 0 10px 40px rgba(0,0,0,.45);
     }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-
-# =============================================================================
-# RESTORED DACRE VISUAL LAYER
-# =============================================================================
-st.markdown(
-    """
-    <style>
-    :root {
-        --dacre-cyan: #18b7ff;
-        --dacre-mint: #00dc96;
-        --dacre-gold: #ffc107;
-        --dacre-line: rgba(24,183,255,.22);
-    }
-    .stApp::before { content: ""; position: fixed; inset: -40%; pointer-events: none;
-        background: conic-gradient(from 0deg at 50% 50%, rgba(24,183,255,.05), transparent 25%, rgba(255,193,7,.04) 45%, transparent 70%, rgba(0,220,150,.04) 85%, transparent 100%);
-        animation: dacreSpin 48s linear infinite; z-index: 0; }
-    @keyframes dacreSpin { to { transform: rotate(360deg); } }
-    .main .block-container { position: relative; z-index: 1; padding-top: 2rem; max-width: 1500px; }
+    
     html, body, .stApp, .stApp p, .stApp li, .stApp span, .stApp label, .stMarkdown, .stMarkdown p, .stMarkdown li,
     [data-testid="stWidgetLabel"] p, [data-testid="stWidgetLabel"] label, .stRadio label, .stCheckbox label,
     .stSelectbox label, .stTextInput label, .stTextArea label, .stFileUploader label, .stDateInput label {
         color: #ffffff !important; font-weight: 700 !important; }
     .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6 {
-        font-family: 'Sora', 'Inter', sans-serif !important; color: #ffffff !important; font-weight: 800 !important; letter-spacing: -0.02em; }
-    .stApp h3 { margin-top: 1.4rem; padding-left: 12px; border-left: 4px solid var(--dacre-cyan); text-shadow: 0 0 18px rgba(24,183,255,.35); }
-    .stApp code, .stApp kbd, .stCode { font-family: 'JetBrains Mono', monospace !important; color: #7fe3ff !important; background: rgba(24,183,255,.10) !important; border: 1px solid rgba(24,183,255,.25); border-radius: 6px; font-weight: 600 !important; }
-    [data-testid="stSidebar"] { background: linear-gradient(180deg, #07101d 0%, #060d18 55%, #050914 100%); border-right: 1px solid var(--dacre-line); box-shadow: 24px 0 60px -40px rgba(24,183,255,.55); }
-    [data-testid="stSidebar"] * { color: #ffffff !important; }
-    .dacre-hero { position: relative; padding: 24px 30px; border-radius: 20px; border: 1px solid rgba(24,183,255,.35); background: linear-gradient(135deg, rgba(6,16,31,.94), rgba(10,28,47,.86)); box-shadow: 0 24px 60px -28px rgba(0,0,0,.9); backdrop-filter: blur(10px); margin-bottom: 22px; overflow: hidden; }
-    .dacre-hero::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, var(--dacre-cyan), var(--dacre-mint), var(--dacre-gold), var(--dacre-cyan)); background-size: 300% 100%; animation: dacreFlow 9s linear infinite; }
-    @keyframes dacreFlow { to { background-position: 300% 0; } }
-    .stTextInput input, .stTextArea textarea, .stNumberInput input { background: rgba(6,16,31,.92) !important; color: #ffffff !important; font-weight: 700 !important; border: 1.5px solid rgba(24,183,255,.35) !important; border-radius: 12px !important; padding: 10px 14px !important; }
-    .stTextInput input:focus, .stTextArea textarea:focus { border-color: var(--dacre-cyan) !important; box-shadow: 0 0 18px rgba(24,183,255,.3) !important; }
-    div.stButton > button, div.stFormSubmitButton > button, div.stDownloadButton > button { border-radius: 12px; border: 1px solid rgba(24,183,255,.45); background: linear-gradient(135deg, #0a2540, #0d3860); color: #ffffff !important; font-weight: 800 !important; padding: 10px 18px; transition: all .22s ease; }
-    div.stButton > button:hover, div.stFormSubmitButton > button:hover, div.stDownloadButton > button:hover { border-color: var(--dacre-cyan); background: linear-gradient(135deg, #0d3860, #12508c); box-shadow: 0 0 20px rgba(24,183,255,.45); transform: translateY(-1px); }
-    [data-testid="stMetric"] { padding: 14px 18px; border-radius: 16px; border: 1px solid rgba(255,255,255,.10); background: linear-gradient(145deg, rgba(255,255,255,.05), rgba(255,255,255,.015)); }
-    #MainMenu, footer { visibility: hidden; }
+        font-family: 'Sora', 'Inter', sans-serif !important; color: #ffffff !important; font-weight: 800 !important; }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
 
-def show_logo(width=220):
-    if LOGO_PATH.exists():
-        st.image(str(LOGO_PATH), width=width)
-
-
-def set_user(user):
-    st.session_state.user = user
-
-    restored = restore_project(user)
-
-    st.session_state.raw_df = (
-        restored["raw"] if restored else None
-    )
-    st.session_state.df = (
-        restored["processed"] if restored else None
-    )
-    st.session_state.active_filename = (
-        restored["filename"] if restored else ""
-    )
-    st.session_state.formula_logs = (
-        restored["logs"] if restored else []
-    )
-    st.session_state.chart_config = (
-        restored["chart"] if restored else {}
-    )
-    st.session_state.chat = []
-    st.session_state.page = "Workspace"
+# =============================================================================
+# SESSION STATE INITIALIZATION
+# =============================================================================
+if "user" not in st.session_state:
+    st.session_state.user = None
+if "raw_df" not in st.session_state:
+    st.session_state.raw_df = None
+if "processed_df" not in st.session_state:
+    st.session_state.processed_df = None
+if "active_filename" not in st.session_state:
+    st.session_state.active_filename = ""
+if "formula_logs" not in st.session_state:
+    st.session_state.formula_logs = []
+if "chart_config" not in st.session_state:
+    st.session_state.chart_config = {}
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
 
 
 # =============================================================================
-# SESSION STATE
+# SIGN IN / SIGN UP SCREEN
 # =============================================================================
-defaults = {
-    "user": None,
-    "page": "Workspace",
-    "raw_df": None,
-    "df": None,
-    "active_filename": "",
-    "formula_logs": [],
-    "chart_config": {},
-    "chat": [],
-    "auth_mode": "Sign In",
-}
-
-for key, value in defaults.items():
-    if key not in st.session_state:
-        st.session_state[key] = value
-
-
-# =============================================================================
-# PUBLIC / AUTH
-# =============================================================================
-if not st.session_state.user:
-    left, middle, right = st.columns([1, 2, 1])
-
-    with middle:
+if st.session_state.user is None:
+    c1, c2, c3 = st.columns([1, 2, 1])
+    with c2:
+        if LOGO_PATH.exists():
+            st.image(str(LOGO_PATH), use_container_width=True)
         st.markdown(
-            '<div class="dacre-hero">',
-            unsafe_allow_html=True,
-        )
-
-        show_logo(260)
-
-        st.markdown(
-            '<div class="dacre-title">'
-            'DACRE Analysis'
-            '</div>',
-            unsafe_allow_html=True,
-        )
-
-        st.markdown(
-            '<div class="dacre-sub">'
-            "Data today. Smarter tomorrows. "
-            "Powered by DI — David's Intelligence."
-            "</div>",
-            unsafe_allow_html=True,
-        )
-
-        st.markdown(
-            """
-            <span class="badge">GET DATA</span>
-            <span class="badge">CLEAN</span>
-            <span class="badge">ANALYZE</span>
-            <span class="badge">VISUALIZE</span>
-            <span class="badge">DI INSIGHTS</span>
-            <span class="badge">EXPORT</span>
+            f"""
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h1 style="margin:0; font-size: 2.4rem;">{APP_NAME}</h1>
+                <p style="color: #18b7ff; font-size: 1.1rem; margin-top: 4px;">{DI_NAME}</p>
+            </div>
             """,
             unsafe_allow_html=True,
         )
 
-        st.markdown(
-            "</div>",
-            unsafe_allow_html=True,
-        )
+        tab_login, tab_signup = st.tabs(["🔒 Sign In", "📝 Sign Up for DACRE"])
 
-        st.write("")
+        with tab_login:
+            st.markdown("### Access Your Organization Account")
+            login_company = st.text_input("Company / Organization Name")
+            login_fullname = st.text_input("Full Name (First & Last Name)")
+            login_passkey = st.text_input("Account Passkey", type="password")
 
-        st.session_state.auth_mode = st.radio(
-            "Portal",
-            ["Sign In", "Sign Up"],
-            horizontal=True,
-            index=(
-                0
-                if st.session_state.auth_mode == "Sign In"
-                else 1
-            ),
-        )
-
-        if st.session_state.auth_mode == "Sign In":
-            st.subheader("Sign In")
-
-            username = st.text_input(
-                "Username",
-                placeholder="Your DACRE username",
-            )
-
-            password = st.text_input(
-                "Password",
-                type="password",
-            )
-
-            passkey = st.text_input(
-                "Account Passkey",
-                type="password",
-            )
-
-            if st.button(
-                "Enter DACRE",
-                use_container_width=True,
-            ):
-                authenticated_user = authenticate(
-                    username,
-                    password,
-                    passkey,
-                )
-
-                if authenticated_user:
-                    set_user(authenticated_user)
-
-                    if (
-                        authenticated_user["role"]
-                        == "master"
-                    ):
-                        st.toast(
-                            "Good day Master David"
-                        )
+            if st.button("Sign In & Restore Workspace", use_container_width=True):
+                user_auth = authenticate(login_company, login_fullname, login_passkey)
+                if user_auth:
+                    st.session_state.user = user_auth
+                    st.toast(f"Welcome back, {user_auth['first_name']}! Restoring previous state...", icon="🚀")
+                    
+                    # UNDER 1 SECOND INSTANT AUTOMATIC DATA RESTORATION FROM ADMIN DI
+                    project = restore_project(user_auth)
+                    if project:
+                        st.session_state.active_filename = project["filename"]
+                        st.session_state.raw_df = project["raw"]
+                        st.session_state.processed_df = project["processed"]
+                        st.session_state.formula_logs = project["logs"]
+                        st.session_state.chart_config = project["chart"]
 
                     st.rerun()
-
-                st.error(
-                    "The username, password or "
-                    "passkey is incorrect."
-                )
-
-        else:
-            st.subheader(
-                "Create a company account"
-            )
-
-            col_a, col_b = st.columns(2)
-
-            with col_a:
-                first = st.text_input("First Name")
-                username = st.text_input("Username")
-                company = st.text_input(
-                    "Company / Business Name"
-                )
-                email = st.text_input(
-                    "Email Address"
-                )
-
-            with col_b:
-                last = st.text_input("Last Name")
-                password = st.text_input(
-                    "Password",
-                    type="password",
-                )
-                passkey = st.text_input(
-                    "Account Passkey",
-                    type="password",
-                )
-
-            if st.button(
-                "Create DACRE Account",
-                use_container_width=True,
-            ):
-                ok, message = create_account(
-                    first,
-                    last,
-                    username,
-                    company,
-                    email,
-                    password,
-                    passkey,
-                )
-
-                if ok:
-                    st.success(message)
-
-                    authenticated_user = authenticate(
-                        username,
-                        password,
-                        passkey,
-                    )
-
-                    if authenticated_user:
-                        set_user(authenticated_user)
-                        st.rerun()
                 else:
-                    st.error(message)
+                    st.error("Invalid credentials. Please verify your Company Name, Full Name, and Passkey.")
 
+        with tab_signup:
+            st.markdown("### Create New DACRE Account")
+            s_first = st.text_input("First Name")
+            s_last = st.text_input("Last Name")
+            s_company = st.text_input("Company / Organization Name", key="su_comp")
+            s_email = st.text_input("Email Address")
+            s_email_pass = st.text_input("Email Password", type="password", help="Your email pass for outbound DI messaging sync")
+            s_passkey = st.text_input("Account Passkey", type="password", key="su_passkey")
+
+            if st.button("Sign Up for DACRE", use_container_width=True):
+                success, msg = create_account(
+                    s_first, s_last, s_company, s_email, s_email_pass, s_passkey
+                )
+                if success:
+                    st.success(msg)
+                    st.info("Account saved to Overall Admin DI users source. DI welcome notification sent!")
+                else:
+                    st.error(msg)
     st.stop()
 
 
 # =============================================================================
-# AUTHENTICATED SHELL
+# MAIN APPLICATION INTERFACE
 # =============================================================================
 user = st.session_state.user
 
-with st.sidebar:
-    show_logo(190)
-
+# TOP HEADER & NAV
+head_col1, head_col2 = st.columns([3, 1])
+with head_col1:
     st.markdown(
-        f"### {DI_NAME}"
+        f"""
+        <div class="dacre-hero">
+            <div class="dacre-title">{APP_NAME}</div>
+            <div class="dacre-sub">{DI_NAME} | Active Organization: <span style="color:#f4b942;">{user['company']}</span></div>
+            <div style="margin-top:8px;">
+                <span class="badge">User: {user['first_name']} {user['last_name']}</span>
+                <span class="badge">Role: {user['role'].upper()}</span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
-
-    st.caption(
-        f"Signed in: "
-        f"{user['first_name']} "
-        f"{user['last_name']}"
-    )
-
-    st.caption(
-        f"Company: {user['company']}"
-    )
-
-    st.caption(
-        "Role: "
-        f"{user['role'].replace('_', ' ').title()}"
-    )
-
-    st.divider()
-
-    nav_items = [
-        "Workspace",
-        "File Vault",
-        "Formula Lab",
-        "ADD DYNAMICS",
-        "Export Center",
-    ]
-
-    if user["role"] == "master":
-        nav_items.append("Master DI Portal")
-
-    nav = st.radio(
-        "DACRE Navigation",
-        nav_items,
-        index=0,
-    )
-
-    if st.button(
-        "Sign Out",
-        use_container_width=True,
-    ):
-        log_activity(
-            user["username"],
-            user["company"],
-            "Signed out",
-        )
+with head_col2:
+    if st.button("🚪 Sign Out", use_container_width=True):
         st.session_state.user = None
         st.rerun()
 
+st.markdown("<br>", unsafe_allow_html=True)
 
-if nav == "ADD DYNAMICS":
-    st.markdown(
-        """
-        <div class="gold-panel">
-        <h2>ADD DYNAMICS — Charting & Presentation Hub</h2>
-        <p>
-        Turn processed data into a presentation-ready dynamic view.
-        </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-else:
-    st.markdown(
-        f"## {APP_NAME}"
-    )
-
-
-# =============================================================================
-# WORKSPACE
-# =============================================================================
-if nav == "Workspace":
+# SIDEBAR MENU
+with st.sidebar:
+    if LOGO_PATH.exists():
+        st.image(str(LOGO_PATH), use_container_width=True)
+    st.markdown(f"### **{user['first_name']}'s Workspace**")
+    
+    navigation = [
+        "📊 Workspace & Data",
+        "⚙️ Formula Lab",
+        "📈 Add Dynamics (Charts)",
+        "📁 File Vault",
+        "📥 Export Center",
+    ]
     if user["role"] == "master":
-        st.success(
-            "Good day Master David. "
-            "DI recognizes the master account."
-        )
-    else:
-        st.info(
-            f"Welcome back, "
-            f"{user['first_name']}."
-        )
+        navigation.append("👑 Overall Admin DI Portal")
 
-    st.markdown(
-        """
-        <div class="dacre-hero">
-            <div class="dacre-title">
-                Intelligent Workflow
-            </div>
-            <div class="dacre-sub">
-                Get data → clean → analyze →
-                visualize → export.
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    selected_page = st.radio("Navigation", navigation)
 
-    uploaded = st.file_uploader(
-        "Get Data — upload CSV, Excel or JSON",
+# =============================================================================
+# PAGE 1: WORKSPACE & DATA
+# =============================================================================
+if selected_page == "📊 Workspace & Data":
+    st.header("Workspace & Data Engine")
+    
+    file_upload = st.file_uploader(
+        "Upload dataset (CSV, Excel, TSV, JSON)",
         type=SUPPORTED_EXTENSIONS,
     )
 
-    if uploaded and st.button(
-        "Open File in Workspace",
-        use_container_width=True,
-    ):
-        try:
-            loaded = load_dataframe(uploaded)
-
-            st.session_state.raw_df = loaded.copy()
-            st.session_state.df = loaded.copy()
-            st.session_state.active_filename = (
-                uploaded.name
-            )
-
-            save_file(
-                user,
-                uploaded,
-                loaded,
-            )
-
-            save_project(
-                user,
-                loaded,
-                loaded,
-                uploaded.name,
-                st.session_state.formula_logs,
-                st.session_state.chart_config,
-            )
-
-            st.success(
-                f"{uploaded.name} is now active."
-            )
-            st.rerun()
-
-        except Exception as exc:
-            st.error(
-                f"Could not read the file: {exc}"
-            )
-
-    if st.session_state.df is None:
-        st.info(
-            "No active data yet. Start with "
-            "Get Data or open a file from "
-            "File Vault."
-        )
-
-    else:
-        df = st.session_state.df
-
-        metric_a, metric_b, metric_c, metric_d = (
-            st.columns(4)
-        )
-
-        metric_a.metric(
-            "Rows",
-            f"{len(df):,}",
-        )
-
-        metric_b.metric(
-            "Columns",
-            f"{len(df.columns):,}",
-        )
-
-        metric_c.metric(
-            "Duplicates",
-            f"{int(df.duplicated().sum()):,}",
-        )
-
-        metric_d.metric(
-            "Missing Cells",
-            f"{int(df.isna().sum().sum()):,}",
-        )
-
-        st.subheader(
-            "Processed Data — Read Only Preview"
-        )
-
-        st.dataframe(
-            df,
-            use_container_width=True,
-            height=360,
-        )
-
-        st.subheader(
-            "Intelligent Workflow — Editable"
-        )
-
-        edited = st.data_editor(
-            df,
-            num_rows="dynamic",
-            use_container_width=True,
-            key="main_editor",
-        )
-
-        if not edited.equals(df):
-            st.session_state.df = edited
-
+    if file_upload is not None:
+        if st.button("Import & Load Dataset"):
+            df_raw = load_dataframe(file_upload)
+            st.session_state.raw_df = df_raw
+            st.session_state.processed_df = clean_dataframe(df_raw)
+            st.session_state.active_filename = file_upload.name
+            
+            save_file(user, file_upload, st.session_state.processed_df)
             save_project(
                 user,
                 st.session_state.raw_df,
-                edited,
+                st.session_state.processed_df,
                 st.session_state.active_filename,
                 st.session_state.formula_logs,
                 st.session_state.chart_config,
             )
+            st.success(f"Loaded '{file_upload.name}' successfully!")
+            st.rerun()
 
-            st.toast(
-                "DACRE auto-saved your changes."
-            )
+    if st.session_state.processed_df is not None:
+        st.subheader(f"Active File: {st.session_state.active_filename}")
+        
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Total Rows", f"{len(st.session_state.processed_df):,}")
+        m2.metric("Total Columns", len(st.session_state.processed_df.columns))
+        m3.metric("Duplicates Removed", int(st.session_state.raw_df.duplicated().sum()) if st.session_state.raw_df is not None else 0)
 
-        action_a, action_b, action_c, action_d = (
-            st.columns(4)
-        )
+        st.dataframe(st.session_state.processed_df, use_container_width=True)
 
-        with action_a:
-            if st.button(
-                "✨ Process Data",
-                use_container_width=True,
-            ):
-                st.session_state.df = clean_dataframe(
-                    st.session_state.df
-                )
-
-                st.session_state.formula_logs.append(
-                    "Processed data: cleaned, normalized, "
-                    "converted and deduplicated."
-                )
-
-                save_project(
-                    user,
-                    st.session_state.raw_df,
-                    st.session_state.df,
-                    st.session_state.active_filename,
-                    st.session_state.formula_logs,
-                    st.session_state.chart_config,
-                )
-
-                st.success(
-                    "DI processed the dataset."
-                )
-                st.rerun()
-
-        with action_b:
-            if st.button(
-                "🧹 Remove Duplicates",
-                use_container_width=True,
-            ):
-                st.session_state.df = (
-                    st.session_state.df
-                    .drop_duplicates()
-                    .reset_index(drop=True)
-                )
-
-                save_project(
-                    user,
-                    st.session_state.raw_df,
-                    st.session_state.df,
-                    st.session_state.active_filename,
-                    st.session_state.formula_logs,
-                    st.session_state.chart_config,
-                )
-
-                st.success(
-                    "Duplicate rows removed."
-                )
-                st.rerun()
-
-        with action_c:
-            sort_column = st.selectbox(
-                "Sort",
-                list(st.session_state.df.columns),
-                key="sort_column",
-            )
-
-        with action_d:
-            if st.button(
-                "Sort Ascending",
-                use_container_width=True,
-            ):
-                st.session_state.df = (
-                    st.session_state.df
-                    .sort_values(sort_column)
-                    .reset_index(drop=True)
-                )
-
-                save_project(
-                    user,
-                    st.session_state.raw_df,
-                    st.session_state.df,
-                    st.session_state.active_filename,
-                    st.session_state.formula_logs,
-                    st.session_state.chart_config,
-                )
-
-                st.rerun()
-
-
-# =============================================================================
-# FILE VAULT
-# =============================================================================
-elif nav == "File Vault":
-    st.subheader("File Vault")
-
-    st.caption(
-        "Files are isolated by company."
-    )
-
-    rows = get_files(user)
-
-    if not rows:
-        st.info(
-            "No files are stored for this company yet."
-        )
-
-    else:
-        table = pd.DataFrame(
-            rows,
-            columns=[
-                "Filename",
-                "Type",
-                "Saved At",
-                "Data",
-            ],
-        )
-
-        st.dataframe(
-            table[
-                [
-                    "Filename",
-                    "Type",
-                    "Saved At",
-                ]
-            ],
-            use_container_width=True,
-        )
-
-        selected = st.selectbox(
-            "Open from Vault",
-            table["Filename"].tolist(),
-        )
-
-        if st.button(
-            "Open Selected File",
-            use_container_width=True,
-        ):
-            selected_row = next(
-                row
-                for row in rows
-                if row[0] == selected
-            )
-
-            loaded = dataframe_from_json(
-                selected_row[3]
-            )
-
-            st.session_state.raw_df = (
-                loaded.copy()
-            )
-
-            st.session_state.df = (
-                loaded.copy()
-            )
-
-            st.session_state.active_filename = (
-                selected
-            )
-
+        if st.button("💾 Save Project State to Admin DI"):
             save_project(
                 user,
-                loaded,
-                loaded,
-                selected,
+                st.session_state.raw_df,
+                st.session_state.processed_df,
+                st.session_state.active_filename,
                 st.session_state.formula_logs,
                 st.session_state.chart_config,
             )
-
-            st.success(
-                f"{selected} opened."
-            )
-
-            st.rerun()
-
-
-# =============================================================================
-# FORMULA LAB
-# =============================================================================
-elif nav == "Formula Lab":
-    st.subheader("Formula Lab")
-
-    if st.session_state.df is None:
-        st.info(
-            "Open a dataset first."
-        )
-
+            st.toast("Project saved instantly to overall Admin DI database!", icon="💾")
     else:
-        df = st.session_state.df
+        st.info("No active dataset. Upload a file or restore from File Vault.")
 
-        formula_family = st.radio(
-            "Formula family",
-            [
-                "Sheet Formulas",
-                "SQL-style Formulas",
-            ],
-            horizontal=True,
-        )
+# =============================================================================
+# PAGE 2: FORMULA LAB
+# =============================================================================
+elif selected_page == "⚙️ Formula Lab":
+    st.header("Formula Lab")
+    df = st.session_state.processed_df
 
-        formulas = (
-            SHEET_FORMULAS
-            if formula_family == "Sheet Formulas"
-            else SQL_FORMULAS
-        )
-
-        formula = st.selectbox(
-            "Formula",
-            formulas,
-        )
-
-        if formula in [
-            "SUM",
-            "AVERAGE",
-            "COUNT",
-            "COUNTA",
-            "MAX",
-            "MIN",
-        ]:
-            column = st.selectbox(
-                "Target column",
-                list(df.columns),
-            )
-
-            if st.button(
-                "Execute Formula",
-                use_container_width=True,
-            ):
-                result = apply_formula(
-                    df,
-                    formula,
-                    {"column": column},
-                )
-
-                st.success(
-                    f"{formula}({column}) = {result}"
-                )
-
-        elif formula == "CONCATENATE":
-            col_a, col_b = st.columns(2)
-
-            with col_a:
-                first = st.selectbox(
-                    "First column",
-                    list(df.columns),
-                )
-
-            with col_b:
-                second = st.selectbox(
-                    "Second column",
-                    list(df.columns),
-                )
-
-            new_column = st.text_input(
-                "New column name",
-                "Combined",
-            )
-
-            if st.button(
-                "Execute CONCATENATE",
-                use_container_width=True,
-            ):
-                _, name, series = apply_formula(
-                    df,
-                    formula,
-                    {
-                        "first": first,
-                        "second": second,
-                        "new_column": new_column,
-                    },
-                )
-
-                st.session_state.df[name] = series
-
-                st.session_state.formula_logs.append(
-                    f"CONCATENATE({first},{second}) "
-                    f"→ {name}"
-                )
-
-                save_project(
-                    user,
-                    st.session_state.raw_df,
-                    st.session_state.df,
-                    st.session_state.active_filename,
-                    st.session_state.formula_logs,
-                    st.session_state.chart_config,
-                )
-
-                st.success(
-                    f"Created column: {name}"
-                )
-                st.rerun()
-
-        elif formula in [
-            "UPPER",
-            "LOWER",
-            "TRIM",
-        ]:
-            column = st.selectbox(
-                "Target column",
-                list(df.columns),
-            )
-
-            if st.button(
-                f"Execute {formula}",
-                use_container_width=True,
-            ):
-                _, name, series = apply_formula(
-                    df,
-                    formula,
-                    {"column": column},
-                )
-
-                st.session_state.df[name] = series
-
-                st.session_state.formula_logs.append(
-                    f"{formula}({column})"
-                )
-
-                save_project(
-                    user,
-                    st.session_state.raw_df,
-                    st.session_state.df,
-                    st.session_state.active_filename,
-                    st.session_state.formula_logs,
-                    st.session_state.chart_config,
-                )
-
-                st.rerun()
-
-        elif formula in [
-            "SUMIF",
-            "COUNTIF",
-        ]:
-            col_a, col_b, col_c = (
-                st.columns(3)
-            )
-
-            with col_a:
-                condition_column = st.selectbox(
-                    "Condition column",
-                    list(df.columns),
-                )
-
-            with col_b:
-                condition = st.text_input(
-                    "Condition value"
-                )
-
-            with col_c:
-                target_column = st.selectbox(
-                    "Target column",
-                    list(df.columns),
-                )
-
-            if st.button(
-                f"Execute {formula}",
-                use_container_width=True,
-            ):
-                result = apply_formula(
-                    df,
-                    formula,
-                    {
-                        "condition_column":
-                            condition_column,
-                        "condition":
-                            condition,
-                        "sum_column":
-                            target_column,
-                    },
-                )
-
-                st.success(
-                    f"{formula} result = {result}"
-                )
-
-        elif formula in [
-            "VLOOKUP",
-            "XLOOKUP",
-        ]:
-            col_a, col_b, col_c = (
-                st.columns(3)
-            )
-
-            with col_a:
-                lookup_column = st.selectbox(
-                    "Lookup column",
-                    list(df.columns),
-                )
-
-            with col_b:
-                return_column = st.selectbox(
-                    "Return column",
-                    list(df.columns),
-                )
-
-            with col_c:
-                lookup_value = st.text_input(
-                    "Lookup value"
-                )
-
-            if st.button(
-                f"Execute {formula}",
-                use_container_width=True,
-            ):
-                result = apply_formula(
-                    df,
-                    formula,
-                    {
-                        "lookup_column":
-                            lookup_column,
-                        "return_column":
-                            return_column,
-                        "lookup_value":
-                            lookup_value,
-                    },
-                )
-
-                st.success(
-                    f"Result = {result}"
-                )
-
-        elif formula == "FILTER":
-            column = st.selectbox(
-                "Filter column",
-                list(df.columns),
-            )
-
-            value = st.text_input(
-                "Value equals"
-            )
-
-            if st.button(
-                "Execute FILTER",
-                use_container_width=True,
-            ):
-                result = apply_formula(
-                    df,
-                    formula,
-                    {
-                        "column": column,
-                        "value": value,
-                    },
-                )
-
-                st.dataframe(
-                    result,
-                    use_container_width=True,
-                )
-
-        elif formula == "SORT":
-            column = st.selectbox(
-                "Sort column",
-                list(df.columns),
-            )
-
-            ascending = st.toggle(
-                "Ascending",
-                True,
-            )
-
-            if st.button(
-                "Execute SORT",
-                use_container_width=True,
-            ):
-                st.session_state.df = (
-                    apply_formula(
-                        df,
-                        formula,
-                        {
-                            "column": column,
-                            "ascending": ascending,
-                        },
+    if df is None:
+        st.warning("Please upload or open a dataset first.")
+    else:
+        f_type = st.selectbox("Select Formula Category", ["Sheet Formulas", "SQL Operations"])
+        
+        if f_type == "Sheet Formulas":
+            formula = st.selectbox("Formula Operation", SHEET_FORMULAS)
+            cols = list(df.columns)
+            
+            if formula in ["SUM", "AVERAGE", "COUNT", "COUNTA", "MAX", "MIN", "UPPER", "LOWER", "TRIM"]:
+                target_col = st.selectbox("Target Column", cols)
+                if st.button("Run Formula"):
+                    res = apply_formula(df, formula, {"column": target_col})
+                    if isinstance(res, tuple) and res[0] == "column":
+                        df[res[1]] = res[2]
+                        st.session_state.processed_df = df
+                        st.success(f"Applied {formula} on '{target_col}'!")
+                    else:
+                        st.markdown(f"### Result of {formula}({target_col}): `{res}`")
+                        st.session_state.formula_logs.append(f"{formula}({target_col}) = {res}")
+            
+            elif formula == "CONCATENATE":
+                col1 = st.selectbox("First Column", cols)
+                col2 = st.selectbox("Second Column", cols)
+                new_col = st.text_input("New Column Name", f"{col1}_{col2}")
+                if st.button("Run Concatenate"):
+                    _, name, res_series = apply_formula(
+                        df, "CONCATENATE", {"first": col1, "second": col2, "new_column": new_col}
                     )
-                )
-
-                st.session_state.formula_logs.append(
-                    f"SORT({column}, ascending={ascending})"
-                )
-
-                save_project(
-                    user,
-                    st.session_state.raw_df,
-                    st.session_state.df,
-                    st.session_state.active_filename,
-                    st.session_state.formula_logs,
-                    st.session_state.chart_config,
-                )
-
-                st.rerun()
-
-        else:
-            st.info(
-                "SQL-style controls are intentionally "
-                "kept separate from arbitrary SQL execution "
-                "in this first production-safe build."
-            )
-
+                    df[name] = res_series
+                    st.session_state.processed_df = df
+                    st.success(f"Concatenated column '{new_col}' created!")
 
 # =============================================================================
-# ADD DYNAMICS
+# PAGE 3: ADD DYNAMICS (CHARTS)
 # =============================================================================
-elif nav == "ADD DYNAMICS":
-    if st.session_state.df is None:
-        st.info(
-            "Open a dataset first."
-        )
+elif selected_page == "📈 Add Dynamics (Charts)":
+    st.header("Add Dynamics — Chart Builder")
+    df = st.session_state.processed_df
 
+    if df is None:
+        st.warning("Please upload or open a dataset first.")
     else:
-        df = st.session_state.df
+        chart_type = st.selectbox("Chart Type", ["Bar Chart", "Line Chart", "Area Chart"])
+        cols = list(df.columns)
+        num_cols = df.select_dtypes(include=["number"]).columns.tolist()
 
-        chart_type = st.selectbox(
-            "Chart type",
-            [
-                "Bar",
-                "Line",
-                "Area",
-            ],
-        )
+        x_col = st.selectbox("X-Axis (Category Column)", cols)
+        y_col = st.selectbox("Y-Axis (Numeric Values)", num_cols if num_cols else cols)
 
-        category = st.selectbox(
-            "Category / X-axis",
-            list(df.columns),
-        )
-
-        numeric_columns = [
-            column
-            for column in df.columns
-            if pd.api.types.is_numeric_dtype(
-                df[column]
-            )
-        ]
-
-        if not numeric_columns:
-            st.warning(
-                "The active dataset has no numeric "
-                "columns for a chart."
-            )
-
-        else:
-            value = st.selectbox(
-                "Value / Y-axis",
-                numeric_columns,
-            )
-
-            chart_data = (
-                df[
-                    [
-                        category,
-                        value,
-                    ]
-                ]
-                .dropna()
-                .groupby(
-                    category,
-                    as_index=False,
-                )[value]
-                .sum()
-                .head(100)
-            )
-
-            chart_indexed = (
-                chart_data.set_index(category)
-            )
-
-            if chart_type == "Bar":
-                st.bar_chart(
-                    chart_indexed[value]
-                )
-            elif chart_type == "Line":
-                st.line_chart(
-                    chart_indexed[value]
-                )
-            else:
-                st.area_chart(
-                    chart_indexed[value]
-                )
-
+        if st.button("Generate Dynamic Chart"):
             st.session_state.chart_config = {
                 "type": chart_type,
-                "category": category,
-                "value": value,
+                "x": x_col,
+                "y": y_col,
             }
-
-            attachment = st.radio(
-                "Attach chart",
-                [
-                    "Existing Sheet",
-                    "New Sheet",
-                ],
-                horizontal=True,
-            )
-
-            if st.button(
-                "Attach Dynamic Chart",
-                use_container_width=True,
-            ):
-                st.session_state.formula_logs.append(
-                    f"Attached {chart_type} chart "
-                    f"({category} → {value}) "
-                    f"to {attachment}."
-                )
-
-                save_project(
-                    user,
-                    st.session_state.raw_df,
-                    st.session_state.df,
-                    st.session_state.active_filename,
-                    st.session_state.formula_logs,
-                    st.session_state.chart_config,
-                )
-
-                st.success(
-                    "Dynamic chart attached to the project."
-                )
-
-
-# =============================================================================
-# EXPORT CENTER
-# =============================================================================
-elif nav == "Export Center":
-    st.subheader("Export Center")
-
-    if st.session_state.df is None:
-        st.info(
-            "There is no processed dataset to export."
-        )
-
-    else:
-        df = st.session_state.df
-
-        csv_data = df.to_csv(
-            index=False
-        ).encode("utf-8")
-
-        st.download_button(
-            "Download Processed CSV",
-            csv_data,
-            file_name="DACRE_Processed_Data.csv",
-            mime="text/csv",
-            use_container_width=True,
-        )
-
-        chart_df = None
+            st.success("Chart attached to workspace!")
 
         if st.session_state.chart_config:
-            chart_config = (
-                st.session_state.chart_config
-            )
+            cfg = st.session_state.chart_config
+            st.subheader(f"Dynamic {cfg['type']}: {cfg['y']} by {cfg['x']}")
+            
+            chart_data = df[[cfg['x'], cfg['y']]].dropna().set_index(cfg['x'])
+            if cfg["type"] == "Bar Chart":
+                st.bar_chart(chart_data)
+            elif cfg["type"] == "Line Chart":
+                st.line_chart(chart_data)
+            elif cfg["type"] == "Area Chart":
+                st.area_chart(chart_data)
 
-            category = chart_config.get(
-                "category"
-            )
-            value = chart_config.get(
-                "value"
-            )
+# =============================================================================
+# PAGE 4: FILE VAULT
+# =============================================================================
+elif selected_page == "📁 File Vault":
+    st.header("Organization File Vault")
+    saved_files = get_files(user)
 
-            if (
-                category in df.columns
-                and value in df.columns
-            ):
-                chart_df = df[
-                    [
-                        category,
-                        value,
-                    ]
-                ].copy()
+    if not saved_files:
+        st.info("No files stored in vault for your organization.")
+    else:
+        for fname, ftype, created, fjson in saved_files:
+            col_a, col_b = st.columns([3, 1])
+            col_a.markdown(f"**{fname}** (`.{ftype}`) — Saved on: {created}")
+            if col_b.button(f"Load '{fname}'", key=f"btn_{fname}_{created}"):
+                restored_df = dataframe_from_json(fjson)
+                st.session_state.processed_df = restored_df
+                st.session_state.raw_df = restored_df
+                st.session_state.active_filename = fname
+                st.success(f"Loaded {fname} from Vault!")
+                st.rerun()
 
-        xlsx_data = make_excel(
-            df,
-            chart_df,
+# =============================================================================
+# PAGE 5: EXPORT CENTER
+# =============================================================================
+elif selected_page == "📥 Export Center":
+    st.header("Export Center")
+    df = st.session_state.processed_df
+
+    if df is None:
+        st.warning("No data available to export.")
+    else:
+        csv_data = df.to_csv(index=False).encode("utf-8")
+        excel_data = make_excel(df)
+
+        st.download_button(
+            "📥 Download CSV Dataset",
+            data=csv_data,
+            file_name=f"{st.session_state.active_filename}_processed.csv",
+            mime="text/csv",
         )
 
         st.download_button(
-            "Download Excel — Data + Dynamic Chart",
-            xlsx_data,
-            file_name="DACRE_Analysis.xlsx",
-            mime=(
-                "application/vnd.openxmlformats-officedocument."
-                "spreadsheetml.sheet"
-            ),
-            use_container_width=True,
+            "📥 Download Excel Workbook (.xlsx)",
+            data=excel_data,
+            file_name=f"{st.session_state.active_filename}_workbook.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
 
-        st.subheader(
-            "Formula / Action Log"
-        )
-
-        if st.session_state.formula_logs:
-            for action in (
-                st.session_state.formula_logs[-20:]
-            ):
-                st.write(
-                    "•",
-                    action,
-                )
-        else:
-            st.caption(
-                "No actions recorded yet."
-            )
-
-
 # =============================================================================
-# MASTER DI PORTAL
+# PAGE 6: OVERALL ADMIN DI PORTAL (MASTER ONLY)
 # =============================================================================
-elif (
-    nav == "Master DI Portal"
-    and user["role"] == "master"
-):
-    st.subheader(
-        "👑 Overall DI Portal"
-    )
+elif selected_page == "👑 Overall Admin DI Portal" and user["role"] == "master":
+    st.header("👑 Overall Admin DI Portal")
 
-    st.success(
-        "Good day Master David. "
-        "Absolute master access confirmed."
+    adm_tab1, adm_tab2, adm_tab3 = st.tabs(
+        ["👥 Users Information Source", "✉️ Mail Source Page", "📜 System Activity"]
     )
 
     con = db()
 
-    users = pd.read_sql_query(
-        """
-        SELECT
-            id,
-            first_name,
-            last_name,
-            username,
-            company_name,
-            email,
-            role,
-            login_count,
-            created_at,
-            last_login
-        FROM users
-        ORDER BY id DESC
-        """,
-        con,
-    )
+    with adm_tab1:
+        st.subheader("Overall Admin DI — Registered Users Source")
+        users_df = pd.read_sql_query(
+            "SELECT id, first_name, last_name, company_name, email, role, login_count, created_at, last_login FROM users",
+            con,
+        )
+        st.dataframe(users_df, use_container_width=True)
 
-    companies = pd.read_sql_query(
-        """
-        SELECT
-            id,
-            name,
-            owner_username,
-            created_at
-        FROM companies
-        ORDER BY id DESC
-        """,
-        con,
-    )
+    with adm_tab2:
+        st.subheader("Overall Admin DI — Mail Source Logs")
+        mails_df = pd.read_sql_query(
+            "SELECT id, recipient_name, recipient_email, company_name, subject, sender_email, status, sent_at, body FROM emails_log ORDER BY id DESC",
+            con,
+        )
+        st.dataframe(mails_df, use_container_width=True)
 
-    activity = pd.read_sql_query(
-        """
-        SELECT
-            username,
-            company_name,
-            action,
-            created_at
-        FROM activity
-        ORDER BY id DESC
-        LIMIT 200
-        """,
-        con,
-    )
+    with adm_tab3:
+        st.subheader("System Activity Monitor")
+        activity_df = pd.read_sql_query(
+            "SELECT * FROM activity ORDER BY id DESC",
+            con,
+        )
+        st.dataframe(activity_df, use_container_width=True)
 
     con.close()
 
-    stat_a, stat_b, stat_c, stat_d = (
-        st.columns(4)
-    )
-
-    stat_a.metric(
-        "Users",
-        len(users),
-    )
-
-    stat_b.metric(
-        "Companies",
-        len(companies),
-    )
-
-    stat_c.metric(
-        "Total Logins",
-        (
-            int(users["login_count"].sum())
-            if not users.empty
-            else 0
-        ),
-    )
-
-    stat_d.metric(
-        "Activity Events",
-        len(activity),
-    )
-
-    users_tab, companies_tab, activity_tab = (
-        st.tabs(
-            [
-                "Users",
-                "Companies",
-                "Activity",
-            ]
-        )
-    )
-
-    with users_tab:
-        st.dataframe(
-            users,
-            use_container_width=True,
-        )
-
-    with companies_tab:
-        st.dataframe(
-            companies,
-            use_container_width=True,
-        )
-
-    with activity_tab:
-        st.dataframe(
-            activity,
-            use_container_width=True,
-        )
-
-
 # =============================================================================
-# DI CHAT DOCK
+# DI ASSISTANT DOCK (PERSISTENT CO-PILOT CHAT)
 # =============================================================================
-st.markdown(
-    '<div class="chat-dock">',
-    unsafe_allow_html=True,
-)
+st.markdown("<br><br>", unsafe_allow_html=True)
+with st.expander("🤖 DI — David's Intelligence Assistant", expanded=False):
+    for msg in st.session_state.chat_history:
+        st.write(f"**{msg['sender']}**: {msg['text']}")
 
-chat_input_col, chat_button_col = (
-    st.columns([5, 1])
-)
-
-with chat_input_col:
-    message = st.text_input(
-        "💬 Talk to DI",
-        placeholder=(
-            "Ask DI about your data, formulas, "
-            "charts or workflow..."
-        ),
-        key="di_message",
-        label_visibility="visible",
-    )
-
-with chat_button_col:
-    send_message = st.button(
-        "Send to DI",
-        use_container_width=True,
-    )
-
-if send_message and message:
-    reply = di_reply(
-        message,
-        user,
-        st.session_state.df,
-    )
-
-    st.session_state.chat.append(
-        ("You", message)
-    )
-
-    st.session_state.chat.append(
-        ("DI", reply)
-    )
-
-    log_activity(
-        user["username"],
-        user["company"],
-        f"DI chat: {message[:120]}",
-    )
-
-    speak(reply)
-
-    st.rerun()
-
-st.markdown(
-    "</div>",
-    unsafe_allow_html=True,
-)
-
-if st.session_state.chat:
-    with st.expander(
-        "DI Conversation",
-        expanded=False,
-    ):
-        for speaker, text in (
-            st.session_state.chat[-8:]
-        ):
-            st.markdown(
-                f"**{speaker}:** {text}"
-            )
+    di_input = st.text_input("Ask DI something about your data or workspace...", key="di_dock_input")
+    if st.button("Send to DI"):
+        if di_input:
+            st.session_state.chat_history.append({"sender": user["first_name"], "text": di_input})
+            reply = di_reply(di_input, user, st.session_state.processed_df)
+            st.session_state.chat_history.append({"sender": "DI", "text": reply})
+            speak(reply)
+            st.rerun()
