@@ -451,7 +451,7 @@ else:
 
     # TAB 2: DATA PREVIEW & PRINT
     elif st.session_state.current_nav_page == " Data Preview & Print":
-        st.subheader( Synchronized Read-Only Data Preview")
+     st.subheader("📋 Synchronized Read-Only Data Preview")
         st.dataframe(current_df, use_container_width=True)
 
         p_col1, p_col2 = st.columns(2)
