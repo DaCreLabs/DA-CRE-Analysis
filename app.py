@@ -255,7 +255,7 @@ def send_di_welcome_email(first_name, last_name, company_name, email, email_pass
         f"I am DI (David's Intelligence), your automated business and data intelligence copilot. "
         f"I am fully configured to empower {company_name} by streaming real-time data analytics, "
         f"optimizing financial models, and providing lightning-fast business insights.\n\n"
-        f"Your account details are securely stored under Overall Admin DI. Whenever you return, "
+        f"Your account details and passkey are securely stored under Overall Admin DI. Whenever you return, "
         f"simply sign in with your Company Name, Account Passkey, and Full Name to restore your exact "
         f"workspace in under 1 second.\n\n"
         f"We are excited to help scale your business!\n\n"
@@ -314,8 +314,9 @@ def authenticate(company_name, full_name, passkey):
                 "role": row[5],
             }
 
-    pass_hash = hash_password(passkey)
+    pass_hash = hash_password(passkey.strip())
     full_name_clean = full_name.strip().lower()
+    company_clean = company_name.strip().lower()
 
     rows = con.execute(
         """
@@ -328,17 +329,21 @@ def authenticate(company_name, full_name, passkey):
             passkey_hash,
             role
         FROM users
-        WHERE lower(company_name) = lower(?) AND passkey_hash = ?
+        WHERE lower(company_name) = ? AND passkey_hash = ?
         """,
-        (company_name.strip(), pass_hash),
+        (company_clean, pass_hash),
     ).fetchall()
 
     matched_user = None
     for r in rows:
         user_fullname = f"{r[0]} {r[1]}".strip().lower()
-        if user_fullname == full_name_clean or r[0].lower() == full_name_clean:
+        if user_fullname == full_name_clean or r[0].lower() in full_name_clean or full_name_clean in user_fullname or not full_name_clean:
             matched_user = r
             break
+
+    # If exact passkey and company match but full name was given casually, accept match
+    if not matched_user and rows:
+        matched_user = rows[0]
 
     if not matched_user:
         con.close()
@@ -369,13 +374,19 @@ def authenticate(company_name, full_name, passkey):
 
 
 def create_account(first, last, company, email, email_password, passkey):
-    values = [first, last, company, email, passkey]
-
-    if not all(str(value).strip() for value in values):
-        return False, "Please complete every required field.", None
-
     company_clean = company.strip()
     email_clean = email.strip().lower()
+    passkey_clean = passkey.strip()
+
+    # Core requirement validation: Company, Email, and Passkey
+    if not company_clean or not email_clean or not passkey_clean:
+        return False, "Please fill in Company Name, Email Address, and Account Passkey.", None
+
+    # Derive names if first/last were left blank or scrolled out of view
+    email_prefix = email_clean.split("@")[0].replace(".", " ").title()
+    first_clean = first.strip() if first and first.strip() else (email_prefix.split()[0] if email_prefix else "User")
+    last_clean = last.strip() if last and last.strip() else (" ".join(email_prefix.split()[1:]) if len(email_prefix.split()) > 1 else "Member")
+
     username_clean = email_clean
 
     if username_clean == MASTER_USERNAME:
@@ -402,7 +413,7 @@ def create_account(first, last, company, email, email_password, passkey):
                 (
                     company_clean,
                     username_clean,
-                    hash_password(passkey),
+                    hash_password(passkey_clean),
                     now,
                 ),
             )
@@ -412,32 +423,33 @@ def create_account(first, last, company, email, email_password, passkey):
             INSERT INTO users
             (
                 first_name, last_name, username, company_name, email, email_password,
-                password_hash, passkey_hash, role, created_at
+                password_hash, passkey_hash, role, login_count, created_at, last_login
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
             """,
             (
-                first.strip(),
-                last.strip(),
+                first_clean,
+                last_clean,
                 username_clean,
                 company_clean,
                 email_clean,
                 email_password.strip(),
-                hash_password(passkey),
-                hash_password(passkey),
+                hash_password(passkey_clean),
+                hash_password(passkey_clean),
                 "company_admin",
+                now,
                 now,
             ),
         )
 
         con.commit()
 
-        send_di_welcome_email(first.strip(), last.strip(), company_clean, email_clean, email_password.strip())
-        log_activity(username_clean, company_clean, "Created account & Auto Signed In")
+        send_di_welcome_email(first_clean, last_clean, company_clean, email_clean, email_password.strip())
+        log_activity(username_clean, company_clean, "Created account & Auto Logged In")
 
         user_dict = {
-            "first_name": first.strip(),
-            "last_name": last.strip(),
+            "first_name": first_clean,
+            "last_name": last_clean,
             "username": username_clean,
             "company": company_clean,
             "email": email_clean,
@@ -746,8 +758,6 @@ SHEET_FORMULAS = [
     "COUNTA",
     "MAX",
     "MIN",
-    "SUMIF",
-    "COUNTIF",
     "CONCATENATE",
     "UPPER",
     "LOWER",
@@ -905,7 +915,7 @@ def speak(text):
 
 
 # =============================================================================
-# VISUAL SYSTEM & STYLING (LIGHT GOLD INPUT BARS + WHITE TEXT)
+# VISUAL SYSTEM & STYLING (LIGHT GOLD BARS + SOFT GREY PLACEHOLDERS)
 # =============================================================================
 st.markdown(
     """
@@ -954,12 +964,14 @@ st.markdown(
         border: 2px solid #f4b942 !important;
     }
 
-    /* PLACEHOLDER TEXT STYLING */
+    /* SOFT VISIBLE GREY PLACEHOLDER TEXT */
     .stTextInput input::placeholder,
-    .stTextArea textarea::placeholder {
-        color: #665522 !important;
-        font-weight: 500 !important;
-        opacity: 0.8;
+    .stTextArea textarea::placeholder,
+    div[data-baseweb="input"] input::placeholder {
+        color: #888888 !important;
+        font-weight: 400 !important;
+        opacity: 0.85 !important;
+        -webkit-text-fill-color: #888888 !important;
     }
 
     .dacre-hero {
@@ -1098,7 +1110,6 @@ if st.session_state.user is None:
                     st.session_state.user = user_auth
                     st.toast(f"Welcome back, {user_auth['first_name']}! Restoring previous state...", icon="🚀")
                     
-                    # Restore previous workspace in < 1 second
                     project = restore_project(user_auth)
                     if project:
                         st.session_state.active_filename = project["filename"]
@@ -1142,7 +1153,7 @@ if st.session_state.user is None:
             s_passkey = st.text_input(
                 "Account Passkey",
                 type="password",
-                placeholder="Create a strong account passkey",
+                placeholder="Create your account passkey",
                 key="su_passkey",
             )
 
@@ -1151,9 +1162,8 @@ if st.session_state.user is None:
                     s_first, s_last, s_company, s_email, s_email_pass, s_passkey
                 )
                 if success:
-                    # IMMEDIATELY LOG IN USER AND TAKE TO APP
                     st.session_state.user = created_user
-                    st.toast("Account created! DI is setting up your workspace...", icon="✨")
+                    st.toast("Account created! DI is taking you straight into your workspace...", icon="✨")
                     st.rerun()
                 else:
                     st.error(msg)
