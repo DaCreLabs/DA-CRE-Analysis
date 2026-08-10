@@ -8,91 +8,44 @@ from datetime import datetime
 from PIL import Image
 
 # -----------------------------------------------------------------------------
-# 1. APP CONFIGURATION & EXACT DACRE CHATGPT IMAGE PAGE ICON
+# 1. APP CONFIGURATION & DACRE LOGO PAGE ICON
 # -----------------------------------------------------------------------------
 APP_NAME = "Dacre Analysis Engine"
 MASTER_FULL_NAME = "David Emenike"
 MASTER_PASSKEY = "theWORDofGOD@111"
 
-# EXACT image from the GitHub repository.
-# Keep this file in the same folder as app.py.
+# Original full Dacre artwork used inside the application.
 LOGO_FILENAME = "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png"
 
-# Resolve the image relative to app.py so Streamlit Cloud can find it reliably.
+# Dedicated browser favicon made directly from the DA logo in the artwork.
+# The unique filename helps avoid the old Streamlit favicon being reused from
+# browser cache after deployment.
+FAVICON_FILENAME = "dacre_favicon_20260810.png"
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOGO_PATH = os.path.join(BASE_DIR, LOGO_FILENAME)
+FAVICON_PATH = os.path.join(BASE_DIR, FAVICON_FILENAME)
 
-# Use the EXACT ChatGPT image as the Streamlit browser-tab/page icon.
-# No emoji or replacement icon is used when the image is present.
-if not os.path.isfile(LOGO_PATH):
+# The favicon is intentionally a clean square crop of YOUR DA logo, rather
+# than the entire poster image. At browser-tab size, the DA emblem remains
+# recognizable.
+if not os.path.isfile(FAVICON_PATH):
     raise FileNotFoundError(
-        f"Required page icon was not found: {LOGO_FILENAME}. "
-        "Make sure the image is uploaded to the same GitHub folder as app.py."
+        f"Missing Dacre favicon: {FAVICON_FILENAME}. "
+        "Upload this file to the same GitHub folder as app.py."
     )
 
-logo_img = Image.open(LOGO_PATH)
+if not os.path.isfile(LOGO_PATH):
+    raise FileNotFoundError(
+        f"Missing Dacre logo artwork: {LOGO_FILENAME}. "
+        "Upload this file to the same GitHub folder as app.py."
+    )
 
 st.set_page_config(
     page_title=f"{APP_NAME} | Autonomous DI Platform",
-    page_icon=logo_img,
+    page_icon=FAVICON_PATH,
     layout="wide",
     initial_sidebar_state="expanded"
-)
-
-# -----------------------------------------------------------------------------
-# FORCE THE SAME EXACT GITHUB CHATGPT IMAGE AS THE BROWSER FAVICON
-# -----------------------------------------------------------------------------
-# Streamlit can leave its previous favicon cached in the browser. The script
-# below explicitly replaces every favicon link in the parent Streamlit page
-# with the exact image stored in this repository.
-FAVICON_URL = (
-    "https://raw.githubusercontent.com/DaCreLabs/DA-CRE-Analysis/main/"
-    "ChatGPT%20Image%20Jul%2029%2C%202026%2C%2002_27_41%20PM.png?v=dacre-logo-1"
-)
-
-components.html(
-    f"""
-    <script>
-    (function() {{
-        const faviconUrl = {FAVICON_URL!r};
-
-        function forceDacreFavicon() {{
-            try {{
-                const head = window.parent.document.head;
-
-                // Remove Streamlit/previous favicon declarations.
-                head.querySelectorAll(
-                    'link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]'
-                ).forEach(function(link) {{
-                    link.remove();
-                }});
-
-                // Install the exact Dacre ChatGPT image as the favicon.
-                const icon = window.parent.document.createElement("link");
-                icon.rel = "icon";
-                icon.type = "image/png";
-                icon.href = faviconUrl;
-                head.appendChild(icon);
-
-                const shortcut = window.parent.document.createElement("link");
-                shortcut.rel = "shortcut icon";
-                shortcut.type = "image/png";
-                shortcut.href = faviconUrl;
-                head.appendChild(shortcut);
-            }} catch (e) {{
-                console.log("Dacre favicon override:", e);
-            }}
-        }}
-
-        forceDacreFavicon();
-
-        // Streamlit can rebuild parts of the page during reruns, so re-apply it.
-        setInterval(forceDacreFavicon, 1500);
-    }})();
-    </script>
-    """,
-    height=0,
-    width=0
 )
 
 # -----------------------------------------------------------------------------
@@ -508,9 +461,8 @@ else:
         st.dataframe(current_df, use_container_width=True)
 
         p_col1, p_col2 = st.columns(2)
-
         with p_col1:
-            csv_data = current_df.to_csv(index=False).encode("utf-8")
+            csv_data = current_df.to_csv(index=False).encode('utf-8')
             st.download_button(
                 label="📥 Download Clean CSV File",
                 data=csv_data,
@@ -518,7 +470,6 @@ else:
                 mime="text/csv",
                 use_container_width=True
             )
-
         with p_col2:
             if st.button("🖨️ Print Data Report", use_container_width=True):
                 components.html("<script>window.print();</script>", height=0)
