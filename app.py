@@ -6,38 +6,53 @@ import time
 from datetime import datetime
 from PIL import Image
 import os
+import base64
 
 # -----------------------------------------------------------------------------
-# 1. APP CONFIGURATION & PERMANENT LOGO PAGE ICON SETUP
+# 1. APP CONFIGURATION & HARD-LOCKED LOGO FAVICON
 # -----------------------------------------------------------------------------
 APP_NAME = "Dacre Analysis Engine"
 MASTER_FULL_NAME = "David Emenike"
 MASTER_PASSKEY = "theWORDofGOD@111"
 
-# Target logo image file in your GitHub root folder
 LOGO_PATH = "logo.png"
 
-# Load the permanent logo image for the browser tab favicon (page_icon)
-page_favicon = "📊"
-if os.path.exists(LOGO_PATH):
-    try:
-        page_favicon = Image.open(LOGO_PATH)
-    except Exception:
-        page_favicon = LOGO_PATH
-
+# Setup default page config
 st.set_page_config(
     page_title=f"{APP_NAME} | Autonomous DI Platform",
-    page_icon=page_favicon,
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# FORCE PERMANENT BROWSER TAB FAVICON (INJECT VIA BASE64 TO OVERRIDE STREAMLIT RED CIRCLE)
+if os.path.exists(LOGO_PATH):
+    try:
+        with open(LOGO_PATH, "rb") as image_file:
+            encoded_logo = base64.b64encode(image_file.read()).decode('utf-8')
+            
+        favicon_injector = f"""
+            <script>
+                function lockFavicon() {{
+                    var link = parent.document.querySelector("link[rel*='icon']") || parent.document.createElement('link');
+                    link.type = 'image/png';
+                    link.rel = 'shortcut icon';
+                    link.href = 'data:image/png;base64,{encoded_logo}';
+                    parent.document.getElementsByTagName('head')[0].appendChild(link);
+                }}
+                lockFavicon();
+                setInterval(lockFavicon, 1000); // Prevents Streamlit from replacing it with the red circle
+            </script>
+        """
+        components.html(favicon_injector, height=0, width=0)
+    except Exception as e:
+        pass
 
 # -----------------------------------------------------------------------------
 # 2. ULTRA-BOLD HIGH VISIBILITY THEME
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
-    /* Force ABSOLUTELY ALL TEXT to be Ultra-Bold and Sharp White/Blue */
     * {
         font-weight: 900 !important;
         -webkit-font-smoothing: antialiased;
@@ -48,12 +63,10 @@ st.markdown("""
         color: #ffffff !important;
     }
 
-    /* Global Background Gradient */
     .stApp {
         background: linear-gradient(135deg, #0b1329 0%, #101d36 50%, #1a2942 100%) !important;
     }
 
-    /* Sidebar Styling */
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #090e1a 0%, #111a2e 100%) !important;
         border-right: 2.5px solid #38bdf8 !important;
@@ -64,7 +77,6 @@ st.markdown("""
         font-weight: 900 !important;
     }
 
-    /* Hero Header Title */
     .hero-title {
         background: linear-gradient(90deg, #38bdf8 0%, #f59e0b 50%, #60a5fa 100%);
         background-size: 200% auto;
@@ -82,7 +94,6 @@ st.markdown("""
         to { background-position: 200% center; }
     }
 
-    /* Input Fields */
     .stTextInput input, .stNumberInput input, .stSelectbox div {
         background-color: #1e293b !important;
         color: #ffffff !important;
@@ -91,14 +102,12 @@ st.markdown("""
         border-radius: 8px !important;
     }
 
-    /* Form Labels High Visibility */
     label, [data-testid="stWidgetLabel"] p {
         font-size: 1.1rem !important;
         font-weight: 900 !important;
         color: #38bdf8 !important;
     }
 
-    /* High Visibility Glowing Buttons */
     .stButton>button {
         background: linear-gradient(135deg, #0284c7 0%, #1d4ed8 100%) !important;
         color: #ffffff !important;
@@ -116,7 +125,6 @@ st.markdown("""
         box-shadow: 0 6px 20px rgba(56, 189, 248, 0.8) !important;
     }
 
-    /* Dark Theme Card for Presentation Slides */
     .presentation-card {
         background: rgba(15, 23, 42, 0.95) !important;
         border: 2px solid #38bdf8 !important;
