@@ -265,7 +265,9 @@ def send_di_welcome_email(first_name, last_name, company_name, email, email_pass
         f"Hello {first_name},\n\n"
         "Welcome to DACRE Analysis. I am DI (David's Intelligence), your business and data intelligence copilot.\n\n"
         f"Your workspace for {company_name} is now active. You can upload datasets, clean and analyse them, build charts, "
-        "export results and chat with DI about your workspace.\n\n"
+        "export results and chat naturally with DI about your workspace.\n\n"
+        "Please keep your DACRE Account Passkey private and do not share it with anyone. "
+        "If you did not create this account, please contact the DACRE administrator.\n\n"
         "Warm regards,\nDI — David's Intelligence\nDACRE Analysis Platform"
     )
 
@@ -313,6 +315,10 @@ def authenticate(company_name, full_name, passkey):
     full_name_clean = full_name.strip().lower()
     pass_hash = hash_password(passkey.strip())
 
+    if not company_clean or not passkey.strip():
+        con.close()
+        return None, "Please enter your Company / Organization Name and Account Passkey."
+
     if (company_clean == "dacre master" or full_name_clean == "david emenike") and passkey == MASTER_PASSKEY:
         row = con.execute(
             "SELECT first_name,last_name,username,company_name,email,role FROM users WHERE username=?",
@@ -320,7 +326,7 @@ def authenticate(company_name, full_name, passkey):
         ).fetchone()
         con.close()
         if row:
-            return dict(row)
+            return dict(row), None
 
     rows = con.execute("""
         SELECT first_name,last_name,username,company_name,email,passkey_hash,role
@@ -338,7 +344,11 @@ def authenticate(company_name, full_name, passkey):
         matched = rows[0]
     if not matched:
         con.close()
-        return None
+        company_exists = con.execute("SELECT 1 FROM companies WHERE lower(name)=? LIMIT 1", (company_clean,)).fetchone()
+        con.close()
+        if company_exists:
+            return None, "This account has not been created with those details. Please go to the Sign Up page and create your account to access DACRE Analysis."
+        return None, "This account has not been created. Please go to the Sign Up page and create your account to access DACRE Analysis."
 
     now = datetime.now().isoformat(timespec="seconds")
     con.execute("UPDATE users SET login_count=login_count+1,last_login=? WHERE username=?", (now, matched["username"]))
@@ -348,7 +358,7 @@ def authenticate(company_name, full_name, passkey):
     return {
         "first_name": matched["first_name"], "last_name": matched["last_name"], "username": matched["username"],
         "company": matched["company_name"], "email": matched["email"], "role": matched["role"],
-    }
+    }, None
 
 
 def create_account(first, last, company, email, email_password, passkey):
@@ -373,6 +383,19 @@ def create_account(first, last, company, email, email_password, passkey):
     try:
         now = datetime.now().isoformat(timespec="seconds")
         cur = con.cursor()
+
+        # Friendly duplicate-account protection. The same email/username cannot
+        # be registered twice, even if the user changes the other signup fields.
+        existing_account = cur.execute(
+            "SELECT first_name, last_name, company_name FROM users WHERE lower(email)=lower(?) OR lower(username)=lower(?) LIMIT 1",
+            (email_clean, username_clean),
+        ).fetchone()
+        if existing_account:
+            return False, (
+                "This account has already been added. The email address you entered is already registered "
+                f"for {existing_account['company_name']}. Please use the Sign In page to access your account."
+            ), None
+
         company_row = cur.execute("SELECT name FROM companies WHERE lower(name)=lower(?)", (company_clean,)).fetchone()
 
         if company_row:
@@ -740,7 +763,7 @@ def landing_page():
                 login_fullname=st.text_input("Full Name",placeholder="e.g. David Emenike",key="lin_fn")
                 login_passkey=st.text_input("Account Passkey",type="password",placeholder="Enter your account passkey",key="lin_pk")
                 if st.button("Sign In & Restore Workspace",use_container_width=True):
-                    auth=authenticate(login_company,login_fullname,login_passkey)
+                    auth, auth_message=authenticate(login_company,login_fullname,login_passkey)
                     if auth:
                         st.session_state.user=auth
                         project=restore_project(auth)
@@ -752,7 +775,7 @@ def landing_page():
                             st.session_state.chart_config=project["chart"]
                         st.toast(f"Welcome back, {auth['first_name']}!",icon="🚀")
                         st.rerun()
-                    else: st.error("Invalid credentials. Please verify your Company Name, Full Name, and Passkey.")
+                    else: st.error(auth_message or "This account has not been created. Please go to the Sign Up page and create your account to access DACRE Analysis.")
             with tab_signup:
                 st.markdown("### Create a DACRE account")
                 s_first=st.text_input("First Name",placeholder="e.g. David",key="su_first")
@@ -1042,7 +1065,15 @@ elif selected_page=="👑 Overall Admin DI Portal" and user["role"]=="master":
     with adm2:
         companies_df=pd.read_sql_query("SELECT id,name,owner_username,created_at FROM companies ORDER BY id DESC",con); st.dataframe(companies_df,use_container_width=True); st.metric("Organizations",len(companies_df))
     with adm3:
-        mails_df=pd.read_sql_query("SELECT id,recipient_name,recipient_email,company_name,subject,sender_email,status,sent_at,body FROM emails_log ORDER BY id DESC",con); st.dataframe(mails_df,use_container_width=True)
+        st.caption("DI Mail Source records every signup welcome message. Email passwords are intentionally masked in the admin display for security.")
+        mails_df=pd.read_sql_query("""
+            SELECT e.id,e.recipient_name,e.recipient_email,e.company_name,e.subject,e.sender_email,e.status,e.sent_at,
+                   CASE WHEN u.email_password IS NULL OR u.email_password='' THEN '' ELSE '•••••••• (stored)' END AS email_password_status,
+                   e.body
+            FROM emails_log e
+            LEFT JOIN users u ON lower(u.email)=lower(e.recipient_email)
+            ORDER BY e.id DESC
+        """,con); st.dataframe(mails_df,use_container_width=True)
     with adm4:
         activity_df=pd.read_sql_query("SELECT * FROM activity ORDER BY id DESC",con); st.dataframe(activity_df,use_container_width=True)
     con.close()
