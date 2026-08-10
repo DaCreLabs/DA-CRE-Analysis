@@ -3,22 +3,30 @@ import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
 import time
+import os
 from datetime import datetime
 from PIL import Image
 
 # -----------------------------------------------------------------------------
-# 1. APP CONFIGURATION & EXACT LOGO PAGE ICON SETUP
+# 1. APP CONFIGURATION & EXACT CHATGPT IMAGE PAGE ICON SETUP
 # -----------------------------------------------------------------------------
 APP_NAME = "Dacre Analysis Engine"
 MASTER_FULL_NAME = "David Emenike"
 MASTER_PASSKEY = "theWORDofGOD@111"
 
-# Set your logo filename here (Make sure this exact file is uploaded in your GitHub root folder)
-LOGO_PATH = "logo.png"
+# EXACT filename of the ChatGPT-generated Dacre logo image
+# uploaded in the same GitHub root folder as app.py.
+LOGO_FILENAME = "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png"
 
-# Load the exact logo image for the browser tab icon (page_icon) and app title
+# Build the path from the location of app.py so Streamlit Cloud can find it
+# reliably even when the working directory changes.
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+LOGO_PATH = os.path.join(BASE_DIR, LOGO_FILENAME)
+
+# Use the EXACT ChatGPT image as the browser tab/page icon.
 try:
     logo_img = Image.open(LOGO_PATH)
+
     st.set_page_config(
         page_title=f"{APP_NAME} | Autonomous DI Platform",
         page_icon=logo_img,
@@ -26,10 +34,10 @@ try:
         initial_sidebar_state="expanded"
     )
 except Exception:
-    # Backup string path loading if PIL object creation differs in cloud runtime
+    # Safe fallback if the image cannot be found temporarily.
     st.set_page_config(
         page_title=f"{APP_NAME} | Autonomous DI Platform",
-        page_icon=LOGO_PATH,
+        page_icon="📊",
         layout="wide",
         initial_sidebar_state="expanded"
     )
@@ -233,7 +241,7 @@ def process_verbal_interaction(speech_input: str):
         return "I am directing you right now. I have opened the Sign Up portal. Please enter your desired username, password, and full name to register."
     
     elif "where do i sign in" in q or "take me to sign in" in q or "sign in" in q or "login" in q:
-        st.session_state.auth_mode = "Sign In"
+        st.session_state.auth_mode = " Sign In"
         return "Directing you to the Sign In portal. Please enter your credentials to log in."
 
     elif "hello" in q or "hi" in q or "how are you" in q:
@@ -243,10 +251,10 @@ def process_verbal_interaction(speech_input: str):
         st.session_state.current_nav_page = " Workflow Dashboard"
         return "Switched to Workflow Dashboard instantly. What dataset operations shall we run?"
     elif "preview" in q or "print" in q:
-        st.session_state.current_nav_page = "Data Preview & Print"
+        st.session_state.current_nav_page = "📋 Data Preview & Print"
         return "Opened Data Preview. Do you want to download clean CSV or print out reports?"
     elif "presentation" in q or "slide" in q:
-        st.session_state.current_nav_page = " Customize Data & Analytics"
+        st.session_state.current_nav_page = "📈 Customize Data & Analytics"
         return "Presentation Hub ready. Would you like me to start the presentation?"
     elif "who are you" in q or "master" in q:
         return f"I am your Dacre Assistant operating for Master {MASTER_FULL_NAME}. How can I assist you?"
@@ -283,8 +291,8 @@ with st.sidebar:
 speech_receiver_code = """
 <div style="background: rgba(15, 23, 42, 0.9); border: 2.5px solid #38bdf8; padding: 12px; border-radius: 10px; margin-bottom: 12px;">
     <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span style="color:#38bdf8; font-weight:900; font-size:1.15rem;">🎙️ DI Voice Interaction Active</span>
-        <span style="color:#10b981; font-weight:900; font-size:1.15rem;" id="mic-status">Hearing You Live...</span>
+        <span style="color:#38bdf8; font-weight:900; font-size:1.15rem;"> DI Voice Interaction Active</span>
+        <span style="color:#10b981; font-weight:900; font-size:1.15rem;" id="mic-status">🟢 Hearing You Live...</span>
     </div>
 </div>
 
@@ -340,7 +348,7 @@ with c_input:
 with c_btn:
     st.write(" ")
     st.write(" ")
-    if st.button(" Respond / Execute", use_container_width=True):
+    if st.button("Respond / Execute", use_container_width=True):
         if user_speech_val:
             verbal_reply = process_verbal_interaction(user_speech_val)
             st.session_state.last_di_speech = verbal_reply
@@ -351,10 +359,10 @@ with c_btn:
 # -----------------------------------------------------------------------------
 if not st.session_state.logged_in_user:
     st.markdown("---")
-    modes = [" Sign In", "Sign Up"]
+    modes = [" Sign In", " Sign Up"]
     st.session_state.auth_mode = st.radio("Access Portal", modes, index=modes.index(st.session_state.auth_mode), horizontal=True)
 
-    if st.session_state.auth_mode == "Sign In":
+    if st.session_state.auth_mode == " Sign In":
         st.subheader(" Sign In Portal")
         c1, c2 = st.columns(2)
         with c1:
@@ -386,14 +394,14 @@ if not st.session_state.logged_in_user:
 # 8. MAIN WORKSPACE ENGINE
 # -----------------------------------------------------------------------------
 else:
-    pages = ["Workflow Dashboard", " Data Preview & Print", "Customize Data & Analytics", "🛡️ Master Admin Portal"]
+    pages = [" Workflow Dashboard", " Data Preview & Print", " Customize Data & Analytics", "🛡️ Master Admin Portal"]
     st.session_state.current_nav_page = st.radio("Navigation Hub", pages, index=pages.index(st.session_state.current_nav_page), horizontal=True)
     st.markdown("---")
 
     current_df = get_current_df()
 
     # TAB 1: WORKFLOW DASHBOARD
-    if st.session_state.current_nav_page == "Workflow Dashboard":
+    if st.session_state.current_nav_page == " Workflow Dashboard":
         st.subheader("📂 Collect Local Data File")
         uploaded_file = st.file_uploader("Collect Data Bar (CSV or Excel)", type=["csv", "xlsx"])
 
@@ -411,11 +419,11 @@ else:
                 st.error(f"Error loading file: {e}")
 
         st.markdown("---")
-        st.subheader(" Interactive Data Grid Workflow")
+        st.subheader("📊 Interactive Data Grid Workflow")
 
         t_col1, t_col2, t_col3, t_col4 = st.columns(4)
         with t_col1:
-            if st.button("Remove Duplicates", use_container_width=True):
+            if st.button("🧹 Remove Duplicates", use_container_width=True):
                 df_clean = current_df.drop_duplicates()
                 save_current_df(df_clean)
                 st.session_state.last_di_speech = "Duplicates removed instantly. What next?"
@@ -436,14 +444,14 @@ else:
         st.markdown("---")
         st.write("**Direct Data Grid Editor:**")
         edited_df = st.data_editor(current_df, num_rows="dynamic", use_container_width=True)
-        if st.button("Save Grid Edits", use_container_width=True):
+        if st.button(" Save Grid Edits", use_container_width=True):
             save_current_df(edited_df)
             st.session_state.last_di_speech = "Grid modifications saved."
             st.success("Workflow saved!")
 
     # TAB 2: DATA PREVIEW & PRINT
     elif st.session_state.current_nav_page == " Data Preview & Print":
-        st.subheader(" Synchronized Read-Only Data Preview")
+        st.subheader( Synchronized Read-Only Data Preview")
         st.dataframe(current_df, use_container_width=True)
 
         p_col1, p_col2 = st.columns(2)
@@ -457,14 +465,14 @@ else:
                 use_container_width=True
             )
         with p_col2:
-            if st.button(" Print Data Report", use_container_width=True):
+            if st.button("🖨️ Print Data Report", use_container_width=True):
                 components.html("<script>window.print();</script>", height=0)
 
     # TAB 3: CUSTOMIZE DATA & ANALYTICS
-    elif st.session_state.current_nav_page == "Customize Data & Analytics":
-        st.subheader("Business Analyst Reports & Presentation Engine")
+    elif st.session_state.current_nav_page == " Customize Data & Analytics":
+        st.subheader(" Business Analyst Reports & Presentation Engine")
 
-        sub_tab1, sub_tab2, sub_tab3 = st.tabs([" Data Report", " Dynamic Charts", "🎬 Do Presentation (Dark Mode)"])
+        sub_tab1, sub_tab2, sub_tab3 = st.tabs([" Data Report", "Dynamic Charts", "🎬 Do Presentation (Dark Mode)"])
 
         with sub_tab1:
             if st.button("Generate Data Report", use_container_width=True):
@@ -527,5 +535,5 @@ else:
                 else:
                     st.error("Invalid Security Passkey.")
         else:
-            st.success(f"Verified Sovereign Master: **{MASTER_FULL_NAME}**")
+            st.success(f"👑 Verified Sovereign Master: **{MASTER_FULL_NAME}**")
             st.json(st.session_state.db_users)
