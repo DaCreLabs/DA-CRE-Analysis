@@ -1,6 +1,3 @@
-app.py
-
-
 import hashlib
 import hmac
 import io
