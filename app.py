@@ -1,3 +1,6 @@
+app.py
+
+
 import hashlib
 import hmac
 import io
@@ -621,23 +624,6 @@ def memory_box_direct_answer(text):
     if hits>=2 and best['category'] in {"IDENTITY","PLATFORM","PROJECT","PROJECT_HISTORY","SECURITY","DI","UX","ACCOUNT","BASIC","EXCEL_SHEETS","DATA","ANALYTICS","BUSINESS","BI"}:
         return best['content']
     return None
-
-seed_di_memory()
-
-
-def get_di_memory(limit=80):
-    con=db()
-    rows=con.execute("SELECT id,category,title,content,priority,active,created_at,updated_at FROM di_memory WHERE active=1 ORDER BY priority DESC,id ASC LIMIT ?",(int(limit),)).fetchall()
-    con.close()
-    return [dict(r) for r in rows]
-
-
-def di_memory_context(limit=80):
-    rows=get_di_memory(limit)
-    if not rows:
-        return "DI Memory Box is currently empty."
-    return "\n".join([f"[{r['category']}] {r['title']}: {r['content']}" for r in rows])
-
 
 seed_di_memory()
 
