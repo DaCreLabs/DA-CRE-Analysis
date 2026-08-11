@@ -1,3 +1,4 @@
+
 import hashlib
 import io
 import json
@@ -248,8 +249,27 @@ def init_db():
     # an existing SQLite table, so explicitly migrate the table here.
     # -------------------------------------------------------------------------
     memory_columns = {row[1] for row in cur.execute("PRAGMA table_info(di_memory)").fetchall()}
-    if "is_active" not in memory_columns:
-        cur.execute("ALTER TABLE di_memory ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1")
+    # Migrate every column used by the current Memory Box code. Older DACRE
+    # deployments may have created di_memory with only the basic fields.
+    memory_migrations = [
+        ("category", "TEXT NOT NULL DEFAULT 'GENERAL'"),
+        ("title", "TEXT NOT NULL DEFAULT 'Untitled memory'"),
+        ("content", "TEXT NOT NULL DEFAULT ''"),
+        ("priority", "INTEGER NOT NULL DEFAULT 50"),
+        ("created_by", "TEXT NOT NULL DEFAULT 'DACRE SYSTEM'"),
+        ("created_at", "TEXT NOT NULL DEFAULT ''"),
+        ("updated_at", "TEXT NOT NULL DEFAULT ''"),
+        ("is_active", "INTEGER NOT NULL DEFAULT 1"),
+    ]
+    for column, definition in memory_migrations:
+        if column not in memory_columns:
+            cur.execute(f"ALTER TABLE di_memory ADD COLUMN {column} {definition}")
+
+    # Backfill timestamps in migrated rows so later UPDATE/ORDER operations
+    # always have usable values.
+    migration_now = datetime.now().isoformat(timespec="seconds")
+    cur.execute("UPDATE di_memory SET created_at=? WHERE created_at IS NULL OR created_at=''", (migration_now,))
+    cur.execute("UPDATE di_memory SET updated_at=? WHERE updated_at IS NULL OR updated_at=''", (migration_now,))
 
     # Master DI workforce registry. Existing databases are preserved.
     cur.execute("""
