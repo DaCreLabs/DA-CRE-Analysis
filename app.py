@@ -257,6 +257,26 @@ def init_db():
         )
     """)
 
+    # Chibobec Loan Service client/loan tracking and WhatsApp reminder ledger.
+    # Reminders are idempotent: each 2-day and due-date message is recorded so
+    # the same reminder is not sent twice.
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS loan_clients (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            company_name TEXT NOT NULL,
+            client_name TEXT NOT NULL,
+            whatsapp_number TEXT NOT NULL,
+            loan_amount REAL NOT NULL DEFAULT 0,
+            lent_date TEXT NOT NULL,
+            due_date TEXT NOT NULL,
+            reminder_2_sent INTEGER NOT NULL DEFAULT 0,
+            due_sent INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+    """)
+
     # DI Memory Box: the persistent source of truth used by every DI answer.
     # Entries are intentionally human-readable so the master can inspect and extend DI's knowledge.
     cur.execute("""
@@ -364,6 +384,10 @@ DI_MEMORY_SEED = [
     ("SECURITY", "Master protection", "The master account must be protected from permanent account deletion through normal account controls.", 2000),
     ("SECURITY", "Credential protection", "DACRE must never reveal the master passkey, password hashes, API keys, tokens or other private credentials in DI answers or ordinary screens.", 2000),
     ("ACCOUNT", "Signup and access", "A user who completes the required signup information should be able to access DACRE. Duplicate usernames or emails should be prevented.", 1900),
+    ("CLIENT", "Chibobec Loan Service", "Chibobec Loan Service is a protected client workspace in DACRE Analysis. When an authenticated account signs up using a company name containing the word chibobec, DACRE recognises the organization as Chibobec Loan Service and opens the client's dedicated workspace.", 1950),
+    ("CLIENT", "Chibobec welcome", "The Chibobec client is Mr Chibuike Chukwunere. When an authenticated Chibobec account is created, DI welcomes the client respectfully and states that the team was asked to treat the client with immense care.", 1950),
+    ("CLIENT", "Chibobec loan desk", "Chibobec Loan Desk stores the client name, WhatsApp number, loan amount, date the loan was given and repayment due date. It tracks 2-day and due-date reminder delivery status.", 1950),
+    ("CLIENT", "Loan reminders", "DI prepares a friendly WhatsApp reminder exactly 2 days before a recorded loan due date and a repayment reminder on the due date. Delivery requires an authenticated WhatsApp provider integration and the system records successful delivery to prevent duplicates.", 1950),
     ("ACCOUNT", "Company separation", "Each organization has its own workspace. Normal company users should not receive system-wide visibility into other organizations.", 1900),
     ("ACCOUNT", "Company admin", "The first account creating a new organization becomes that organization's company admin. Later users are normal users unless an admin grants admin access.", 1850),
     ("DI", "Memory Box purpose", "The DI Memory Box is the persistent trusted knowledge source for DI. It stores durable DACRE facts, creator identity, operating rules, product capabilities and approved knowledge.", 2000),
@@ -770,7 +794,7 @@ def authenticate(company_name, full_name, passkey, email=""):
 
 
 def create_account(first, last, company, email, email_password, passkey):
-    company_clean = company.strip()
+    company_clean = canonical_company_name(company)
     email_clean = email.strip().lower()
     passkey_clean = passkey.strip()
     if not company_clean or not email_clean or not passkey_clean:
@@ -837,6 +861,131 @@ def create_account(first, last, company, email, email_password, passkey):
         return False, "An account with this email address is already registered.", None
     finally:
         con.close()
+
+# =============================================================================
+# CHIBOBEC LOAN SERVICE AUTOMATION
+# =============================================================================
+
+CHIBOBEC_COMPANY = "chibobec loan service"
+CHIBOBEC_OWNER_NAME = "Mr Chibuike Chukwunere"
+
+def is_chibobec_company(company_name):
+    return "chibobec" in str(company_name or "").strip().lower()
+
+def canonical_company_name(company_name):
+    # Recognise the requested Chibobec company keyword without granting
+    # identity access by name alone; the normal email/passkey authentication
+    # still applies to every account.
+    return CHIBOBEC_COMPANY if is_chibobec_company(company_name) else str(company_name or "").strip()
+
+def normalize_whatsapp_number(number):
+    raw = re.sub(r"[^0-9+]", "", str(number or "").strip())
+    if raw.startswith("00"):
+        raw = "+" + raw[2:]
+    if raw.startswith("0"):
+        # Nigeria is the expected first market for this client. Users can still
+        # enter an international number beginning with +.
+        raw = "+234" + raw[1:]
+    if raw and not raw.startswith("+"):
+        raw = "+" + raw
+    return raw
+
+def _twilio_secret(name, default=""):
+    try:
+        return str(st.secrets.get(name, default) or default)
+    except Exception:
+        return default
+
+def send_whatsapp_message(to_number, body):
+    """Send WhatsApp through Twilio when credentials are configured.
+
+    This is intentionally opt-in. Without Twilio credentials the app records
+    the reminder as pending instead of pretending that a WhatsApp message was
+    delivered.
+    """
+    sid = _twilio_secret("TWILIO_ACCOUNT_SID")
+    token = _twilio_secret("TWILIO_AUTH_TOKEN")
+    from_number = _twilio_secret("TWILIO_WHATSAPP_FROM")
+    to_number = normalize_whatsapp_number(to_number)
+    if not sid or not token or not from_number:
+        return False, "WhatsApp is not connected yet. Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_WHATSAPP_FROM to Streamlit Secrets."
+    try:
+        import urllib.parse, urllib.request
+        url = f"https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json"
+        payload = urllib.parse.urlencode({
+            "From": from_number if from_number.startswith("whatsapp:") else f"whatsapp:{from_number}",
+            "To": to_number if to_number.startswith("whatsapp:") else f"whatsapp:{to_number}",
+            "Body": body,
+        }).encode("utf-8")
+        request = urllib.request.Request(url, data=payload, method="POST")
+        auth = (f"{sid}:{token}").encode("utf-8")
+        import base64
+        request.add_header("Authorization", "Basic " + base64.b64encode(auth).decode("ascii"))
+        request.add_header("Content-Type", "application/x-www-form-urlencoded")
+        with urllib.request.urlopen(request, timeout=12) as response:
+            if 200 <= response.status < 300:
+                return True, "WhatsApp message sent."
+        return False, "WhatsApp provider rejected the message."
+    except Exception as exc:
+        return False, f"WhatsApp send failed: {exc}"
+
+def add_loan_client(username, company, client_name, whatsapp_number, loan_amount, lent_date, due_date):
+    client_name = str(client_name or "").strip()
+    phone = normalize_whatsapp_number(whatsapp_number)
+    if not client_name or not phone:
+        return False, "Client name and WhatsApp number are required."
+    if due_date < lent_date:
+        return False, "The due date cannot be earlier than the lending date."
+    now = datetime.now().isoformat(timespec="seconds")
+    con = db()
+    try:
+        con.execute("""INSERT INTO loan_clients
+            (username,company_name,client_name,whatsapp_number,loan_amount,lent_date,due_date,created_at,updated_at)
+            VALUES(?,?,?,?,?,?,?,?,?)""",
+            (username, company, client_name, phone, float(loan_amount or 0), str(lent_date), str(due_date), now, now))
+        con.commit()
+        return True, "Loan client saved."
+    except Exception as exc:
+        return False, str(exc)
+    finally:
+        con.close()
+
+def delete_loan_client(loan_id, username):
+    con = db()
+    con.execute("DELETE FROM loan_clients WHERE id=? AND username=?", (int(loan_id), username))
+    con.commit(); con.close()
+
+def process_chibobec_reminders(username, company):
+    """Run an idempotent reminder pass whenever the Chibobec workspace is active."""
+    if not is_chibobec_company(company):
+        return []
+    today = datetime.now().date()
+    con = db()
+    rows = con.execute("SELECT * FROM loan_clients WHERE username=? AND company_name=? ORDER BY due_date", (username, company)).fetchall()
+    results=[]
+    for row in rows:
+        try:
+            due = datetime.strptime(row["due_date"], "%Y-%m-%d").date()
+        except Exception:
+            continue
+        days_left = (due - today).days
+        if days_left == 2 and not row["reminder_2_sent"]:
+            msg=(f"Hello {row['client_name']}, this is a friendly reminder from {CHIBOBEC_COMPANY.title()}. "
+                 f"Your loan repayment of ₦{float(row['loan_amount']):,.2f} is due on {due.strftime('%d %B %Y')}. "
+                 "Please make your repayment on or before the due date. Thank you.")
+            ok, status=send_whatsapp_message(row["whatsapp_number"], msg)
+            if ok:
+                con.execute("UPDATE loan_clients SET reminder_2_sent=1,updated_at=? WHERE id=?", (datetime.now().isoformat(timespec="seconds"),row["id"]))
+            results.append((row["client_name"], "2-day reminder", ok, status))
+        elif days_left == 0 and not row["due_sent"]:
+            msg=(f"Hello {row['client_name']}, your loan repayment of ₦{float(row['loan_amount']):,.2f} is due today, "
+                 f"{due.strftime('%d %B %Y')}. Please make your repayment to {CHIBOBEC_COMPANY.title()} today. Thank you.")
+            ok, status=send_whatsapp_message(row["whatsapp_number"], msg)
+            if ok:
+                con.execute("UPDATE loan_clients SET due_sent=1,updated_at=? WHERE id=?", (datetime.now().isoformat(timespec="seconds"),row["id"]))
+            results.append((row["client_name"], "due-date reminder", ok, status))
+    con.commit(); con.close()
+    return results
 
 # =============================================================================
 # DATA ENGINE
@@ -1659,8 +1808,16 @@ def landing_page():
                     if success:
                         st.session_state.user=created
                         st.session_state.master_route = False
-                        st.session_state.last_speech=f"Welcome to DACRE, {created['first_name']}. I am DI, your business intelligence assistant. What would you like us to work on first?"
-                        st.toast(f"Welcome to DACRE, {created['first_name']}!")
+                        if is_chibobec_company(created["company"]):
+                            st.session_state.last_speech=(
+                                f"We know you are coming, {CHIBOBEC_OWNER_NAME}. Welcome to DACRE Analysis. "
+                                "We were asked to treat you and your Chibobec Loan Service workspace with immense care. "
+                                "Your loan collection workspace is ready, and DI is standing by to help you manage your clients and repayment reminders."
+                            )
+                            st.toast(f"Welcome, {CHIBOBEC_OWNER_NAME}. Your Chibobec Loan Service workspace is ready.")
+                        else:
+                            st.session_state.last_speech=f"Welcome to DACRE, {created['first_name']}. I am DI, your business intelligence assistant. What would you like us to work on first?"
+                            st.toast(f"Welcome to DACRE, {created['first_name']}!")
                         st.rerun()
                     else: st.error(msg)
         return
@@ -1707,41 +1864,49 @@ if not st.session_state.chat_history:
     st.session_state.chat_history = load_chat_history(st.session_state.user, limit=40)
 
 # =============================================================================
-# DACRE AURORA EXECUTIVE — LIGHT BLUE + ORANGE BUSINESS CONSOLE
+# DACRE AURORA EXECUTIVE — NAVY + LIGHT ORANGE + LIGHT BROWN PREMIUM CONSOLE
 # =============================================================================
 st.markdown("""
 <style>
-:root{--dacre-blue:#e9f7ff;--dacre-blue-2:#d8efff;--dacre-navy:#102a43;--dacre-indigo:#4f46e5;--dacre-violet:#7c3aed;--dacre-cyan:#0ea5e9;--dacre-orange:#ff8a1f;--dacre-orange-2:#ffb45b;--dacre-ink:#102a43;--dacre-muted:#4b6680;--dacre-line:#b8ddf4;--dacre-shadow:0 18px 50px rgba(16,42,67,.12)}
-.stApp{background:radial-gradient(circle at 8% 0%,rgba(14,165,233,.16),transparent 28%),radial-gradient(circle at 92% 4%,rgba(255,138,31,.15),transparent 26%),linear-gradient(180deg,#f5fbff 0%,#eaf7ff 48%,#dff2ff 100%) !important;color:var(--dacre-ink)!important}
+:root{--dacre-blue:#17365d;--dacre-blue-2:#244f7d;--dacre-navy:#102a43;--dacre-indigo:#334f91;--dacre-violet:#6950a8;--dacre-cyan:#4d91b8;--dacre-orange:#f28b35;--dacre-orange-2:#ffc078;--dacre-brown:#b9855b;--dacre-brown-2:#ead7c5;--dacre-cream:#fff8ef;--dacre-light:#f7f2eb;--dacre-ink:#18324d;--dacre-muted:#5f6f7f;--dacre-line:#d8c6b5;--dacre-shadow:0 18px 50px rgba(16,42,67,.14)}
+.stApp{background:radial-gradient(circle at 7% 0%,rgba(242,139,53,.14),transparent 27%),radial-gradient(circle at 94% 5%,rgba(51,79,145,.13),transparent 28%),linear-gradient(145deg,#fffaf4 0%,#f7f2eb 52%,#efe4d8 100%) !important;color:var(--dacre-ink)!important}
 .main .block-container{max-width:1540px;padding-top:1.25rem;padding-bottom:4rem}
 .stApp p,.stApp span,.stApp label,.stApp div,.stApp li,.stApp td,.stApp th,.stApp h1,.stApp h2,.stApp h3,.stApp h4,.stApp h5{color:var(--dacre-ink)!important}
-[data-testid="stSidebar"]{background:linear-gradient(180deg,#eaf7ff 0%,#d9efff 100%)!important;border-right:2px solid var(--dacre-line)!important;box-shadow:10px 0 35px rgba(16,42,67,.08)}
-[data-testid="stSidebar"] *{color:var(--dacre-ink)!important}
-[data-testid="stSidebar"] [data-testid="stRadio"] label{border-radius:14px;padding:9px 11px;transition:.2s ease;font-weight:700}
-[data-testid="stSidebar"] [data-testid="stRadio"] label:hover{background:rgba(14,165,233,.14);transform:translateX(3px)}
-.stButton>button,.stFormSubmitButton>button,.stDownloadButton>button{border:1px solid #a8d5ee!important;background:linear-gradient(135deg,#fffffffff,#e7f6ff)!important;color:var(--dacre-ink)!important;border-radius:13px!important;font-weight:800!important;transition:.22s ease!important;box-shadow:0 7px 20px rgba(16,42,67,.07)!important}
-.stButton>button:hover,.stFormSubmitButton>button:hover,.stDownloadButton>button:hover{border-color:var(--dacre-orange)!important;background:linear-gradient(135deg,#ffffff7ed,#e0f4ff)!important;transform:translateY(-2px);box-shadow:0 12px 28px rgba(255,138,31,.18)!important}
-.stTextInput input,.stTextArea textarea,.stNumberInput input,.stSelectbox div[data-baseweb="select"]>div{background:#f8fdff!important;border:1.5px solid #9ed0ed!important;color:var(--dacre-ink)!important;border-radius:13px!important;font-weight:650!important}
-.stTextInput input::placeholder,.stTextArea textarea::placeholder{color:#6b8298!important}
-.dacre-user-hero{background:linear-gradient(115deg,#fffffffff,#e4f5ff 58%,#ffffff1df);border:1px solid var(--dacre-line);border-radius:24px;padding:24px 28px;box-shadow:var(--dacre-shadow)}
+[data-testid="stSidebar"]{background:linear-gradient(180deg,#102a43 0%,#17365d 55%,#1e4268 100%)!important;border-right:2px solid #f2a45f!important;box-shadow:12px 0 40px rgba(16,42,67,.18)}
+[data-testid="stSidebar"] *{color:#fff8ef!important}
+[data-testid="stSidebar"] [data-testid="stRadio"] label{border-radius:14px;padding:9px 11px;transition:.2s ease;font-weight:750}
+[data-testid="stSidebar"] [data-testid="stRadio"] label:hover{background:rgba(242,139,53,.18);transform:translateX(4px);box-shadow:inset 3px 0 0 #ffc078}
+.stButton>button,.stFormSubmitButton>button,.stDownloadButton>button{border:1px solid #d69a68!important;background:linear-gradient(135deg,#17365d,#244f7d)!important;color:#fff8ef!important;border-radius:13px!important;font-weight:850!important;transition:.22s ease!important;box-shadow:0 8px 22px rgba(16,42,67,.16)!important}
+.stButton>button:hover,.stFormSubmitButton>button:hover,.stDownloadButton>button:hover{border-color:#ffc078!important;background:linear-gradient(135deg,#244f7d,#315f8f)!important;transform:translateY(-2px);box-shadow:0 14px 30px rgba(242,139,53,.25)!important}
+.stTextInput input,.stTextArea textarea,.stNumberInput input,.stSelectbox div[data-baseweb="select"]>div{background:#fffaf4!important;border:1.5px solid #cdb39d!important;color:var(--dacre-ink)!important;border-radius:13px!important;font-weight:650!important}
+.stTextInput input::placeholder,.stTextArea textarea::placeholder{color:#7a766f!important}
+.dacre-user-hero{background:linear-gradient(115deg,#fffaf4,#f4e8dc 58%,#ffe3c5);border:1px solid #d8c6b5;border-top:4px solid var(--dacre-orange);border-radius:24px;padding:24px 28px;box-shadow:var(--dacre-shadow)}
 .dacre-user-title{font-size:2.35rem;font-weight:900;letter-spacing:-.04em;margin-bottom:4px}.dacre-user-sub{color:var(--dacre-muted)!important;font-size:1rem}
-.di-command{background:linear-gradient(135deg,#fffffffff,#e4f5ff 62%,#ffffff0dc);border:1px solid #a8d5ee;border-radius:26px;box-shadow:var(--dacre-shadow);overflow:hidden;position:relative}
-.di-stage{height:330px;position:relative;overflow:hidden;background-size:cover;background-position:center;transition:transform .5s ease,filter .5s ease}.di-command:hover .di-stage{transform:scale(1.012);filter:saturate(1.05)}
-.di-stage-overlay{position:absolute;inset:0;background:linear-gradient(90deg,rgba(247,252,255,.97) 0%,rgba(229,246,255,.88) 45%,rgba(255,240,220,.35) 100%)}
-.di-orb{position:absolute;right:9%;top:18%;width:170px;height:170px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffffff,#b9e8ff 35%,#0ea5e9 62%,#7c3aed 70%,rgba(124,58,237,0) 72%);box-shadow:0 0 90px rgba(14,165,233,.35),0 0 50px rgba(255,138,31,.18);animation:diPulse 4s ease-in-out infinite}.di-orb:after{content:"";position:absolute;inset:28px;border:2px solid rgba(255,255,255,.85);border-radius:50%;animation:diSpin 8s linear infinite}
-@keyframes diPulse{50%{transform:scale(1.07);box-shadow:0 0 115px rgba(14,165,233,.42),0 0 55px rgba(255,138,31,.24)}}@keyframes diSpin{to{transform:rotate(360deg)}}
-.di-stage-copy{position:absolute;left:30px;top:30px;max-width:60%}.di-kicker{font-size:.76rem;letter-spacing:.16em;text-transform:uppercase;font-weight:900;color:#c65f00!important}.di-stage-copy h2{font-size:2.05rem;margin:.45rem 0 .55rem;font-weight:900}.di-stage-copy p{color:#49677f!important;line-height:1.55}.di-status{display:inline-flex;align-items:center;gap:8px;padding:7px 11px;border-radius:999px;background:#fffffffff;border:1px solid #a8d5ee;font-size:.82rem;font-weight:800}.di-dot{width:8px;height:8px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 5px rgba(22,163,74,.12)}
-.di-transcript{padding:18px 22px;background:#f8fdff;border-top:1px solid #b8ddf4;min-height:92px}.di-transcript-label{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#376a91!important;font-weight:900}.di-transcript-text{font-size:1rem;line-height:1.55;margin-top:4px}
-.di-quick-card{height:100%;background:linear-gradient(145deg,#fffffffff,#eaf7ff);border:1px solid #b8ddf4;border-radius:18px;padding:18px;transition:.2s ease;box-shadow:0 10px 30px rgba(16,42,67,.06)}.di-quick-card:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(14,165,233,.14);border-color:#ffb45b}
-.di-metric{background:linear-gradient(145deg,#fffffffff,#e9f7ff);border:1px solid #b8ddf4;border-radius:16px;padding:16px 18px;box-shadow:0 8px 25px rgba(16,42,67,.06)}.di-metric .v{font-size:1.55rem;font-weight:900}.di-metric .l{font-size:.78rem;color:var(--dacre-muted)!important;margin-top:2px}
-.master-office-hero{background:linear-gradient(120deg,#dff3ff 0%,#edf9ff 48%,#ffffff0dc 100%);border:2px solid #8fc9ec;border-left:8px solid var(--dacre-orange);border-radius:24px;padding:28px 32px;box-shadow:0 18px 55px rgba(16,42,67,.12);margin-bottom:18px}.master-office-hero .title{font-size:3rem;font-weight:950;letter-spacing:-.045em;color:#102a43!important}.master-office-hero .sub{font-size:1.05rem;font-weight:750;color:#3e6078!important;margin-top:4px}.master-office-hero .authority{display:inline-block;margin-top:15px;padding:8px 13px;border-radius:999px;background:#ffffff;border:1px solid #ffb45b;color:#b45309!important;font-weight:900}.master-only-badge{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:999px;background:#ffffff7ed;border:1px solid #ffb45b;color:#b45309!important;font-weight:900;font-size:.75rem;letter-spacing:.06em}
-.voice-panel{background:linear-gradient(135deg,#fffffffff,#e4f5ff 70%,#ffffff0dc);border:1px solid #a8d5ee;border-radius:20px;padding:16px 18px;box-shadow:0 10px 30px rgba(16,42,67,.07)}
-.chat-card{padding:16px 18px;border-radius:18px;border:1px solid #b8ddf4;background:#f8fdff;margin:8px 0}.chat-card.di{border-left:5px solid var(--dacre-orange);background:linear-gradient(135deg,#fffffffff,#ffffff6ea)}.chat-card.user{border-left:5px solid var(--dacre-cyan);background:#eaf7ff}
+.di-command{background:linear-gradient(135deg,#fffaf4,#f1e4d8 62%,#ffe5ca);border:1px solid #d0b59c;border-radius:26px;box-shadow:var(--dacre-shadow);overflow:hidden;position:relative}
+.di-stage{height:330px;position:relative;overflow:hidden;background-size:cover;background-position:center;transition:transform .5s ease,filter .5s ease}.di-command:hover .di-stage{transform:scale(1.012);filter:saturate(1.06)}
+.di-stage-overlay{position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,250,244,.97) 0%,rgba(246,235,224,.88) 43%,rgba(255,226,194,.36) 100%)}
+.di-orb{position:absolute;right:9%;top:18%;width:170px;height:170px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff8ef,#ffd29e 34%,#f28b35 58%,#334f91 72%,rgba(51,79,145,0) 74%);box-shadow:0 0 90px rgba(242,139,53,.32),0 0 50px rgba(51,79,145,.22);animation:diPulse 4s ease-in-out infinite}.di-orb:after{content:"";position:absolute;inset:28px;border:2px solid rgba(255,248,239,.9);border-radius:50%;animation:diSpin 8s linear infinite}
+@keyframes diPulse{50%{transform:scale(1.07);box-shadow:0 0 115px rgba(242,139,53,.42),0 0 55px rgba(51,79,145,.28)}}@keyframes diSpin{to{transform:rotate(360deg)}}
+.di-stage-copy{position:absolute;left:30px;top:30px;max-width:60%}.di-kicker{font-size:.76rem;letter-spacing:.16em;text-transform:uppercase;font-weight:900;color:#b85f19!important}.di-stage-copy h2{font-size:2.05rem;margin:.45rem 0 .55rem;font-weight:900}.di-stage-copy p{color:#536b80!important;line-height:1.55}.di-status{display:inline-flex;align-items:center;gap:8px;padding:7px 11px;border-radius:999px;background:#fff8ef;border:1px solid #d8b28f;font-size:.82rem;font-weight:800}.di-dot{width:8px;height:8px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 5px rgba(22,163,74,.12)}
+.di-transcript{padding:18px 22px;background:#fffaf4;border-top:1px solid #d8c6b5;min-height:92px}.di-transcript-label{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#526f91!important;font-weight:900}.di-transcript-text{font-size:1rem;line-height:1.55;margin-top:4px}
+.di-quick-card{height:100%;background:linear-gradient(145deg,#fffaf4,#f3e6d9);border:1px solid #d8c6b5;border-radius:18px;padding:18px;transition:.2s ease;box-shadow:0 10px 30px rgba(16,42,67,.08)}.di-quick-card:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(242,139,53,.18);border-color:#f2a45f}
+.di-metric{background:linear-gradient(145deg,#fffaf4,#f0e4d8);border:1px solid #d8c6b5;border-radius:16px;padding:16px 18px;box-shadow:0 8px 25px rgba(16,42,67,.08)}.di-metric .v{font-size:1.55rem;font-weight:900}.di-metric .l{font-size:.78rem;color:var(--dacre-muted)!important;margin-top:2px}
+.master-office-hero{background:linear-gradient(120deg,#17365d 0%,#244f7d 55%,#8b5e3c 100%);border:2px solid #f2a45f;border-left:8px solid #ffc078;border-radius:24px;padding:28px 32px;box-shadow:0 18px 55px rgba(16,42,67,.22);margin-bottom:18px}.master-office-hero .title{font-size:3rem;font-weight:950;letter-spacing:-.045em;color:#fff8ef!important}.master-office-hero .sub{font-size:1.05rem;font-weight:750;color:#ffe6cf!important;margin-top:4px}.master-office-hero .authority{display:inline-block;margin-top:15px;padding:8px 13px;border-radius:999px;background:#ffe5c8;border:1px solid #ffc078;color:#6f3d16!important;font-weight:900}.master-only-badge{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:999px;background:#ffe5c8;border:1px solid #ffc078;color:#6f3d16!important;font-weight:900;font-size:.75rem;letter-spacing:.06em}
+.voice-panel{background:linear-gradient(135deg,#fffaf4,#f0e2d4 70%,#ffe5ca);border:1px solid #d0b59c;border-radius:20px;padding:16px 18px;box-shadow:0 10px 30px rgba(16,42,67,.08)}
+.chat-card{padding:16px 18px;border-radius:18px;border:1px solid #d8c6b5;background:#fffaf4;margin:8px 0}.chat-card.di{border-left:5px solid var(--dacre-orange);background:linear-gradient(135deg,#fffaf4,#f2e5d8)}.chat-card.user{border-left:5px solid var(--dacre-blue-2);background:#eef4fa}
+[data-testid="stDataFrame"]{border:1px solid #d8c6b5;border-radius:14px;overflow:hidden;box-shadow:0 8px 25px rgba(16,42,67,.08)}
+[data-testid="stMetricValue"]{color:#17365d!important}
+[data-testid="stExpander"]{background:rgba(255,250,244,.78)!important;border:1px solid #d8c6b5!important;border-radius:14px!important}
 #MainMenu,footer{visibility:hidden}
 </style>
 """,unsafe_allow_html=True)
 
 user=st.session_state.user
+
+# Run any due Chibobec reminder checks whenever that protected workspace is open.
+# The ledger prevents duplicate messages. For truly unattended delivery, a scheduled
+# external trigger is still required because Streamlit Cloud can sleep idle apps.
+chibobec_reminder_results = process_chibobec_reminders(user["username"], user["company"]) if is_chibobec_company(user.get("company")) else []
 
 head_col1,head_col2=st.columns([4,1])
 with head_col1:
@@ -1760,6 +1925,8 @@ with st.sidebar:
     if user["role"]=="master":
         st.markdown("""<div style='margin:8px 0 14px;padding:14px;border-radius:18px;background:linear-gradient(135deg,#dff3ff,#c9edff 55%,#fff0dc);border:2px solid #ffb45b;border-left:6px solid #ff8a1f;box-shadow:0 10px 28px rgba(63,95,192,.14)'><div style='font-size:.68rem;letter-spacing:.16em;font-weight:900;color:#b45309'>MASTER CONTROL</div><div style='font-size:1rem;font-weight:900;color:#102a43;margin-top:4px'>Overall Admin DI</div><div style='font-size:.76rem;color:#49677f;margin-top:3px'>System-wide command centre</div></div>""",unsafe_allow_html=True)
     navigation=["DI Home","DI Memory Box","Business Command Center","Workspace & Data","Formula Lab","Charts","File Vault","Export Center"]
+    if is_chibobec_company(user.get("company")):
+        navigation.append("Chibobec Loan Desk")
     if user["role"] in ("company_admin","master"):
         navigation.append("Organization Admin Portal")
     if user["role"]=="master":
@@ -2045,6 +2212,67 @@ elif selected_page=="Export Center":
 # =============================================================================
 # ORGANIZATION ADMIN PORTAL
 # =============================================================================
+elif selected_page=="Chibobec Loan Desk" and is_chibobec_company(user.get("company")):
+    st.markdown(f"""<div class='dacre-user-hero'><div class='dacre-user-title'>Chibobec Loan Collection Desk</div><div class='dacre-user-sub'>Private workspace for <b>{CHIBOBEC_COMPANY.title()}</b> · Client loans, due dates and WhatsApp reminder automation.</div></div>""", unsafe_allow_html=True)
+
+    if chibobec_reminder_results:
+        for client_name, reminder_type, ok, status in chibobec_reminder_results:
+            if ok:
+                st.success(f"{reminder_type.title()} sent to {client_name} on WhatsApp.")
+            else:
+                st.warning(f"{reminder_type.title()} for {client_name} is pending: {status}")
+
+    st.info("DI automatically checks this workspace for loans due in 2 days and loans due today. WhatsApp delivery requires a connected WhatsApp provider. The app never claims a message was delivered unless the provider confirms it.")
+
+    add_tab, clients_tab, setup_tab = st.tabs(["Add Loan Client", "Loan Book", "WhatsApp Setup"])
+    with add_tab:
+        with st.form("add_chibobec_loan", clear_on_submit=True):
+            c1,c2=st.columns(2)
+            with c1:
+                lc_name=st.text_input("Client full name", placeholder="e.g. Ada Okafor")
+                lc_phone=st.text_input("Client WhatsApp number", placeholder="08012345678 or +2348012345678")
+                lc_amount=st.number_input("Loan amount (₦)", min_value=0.0, step=1000.0, format="%.2f")
+            with c2:
+                lc_lent=st.date_input("Date loan was given", value=datetime.now().date())
+                lc_due=st.date_input("Date repayment is due", value=datetime.now().date())
+                st.caption("DI will prepare the 2-day reminder and the due-date reminder from these dates.")
+            save_loan=st.form_submit_button("Save Client & Schedule Reminders", use_container_width=True, type="primary")
+        if save_loan:
+            ok,msg=add_loan_client(user["username"], user["company"], lc_name, lc_phone, lc_amount, lc_lent, lc_due)
+            if ok: st.success(msg); st.rerun()
+            else: st.error(msg)
+
+    with clients_tab:
+        con=db()
+        loans=pd.read_sql_query("SELECT id,client_name,whatsapp_number,loan_amount,lent_date,due_date,reminder_2_sent,due_sent,created_at FROM loan_clients WHERE username=? AND company_name=? ORDER BY due_date ASC", con, params=(user["username"],user["company"]))
+        con.close()
+        if loans.empty:
+            st.warning("No loan clients have been added yet.")
+        else:
+            view=loans.copy()
+            view["loan_amount"]=view["loan_amount"].map(lambda x:f"₦{float(x):,.2f}")
+            view["2-day reminder"]=view["reminder_2_sent"].map({0:"Pending",1:"Sent"})
+            view["due-date reminder"]=view["due_sent"].map({0:"Pending",1:"Sent"})
+            view=view.drop(columns=["reminder_2_sent","due_sent"])
+            st.dataframe(view,use_container_width=True,hide_index=True)
+            st.markdown("### Remove a loan record")
+            options={f"#{int(r['id'])} · {r['client_name']} · due {r['due_date']}":int(r['id']) for _,r in loans.iterrows()}
+            chosen=st.selectbox("Select loan", list(options.keys()))
+            if st.button("Delete Loan Record", use_container_width=True):
+                delete_loan_client(options[chosen],user["username"]); st.success("Loan record deleted."); st.rerun()
+
+    with setup_tab:
+        st.markdown("### WhatsApp connection")
+        st.write("For production WhatsApp delivery, add these values to Streamlit Cloud → Settings → Secrets:")
+        st.code('TWILIO_ACCOUNT_SID = "your_sid"\nTWILIO_AUTH_TOKEN = "your_token"\nTWILIO_WHATSAPP_FROM = "whatsapp:+14155238886"', language="toml")
+        st.warning("Use real provider credentials in Streamlit Secrets, never in the Python source code. WhatsApp Business policies/templates may apply depending on the provider and message type.")
+        if st.button("Run Reminder Check Now", use_container_width=True):
+            results=process_chibobec_reminders(user["username"],user["company"])
+            if results:
+                for name,typ,ok,status in results: st.write(f"{name} · {typ} · {'Sent' if ok else 'Pending'} · {status}")
+            else:
+                st.info("No reminder is due today or in exactly 2 days.")
+
 elif selected_page=="Organization Admin Portal" and user["role"] in ("company_admin","master"):
     st.header("Organization Admin Portal")
     if user["role"]=="master":
