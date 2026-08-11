@@ -272,8 +272,37 @@ def init_db():
             due_date TEXT NOT NULL,
             reminder_2_sent INTEGER NOT NULL DEFAULT 0,
             due_sent INTEGER NOT NULL DEFAULT 0,
+            reminder_2_message_id TEXT,
+            due_message_id TEXT,
+            last_whatsapp_status TEXT,
+            last_whatsapp_error TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
+        )
+    """)
+    for _column, _dtype in [
+        ("reminder_2_message_id", "TEXT"),
+        ("due_message_id", "TEXT"),
+        ("last_whatsapp_status", "TEXT"),
+        ("last_whatsapp_error", "TEXT"),
+    ]:
+        try:
+            cur.execute(f"ALTER TABLE loan_clients ADD COLUMN {_column} {_dtype}")
+        except sqlite3.OperationalError:
+            pass
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS whatsapp_delivery_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            loan_id INTEGER,
+            company_name TEXT NOT NULL,
+            client_name TEXT NOT NULL,
+            whatsapp_number TEXT NOT NULL,
+            reminder_type TEXT NOT NULL,
+            template_name TEXT NOT NULL,
+            message_id TEXT,
+            status TEXT NOT NULL,
+            response TEXT,
+            created_at TEXT NOT NULL
         )
     """)
 
@@ -697,27 +726,51 @@ def send_di_welcome_email(first_name, last_name, company_name, email, email_pass
         "Warm regards,\nDI — David's Intelligence\nDACRE Analysis Platform"
     )
 
-    status = "Logged & Dispatched (SMTP if configured; otherwise simulated)"
-    smtp_host = os.getenv("DACRE_SMTP_HOST", "")
-    smtp_port = int(os.getenv("DACRE_SMTP_PORT", "587"))
-    smtp_user = os.getenv("DACRE_SMTP_USER", "")
-    smtp_pass = os.getenv("DACRE_SMTP_PASSWORD", "")
-    sender = os.getenv("DACRE_SMTP_FROM", smtp_user or "di-system@dacre.local")
-
-    if smtp_host and smtp_user and smtp_pass:
+    # Streamlit Cloud secrets are not guaranteed to appear in os.environ, so
+    # read mail configuration from st.secrets first and environment variables second.
+    def mail_secret(name, default=""):
         try:
-            msg = MIMEMultipart()
-            msg["From"] = sender
-            msg["To"] = email
-            msg["Subject"] = subject
+            value = st.secrets.get(name, "")
+        except Exception:
+            value = ""
+        return str(value or os.getenv(name, default) or default).strip()
+
+    # Multi-provider mail source: try Gmail, Outlook/Microsoft 365, Proton,
+    # then the legacy single SMTP configuration. Stop after the first success.
+    providers = [
+        ("Gmail", "DACRE_GMAIL_SMTP_HOST", "DACRE_GMAIL_SMTP_PORT", "DACRE_GMAIL_SMTP_USER", "DACRE_GMAIL_SMTP_PASSWORD", "DACRE_GMAIL_SMTP_FROM"),
+        ("Outlook", "DACRE_OUTLOOK_SMTP_HOST", "DACRE_OUTLOOK_SMTP_PORT", "DACRE_OUTLOOK_SMTP_USER", "DACRE_OUTLOOK_SMTP_PASSWORD", "DACRE_OUTLOOK_SMTP_FROM"),
+        ("Proton", "DACRE_PROTON_SMTP_HOST", "DACRE_PROTON_SMTP_PORT", "DACRE_PROTON_SMTP_USER", "DACRE_PROTON_SMTP_PASSWORD", "DACRE_PROTON_SMTP_FROM"),
+        ("Legacy SMTP", "DACRE_SMTP_HOST", "DACRE_SMTP_PORT", "DACRE_SMTP_USER", "DACRE_SMTP_PASSWORD", "DACRE_SMTP_FROM"),
+    ]
+    statuses=[]
+    status="NOT SENT — no mail provider is configured"
+    sent_provider=""
+    for provider, host_key, port_key, user_key, pass_key, from_key in providers:
+        smtp_host=mail_secret(host_key)
+        smtp_port=int(mail_secret(port_key, "587"))
+        smtp_user=mail_secret(user_key)
+        smtp_pass=mail_secret(pass_key)
+        sender=mail_secret(from_key, smtp_user or "")
+        if not (smtp_host and smtp_user and smtp_pass):
+            continue
+        try:
+            msg=MIMEMultipart()
+            msg["From"]=sender or smtp_user
+            msg["To"]=email
+            msg["Subject"]=subject
             msg.attach(MIMEText(body, "plain", "utf-8"))
             with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as server:
                 server.starttls()
                 server.login(smtp_user, smtp_pass)
-                server.sendmail(sender, [email], msg.as_string())
-            status = "Sent via configured SMTP"
+                server.sendmail(sender or smtp_user, [email], msg.as_string())
+            status=f"Sent via {provider} SMTP"
+            sent_provider=provider
+            break
         except Exception as exc:
-            status = f"SMTP failed; logged only: {type(exc).__name__}"
+            statuses.append(f"{provider}: {type(exc).__name__}")
+    if not sent_provider and statuses:
+        status="NOT SENT — configured mail providers failed (" + "; ".join(statuses) + ")"
 
     con = db()
     con.execute("""
@@ -730,6 +783,7 @@ def send_di_welcome_email(first_name, last_name, company_name, email, email_pass
     ))
     con.commit()
     con.close()
+    return status
 
 # =============================================================================
 # AUTHENTICATION
@@ -794,38 +848,18 @@ def authenticate(company_name, full_name, passkey, email=""):
 
 
 def create_account(first, last, company, email, email_password, passkey):
-    # Normalize every signup value defensively. Streamlit can return None/empty
-    # values during a rerun, and the old validation treated those as a hard
-    # failure even when the visible fields had been filled.
-    first_raw = "" if first is None else str(first)
-    last_raw = "" if last is None else str(last)
-    company_raw = "" if company is None else str(company)
-    email_raw = "" if email is None else str(email)
-    email_password_raw = "" if email_password is None else str(email_password)
-    passkey_raw = "" if passkey is None else str(passkey)
-
-    company_clean = canonical_company_name(company_raw)
-    email_clean = email_raw.strip().lower()
-    passkey_clean = passkey_raw.strip()
-
-    # Only these three fields are mandatory. First/Last name and email password
-    # are intentionally allowed to be optional.
-    missing = []
-    if not company_clean:
-        missing.append("Company Name")
-    if not email_clean:
-        missing.append("Email Address")
-    if not passkey_clean:
-        missing.append("Account Passkey")
-    if missing:
-        return False, "Please fill in: " + ", ".join(missing) + ".", None
+    company_clean = canonical_company_name(company)
+    email_clean = email.strip().lower()
+    passkey_clean = passkey.strip()
+    if not company_clean or not email_clean or not passkey_clean:
+        return False, "Please fill in Company Name, Email Address, and Account Passkey.", None
 
     if "@" not in email_clean or "." not in email_clean.split("@")[-1]:
         return False, "Please enter a valid email address.", None
 
     email_prefix = email_clean.split("@")[0].replace(".", " ").replace("_", " ").title()
-    first_clean = first_raw.strip() if first_raw.strip() else (email_prefix.split()[0] if email_prefix else "User")
-    last_clean = last_raw.strip() if last_raw.strip() else (" ".join(email_prefix.split()[1:]) if len(email_prefix.split()) > 1 else "Member")
+    first_clean = first.strip() if first and first.strip() else (email_prefix.split()[0] if email_prefix else "User")
+    last_clean = last.strip() if last and last.strip() else (" ".join(email_prefix.split()[1:]) if len(email_prefix.split()) > 1 else "Member")
     username_clean = email_clean
 
     if username_clean == MASTER_USERNAME:
@@ -863,17 +897,17 @@ def create_account(first, last, company, email, email_password, passkey):
             (first_name,last_name,username,company_name,email,email_password,password_hash,passkey_hash,role,login_count,created_at,last_login)
             VALUES (?,?,?,?,?,?,?,?,?,1,?,?)
         """, (
-            first_clean, last_clean, username_clean, company_clean, email_clean, email_password_raw.strip(),
+            first_clean, last_clean, username_clean, company_clean, email_clean, email_password.strip(),
             hash_password(passkey_clean), hash_password(passkey_clean), role, now, now,
         ))
         con.commit()
 
-        send_di_welcome_email(first_clean, last_clean, company_clean, email_clean, email_password_raw.strip())
+        mail_status = send_di_welcome_email(first_clean, last_clean, company_clean, email_clean, email_password.strip())
         log_activity(username_clean, company_clean, "Created account & signed in", notify_admin=(role == "user"))
         if role == "company_admin":
             notify_company_admin(company_clean, f"New organization created by {first_clean} {last_clean}. You are the organization admin.", "new_company")
 
-        return True, "Account created successfully!", {
+        return True, f"Account created successfully! DI email status: {mail_status}", {
             "first_name": first_clean, "last_name": last_clean, "username": username_clean,
             "company": company_clean, "email": email_clean, "role": role,
         }
@@ -910,44 +944,88 @@ def normalize_whatsapp_number(number):
         raw = "+" + raw
     return raw
 
-def _twilio_secret(name, default=""):
+def _dacre_secret(name, default=""):
+    """Read a Streamlit secret first, then an environment variable."""
     try:
-        return str(st.secrets.get(name, default) or default)
+        value = st.secrets.get(name, "")
     except Exception:
-        return default
+        value = ""
+    return str(value or os.getenv(name, default) or default).strip()
+
+
+def _meta_whatsapp_config():
+    return {
+        "token": _dacre_secret("DACRE_WHATSAPP_TOKEN"),
+        "phone_id": _dacre_secret("DACRE_WHATSAPP_PHONE_NUMBER_ID"),
+        "version": _dacre_secret("DACRE_WHATSAPP_API_VERSION", "v23.0"),
+        "reminder_2_template": _dacre_secret("DACRE_WHATSAPP_2DAY_TEMPLATE", "dacre_loan_due_2days"),
+        "due_template": _dacre_secret("DACRE_WHATSAPP_DUE_TEMPLATE", "dacre_loan_due_today"),
+        "language": _dacre_secret("DACRE_WHATSAPP_TEMPLATE_LANGUAGE", "en_US"),
+    }
+
+
+def _meta_phone(phone):
+    return re.sub(r"[^0-9]", "", normalize_whatsapp_number(phone))
+
+
+def _log_whatsapp_delivery(loan_id, company, client_name, phone, reminder_type, template_name, message_id, status, response):
+    con = db()
+    con.execute(
+        """INSERT INTO whatsapp_delivery_log
+        (loan_id,company_name,client_name,whatsapp_number,reminder_type,template_name,message_id,status,response,created_at)
+        VALUES(?,?,?,?,?,?,?,?,?,?)""",
+        (loan_id, company, client_name, phone, reminder_type, template_name, message_id,
+         status, str(response)[:4000], datetime.now().isoformat(timespec="seconds")),
+    )
+    con.commit()
+    con.close()
+
+
+def send_whatsapp_template(to_number, template_name, parameters):
+    """Send an approved Meta WhatsApp Cloud API template."""
+    cfg = _meta_whatsapp_config()
+    if not cfg["token"] or not cfg["phone_id"]:
+        return False, "Meta WhatsApp Cloud API is not configured. Add DACRE_WHATSAPP_TOKEN and DACRE_WHATSAPP_PHONE_NUMBER_ID to Streamlit Secrets."
+    to = _meta_phone(to_number)
+    if len(to) < 8:
+        return False, "Invalid WhatsApp number. Use an international number such as +2348012345678."
+    endpoint = f"https://graph.facebook.com/{cfg['version']}/{cfg['phone_id']}/messages"
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": to,
+        "type": "template",
+        "template": {
+            "name": template_name,
+            "language": {"code": cfg["language"]},
+            "components": [{"type": "body", "parameters": [{"type": "text", "text": str(v)} for v in parameters]}],
+        },
+    }
+    request = urllib.request.Request(
+        endpoint,
+        data=json.dumps(payload).encode("utf-8"),
+        method="POST",
+        headers={"Authorization": f"Bearer {cfg['token']}", "Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            raw = response.read().decode("utf-8")
+            data = json.loads(raw or "{}")
+            message_id = (data.get("messages") or [{}])[0].get("id")
+            if 200 <= response.status < 300 and message_id:
+                return True, message_id
+            return False, f"Meta returned HTTP {response.status}: {raw[:1000]}"
+    except urllib.error.HTTPError as exc:
+        try:
+            detail = exc.read().decode("utf-8")
+        except Exception:
+            detail = str(exc)
+        return False, f"Meta WhatsApp API rejected the message (HTTP {exc.code}): {detail[:1200]}"
+    except Exception as exc:
+        return False, f"WhatsApp send failed: {type(exc).__name__}: {exc}"
+
 
 def send_whatsapp_message(to_number, body):
-    """Send WhatsApp through Twilio when credentials are configured.
-
-    This is intentionally opt-in. Without Twilio credentials the app records
-    the reminder as pending instead of pretending that a WhatsApp message was
-    delivered.
-    """
-    sid = _twilio_secret("TWILIO_ACCOUNT_SID")
-    token = _twilio_secret("TWILIO_AUTH_TOKEN")
-    from_number = _twilio_secret("TWILIO_WHATSAPP_FROM")
-    to_number = normalize_whatsapp_number(to_number)
-    if not sid or not token or not from_number:
-        return False, "WhatsApp is not connected yet. Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_WHATSAPP_FROM to Streamlit Secrets."
-    try:
-        import urllib.parse, urllib.request
-        url = f"https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json"
-        payload = urllib.parse.urlencode({
-            "From": from_number if from_number.startswith("whatsapp:") else f"whatsapp:{from_number}",
-            "To": to_number if to_number.startswith("whatsapp:") else f"whatsapp:{to_number}",
-            "Body": body,
-        }).encode("utf-8")
-        request = urllib.request.Request(url, data=payload, method="POST")
-        auth = (f"{sid}:{token}").encode("utf-8")
-        import base64
-        request.add_header("Authorization", "Basic " + base64.b64encode(auth).decode("ascii"))
-        request.add_header("Content-Type", "application/x-www-form-urlencoded")
-        with urllib.request.urlopen(request, timeout=12) as response:
-            if 200 <= response.status < 300:
-                return True, "WhatsApp message sent."
-        return False, "WhatsApp provider rejected the message."
-    except Exception as exc:
-        return False, f"WhatsApp send failed: {exc}"
+    return False, "Use an approved Meta WhatsApp template for business-initiated reminders."
 
 def add_loan_client(username, company, client_name, whatsapp_number, loan_amount, lent_date, due_date):
     client_name = str(client_name or "").strip()
@@ -976,13 +1054,14 @@ def delete_loan_client(loan_id, username):
     con.commit(); con.close()
 
 def process_chibobec_reminders(username, company):
-    """Run an idempotent reminder pass whenever the Chibobec workspace is active."""
+    """Send due-date reminders through the real Meta WhatsApp Cloud API."""
     if not is_chibobec_company(company):
         return []
+    cfg = _meta_whatsapp_config()
     today = datetime.now().date()
     con = db()
     rows = con.execute("SELECT * FROM loan_clients WHERE username=? AND company_name=? ORDER BY due_date", (username, company)).fetchall()
-    results=[]
+    results = []
     for row in rows:
         try:
             due = datetime.strptime(row["due_date"], "%Y-%m-%d").date()
@@ -990,21 +1069,23 @@ def process_chibobec_reminders(username, company):
             continue
         days_left = (due - today).days
         if days_left == 2 and not row["reminder_2_sent"]:
-            msg=(f"Hello {row['client_name']}, this is a friendly reminder from {CHIBOBEC_COMPANY.title()}. "
-                 f"Your loan repayment of ₦{float(row['loan_amount']):,.2f} is due on {due.strftime('%d %B %Y')}. "
-                 "Please make your repayment on or before the due date. Thank you.")
-            ok, status=send_whatsapp_message(row["whatsapp_number"], msg)
-            if ok:
-                con.execute("UPDATE loan_clients SET reminder_2_sent=1,updated_at=? WHERE id=?", (datetime.now().isoformat(timespec="seconds"),row["id"]))
-            results.append((row["client_name"], "2-day reminder", ok, status))
+            reminder_type, template_name, sent_column, message_column = "2-day reminder", cfg["reminder_2_template"], "reminder_2_sent", "reminder_2_message_id"
         elif days_left == 0 and not row["due_sent"]:
-            msg=(f"Hello {row['client_name']}, your loan repayment of ₦{float(row['loan_amount']):,.2f} is due today, "
-                 f"{due.strftime('%d %B %Y')}. Please make your repayment to {CHIBOBEC_COMPANY.title()} today. Thank you.")
-            ok, status=send_whatsapp_message(row["whatsapp_number"], msg)
-            if ok:
-                con.execute("UPDATE loan_clients SET due_sent=1,updated_at=? WHERE id=?", (datetime.now().isoformat(timespec="seconds"),row["id"]))
-            results.append((row["client_name"], "due-date reminder", ok, status))
-    con.commit(); con.close()
+            reminder_type, template_name, sent_column, message_column = "due-date reminder", cfg["due_template"], "due_sent", "due_message_id"
+        else:
+            continue
+        parameters = [row["client_name"], f"₦{float(row['loan_amount']):,.2f}", due.strftime("%d %B %Y")]
+        ok, status = send_whatsapp_template(row["whatsapp_number"], template_name, parameters)
+        now = datetime.now().isoformat(timespec="seconds")
+        if ok:
+            con.execute(f"UPDATE loan_clients SET {sent_column}=1,{message_column}=?,last_whatsapp_status=?,last_whatsapp_error=NULL,updated_at=? WHERE id=?", (status, "sent", now, row["id"]))
+            _log_whatsapp_delivery(row["id"], company, row["client_name"], row["whatsapp_number"], reminder_type, template_name, status, "sent", "Meta accepted the message.")
+        else:
+            con.execute("UPDATE loan_clients SET last_whatsapp_status=?,last_whatsapp_error=?,updated_at=? WHERE id=?", ("failed", status, now, row["id"]))
+            _log_whatsapp_delivery(row["id"], company, row["client_name"], row["whatsapp_number"], reminder_type, template_name, None, "failed", status)
+        results.append((row["client_name"], reminder_type, ok, status))
+    con.commit()
+    con.close()
     return results
 
 # =============================================================================
@@ -1054,6 +1135,22 @@ def dataframe_from_json(value):
         return pd.read_json(io.StringIO(value), orient="split")
     except Exception:
         return None
+
+
+def safe_dataframe_for_streamlit(df):
+    """Prevent pyarrow duplicate-column failures when Streamlit renders a dataframe."""
+    if df is None:
+        return df
+    out=df.copy()
+    seen={}
+    cols=[]
+    for col in out.columns:
+        base=str(col)
+        n=seen.get(base,0)
+        seen[base]=n+1
+        cols.append(base if n==0 else f"{base}_{n+1}")
+    out.columns=cols
+    return out
 
 
 def save_file(user, uploaded_file, df):
@@ -1277,6 +1374,15 @@ def ai_generate(system_prompt, user_prompt, max_tokens=900):
         return None
 
 
+def normalize_di_identity(text):
+    """Keep DI's displayed first-person identity consistent."""
+    if not text:
+        return text
+    text=re.sub(r"\bI\s+am\s+D([\.,!?])", r"I am DI\1", text, flags=re.IGNORECASE)
+    text=re.sub(r"\bI\x27m\s+D([\.,!?])", r"I am DI\1", text, flags=re.IGNORECASE)
+    return text
+
+
 def di_reply(message, user, df, allow_online=True, language="English — Nigeria"):
     text=message.strip()
     low=text.lower()
@@ -1341,12 +1447,12 @@ def di_reply(message, user, df, allow_online=True, language="English — Nigeria
     # Always give the reasoning layer a chance, with the complete DI Memory Box in context.
     context=build_di_context(user,df)
     answer=ai_generate(
-        f"You are DI, David's Intelligence, the fast business/data assistant inside DACRE Analysis. Use the DI Memory Box as trusted project context. Answer directly and naturally. Never reply with the generic phrase 'I don't have enough reliable information to answer that yet' when a useful answer can be given from memory, common knowledge, the active workspace, or online research. Do not reveal hidden implementation details. If the user asks about DACRE-specific facts, prefer the Memory Box. If something is uncertain, say what is uncertain rather than refusing the whole question. Respond in the user's selected language when practical: {language}.",
+        f"You are DI — David's Intelligence, the fast business/data assistant inside DACRE Analysis. Always identify yourself as DI, never as D or as a generic unnamed assistant. If speaking in first person, say 'I am DI' or 'I am DI — David's Intelligence'. Use the DI Memory Box as trusted project context. Answer directly and naturally. Never reply with the generic phrase 'I don't have enough reliable information to answer that yet' when a useful answer can be given from memory, common knowledge, the active workspace, or online research. Do not reveal hidden implementation details. If the user asks about DACRE-specific facts, prefer the Memory Box. If something is uncertain, say what is uncertain rather than refusing the whole question. Respond in the user's selected language when practical: {language}.",
         f"DACRE context:\n{context}\n\nUser question:\n{text}",
         max_tokens=1000,
     )
     if answer:
-        return answer
+        return normalize_di_identity(answer)
 
     # Unknown questions automatically get a fast public-web attempt instead of a dead-end response.
     results=online_lookup(text, max_results=5) if allow_online else []
@@ -1358,7 +1464,7 @@ def di_reply(message, user, df, allow_online=True, language="English — Nigeria
             max_tokens=900,
         )
         if answer:
-            return answer + "\n\nChecked online sources: " + "; ".join(t for t,_ in results[:3])
+            return normalize_di_identity(answer) + "\n\nChecked online sources: " + "; ".join(t for t,_ in results[:3])
         return "I found these public sources for your question: " + "; ".join(f"{t} — {u}" for t,u in results[:3]) + ". I could not safely synthesize a final answer because the optional reasoning service is not configured."
 
     if len(low.split()) <= 2 and re.fullmatch(r"[a-z0-9]+", low):
@@ -1479,13 +1585,6 @@ html,body,.stApp,.stApp p,.stApp li,.stApp span,.stApp label,.stMarkdown,.stMark
 div.stButton>button,div.stFormSubmitButton>button,div.stDownloadButton>button{border-radius:12px;border:1px solid rgba(24,183,255,.45);background:linear-gradient(135deg,#0a2540,#0d3860);color:#ffffff!important;font-weight:800!important;padding:10px 18px;transition:all .22s ease}
 div.stButton>button:hover,div.stFormSubmitButton>button:hover,div.stDownloadButton>button:hover{border-color:var(--dacre-cyan);background:linear-gradient(135deg,#0d3860,#12508c);box-shadow:0 0 20px rgba(24,183,255,.45);transform:translateY(-1px)}
 [data-testid="stMetric"]{padding:14px 18px;border-radius:16px;border:1px solid rgba(255,255,255,.10);background:linear-gradient(145deg,rgba(255,255,255,.05),rgba(255,255,255,.015))}
-/* Unified DACRE visual language: landing, authentication, user workspace and CEO Office */
-[data-testid="stAppViewContainer"] .stTabs [data-baseweb="tab-list"]{background:rgba(8,22,38,.72)!important;border:1px solid rgba(24,183,255,.20)!important;border-radius:14px!important;padding:5px!important;gap:5px!important}
-[data-testid="stAppViewContainer"] .stTabs [data-baseweb="tab"]{color:#b9d9eb!important;border-radius:10px!important;font-weight:800!important}
-[data-testid="stAppViewContainer"] .stTabs [aria-selected="true"]{background:linear-gradient(135deg,#123b60,#a85f2a)!important;color:#ffffff!important;box-shadow:0 0 18px rgba(244,185,66,.18)!important}
-[data-testid="stAppViewContainer"] .stAlert{background:linear-gradient(135deg,rgba(8,25,43,.96),rgba(55,34,24,.88))!important;border:1px solid rgba(244,185,66,.30)!important;color:#ffffff!important}
-[data-testid="stAppViewContainer"] [data-testid="stExpander"]{background:rgba(7,18,31,.78)!important;border:1px solid rgba(24,183,255,.18)!important;border-radius:14px!important}
-.landing-panel{background:linear-gradient(135deg,rgba(7,16,29,.94),rgba(25,35,45,.90))!important;border:1px solid rgba(244,185,66,.22)!important;border-radius:22px!important;box-shadow:0 24px 70px rgba(0,0,0,.30)!important}
 #MainMenu,footer{visibility:hidden}
 </style>
 """, unsafe_allow_html=True)
@@ -1732,11 +1831,11 @@ def landing_page():
                         st.warning("Complete the Google reCAPTCHA widget first. If the verification is not being accepted, configure the DACRE reCAPTCHA component bridge and secrets.")
                 else:
                     st.markdown("""
-                    <div style="border:1px solid rgba(24,183,255,.35);border-radius:14px;padding:16px 14px;background:linear-gradient(135deg,#07101d,#10263d);max-width:430px;margin:0 auto;box-shadow:0 14px 35px rgba(0,0,0,.35);">
+                    <div style="border:1px solid #d9d9d9;border-radius:4px;padding:16px 14px;background:#ffffff;max-width:430px;margin:0 auto;box-shadow:0 2px 8px rgba(0,0,0,.10);">
                       <div style="display:flex;align-items:center;gap:12px;">
-                        <div style="width:28px;height:28px;border:1px solid rgba(24,183,255,.65);border-radius:7px;background:#0a2540;"></div>
-                        <div style="font:700 15px Arial,sans-serif;color:#ffffff;">I'm not a robot</div>
-                        <div style="margin-left:auto;font:11px Arial,sans-serif;color:#9edcff;text-align:center;">DACRE<br>Security</div>
+                        <div style="width:28px;height:28px;border:1px solid #b8b8b8;border-radius:3px;background:#fafafa;"></div>
+                        <div style="font:500 15px Arial,sans-serif;color:#333;">I'm not a robot</div>
+                        <div style="margin-left:auto;font:11px Arial,sans-serif;color:#777;text-align:center;">reCAPTCHA<br>Privacy - Terms</div>
                       </div>
                     </div>
                     """, unsafe_allow_html=True)
@@ -1891,39 +1990,58 @@ if not st.session_state.chat_history:
     st.session_state.chat_history = load_chat_history(st.session_state.user, limit=40)
 
 # =============================================================================
-# DACRE AURORA EXECUTIVE — NAVY + LIGHT ORANGE + LIGHT BROWN PREMIUM CONSOLE
+# DACRE AURORA EXECUTIVE — DEEP BLUE + SOFT ORANGE + BROWN PREMIUM CONSOLE
 # =============================================================================
 st.markdown("""
 <style>
-:root{--dacre-blue:#17365d;--dacre-blue-2:#244f7d;--dacre-navy:#102a43;--dacre-indigo:#334f91;--dacre-violet:#6950a8;--dacre-cyan:#4d91b8;--dacre-orange:#f28b35;--dacre-orange-2:#ffc078;--dacre-brown:#b9855b;--dacre-brown-2:#ead7c5;--dacre-cream:#fff8ef;--dacre-light:#f7f2eb;--dacre-ink:#18324d;--dacre-muted:#5f6f7f;--dacre-line:#d8c6b5;--dacre-shadow:0 18px 50px rgba(16,42,67,.14)}
-.stApp{background:radial-gradient(circle at 7% 0%,rgba(242,139,53,.14),transparent 27%),radial-gradient(circle at 94% 5%,rgba(51,79,145,.13),transparent 28%),linear-gradient(145deg,#fffaf4 0%,#f7f2eb 52%,#efe4d8 100%) !important;color:var(--dacre-ink)!important}
+:root{
+ --dacre-blue:#173b66;--dacre-blue-2:#245487;--dacre-navy:#0b1b31;--dacre-panel:#102844;
+ --dacre-panel-2:#143454;--dacre-indigo:#4b63b6;--dacre-violet:#7658b8;--dacre-cyan:#5eb8e8;
+ --dacre-orange:#ef8b3a;--dacre-orange-2:#ffb56b;--dacre-brown:#9b704f;--dacre-brown-2:#c79b78;
+ --dacre-ink:#edf6ff;--dacre-muted:#b8c8d8;--dacre-line:rgba(150,190,225,.22);
+ --dacre-shadow:0 18px 50px rgba(0,0,0,.28)
+}
+.stApp{background:radial-gradient(circle at 7% 0%,rgba(239,139,58,.10),transparent 28%),radial-gradient(circle at 94% 5%,rgba(75,99,182,.12),transparent 30%),linear-gradient(145deg,#09182c 0%,#0d2039 55%,#102944 100%) !important;color:var(--dacre-ink)!important}
 .main .block-container{max-width:1540px;padding-top:1.25rem;padding-bottom:4rem}
-.stApp p,.stApp span,.stApp label,.stApp div,.stApp li,.stApp td,.stApp th,.stApp h1,.stApp h2,.stApp h3,.stApp h4,.stApp h5{color:var(--dacre-ink)!important}
-[data-testid="stSidebar"]{background:linear-gradient(180deg,#102a43 0%,#17365d 55%,#1e4268 100%)!important;border-right:2px solid #f2a45f!important;box-shadow:12px 0 40px rgba(16,42,67,.18)}
-[data-testid="stSidebar"] *{color:#fff8ef!important}
+.stApp p,.stApp span,.stApp label,.stApp div,.stApp li,.stApp td,.stApp th,.stApp h1,.stApp h2,.stApp h3,.stApp h4,.stApp h5,.stApp h6{color:var(--dacre-ink)!important}
+.stApp p,.stApp li,.stApp td,.stApp th{line-height:1.55}
+.stCaption,.stApp small,[data-testid="stCaptionContainer"]{color:#b8c8d8!important}
+[data-testid="stSidebar"]{background:linear-gradient(180deg,#0a1a30 0%,#0d2340 55%,#102b49 100%)!important;border-right:2px solid rgba(239,139,58,.72)!important;box-shadow:12px 0 40px rgba(0,0,0,.25)}
+[data-testid="stSidebar"] *{color:#eef6ff!important}
 [data-testid="stSidebar"] [data-testid="stRadio"] label{border-radius:14px;padding:9px 11px;transition:.2s ease;font-weight:750}
-[data-testid="stSidebar"] [data-testid="stRadio"] label:hover{background:rgba(242,139,53,.18);transform:translateX(4px);box-shadow:inset 3px 0 0 #ffc078}
-.stButton>button,.stFormSubmitButton>button,.stDownloadButton>button{border:1px solid #d69a68!important;background:linear-gradient(135deg,#17365d,#244f7d)!important;color:#fff8ef!important;border-radius:13px!important;font-weight:850!important;transition:.22s ease!important;box-shadow:0 8px 22px rgba(16,42,67,.16)!important}
-.stButton>button:hover,.stFormSubmitButton>button:hover,.stDownloadButton>button:hover{border-color:#ffc078!important;background:linear-gradient(135deg,#244f7d,#315f8f)!important;transform:translateY(-2px);box-shadow:0 14px 30px rgba(242,139,53,.25)!important}
-.stTextInput input,.stTextArea textarea,.stNumberInput input,.stSelectbox div[data-baseweb="select"]>div{background:#fffaf4!important;border:1.5px solid #cdb39d!important;color:var(--dacre-ink)!important;border-radius:13px!important;font-weight:650!important}
-.stTextInput input::placeholder,.stTextArea textarea::placeholder{color:#7a766f!important}
-.dacre-user-hero{background:linear-gradient(115deg,#fffaf4,#f4e8dc 58%,#ffe3c5);border:1px solid #d8c6b5;border-top:4px solid var(--dacre-orange);border-radius:24px;padding:24px 28px;box-shadow:var(--dacre-shadow)}
-.dacre-user-title{font-size:2.35rem;font-weight:900;letter-spacing:-.04em;margin-bottom:4px}.dacre-user-sub{color:var(--dacre-muted)!important;font-size:1rem}
-.di-command{background:linear-gradient(135deg,#fffaf4,#f1e4d8 62%,#ffe5ca);border:1px solid #d0b59c;border-radius:26px;box-shadow:var(--dacre-shadow);overflow:hidden;position:relative}
+[data-testid="stSidebar"] [data-testid="stRadio"] label:hover{background:rgba(239,139,58,.16);transform:translateX(4px);box-shadow:inset 3px 0 0 #ffb56b}
+.stButton>button,.stFormSubmitButton>button,.stDownloadButton>button{border:1px solid rgba(255,181,107,.62)!important;background:linear-gradient(135deg,#173b66,#245487)!important;color:#f5fbff!important;border-radius:13px!important;font-weight:850!important;transition:.22s ease!important;box-shadow:0 8px 22px rgba(0,0,0,.20)!important}
+.stButton>button:hover,.stFormSubmitButton>button:hover,.stDownloadButton>button:hover{border-color:#ffb56b!important;background:linear-gradient(135deg,#245487,#315f91)!important;transform:translateY(-2px);box-shadow:0 14px 30px rgba(239,139,58,.24)!important}
+.stTextInput input,.stTextArea textarea,.stNumberInput input,.stSelectbox div[data-baseweb="select"]>div,.stDateInput input{background:#0d223c!important;border:1.5px solid rgba(120,170,210,.38)!important;color:#f1f7ff!important;border-radius:13px!important;font-weight:650!important}
+.stTextInput input::placeholder,.stTextArea textarea::placeholder{color:#9fb2c5!important}
+[data-baseweb="popover"]{background:#102844!important;color:#edf6ff!important}
+[data-baseweb="menu"]{background:#102844!important}
+[data-baseweb="option"]{color:#edf6ff!important}
+[data-baseweb="option"]:hover{background:#1a4167!important}
+.dacre-user-hero{background:linear-gradient(115deg,#102944,#153b60 58%,#4d3628);border:1px solid rgba(120,170,210,.28);border-top:4px solid var(--dacre-orange);border-radius:24px;padding:24px 28px;box-shadow:var(--dacre-shadow)}
+.dacre-user-title{font-size:2.35rem;font-weight:900;letter-spacing:-.04em;margin-bottom:4px;color:#f5fbff!important}.dacre-user-sub{color:#bed0e2!important;font-size:1rem}
+.di-command{background:linear-gradient(135deg,#102944,#153a5d 62%,#3f3026);border:1px solid rgba(120,170,210,.25);border-radius:26px;box-shadow:var(--dacre-shadow);overflow:hidden;position:relative}
 .di-stage{height:330px;position:relative;overflow:hidden;background-size:cover;background-position:center;transition:transform .5s ease,filter .5s ease}.di-command:hover .di-stage{transform:scale(1.012);filter:saturate(1.06)}
-.di-stage-overlay{position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,250,244,.97) 0%,rgba(246,235,224,.88) 43%,rgba(255,226,194,.36) 100%)}
-.di-orb{position:absolute;right:9%;top:18%;width:170px;height:170px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff8ef,#ffd29e 34%,#f28b35 58%,#334f91 72%,rgba(51,79,145,0) 74%);box-shadow:0 0 90px rgba(242,139,53,.32),0 0 50px rgba(51,79,145,.22);animation:diPulse 4s ease-in-out infinite}.di-orb:after{content:"";position:absolute;inset:28px;border:2px solid rgba(255,248,239,.9);border-radius:50%;animation:diSpin 8s linear infinite}
-@keyframes diPulse{50%{transform:scale(1.07);box-shadow:0 0 115px rgba(242,139,53,.42),0 0 55px rgba(51,79,145,.28)}}@keyframes diSpin{to{transform:rotate(360deg)}}
-.di-stage-copy{position:absolute;left:30px;top:30px;max-width:60%}.di-kicker{font-size:.76rem;letter-spacing:.16em;text-transform:uppercase;font-weight:900;color:#b85f19!important}.di-stage-copy h2{font-size:2.05rem;margin:.45rem 0 .55rem;font-weight:900}.di-stage-copy p{color:#536b80!important;line-height:1.55}.di-status{display:inline-flex;align-items:center;gap:8px;padding:7px 11px;border-radius:999px;background:#fff8ef;border:1px solid #d8b28f;font-size:.82rem;font-weight:800}.di-dot{width:8px;height:8px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 5px rgba(22,163,74,.12)}
-.di-transcript{padding:18px 22px;background:#fffaf4;border-top:1px solid #d8c6b5;min-height:92px}.di-transcript-label{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#526f91!important;font-weight:900}.di-transcript-text{font-size:1rem;line-height:1.55;margin-top:4px}
-.di-quick-card{height:100%;background:linear-gradient(145deg,#fffaf4,#f3e6d9);border:1px solid #d8c6b5;border-radius:18px;padding:18px;transition:.2s ease;box-shadow:0 10px 30px rgba(16,42,67,.08)}.di-quick-card:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(242,139,53,.18);border-color:#f2a45f}
-.di-metric{background:linear-gradient(145deg,#fffaf4,#f0e4d8);border:1px solid #d8c6b5;border-radius:16px;padding:16px 18px;box-shadow:0 8px 25px rgba(16,42,67,.08)}.di-metric .v{font-size:1.55rem;font-weight:900}.di-metric .l{font-size:.78rem;color:var(--dacre-muted)!important;margin-top:2px}
-.master-office-hero{background:linear-gradient(120deg,#17365d 0%,#244f7d 55%,#8b5e3c 100%);border:2px solid #f2a45f;border-left:8px solid #ffc078;border-radius:24px;padding:28px 32px;box-shadow:0 18px 55px rgba(16,42,67,.22);margin-bottom:18px}.master-office-hero .title{font-size:3rem;font-weight:950;letter-spacing:-.045em;color:#fff8ef!important}.master-office-hero .sub{font-size:1.05rem;font-weight:750;color:#ffe6cf!important;margin-top:4px}.master-office-hero .authority{display:inline-block;margin-top:15px;padding:8px 13px;border-radius:999px;background:#ffe5c8;border:1px solid #ffc078;color:#6f3d16!important;font-weight:900}.master-only-badge{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:999px;background:#ffe5c8;border:1px solid #ffc078;color:#6f3d16!important;font-weight:900;font-size:.75rem;letter-spacing:.06em}
-.voice-panel{background:linear-gradient(135deg,#fffaf4,#f0e2d4 70%,#ffe5ca);border:1px solid #d0b59c;border-radius:20px;padding:16px 18px;box-shadow:0 10px 30px rgba(16,42,67,.08)}
-.chat-card{padding:16px 18px;border-radius:18px;border:1px solid #d8c6b5;background:#fffaf4;margin:8px 0}.chat-card.di{border-left:5px solid var(--dacre-orange);background:linear-gradient(135deg,#fffaf4,#f2e5d8)}.chat-card.user{border-left:5px solid var(--dacre-blue-2);background:#eef4fa}
-[data-testid="stDataFrame"]{border:1px solid #d8c6b5;border-radius:14px;overflow:hidden;box-shadow:0 8px 25px rgba(16,42,67,.08)}
-[data-testid="stMetricValue"]{color:#17365d!important}
-[data-testid="stExpander"]{background:rgba(255,250,244,.78)!important;border:1px solid #d8c6b5!important;border-radius:14px!important}
+.di-stage-overlay{position:absolute;inset:0;background:linear-gradient(90deg,rgba(9,24,44,.96) 0%,rgba(14,40,66,.90) 48%,rgba(54,42,33,.42) 100%)}
+.di-orb{position:absolute;right:9%;top:18%;width:170px;height:170px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#e8f7ff,#ffd29e 34%,#ef8b3a 58%,#4b63b6 72%,rgba(75,99,182,0) 74%);box-shadow:0 0 90px rgba(239,139,58,.28),0 0 50px rgba(75,99,182,.24);animation:diPulse 4s ease-in-out infinite}.di-orb:after{content:"";position:absolute;inset:28px;border:2px solid rgba(237,246,255,.85);border-radius:50%;animation:diSpin 8s linear infinite}
+@keyframes diPulse{50%{transform:scale(1.07);box-shadow:0 0 115px rgba(239,139,58,.36),0 0 55px rgba(75,99,182,.30)}}@keyframes diSpin{to{transform:rotate(360deg)}}
+.di-stage-copy{position:absolute;left:30px;top:30px;max-width:60%}.di-kicker{font-size:.76rem;letter-spacing:.16em;text-transform:uppercase;font-weight:900;color:#ffb56b!important}.di-stage-copy h2{font-size:2.05rem;margin:.45rem 0 .55rem;font-weight:900;color:#f5fbff!important}.di-stage-copy p{color:#c4d4e3!important;line-height:1.55}.di-status{display:inline-flex;align-items:center;gap:8px;padding:7px 11px;border-radius:999px;background:#153654;border:1px solid rgba(255,181,107,.45);font-size:.82rem;font-weight:800}.di-dot{width:8px;height:8px;border-radius:50%;background:#42d98b;box-shadow:0 0 0 5px rgba(66,217,139,.12)}
+.di-transcript{padding:18px 22px;background:#0d223c;border-top:1px solid rgba(120,170,210,.25);min-height:92px}.di-transcript-label{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#8fd7ff!important;font-weight:900}.di-transcript-text{font-size:1rem;line-height:1.55;margin-top:4px;color:#edf6ff!important}
+.di-quick-card{height:100%;background:linear-gradient(145deg,#112b47,#153654);border:1px solid rgba(120,170,210,.24);border-radius:18px;padding:18px;transition:.2s ease;box-shadow:0 10px 30px rgba(0,0,0,.18)}.di-quick-card:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(239,139,58,.16);border-color:rgba(255,181,107,.55)}
+.di-metric{background:linear-gradient(145deg,#112b47,#153654);border:1px solid rgba(120,170,210,.24);border-radius:16px;padding:16px 18px;box-shadow:0 8px 25px rgba(0,0,0,.16)}.di-metric .v{font-size:1.55rem;font-weight:900;color:#f5fbff!important}.di-metric .l{font-size:.78rem;color:#b8c8d8!important;margin-top:2px}
+.master-office-hero{background:linear-gradient(120deg,#102944 0%,#245487 55%,#60452f 100%);border:2px solid #eaa86d;border-left:8px solid #ffb56b;border-radius:24px;padding:28px 32px;box-shadow:0 18px 55px rgba(0,0,0,.28);margin-bottom:18px}.master-office-hero .title{font-size:3rem;font-weight:950;letter-spacing:-.045em;color:#f5fbff!important}.master-office-hero .sub{font-size:1.05rem;font-weight:750;color:#dbe9f5!important;margin-top:4px}.master-office-hero .authority{display:inline-block;margin-top:15px;padding:8px 13px;border-radius:999px;background:#533c2c;border:1px solid #ffb56b;color:#ffe5cc!important;font-weight:900}.master-only-badge{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:999px;background:#533c2c;border:1px solid #ffb56b;color:#ffe5cc!important;font-weight:900;font-size:.75rem;letter-spacing:.06em}
+.voice-panel{background:linear-gradient(135deg,#112b47,#173b5d 70%,#3d3028);border:1px solid rgba(120,170,210,.25);border-radius:20px;padding:16px 18px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.chat-card{padding:16px 18px;border-radius:18px;border:1px solid rgba(120,170,210,.24);background:#112b47;margin:8px 0}.chat-card.di{border-left:5px solid var(--dacre-orange);background:linear-gradient(135deg,#153654,#193d5f)}.chat-card.user{border-left:5px solid var(--dacre-indigo);background:#102944}
+[data-testid="stDataFrame"]{border:1px solid rgba(120,170,210,.28);border-radius:14px;overflow:hidden;box-shadow:0 8px 25px rgba(0,0,0,.18)}
+[data-testid="stDataFrame"] *{color:#17324d!important}
+[data-testid="stMetric"]{background:#112b47!important;border:1px solid rgba(120,170,210,.24)!important;border-radius:16px!important}
+[data-testid="stMetricLabel"]{color:#b8c8d8!important}.stMetricValue,[data-testid="stMetricValue"]{color:#f5fbff!important}
+[data-testid="stExpander"]{background:#102944!important;border:1px solid rgba(120,170,210,.24)!important;border-radius:14px!important}
+[data-testid="stAlert"]{color:#edf6ff!important}
+/* Inline legacy cards: keep them dark enough for readable text. */
+div[style*="#ffffff"]{background:#112b47!important;color:#edf6ff!important}
+div[style*="#eaf7ff"]{background:#153b5d!important;color:#edf6ff!important}
+div[style*="#fffaf4"]{background:#112b47!important;color:#edf6ff!important}
 #MainMenu,footer{visibility:hidden}
 </style>
 """,unsafe_allow_html=True)
@@ -1951,7 +2069,9 @@ with st.sidebar:
     st.markdown("<div style='font-size:.78rem;color:#3556a8!important;margin:4px 0 14px'>DI is available across your workspace.</div>",unsafe_allow_html=True)
     if user["role"]=="master":
         st.markdown("""<div style='margin:8px 0 14px;padding:14px;border-radius:18px;background:linear-gradient(135deg,#dff3ff,#c9edff 55%,#fff0dc);border:2px solid #ffb45b;border-left:6px solid #ff8a1f;box-shadow:0 10px 28px rgba(63,95,192,.14)'><div style='font-size:.68rem;letter-spacing:.16em;font-weight:900;color:#b45309'>MASTER CONTROL</div><div style='font-size:1rem;font-weight:900;color:#102a43;margin-top:4px'>Overall Admin DI</div><div style='font-size:.76rem;color:#49677f;margin-top:3px'>System-wide command centre</div></div>""",unsafe_allow_html=True)
-    navigation=["DI Home","DI Memory Box","Business Command Center","Workspace & Data","Formula Lab","Charts","File Vault","Export Center"]
+    navigation=["DI Home","Business Command Center","Workspace & Data","Formula Lab","Charts","File Vault","Export Center"]
+    if user["role"]=="master":
+        navigation.insert(1,"DI Memory Box")
     if is_chibobec_company(user.get("company")):
         navigation.append("Chibobec Loan Desk")
     if user["role"] in ("company_admin","master"):
@@ -2159,7 +2279,7 @@ elif selected_page=="Workspace & Data":
         m1.metric("Total Rows",f"{len(df):,}")
         m2.metric("Total Columns",len(df.columns))
         m3.metric("Duplicates Removed",int(st.session_state.raw_df.duplicated().sum()) if st.session_state.raw_df is not None else 0)
-        st.dataframe(df,use_container_width=True)
+        st.dataframe(safe_dataframe_for_streamlit(df),use_container_width=True)
         if st.button("Save Project State to DI"):
             save_project(user,st.session_state.raw_df,df,st.session_state.active_filename,st.session_state.formula_logs,st.session_state.chart_config)
             log_activity(user["username"],user["company"],"Saved project state")
@@ -2281,7 +2401,7 @@ elif selected_page=="Chibobec Loan Desk" and is_chibobec_company(user.get("compa
             view["2-day reminder"]=view["reminder_2_sent"].map({0:"Pending",1:"Sent"})
             view["due-date reminder"]=view["due_sent"].map({0:"Pending",1:"Sent"})
             view=view.drop(columns=["reminder_2_sent","due_sent"])
-            st.dataframe(view,use_container_width=True,hide_index=True)
+            st.dataframe(safe_dataframe_for_streamlit(view),use_container_width=True,hide_index=True)
             st.markdown("### Remove a loan record")
             options={f"#{int(r['id'])} · {r['client_name']} · due {r['due_date']}":int(r['id']) for _,r in loans.iterrows()}
             chosen=st.selectbox("Select loan", list(options.keys()))
@@ -2289,14 +2409,28 @@ elif selected_page=="Chibobec Loan Desk" and is_chibobec_company(user.get("compa
                 delete_loan_client(options[chosen],user["username"]); st.success("Loan record deleted."); st.rerun()
 
     with setup_tab:
-        st.markdown("### WhatsApp connection")
-        st.write("For production WhatsApp delivery, add these values to Streamlit Cloud → Settings → Secrets:")
-        st.code('TWILIO_ACCOUNT_SID = "your_sid"\nTWILIO_AUTH_TOKEN = "your_token"\nTWILIO_WHATSAPP_FROM = "whatsapp:+14155238886"', language="toml")
-        st.warning("Use real provider credentials in Streamlit Secrets, never in the Python source code. WhatsApp Business policies/templates may apply depending on the provider and message type.")
-        if st.button("Run Reminder Check Now", use_container_width=True):
+        st.markdown("### Meta WhatsApp Cloud API — Production Connection")
+        cfg=_meta_whatsapp_config()
+        configured=bool(cfg["token"] and cfg["phone_id"])
+        if configured:
+            st.success("Meta WhatsApp Cloud API credentials are loaded. DACRE will only mark a reminder as sent after Meta returns a message ID.")
+        else:
+            st.error("Meta WhatsApp Cloud API is NOT configured yet. No message will be falsely reported as sent.")
+        st.write("Add these secrets to Streamlit Cloud → Manage app → Settings → Secrets:")
+        meta_secrets = """DACRE_WHATSAPP_TOKEN = "YOUR_META_ACCESS_TOKEN"
+DACRE_WHATSAPP_PHONE_NUMBER_ID = "YOUR_META_PHONE_NUMBER_ID"
+DACRE_WHATSAPP_API_VERSION = "v23.0"
+DACRE_WHATSAPP_2DAY_TEMPLATE = "dacre_loan_due_2days"
+DACRE_WHATSAPP_DUE_TEMPLATE = "dacre_loan_due_today"
+DACRE_WHATSAPP_TEMPLATE_LANGUAGE = "en_US"""
+        st.code(meta_secrets, language="toml")
+        st.info("The two reminder templates must first be created and approved in Meta WhatsApp Manager. Their body must contain exactly three text variables: customer name, loan amount, and due date.")
+        st.caption(f"2-day template: {cfg['reminder_2_template']} · Due-date template: {cfg['due_template']} · Language: {cfg['language']}")
+        if st.button("Run Real Meta Reminder Check Now", use_container_width=True, type="primary"):
             results=process_chibobec_reminders(user["username"],user["company"])
             if results:
-                for name,typ,ok,status in results: st.write(f"{name} · {typ} · {'Sent' if ok else 'Pending'} · {status}")
+                for name,typ,ok,status in results:
+                    (st.success if ok else st.error)(f"{name} · {typ} · {'Sent by Meta' if ok else 'Not sent'} · {status}")
             else:
                 st.info("No reminder is due today or in exactly 2 days.")
 
@@ -2313,7 +2447,7 @@ elif selected_page=="Organization Admin Portal" and user["role"] in ("company_ad
     tabs=st.tabs(["People & Accounts","Changes & Activity","DI Messages"])
     with tabs[0]:
         users_df=pd.read_sql_query("SELECT id,first_name,last_name,username,email,role,login_count,created_at,last_login FROM users WHERE company_name=? ORDER BY id DESC",con,params=(target_company,))
-        st.dataframe(users_df,use_container_width=True)
+        st.dataframe(safe_dataframe_for_streamlit(users_df),use_container_width=True)
         st.metric("Accounts in organization",len(users_df))
 
         if user["role"]=="company_admin":
@@ -2330,10 +2464,10 @@ elif selected_page=="Organization Admin Portal" and user["role"] in ("company_ad
                     st.success("Role updated."); st.rerun()
     with tabs[1]:
         activity_df=pd.read_sql_query("SELECT id,username,action,created_at FROM activity WHERE company_name=? ORDER BY id DESC",con,params=(target_company,))
-        st.dataframe(activity_df,use_container_width=True)
+        st.dataframe(safe_dataframe_for_streamlit(activity_df),use_container_width=True)
     with tabs[2]:
         notes_df=pd.read_sql_query("SELECT id,event_type,message,is_read,created_at FROM notifications WHERE company_name=? ORDER BY id DESC",con,params=(target_company,))
-        st.dataframe(notes_df,use_container_width=True)
+        st.dataframe(safe_dataframe_for_streamlit(notes_df),use_container_width=True)
         if not notes_df.empty and st.button("Mark DI messages as read"):
             con.execute("UPDATE notifications SET is_read=1 WHERE company_name=?",(target_company,)); con.commit(); st.rerun()
     con.close()
@@ -2369,7 +2503,7 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
         left,right=st.columns([1.25,1])
         with left:
             st.markdown("#### Recent system activity")
-            st.dataframe(recent,use_container_width=True,hide_index=True)
+            st.dataframe(safe_dataframe_for_streamlit(recent),use_container_width=True,hide_index=True)
         with right:
             st.markdown("#### Platform position")
             st.write("The CEO Office is the highest DACRE administration layer. This is where master-level oversight, DI workforce creation, organization visibility and platform activity are managed.")
@@ -2400,7 +2534,7 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
         if agents:
             st.markdown("#### Available DI workers")
             agent_df=pd.DataFrame([dict(r) for r in agents])
-            st.dataframe(agent_df,use_container_width=True,hide_index=True)
+            st.dataframe(safe_dataframe_for_streamlit(agent_df),use_container_width=True,hide_index=True)
             selected_id=st.selectbox("Select DI worker",[r["id"] for r in agents],format_func=lambda x: next((r["di_name"] for r in agents if r["id"]==x),str(x)))
             selected_agent=next(r for r in agents if r["id"]==selected_id)
             e1,e2=st.columns(2)
@@ -2420,7 +2554,7 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
     with tabs[2]:
         st.subheader("All Organizations")
         companies_df=pd.read_sql_query("SELECT id,name,owner_username,created_at FROM companies ORDER BY id DESC",con)
-        st.dataframe(companies_df,use_container_width=True,hide_index=True)
+        st.dataframe(safe_dataframe_for_streamlit(companies_df),use_container_width=True,hide_index=True)
         st.metric("Organizations",len(companies_df))
 
     with tabs[3]:
@@ -2445,7 +2579,7 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
                     st.success(f"Permanently deleted {deleted} account(s).")
                     st.rerun()
             st.markdown("#### Current accounts")
-            st.dataframe(users_df,use_container_width=True,hide_index=True)
+            st.dataframe(safe_dataframe_for_streamlit(users_df),use_container_width=True,hide_index=True)
 
     with tabs[4]:
         st.subheader("System Activity")
@@ -2487,7 +2621,7 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
             a.metric("Total Memory Records",total_mem)
             b.metric("Active Records",active_mem)
             c.metric("Target Library", "4,000")
-            st.dataframe(mem_df,use_container_width=True,hide_index=True)
+            st.dataframe(safe_dataframe_for_streamlit(mem_df),use_container_width=True,hide_index=True)
             with st.expander("Add a new DI Memory Box record",expanded=False):
                 mc1,mc2=st.columns([1,2])
                 with mc1:
@@ -2506,8 +2640,59 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
 
     with tabs[7]:
         st.subheader("DI Mail Source")
+        try:
+            _smtp_cfg = {
+                "host": st.secrets.get("DACRE_SMTP_HOST", ""),
+                "port": st.secrets.get("DACRE_SMTP_PORT", "587"),
+                "user": st.secrets.get("DACRE_SMTP_USER", ""),
+                "password": st.secrets.get("DACRE_SMTP_PASSWORD", ""),
+                "from": st.secrets.get("DACRE_SMTP_FROM", ""),
+            }
+        except Exception:
+            _smtp_cfg = {"host": "", "port": "587", "user": "", "password": "", "from": ""}
+        provider_status=[]
+        for label,prefix in [("Gmail","DACRE_GMAIL"),("Outlook / Microsoft 365","DACRE_OUTLOOK"),("Proton","DACRE_PROTON")]:
+            try:
+                configured=bool(st.secrets.get(f"{prefix}_SMTP_HOST", "") and st.secrets.get(f"{prefix}_SMTP_USER", "") and st.secrets.get(f"{prefix}_SMTP_PASSWORD", ""))
+            except Exception:
+                configured=False
+            provider_status.append((label,configured))
+        configured_labels=[x for x,ok in provider_status if ok]
+        if configured_labels:
+            st.success("Real mail providers configured: " + ", ".join(configured_labels) + ". DACRE tries them in order and stops after the first successful delivery.")
+        else:
+            st.warning("No real mail provider is configured yet. Accounts can still be created, but real welcome emails require at least one configured provider.")
+        st.code("""# Gmail
+DACRE_GMAIL_SMTP_HOST = \"smtp.gmail.com\"
+DACRE_GMAIL_SMTP_PORT = 587
+DACRE_GMAIL_SMTP_USER = \"your-gmail@gmail.com\"
+DACRE_GMAIL_SMTP_PASSWORD = \"your-google-app-password\"
+DACRE_GMAIL_SMTP_FROM = \"your-gmail@gmail.com\"
+
+# Outlook / Microsoft 365
+DACRE_OUTLOOK_SMTP_HOST = \"smtp.office365.com\"
+DACRE_OUTLOOK_SMTP_PORT = 587
+DACRE_OUTLOOK_SMTP_USER = \"your-outlook@outlook.com\"
+DACRE_OUTLOOK_SMTP_PASSWORD = \"your-outlook-app-password\"
+DACRE_OUTLOOK_SMTP_FROM = \"your-outlook@outlook.com\"
+
+# Proton: configure a Proton-supported SMTP endpoint that is reachable from deployment.
+DACRE_PROTON_SMTP_HOST = \"your-proton-smtp-host\"
+DACRE_PROTON_SMTP_PORT = 587
+DACRE_PROTON_SMTP_USER = \"your-proton-sender\"
+DACRE_PROTON_SMTP_PASSWORD = \"your-proton-smtp-credential\"
+DACRE_PROTON_SMTP_FROM = \"your-proton-address\"
+
+# Optional legacy fallback
+DACRE_SMTP_HOST = \"\"
+DACRE_SMTP_PORT = 587
+DACRE_SMTP_USER = \"\"
+DACRE_SMTP_PASSWORD = \"\"
+DACRE_SMTP_FROM = \"\"
+""", language="toml")
+        st.info("Use provider app passwords/SMTP credentials, not a DACRE user's mailbox password. A local-only Proton Mail Bridge endpoint cannot be reached by Streamlit Cloud; Proton must provide a deployment-reachable SMTP method.")
         mails_df=pd.read_sql_query("SELECT id,recipient_name,recipient_email,company_name,subject,sender_email,status,sent_at,body FROM emails_log ORDER BY id DESC",con)
-        st.dataframe(mails_df,use_container_width=True,hide_index=True)
+        st.dataframe(safe_dataframe_for_streamlit(mails_df),use_container_width=True,hide_index=True)
 
     with tabs[8]:
         st.subheader("System Controls")
