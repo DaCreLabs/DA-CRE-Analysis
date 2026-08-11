@@ -1,5 +1,4 @@
 import hashlib
-import hmac
 import io
 import json
 import os
@@ -36,7 +35,7 @@ APP_NAME = "DACRE Analysis"
 DI_NAME = "DI — David's Intelligence"
 MASTER_USERNAME = "david"
 MASTER_FULL_NAME = "David Emenike"
-MASTER_PASSKEY = os.getenv("DACRE_MASTER_PASSKEY", "").strip()
+MASTER_PASSKEY = os.getenv("DACRE_MASTER_PASSKEY", "theWORDofGOD@111")
 
 BASE_DIR = Path(__file__).resolve().parent
 LOGO_CANDIDATES = [
@@ -55,6 +54,7 @@ ONLINE_IMAGES = {
     "conversation": "https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1200&q=82",
 }
 DI_AVATAR_PATH = BASE_DIR / "di_avatar.png"
+MASTER_PORTRAIT_PATH = BASE_DIR / "master_portrait.png"
 
 # =============================================================================
 # BRAND / FAVICON
@@ -98,32 +98,37 @@ def db():
     return con
 
 
-PBKDF2_ITERATIONS = 600_000
+def hash_password(value):
+    """Create a salted PBKDF2-HMAC-SHA256 password hash.
 
-def hash_password(value, salt=None, iterations=PBKDF2_ITERATIONS):
-    """Create a salted PBKDF2 password hash. Format: pbkdf2_sha256$iterations$salt$hash."""
-    if salt is None:
-        salt = os.urandom(16)
-    if isinstance(salt, str):
-        salt = bytes.fromhex(salt)
-    digest = hashlib.pbkdf2_hmac("sha256", str(value).encode("utf-8"), salt, int(iterations))
-    return f"pbkdf2_sha256${int(iterations)}${salt.hex()}${digest.hex()}"
+    Format: pbkdf2$iterations$salt_hex$digest_hex
+    """
+    salt = os.urandom(16)
+    iterations = 600_000
+    digest = hashlib.pbkdf2_hmac("sha256", value.encode("utf-8"), salt, iterations)
+    return f"pbkdf2${iterations}${salt.hex()}${digest.hex()}"
 
 
-def verify_password(value, stored):
-    """Verify modern PBKDF2 hashes and transparently accept legacy SHA-256 hashes."""
-    if not stored:
+def verify_password(value, stored_hash):
+    """Verify both new PBKDF2 hashes and legacy SHA-256 hashes.
+    Legacy hashes are accepted once so existing accounts keep working; callers
+    can then replace them with a fresh PBKDF2 hash.
+    """
+    if not value or not stored_hash:
         return False, False
-    if stored.startswith("pbkdf2_sha256$"):
+    if stored_hash.startswith("pbkdf2$"):
         try:
-            _, iterations, salt_hex, digest_hex = stored.split("$", 3)
+            _, iterations_text, salt_hex, digest_hex = stored_hash.split("$", 3)
+            iterations = int(iterations_text)
             salt = bytes.fromhex(salt_hex)
-            candidate = hashlib.pbkdf2_hmac("sha256", str(value).encode("utf-8"), salt, int(iterations)).hex()
-            return hmac.compare_digest(candidate, digest_hex), False
-        except Exception:
+            expected = bytes.fromhex(digest_hex)
+            actual = hashlib.pbkdf2_hmac("sha256", value.encode("utf-8"), salt, iterations)
+            return hashlib.compare_digest(actual, expected), False
+        except (ValueError, TypeError):
             return False, False
-    legacy = hashlib.sha256(str(value).encode("utf-8")).hexdigest()
-    return hmac.compare_digest(legacy, stored), True
+    # Legacy accounts from the earlier DACRE build used unsalted SHA-256.
+    legacy = hashlib.sha256(value.encode("utf-8")).hexdigest()
+    return hashlib.compare_digest(legacy, stored_hash), True
 
 
 def init_db():
@@ -257,9 +262,6 @@ init_db()
 
 
 def ensure_master():
-    if not MASTER_PASSKEY:
-        # Do not create a usable master account until the deployment secret is configured.
-        return
     con = db()
     cur = con.cursor()
     cur.execute("SELECT id FROM users WHERE username = ?", (MASTER_USERNAME,))
@@ -279,15 +281,6 @@ def ensure_master():
 
 
 ensure_master()
-
-
-def maybe_upgrade_password_hash(con, username, supplied_value, stored_hash, column="passkey_hash"):
-    """Upgrade a legacy SHA-256 credential after a successful login."""
-    ok, legacy = verify_password(supplied_value, stored_hash)
-    if ok and legacy:
-        con.execute(f"UPDATE users SET {column}=? WHERE username=?", (hash_password(supplied_value), username))
-        con.commit()
-    return ok
 
 
 def log_activity(username, company, action, notify_admin=True):
@@ -379,46 +372,51 @@ def authenticate(company_name, full_name, passkey, email=""):
 
     if not passkey_clean:
         return None, "Please enter your Account Passkey."
+
+    # Master authentication is intentionally independent of normal user
+    # account fields. The Master can enter the passkey alone, or use the
+    # normal master identity fields. This prevents the previous 'company/email
+    # required' gate from blocking the Overall Admin account.
+    if passkey_clean == MASTER_PASSKEY and (
+        not company_clean and not email_clean
+        or company_clean == "dacre master"
+        or full_name_clean == "david emenike"
+        or email_clean == "master@dacre.local"
+    ):
+        return master_user_record(), None
+
     if not company_clean and not email_clean:
-        return None, "Please enter your Company / Organization Name or Email Address."
+        return None, "Enter your Company / Organization Name or Email Address, or use the Master passkey for Overall Admin access."
 
     con = db()
     try:
-        if (company_clean == "dacre master" or full_name_clean == "david emenike" or email_clean == "master@dacre.local") and MASTER_PASSKEY and passkey_clean == MASTER_PASSKEY:
-            row = con.execute("SELECT first_name,last_name,username,company_name,email,role FROM users WHERE username=?", (MASTER_USERNAME,)).fetchone()
-            if row:
-                return dict(row), None
-
         if email_clean:
             rows = con.execute("SELECT first_name,last_name,username,company_name,email,passkey_hash,role FROM users WHERE lower(email)=?", (email_clean,)).fetchall()
         else:
             rows = con.execute("SELECT first_name,last_name,username,company_name,email,passkey_hash,role FROM users WHERE lower(company_name)=?", (company_clean,)).fetchall()
 
-        valid_rows = []
-        for candidate_row in rows:
-            if maybe_upgrade_password_hash(con, candidate_row["username"], passkey_clean, candidate_row["passkey_hash"]):
-                valid_rows.append(candidate_row)
-        rows = valid_rows
-
         if not rows:
-            if email_clean:
-                exists = con.execute("SELECT 1 FROM users WHERE lower(email)=? LIMIT 1", (email_clean,)).fetchone()
-            else:
-                exists = con.execute("SELECT 1 FROM users WHERE lower(company_name)=? LIMIT 1", (company_clean,)).fetchone()
-            if exists:
-                return None, "This account has already been created, but the passkey does not match. Please check your passkey and try again."
-            return None, "This account has not been created. Please go to the Sign Up page and create your account to access DACRE Analysis."
+            return None, "This account has not been created. Please use Sign Up first, then sign in with the same details."
 
         matched = None
+        needs_upgrade = False
         for r in rows:
+            ok, legacy = verify_password(passkey_clean, r["passkey_hash"])
+            if not ok:
+                continue
             candidate = f"{r['first_name']} {r['last_name']}".strip().lower()
-            if not full_name_clean or candidate == full_name_clean:
-                matched = r
-                break
+            if full_name_clean and candidate != full_name_clean:
+                continue
+            matched = r
+            needs_upgrade = legacy
+            break
+
         if matched is None:
-            return None, "The account exists, but the Full Name does not match the account. Please enter the name used during Sign Up."
+            return None, "The account exists, but the passkey or Full Name does not match. Please use exactly the details you entered during Sign Up."
 
         now = datetime.now().isoformat(timespec="seconds")
+        if needs_upgrade:
+            con.execute("UPDATE users SET passkey_hash=?, password_hash=? WHERE username=?", (hash_password(passkey_clean), hash_password(passkey_clean), matched["username"]))
         con.execute("UPDATE users SET login_count=login_count+1,last_login=? WHERE username=?", (now, matched["username"]))
         con.commit()
         result = {"first_name":matched["first_name"],"last_name":matched["last_name"],"username":matched["username"],"company":matched["company_name"],"email":matched["email"],"role":matched["role"]}
@@ -613,90 +611,6 @@ def apply_formula(df, formula, options):
     return None
 
 # =============================================================================
-# BUSINESS INTELLIGENCE LAYER — additive, non-destructive
-# =============================================================================
-
-def _numeric_columns(df):
-    return df.select_dtypes(include="number").columns.tolist() if df is not None else []
-
-def business_health(df):
-    if df is None or df.empty:
-        return {"score": 0, "rows": 0, "columns": 0, "missing_pct": 100.0, "duplicate_pct": 0.0, "numeric": 0}
-    total_cells = max(1, df.shape[0] * df.shape[1])
-    missing_pct = float(df.isna().sum().sum() / total_cells * 100)
-    duplicate_pct = float(df.duplicated().mean() * 100)
-    numeric = len(_numeric_columns(df))
-    score = max(0, min(100, round(100 - missing_pct * 0.65 - duplicate_pct * 0.45 + min(numeric, 10) * 0.8)))
-    return {"score": score, "rows": len(df), "columns": len(df.columns), "missing_pct": missing_pct, "duplicate_pct": duplicate_pct, "numeric": numeric}
-
-def business_signals(df):
-    """Return explainable, dataset-derived signals without pretending to know hidden business facts."""
-    if df is None or df.empty:
-        return []
-    signals = []
-    nums = _numeric_columns(df)
-    for col in nums[:20]:
-        s = pd.to_numeric(df[col], errors="coerce").dropna()
-        if len(s) < 4:
-            continue
-        mean = float(s.mean())
-        std = float(s.std()) if len(s) > 1 else 0.0
-        if std > 0:
-            high = int((s > mean + 3 * std).sum())
-            low = int((s < mean - 3 * std).sum())
-            if high or low:
-                signals.append({"type":"anomaly","column":str(col),"message":f"{col} contains {high + low} unusually distant value(s) from its average."})
-        if len(s) >= 8:
-            first = float(s.head(max(1, len(s)//5)).mean())
-            last = float(s.tail(max(1, len(s)//5)).mean())
-            if first != 0:
-                change = (last - first) / abs(first) * 100
-                if abs(change) >= 10:
-                    direction = "up" if change > 0 else "down"
-                    signals.append({"type":"trend","column":str(col),"message":f"{col} trends {direction} by about {abs(change):.1f}% between the early and recent portions of the dataset."})
-    missing = df.isna().sum().sort_values(ascending=False)
-    for col, count in missing[missing > 0].head(5).items():
-        signals.append({"type":"quality","column":str(col),"message":f"{col} has {int(count):,} missing value(s)."})
-    return signals[:12]
-
-def build_executive_brief(df, company):
-    if df is None or df.empty:
-        return "There is no active dataset to brief yet. Upload your business data and I will prepare an executive review."
-    health = business_health(df)
-    signals = business_signals(df)
-    nums = _numeric_columns(df)
-    lines = [f"Executive brief for {company}.", f"The active dataset contains {len(df):,} rows across {len(df.columns):,} columns. Data health is {health['score']}/100, with {health['missing_pct']:.1f}% missing cells and {health['duplicate_pct']:.1f}% duplicate rows."]
-    if nums:
-        for col in nums[:5]:
-            s = pd.to_numeric(df[col], errors="coerce").dropna()
-            if not s.empty:
-                lines.append(f"{col}: total {s.sum():,.2f}; average {s.mean():,.2f}; minimum {s.min():,.2f}; maximum {s.max():,.2f}.")
-    if signals:
-        lines.append("Key signals: " + " ".join(x["message"] for x in signals[:5]))
-    else:
-        lines.append("I did not detect a strong trend or anomaly from the available numeric fields, so I would review the business context before making a recommendation.")
-    return " ".join(lines)
-
-def ask_data_question(question, df):
-    """Lightweight natural-language data actions available without an external AI key."""
-    if df is None:
-        return "Upload a dataset first. Then ask me questions such as 'show the top products by sales', 'what is missing?', or 'give me an executive brief'."
-    q = question.lower()
-    nums = _numeric_columns(df)
-    if any(k in q for k in ["executive brief", "business brief", "management summary", "ceo summary"]):
-        return build_executive_brief(df, st.session_state.user["company"] if st.session_state.get("user") else "your organization")
-    if "health" in q or "quality score" in q or "data quality" in q:
-        h=business_health(df); return f"Data health is {h['score']}/100. Missing cells: {h['missing_pct']:.1f}%. Duplicate rows: {h['duplicate_pct']:.1f}%. Numeric columns: {h['numeric']}."
-    if ("top" in q or "highest" in q or "largest" in q) and nums:
-        target = next((c for c in nums if str(c).lower() in q), nums[0])
-        view=df[[target]].copy().sort_values(target, ascending=False).head(10)
-        return f"Top 10 records by {target}: " + "; ".join(f"{i+1}. {v:,.2f}" for i,v in enumerate(view[target].tolist()))
-    if ("total" in q or "sum" in q or "revenue" in q or "sales" in q) and nums:
-        target = next((c for c in nums if str(c).lower() in q), nums[0])
-        return f"The total for {target} is {pd.to_numeric(df[target], errors='coerce').sum():,.2f}."
-    return None
-
-# =============================================================================
 # DI KNOWLEDGE + ONLINE KNOWLEDGE
 # =============================================================================
 
@@ -778,9 +692,6 @@ def di_reply(message, user, df, allow_online=True):
     # Deterministic workspace intelligence remains available even without an API.
     if "what can you do" in low or "what can di do" in low:
         return "I can work with your DACRE workspace, inspect and clean data, calculate business metrics, identify missing values and duplicates, build charts, explain results, help plan reports and use current public online information when the question requires it."
-    data_answer = ask_data_question(text, df)
-    if data_answer:
-        return data_answer
     if "how many rows" in low or "row count" in low:
         return "There is no active dataset yet." if df is None else f"The active dataset contains {len(df):,} rows."
     if "how many columns" in low or "column count" in low:
@@ -981,10 +892,9 @@ def master_user_record():
 
 
 def master_passkey_gate(passkey):
-    if not MASTER_PASSKEY:
-        return False
-    ok, _ = verify_password(passkey.strip(), hash_password(MASTER_PASSKEY))
-    return bool(ok)
+    # Do not hash-and-compare with a random-salt hash; that will never match.
+    # Compare the entered secret directly to the configured Master secret.
+    return bool(passkey and passkey.strip() == MASTER_PASSKEY)
 
 
 def get_di_agents():
@@ -1023,6 +933,67 @@ def update_di_agent(di_id, status, assigned_company):
     con.execute("UPDATE di_agents SET status=?, assigned_company=?, last_active=? WHERE id=?", (status, assigned_company or None, datetime.now().isoformat(timespec="seconds"), di_id))
     con.commit()
     con.close()
+
+
+def permanently_delete_user(username, confirm_text=""):
+    """Permanently delete a non-master DACRE account and its owned records."""
+    username = (username or "").strip()
+    if not username:
+        return False, "No account selected."
+    if username == MASTER_USERNAME:
+        return False, "The Overall Administrator account cannot be deleted from the CEO Office."
+    if confirm_text.strip() != "DELETE PERMANENTLY":
+        return False, "Type DELETE PERMANENTLY to confirm."
+
+    con = db()
+    try:
+        user_row = con.execute("SELECT username, company_name, role FROM users WHERE username=?", (username,)).fetchone()
+        if not user_row:
+            return False, "Account not found."
+        company = user_row["company_name"]
+
+        # Remove all account-owned and account-referenced records.
+        for table, column in [
+            ("files", "username"),
+            ("projects", "username"),
+            ("activity", "username"),
+            ("chat_history", "username"),
+        ]:
+            try:
+                con.execute(f"DELETE FROM {table} WHERE {column}=?", (username,))
+            except sqlite3.OperationalError:
+                pass
+
+        # Notifications and mail are company/account related rather than password data.
+        try:
+            con.execute("DELETE FROM notifications WHERE company_name=? AND username=?", (company, username))
+        except sqlite3.OperationalError:
+            try:
+                con.execute("DELETE FROM notifications WHERE company_name=?", (company,))
+            except sqlite3.OperationalError:
+                pass
+        try:
+            con.execute("DELETE FROM emails_log WHERE recipient_email=(SELECT email FROM users WHERE username=?)", (username,))
+        except sqlite3.OperationalError:
+            pass
+
+        con.execute("DELETE FROM users WHERE username=? AND role!='master'", (username,))
+
+        # If this was the final account in the organization, remove the organization too.
+        remaining = con.execute("SELECT COUNT(*) FROM users WHERE company_name=? AND role!='master'", (company,)).fetchone()[0]
+        if remaining == 0:
+            try:
+                con.execute("DELETE FROM companies WHERE name=?", (company,))
+            except sqlite3.OperationalError:
+                pass
+
+        con.commit()
+        return True, f"Account '{username}' and its stored account records were permanently deleted."
+    except Exception as exc:
+        con.rollback()
+        return False, f"Permanent deletion failed: {exc}"
+    finally:
+        con.close()
 
 
 def admin_metric_counts():
@@ -1353,6 +1324,18 @@ st.markdown("""
 </style>
 """,unsafe_allow_html=True)
 
+st.markdown("""
+<style>
+.master-section{padding:18px 22px;margin:4px 0 18px;border:1px solid rgba(56,189,248,.22);border-radius:22px;background:linear-gradient(135deg,rgba(9,18,35,.96),rgba(18,29,51,.82));box-shadow:0 18px 55px rgba(0,0,0,.18)}
+.master-kicker{font-size:.68rem;letter-spacing:.18em;font-weight:900;color:#67e8f9!important;text-transform:uppercase}
+.master-section-title{font-size:1.75rem;font-weight:950;letter-spacing:-.03em;margin-top:4px;color:#fff!important}
+.master-section-sub{font-size:.88rem;color:#9fb4cc!important;margin-top:4px;line-height:1.5}
+.danger-panel{margin-top:22px;padding:18px 20px;border-radius:20px;border:1px solid rgba(248,113,113,.42);background:linear-gradient(135deg,rgba(69,10,10,.55),rgba(40,12,18,.72));box-shadow:0 14px 45px rgba(127,29,29,.16)}
+.danger-title{font-size:1.05rem;font-weight:950;color:#fecaca!important}
+.danger-copy{font-size:.86rem;line-height:1.55;color:#fca5a5!important;margin-top:5px}
+</style>
+""",unsafe_allow_html=True)
+
 user=st.session_state.user
 
 head_col1,head_col2=st.columns([4,1])
@@ -1369,7 +1352,7 @@ with st.sidebar:
     st.markdown(f"### {user['first_name']}'s Workspace")
     st.caption(f"{user['company']} · {user['role']}")
     st.markdown("<div style='font-size:.78rem;color:#8b6577!important;margin:4px 0 14px'>DI is available across your workspace.</div>",unsafe_allow_html=True)
-    navigation=["DI Home","Business Command Center","Workspace & Data","Formula Lab","Charts","File Vault","Export Center"]
+    navigation=["DI Home","Workspace & Data","Formula Lab","Charts","File Vault","Export Center"]
     if user["role"] in ("company_admin","master"):
         navigation.append("Organization Admin Portal")
     if user["role"]=="master": navigation.append("Overall Admin DI Portal")
@@ -1494,40 +1477,6 @@ if selected_page=="DI Home":
         st.rerun()
 
     st.caption("Voice mode uses your browser microphone and speech synthesis. If your browser does not expose continuous speech recognition, the text conversation remains available.")
-
-# BUSINESS COMMAND CENTER — additive executive intelligence page
-# =============================================================================
-elif selected_page=="Business Command Center":
-    st.header("Business Command Center")
-    df=st.session_state.processed_df
-    if df is None:
-        st.info("Upload a dataset from Workspace & Data first. Then DACRE will turn the numbers into an executive business view.")
-    else:
-        h=business_health(df)
-        st.markdown(f"<div class='dacre-user-hero'><div class='dacre-user-title'>Executive view</div><div class='dacre-user-sub'>DI has analysed the active workspace for {user['company']}. These signals are calculated from the data currently loaded — no invented business facts.</div></div>",unsafe_allow_html=True)
-        k1,k2,k3,k4=st.columns(4)
-        k1.metric("Business Data Health",f"{h['score']}/100")
-        k2.metric("Records",f"{len(df):,}")
-        k3.metric("Missing Cells",f"{int(df.isna().sum().sum()):,}")
-        k4.metric("Duplicate Rows",f"{int(df.duplicated().sum()):,}")
-        st.markdown("### DI Executive Brief")
-        st.write(build_executive_brief(df,user["company"]))
-        st.markdown("### Signals requiring attention")
-        signals=business_signals(df)
-        if not signals:
-            st.success("No strong automated warning signals were detected in the current dataset.")
-        else:
-            for sig in signals:
-                icon="📈" if sig["type"]=="trend" else "⚠️" if sig["type"]=="anomaly" else "🧹"
-                st.markdown(f"**{icon} {sig['column']}** — {sig['message']}")
-        st.markdown("### Ask the data")
-        with st.form("command_center_form",clear_on_submit=True):
-            q=st.text_input("Business question",placeholder="e.g. Give me an executive brief, show the top products, or check the data health")
-            go=st.form_submit_button("Ask DI",use_container_width=True)
-        if go and q.strip():
-            answer=di_reply(q,user,df,allow_online=True)
-            st.markdown(f"<div class='di-quick-card'><b>DI</b><div style='margin-top:8px;line-height:1.65'>{answer}</div></div>",unsafe_allow_html=True)
-            st.session_state.last_speech=answer
 
 # PAGE 1 WORKSPACE
 # =============================================================================
@@ -1677,10 +1626,65 @@ elif selected_page=="Organization Admin Portal" and user["role"] in ("company_ad
 elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
     counts=admin_metric_counts()
     st.markdown("""
-    <div class="dacre-hero">
-      <div class="dacre-title" style="font-size:3rem;">CEO Office</div>
-      <div class="dacre-sub">DACRE Analysis executive command centre · Overall Administration · DI Workforce</div>
-      <div style="margin-top:14px;color:#9edcff;font-weight:700;">Master: David Emenike · System authority: Overall Administrator</div>
+    <style>
+    .ceo-super{position:relative;overflow:hidden;padding:34px 36px;border-radius:30px;margin-bottom:18px;background:radial-gradient(circle at 78% 12%,rgba(103,232,249,.20),transparent 25%),radial-gradient(circle at 12% 105%,rgba(245,158,11,.13),transparent 32%),linear-gradient(135deg,#030712 0%,#071426 48%,#06101d 100%);border:1px solid rgba(103,232,249,.34);box-shadow:0 34px 100px rgba(0,0,0,.35),inset 0 1px rgba(255,255,255,.08)}
+    .ceo-super:after{content:"";position:absolute;width:520px;height:520px;border:1px solid rgba(103,232,249,.08);border-radius:50%;right:-240px;top:-260px;box-shadow:0 0 0 55px rgba(103,232,249,.025),0 0 0 110px rgba(103,232,249,.015)}
+    .ceo-kicker{font-size:.68rem;letter-spacing:.24em;text-transform:uppercase;color:#67e8f9!important;font-weight:950}
+    .ceo-title{font-size:3.35rem;line-height:.98;font-weight:950;letter-spacing:-.06em;color:#fff!important;margin-top:8px}
+    .ceo-sub{max-width:790px;color:#a9bed5!important;font-size:.98rem;line-height:1.62;margin-top:12px}
+    .ceo-badges{display:flex;gap:9px;flex-wrap:wrap;margin-top:19px}
+    .ceo-badge{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.11);color:#d9faff!important;font-size:.74rem;font-weight:850;backdrop-filter:blur(12px)}
+    .ceo-pulse{width:8px;height:8px;border-radius:50%;background:#34d399;box-shadow:0 0 0 5px rgba(52,211,153,.12),0 0 18px rgba(52,211,153,.65)}
+    .ceo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:0 0 22px}
+    .ceo-mini{padding:16px 17px;border-radius:19px;background:linear-gradient(145deg,rgba(5,14,28,.96),rgba(12,29,49,.78));border:1px solid rgba(255,255,255,.08);box-shadow:0 15px 35px rgba(0,0,0,.16)}
+    .ceo-mini-label{font-size:.67rem;color:#7f9bb5!important;text-transform:uppercase;letter-spacing:.13em;font-weight:850}
+    .ceo-mini-value{font-size:1.04rem;color:#fff!important;font-weight:900;margin-top:5px}
+    .ceo-profile{padding:20px 22px;border-radius:26px;background:linear-gradient(160deg,rgba(8,18,32,.98),rgba(11,29,48,.82));border:1px solid rgba(103,232,249,.25);box-shadow:0 28px 70px rgba(0,0,0,.24)}
+    .ceo-profile-kicker{font-size:.64rem;letter-spacing:.18em;text-transform:uppercase;color:#67e8f9!important;font-weight:900;margin-bottom:9px}
+    .ceo-profile-name{font-size:1.35rem;color:#fff!important;font-weight:950;letter-spacing:-.02em}
+    .ceo-profile-role{font-size:.82rem;color:#9fb5cb!important;margin-top:4px;line-height:1.45}
+    .ceo-profile-line{height:1px;background:linear-gradient(90deg,rgba(103,232,249,.35),transparent);margin:16px 0}
+    .ceo-profile-note{font-size:.76rem;color:#8da6bd!important;line-height:1.55}
+    .ceo-portrait-wrap{padding:8px;border-radius:28px;background:linear-gradient(145deg,rgba(103,232,249,.28),rgba(245,158,11,.16),rgba(255,255,255,.03));border:1px solid rgba(103,232,249,.22);box-shadow:0 25px 70px rgba(0,0,0,.30)}
+    [data-testid="stImage"] img{border-radius:22px!important;border:1px solid rgba(103,232,249,.30)!important;box-shadow:0 18px 45px rgba(0,0,0,.30)!important}
+    @media(max-width:900px){.ceo-title{font-size:2.45rem}.ceo-grid{grid-template-columns:1fr}.ceo-super{padding:26px 24px}}
+    </style>
+    """,unsafe_allow_html=True)
+
+    hero_left, hero_right = st.columns([3.35,1.05], gap="large")
+    with hero_left:
+        st.markdown("""
+        <div class="ceo-super">
+          <div class="ceo-kicker">DACRE // OVERALL ADMINISTRATION</div>
+          <div class="ceo-title">CEO Office</div>
+          <div class="ceo-sub">The executive command layer above every organization, account, file, conversation and DI worker. A private control room for platform-wide decisions, intelligence and administration.</div>
+          <div class="ceo-badges">
+            <span class="ceo-badge"><span class="ceo-pulse"></span> DI Workforce Online</span>
+            <span class="ceo-badge">MASTER · DAVID EMENIKE</span>
+            <span class="ceo-badge">SYSTEM AUTHORITY · OVERALL ADMIN</span>
+          </div>
+        </div>
+        """,unsafe_allow_html=True)
+    with hero_right:
+        if MASTER_PORTRAIT_PATH.exists():
+            st.markdown('<div class="ceo-portrait-wrap">',unsafe_allow_html=True)
+            st.image(str(MASTER_PORTRAIT_PATH), use_container_width=True)
+            st.markdown('</div>',unsafe_allow_html=True)
+        st.markdown("""
+        <div class="ceo-profile">
+          <div class="ceo-profile-kicker">Master Identity</div>
+          <div class="ceo-profile-name">David Emenike</div>
+          <div class="ceo-profile-role">Overall Administrator · DACRE Platform Authority</div>
+          <div class="ceo-profile-line"></div>
+          <div class="ceo-profile-note">Master-level command is active. Organization, account, data, DI workforce and platform controls are available from this office.</div>
+        </div>
+        """,unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="ceo-grid">
+      <div class="ceo-mini"><div class="ceo-mini-label">Command Level</div><div class="ceo-mini-value">Sovereign / Master</div></div>
+      <div class="ceo-mini"><div class="ceo-mini-label">Scope</div><div class="ceo-mini-value">Entire DACRE Platform</div></div>
+      <div class="ceo-mini"><div class="ceo-mini-label">Control Mode</div><div class="ceo-mini-value">Live Administrative Control</div></div>
     </div>
     """,unsafe_allow_html=True)
 
@@ -1756,10 +1760,36 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
         st.metric("Organizations",len(companies_df))
 
     with tabs[3]:
-        st.subheader("All People & Accounts")
+        st.markdown("<div class='master-section'><div class='master-kicker'>PEOPLE & ACCESS</div><div class='master-section-title'>Account Command Centre</div><div class='master-section-sub'>System-wide account visibility with controlled, irreversible deletion for the Overall Administrator.</div></div>", unsafe_allow_html=True)
         users_df=pd.read_sql_query("SELECT id,first_name,last_name,username,company_name,email,role,login_count,created_at,last_login FROM users ORDER BY id DESC",con)
+        normal_users=users_df[users_df["role"]!="master"].copy()
+        k1,k2,k3=st.columns(3)
+        k1.metric("Registered Users",len(normal_users))
+        k2.metric("Companies",normal_users["company_name"].nunique() if not normal_users.empty else 0)
+        k3.metric("Active Roles",normal_users["role"].nunique() if not normal_users.empty else 0)
         st.dataframe(users_df,use_container_width=True,hide_index=True)
-        st.metric("Registered accounts excluding master",len(users_df[users_df["role"]!="master"]))
+
+        st.markdown("<div class='danger-panel'><div class='danger-title'>⚠ Permanent Account Deletion</div><div class='danger-copy'>This action cannot be undone. It removes the selected non-master account and its account-owned files, projects, activity, conversations and related records. The Overall Administrator account is protected.</div></div>", unsafe_allow_html=True)
+        delete_candidates=normal_users["username"].tolist() if not normal_users.empty else []
+        if delete_candidates:
+            d1,d2=st.columns([1,1])
+            with d1:
+                delete_username=st.selectbox("Account to permanently delete",delete_candidates, key="master_delete_user")
+                selected_delete=normal_users[normal_users["username"]==delete_username].iloc[0]
+                st.caption(f"{selected_delete['first_name']} {selected_delete['last_name']} · {selected_delete['company_name']} · {selected_delete['role']}")
+            with d2:
+                delete_confirm=st.text_input("Confirmation phrase", placeholder="Type DELETE PERMANENTLY", key="master_delete_confirm")
+                st.caption("Required exactly as shown. This is an irreversible operation.")
+            if st.button("🗑️ PERMANENTLY DELETE ACCOUNT", use_container_width=True, type="secondary", key="master_delete_account"):
+                ok,msg=permanently_delete_user(delete_username,delete_confirm)
+                if ok:
+                    log_activity(MASTER_USERNAME,"DACRE MASTER",f"Permanently deleted account {delete_username}",notify_admin=False)
+                    st.success(msg)
+                    st.rerun()
+                else:
+                    st.error(msg)
+        else:
+            st.info("There are no non-master accounts available for deletion.")
 
     with tabs[4]:
         st.subheader("System Activity")
