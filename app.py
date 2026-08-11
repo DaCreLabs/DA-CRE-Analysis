@@ -877,7 +877,7 @@ def landing_page():
     # Discreet CEO access: double-click the building mark. The master passkey is
     # never displayed on the public landing page.
     gate_requested = str(st.query_params.get("master_gate", "")) == "1"
-    top1, top2, top3, top4 = st.columns([4,1,1,0.7])
+    top1, top2, top3 = st.columns([5,1,1])
     with top1:
         st.markdown("### **DACRE Analysis**")
     with top2:
@@ -888,25 +888,88 @@ def landing_page():
         if st.button("Sign Up", use_container_width=True):
             st.session_state.landing_mode = "signup"
             st.rerun()
-    with top4:
-        st.markdown("""
-        <div id="dacre-ceo-access" title="DACRE-ANALYSIS — double-click for master access"
-             style="height:42px;width:42px;border:1px solid rgba(24,183,255,.35);border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(255,255,255,.035);transition:.2s;">
-          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-label="DACRE-ANALYSIS">
-            <path d="M3 21h18M5 21V6l7-3 7 3v15M8 9h2m4 0h2M8 13h2m4 0h2M8 17h2m4 0h2"/>
-          </svg>
-        </div>
-        <div style="font-size:.58rem;text-align:center;margin-top:3px;letter-spacing:.08em;color:#9edcff">DACRE-ANALYSIS</div>
-        <script>
-        (function(){
-          const el=document.getElementById('dacre-ceo-access');
-          if(!el) return;
-          el.addEventListener('dblclick',function(){
-            try{ window.parent.location.href=window.parent.location.pathname+'?master_gate=1'; }catch(e){}
-          });
-        })();
-        </script>
-        """, unsafe_allow_html=True)
+
+    # -------------------------------------------------------------------------
+    # PRIVATE CEO ENTRY POINT
+    # A real photographic company-building card is injected into the parent
+    # Streamlit page.  The old SVG/emoji-style mark was unreliable because the
+    # JavaScript lived inside the markdown renderer rather than a stable iframe.
+    # This component creates the card in the parent document and listens for a
+    # genuine browser dblclick event, then opens the existing master_gate route.
+    # -------------------------------------------------------------------------
+    components.html("""
+    <script>
+    (function () {
+      const parentDoc = window.parent.document;
+      const ID = 'dacre-ceo-building-access';
+
+      function mount() {
+        if (parentDoc.getElementById(ID)) return;
+
+        const card = parentDoc.createElement('div');
+        card.id = ID;
+        card.setAttribute('title', 'DACRE-ANALYSIS — double-click for CEO access');
+        card.setAttribute('role', 'button');
+        card.setAttribute('tabindex', '0');
+        card.style.cssText = `
+          position: fixed;
+          left: 24px;
+          bottom: 24px;
+          width: 148px;
+          height: 150px;
+          z-index: 2147483000;
+          cursor: pointer;
+          border-radius: 18px;
+          overflow: hidden;
+          background: #ffffff;
+          border: 1px solid rgba(232,106,168,.34);
+          box-shadow: 0 18px 50px rgba(45,25,40,.22);
+          transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+          user-select: none;
+        `;
+
+        card.innerHTML = `
+          <div style="position:absolute;inset:0;background:#fff;">
+            <img src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=700&q=88"
+                 alt="DACRE-ANALYSIS company building"
+                 style="width:100%;height:112px;object-fit:cover;display:block;" />
+            <div style="position:absolute;left:0;right:0;top:0;height:112px;background:linear-gradient(180deg,rgba(10,12,18,.16),rgba(10,12,18,.02) 55%,rgba(10,12,18,.46));"></div>
+            <div style="position:absolute;left:10px;top:8px;color:#fff;font:800 11px/1.1 Inter,Segoe UI,sans-serif;letter-spacing:.11em;text-shadow:0 2px 8px rgba(0,0,0,.5);">DACRE-ANALYSIS</div>
+            <div style="position:absolute;left:10px;right:10px;bottom:8px;color:#17202b;font:800 10px/1.25 Inter,Segoe UI,sans-serif;letter-spacing:.04em;text-align:center;">CEO OFFICE</div>
+          </div>`;
+
+        const openGate = function () {
+          const url = new URL(window.parent.location.href);
+          url.searchParams.set('master_gate', '1');
+          window.parent.location.href = url.toString();
+        };
+
+        card.addEventListener('mouseenter', () => {
+          card.style.transform = 'translateY(-6px) scale(1.025)';
+          card.style.boxShadow = '0 25px 65px rgba(232,106,168,.30)';
+          card.style.borderColor = 'rgba(232,106,168,.70)';
+        });
+        card.addEventListener('mouseleave', () => {
+          card.style.transform = 'translateY(0) scale(1)';
+          card.style.boxShadow = '0 18px 50px rgba(45,25,40,.22)';
+          card.style.borderColor = 'rgba(232,106,168,.34)';
+        });
+        card.addEventListener('dblclick', openGate);
+        card.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') openGate();
+        });
+
+        parentDoc.body.appendChild(card);
+      }
+
+      if (parentDoc.readyState === 'loading') {
+        parentDoc.addEventListener('DOMContentLoaded', mount, {once:true});
+      } else {
+        mount();
+      }
+    })();
+    </script>
+    """, height=0)
 
     if gate_requested:
         st.markdown("""
@@ -940,7 +1003,7 @@ def landing_page():
         with c2:
             if st.button("← Back to DACRE Introduction"):
                 st.session_state.landing_mode="home"; st.rerun()
-            tab_login,tab_signup=st.tabs(["🔒 Sign In","📝 Sign Up"])
+            tab_login,tab_signup=st.tabs(["Sign In","Sign Up"])
             with tab_login:
                 st.markdown("### Access your workspace")
                 login_company=st.text_input("Company / Organization Name",placeholder="e.g. Edubridge Consultant Limited",key="lin_comp")
@@ -959,7 +1022,7 @@ def landing_page():
                             st.session_state.processed_df=project["processed"]
                             st.session_state.formula_logs=project["logs"]
                             st.session_state.chart_config=project["chart"]
-                        st.toast(f"Welcome back, {auth['first_name']}!",icon="🚀")
+                        st.toast(f"Welcome back, {auth['first_name']}!")
                         st.rerun()
                     else: st.error(auth_message or "This account has not been created. Please go to the Sign Up page and create your account to access DACRE Analysis.")
             with tab_signup:
@@ -1005,9 +1068,9 @@ def landing_page():
 
     a,b=st.columns(2)
     with a:
-        if st.button("🚀 Start with DACRE",use_container_width=True): st.session_state.landing_mode="signup"; st.rerun()
+        if st.button("Start with DACRE",use_container_width=True): st.session_state.landing_mode="signup"; st.rerun()
     with b:
-        if st.button("🔐 I already have an account",use_container_width=True): st.session_state.landing_mode="login"; st.rerun()
+        if st.button("I already have an account",use_container_width=True): st.session_state.landing_mode="login"; st.rerun()
 
 
 if st.session_state.user is None:
@@ -1229,10 +1292,10 @@ elif selected_page=="Workspace & Data":
         m2.metric("Total Columns",len(df.columns))
         m3.metric("Duplicates Removed",int(st.session_state.raw_df.duplicated().sum()) if st.session_state.raw_df is not None else 0)
         st.dataframe(df,use_container_width=True)
-        if st.button("💾 Save Project State to DI"):
+        if st.button("Save Project State to DI"):
             save_project(user,st.session_state.raw_df,df,st.session_state.active_filename,st.session_state.formula_logs,st.session_state.chart_config)
             log_activity(user["username"],user["company"],"Saved project state")
-            st.toast("Project saved.",icon="💾")
+            st.toast("Project saved.")
     else: st.info("No active dataset. Upload a file or restore a saved project by signing in again.")
 
 # =============================================================================
@@ -1301,15 +1364,15 @@ elif selected_page=="Export Center":
     if df is None: st.warning("No data available to export.")
     else:
         csv_data=df.to_csv(index=False).encode("utf-8"); excel_data=make_excel(df)
-        st.download_button("📥 Download CSV Dataset",data=csv_data,file_name=f"{st.session_state.active_filename or 'dacre'}_processed.csv",mime="text/csv")
-        st.download_button("📥 Download Excel Workbook (.xlsx)",data=excel_data,file_name=f"{st.session_state.active_filename or 'dacre'}_workbook.xlsx",mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        st.download_button("Download CSV Dataset",data=csv_data,file_name=f"{st.session_state.active_filename or 'dacre'}_processed.csv",mime="text/csv")
+        st.download_button("Download Excel Workbook (.xlsx)",data=excel_data,file_name=f"{st.session_state.active_filename or 'dacre'}_workbook.xlsx",mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         log_activity(user["username"],user["company"],"Opened Export Center")
 
 # =============================================================================
 # ORGANIZATION ADMIN PORTAL
 # =============================================================================
 elif selected_page=="Organization Admin Portal" and user["role"] in ("company_admin","master"):
-    st.header("🛡️ Organization Admin Portal")
+    st.header("Organization Admin Portal")
     if user["role"]=="master":
         st.success("Master access confirmed. You can inspect all organizations.")
         target_company=st.selectbox("Organization",pd.read_sql_query("SELECT name FROM companies ORDER BY name",db())["name"].tolist())
@@ -1318,7 +1381,7 @@ elif selected_page=="Organization Admin Portal" and user["role"] in ("company_ad
         st.success(f"Admin access confirmed for {target_company}.")
 
     con=db()
-    tabs=st.tabs(["👥 People & Accounts","📜 Changes & Activity","🔔 DI Messages"])
+    tabs=st.tabs(["People & Accounts","Changes & Activity","DI Messages"])
     with tabs[0]:
         users_df=pd.read_sql_query("SELECT id,first_name,last_name,username,email,role,login_count,created_at,last_login FROM users WHERE company_name=? ORDER BY id DESC",con,params=(target_company,))
         st.dataframe(users_df,use_container_width=True)
@@ -1476,7 +1539,7 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
 # =============================================================================
 
 st.markdown("---")
-with st.expander("🤖 Chat with DI — quick assistant",expanded=False):
+with st.expander("Chat with DI — quick assistant",expanded=False):
     for msg in st.session_state.chat_history[-10:]: st.write(f"**{msg['sender']}**: {msg['text']}")
     with st.form("quick_di_form",clear_on_submit=True):
         q=st.text_input("Chat with DI",placeholder="Chat with DI — ask a question...",label_visibility="collapsed")
