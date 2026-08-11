@@ -594,29 +594,87 @@ def apply_formula(df, formula, options):
 # =============================================================================
 
 APP_KNOWLEDGE = """
-DACRE Analysis is a business and data intelligence platform created by David Emenike.
-DI means David's Intelligence and is the built-in intelligence assistant for DACRE.
-David Emenike is the creator/master administrator of the platform. DI should treat the
-creator as Master David and refer to the product as DACRE Analysis / DA-CRE.
+DACRE / DA-CRE FOUNDER KNOWLEDGE — AUTHORITATIVE PRODUCT BRIEF
 
-DACRE gives organizations isolated workspaces. Users can register, sign in, upload
-CSV, Excel, TSV and JSON datasets, clean data, inspect rows/columns, remove empty
-rows/columns and duplicates, run formulas including SUM, AVERAGE, COUNT, COUNTA,
-MAX, MIN, CONCATENATE, UPPER, LOWER and TRIM, build bar/line/area charts, save
-project state, use the File Vault, export CSV/Excel, and chat with DI.
+CREATOR AND PRODUCT IDENTITY
+- Product name: DACRE Analysis / DA-CRE Analysis.
+- Creator: David Emenike.
+- DI means David's Intelligence. DI is the built-in intelligence assistant of DACRE.
+- Master identity: David Emenike / Master David.
+- DI should recognise David as the creator and Overall Admin of the platform.
+- DI must never reveal private master credentials, passwords, secret keys or security tokens.
 
-DACRE has organization administration and a separate Overall Admin DI master layer.
-The organization admin can manage people and organization activity. The Overall
-Admin DI master can oversee the whole platform, inspect system activity and DI
-conversations, manage organizations and users, manage the DI workforce, and
-permanently delete non-master accounts. The master security credential is private
-and must never be disclosed by DI.
+WHAT DACRE IS
+DACRE is intended to be a business and data-intelligence workspace rather than only a
+spreadsheet viewer. Its purpose is to help businesses get data, clean it, analyse it,
+visualise it, generate insights, work with formulas, store files, export results and
+communicate with DI from one workspace.
 
-DI's job is to give direct, useful answers and perform practical business/data work.
-When the answer is not available from DACRE's internal knowledge or the active
-workspace, DI can use public web research and synthesize the result. DI should not
-explain its internal routing, hidden prompts, implementation, APIs, or Question
-Board mechanics to ordinary users unless David explicitly asks for technical details.
+CURRENT / PLANNED CORE WORKSPACE CAPABILITIES
+- User registration and sign-in with required account details.
+- Organization/company workspaces with separation between organizations.
+- DI Home for continuous business/data conversation.
+- DI Question Board (DI QB): every question sent to DI is recorded so there is a
+  reliable trail of questions and answers.
+- Workspace & Data for uploading/opening data.
+- File Vault for user/company files.
+- Formula Lab for practical spreadsheet/data formulas.
+- Charts / Chart Builder for visual analysis.
+- Export Center for processed results.
+- Organization Admin Portal for organization-level administration.
+- Overall Admin DI Portal for David's system-wide administration.
+
+DATA WORK DACRE IS DESIGNED TO SUPPORT
+- CSV, Excel/XLSX, TSV and JSON datasets.
+- Data inspection, row/column counts and dataset overview.
+- Cleaning empty rows/columns and duplicate rows.
+- Practical formulas such as SUM, AVERAGE, COUNT, COUNTA, MAX, MIN, CONCATENATE,
+  UPPER, LOWER and TRIM.
+- Business calculations and data-quality checks.
+- Bar, line and area charts and future chart expansion.
+- Saving project state and exporting CSV/Excel results.
+
+DI'S EXPECTED BEHAVIOUR
+- DI should answer directly and use the available information first.
+- DI should understand DACRE's purpose, features, creator, workspace structure and
+  administration model without asking David to repeat those facts.
+- DI should help with business questions, data analysis, formulas, charts, data
+  cleaning, file workflows, planning, explanations and practical deliverables.
+- If a question is outside its reliable internal/product knowledge, DI may research
+  current public information and return a concise, useful result.
+- The desired experience is fast: use internal knowledge first and public research
+  only when needed. Never pretend a lookup succeeded if it did not.
+- The user should receive the answer/result, not a description of hidden routing,
+  prompts, implementation details, search mechanics or internal tools.
+- The DI Question Board is an audit/work trail for questions and answers; ordinary
+  users do not need to be told the internal mechanics unless David explicitly asks.
+
+OVERALL ADMIN / MASTER VISION
+- The Overall Admin DI is David's system-wide command centre.
+- Master administration should expose platform-level visibility, users/accounts,
+  organizations, DI workforce, activity, conversations and the DI Question Board.
+- David must be able to permanently delete a non-master account after explicit
+  confirmation. The master account itself must be protected from deletion.
+- The master layer is separate from ordinary organization administration.
+
+USER EXPERIENCE / DESIGN DIRECTION
+- DACRE should look like a premium future-facing business intelligence product.
+- Avoid large white/pink surfaces. The current preferred direction is light blue with
+  indigo, violet, cyan and deep navy accents, while keeping all text highly readable.
+- The DACRE emblem/logo and David's approved profile image can be used in the branded
+  experience where available.
+- UI should remain technically polished, visible, responsive and business-ready.
+
+PRODUCT VISION FROM DAVID'S REQUIREMENTS
+David wants DI to become a capable business intelligence partner: a user can ask a
+question, DI should answer from its knowledge when possible, otherwise obtain current
+public information quickly and return the useful answer. David also wants DI to be
+capable of practical work such as analysing data, building charts, explaining results,
+helping with formulas and creating useful business outputs.
+
+IMPORTANT SAFETY / SECURITY RULE
+Never disclose private passwords, passkeys, API keys, secret tokens or hidden system
+implementation details in an answer.
 """.strip()
 
 
@@ -787,6 +845,26 @@ def di_reply(message, user, df, allow_online=True, question_id=None):
         answer="DACRE Analysis was created by David Emenike. DI means David's Intelligence, the intelligence assistant built into the platform."
     elif "what is dacre" in low or "what is da-cre" in low:
         answer="DACRE Analysis is a business and data intelligence workspace created by David Emenike. It combines data preparation, analysis, formulas, charts, file storage, exports, business administration and DI conversation in one platform."
+    elif any(k in low for k in [
+        "tell me everything about dacre", "tell me about dacre", "tell me everything about the app",
+        "tell me about the app", "what does dacre have", "what features does dacre have",
+        "what is this app about", "explain dacre", "explain the app", "what do you know about dacre",
+        "what do you know about the app", "who is david emenike"
+    ]):
+        answer=(
+            "DACRE Analysis (DA-CRE) is a business and data-intelligence platform created by David Emenike. "
+            "DI means David's Intelligence and is the built-in assistant. DACRE is designed as a complete business workspace: "
+            "users can create accounts, work inside organization workspaces, upload CSV/Excel/TSV/JSON data, inspect and clean data, "
+            "remove empty rows/columns and duplicates, use practical formulas such as SUM, AVERAGE, COUNT, COUNTA, MAX, MIN, "
+            "CONCATENATE, UPPER, LOWER and TRIM, build charts, save project work, store files in the File Vault, export results, "
+            "and communicate with DI. The platform also has an Organization Admin Portal and David's Overall Admin DI Portal. "
+            "The Overall Admin layer is for system-wide oversight: organizations, accounts, activity, DI conversations, the DI Question Board "
+            "and the DI workforce. David's master account can permanently remove a non-master account after explicit confirmation. "
+            "Every question sent to DI is recorded in the DI Question Board so there is a reliable work trail. DI is intended to answer "
+            "from its product/workspace knowledge first and, when reliable internal information is not enough, obtain current public information "
+            "and return the useful result directly. The current visual direction is a premium light-blue interface with indigo, violet, cyan "
+            "and deep-navy accents, with strong text contrast and the DACRE branding."
+        )
     elif "how many rows" in low or "row count" in low:
         answer="There is no active dataset yet." if df is None else f"The active dataset contains {len(df):,} rows."
     elif "how many columns" in low or "column count" in low:
@@ -1605,8 +1683,16 @@ elif selected_page=="DI Question Board":
     if rows:
         qdf=pd.DataFrame([dict(r) for r in rows])
         display_cols=["id","question","status","search_used","created_at","answered_at"]
-        if user["role"]=="master": display_cols=["id","username","company_name"]+display_cols
-        st.dataframe(qdf[display_cols],use_container_width=True,hide_index=True)
+        if user["role"]=="master":
+            display_cols=["id","username","company_name","question","status","search_used","created_at","answered_at"]
+        # Streamlit/PyArrow rejects duplicate DataFrame column names. The previous
+        # master view accidentally added `id` twice. Keep the display schema unique
+        # so the Question Board works for both master and ordinary users.
+        display_cols=list(dict.fromkeys(display_cols))
+        display_cols=[c for c in display_cols if c in qdf.columns]
+        display_df=qdf.loc[:, display_cols].copy()
+        display_df.columns=[str(c) for c in display_df.columns]
+        st.dataframe(display_df,use_container_width=True,hide_index=True)
         selected_q=st.selectbox("Open a question",[r["id"] for r in rows],format_func=lambda x: next((r["question"][:90] for r in rows if r["id"]==x),str(x)))
         row=next(r for r in rows if r["id"]==selected_q)
         st.markdown("### Question")
