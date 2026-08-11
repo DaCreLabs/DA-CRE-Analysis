@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import io
 import json
 import os
@@ -35,7 +36,7 @@ APP_NAME = "DACRE Analysis"
 DI_NAME = "DI — David's Intelligence"
 MASTER_USERNAME = "david"
 MASTER_FULL_NAME = "David Emenike"
-MASTER_PASSKEY = os.getenv("DACRE_MASTER_PASSKEY", "theWORDofGOD@111")
+MASTER_PASSKEY = os.getenv("DACRE_MASTER_PASSKEY", "").strip()
 
 BASE_DIR = Path(__file__).resolve().parent
 LOGO_CANDIDATES = [
@@ -97,8 +98,32 @@ def db():
     return con
 
 
-def hash_password(value):
-    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+PBKDF2_ITERATIONS = 600_000
+
+def hash_password(value, salt=None, iterations=PBKDF2_ITERATIONS):
+    """Create a salted PBKDF2 password hash. Format: pbkdf2_sha256$iterations$salt$hash."""
+    if salt is None:
+        salt = os.urandom(16)
+    if isinstance(salt, str):
+        salt = bytes.fromhex(salt)
+    digest = hashlib.pbkdf2_hmac("sha256", str(value).encode("utf-8"), salt, int(iterations))
+    return f"pbkdf2_sha256${int(iterations)}${salt.hex()}${digest.hex()}"
+
+
+def verify_password(value, stored):
+    """Verify modern PBKDF2 hashes and transparently accept legacy SHA-256 hashes."""
+    if not stored:
+        return False, False
+    if stored.startswith("pbkdf2_sha256$"):
+        try:
+            _, iterations, salt_hex, digest_hex = stored.split("$", 3)
+            salt = bytes.fromhex(salt_hex)
+            candidate = hashlib.pbkdf2_hmac("sha256", str(value).encode("utf-8"), salt, int(iterations)).hex()
+            return hmac.compare_digest(candidate, digest_hex), False
+        except Exception:
+            return False, False
+    legacy = hashlib.sha256(str(value).encode("utf-8")).hexdigest()
+    return hmac.compare_digest(legacy, stored), True
 
 
 def init_db():
@@ -232,6 +257,9 @@ init_db()
 
 
 def ensure_master():
+    if not MASTER_PASSKEY:
+        # Do not create a usable master account until the deployment secret is configured.
+        return
     con = db()
     cur = con.cursor()
     cur.execute("SELECT id FROM users WHERE username = ?", (MASTER_USERNAME,))
@@ -251,6 +279,15 @@ def ensure_master():
 
 
 ensure_master()
+
+
+def maybe_upgrade_password_hash(con, username, supplied_value, stored_hash, column="passkey_hash"):
+    """Upgrade a legacy SHA-256 credential after a successful login."""
+    ok, legacy = verify_password(supplied_value, stored_hash)
+    if ok and legacy:
+        con.execute(f"UPDATE users SET {column}=? WHERE username=?", (hash_password(supplied_value), username))
+        con.commit()
+    return ok
 
 
 def log_activity(username, company, action, notify_admin=True):
@@ -347,16 +384,21 @@ def authenticate(company_name, full_name, passkey, email=""):
 
     con = db()
     try:
-        if (company_clean == "dacre master" or full_name_clean == "david emenike" or email_clean == "master@dacre.local") and passkey_clean == MASTER_PASSKEY:
+        if (company_clean == "dacre master" or full_name_clean == "david emenike" or email_clean == "master@dacre.local") and MASTER_PASSKEY and passkey_clean == MASTER_PASSKEY:
             row = con.execute("SELECT first_name,last_name,username,company_name,email,role FROM users WHERE username=?", (MASTER_USERNAME,)).fetchone()
             if row:
                 return dict(row), None
 
-        pass_hash = hash_password(passkey_clean)
         if email_clean:
-            rows = con.execute("SELECT first_name,last_name,username,company_name,email,passkey_hash,role FROM users WHERE lower(email)=? AND passkey_hash=?", (email_clean, pass_hash)).fetchall()
+            rows = con.execute("SELECT first_name,last_name,username,company_name,email,passkey_hash,role FROM users WHERE lower(email)=?", (email_clean,)).fetchall()
         else:
-            rows = con.execute("SELECT first_name,last_name,username,company_name,email,passkey_hash,role FROM users WHERE lower(company_name)=? AND passkey_hash=?", (company_clean, pass_hash)).fetchall()
+            rows = con.execute("SELECT first_name,last_name,username,company_name,email,passkey_hash,role FROM users WHERE lower(company_name)=?", (company_clean,)).fetchall()
+
+        valid_rows = []
+        for candidate_row in rows:
+            if maybe_upgrade_password_hash(con, candidate_row["username"], passkey_clean, candidate_row["passkey_hash"]):
+                valid_rows.append(candidate_row)
+        rows = valid_rows
 
         if not rows:
             if email_clean:
@@ -571,6 +613,90 @@ def apply_formula(df, formula, options):
     return None
 
 # =============================================================================
+# BUSINESS INTELLIGENCE LAYER — additive, non-destructive
+# =============================================================================
+
+def _numeric_columns(df):
+    return df.select_dtypes(include="number").columns.tolist() if df is not None else []
+
+def business_health(df):
+    if df is None or df.empty:
+        return {"score": 0, "rows": 0, "columns": 0, "missing_pct": 100.0, "duplicate_pct": 0.0, "numeric": 0}
+    total_cells = max(1, df.shape[0] * df.shape[1])
+    missing_pct = float(df.isna().sum().sum() / total_cells * 100)
+    duplicate_pct = float(df.duplicated().mean() * 100)
+    numeric = len(_numeric_columns(df))
+    score = max(0, min(100, round(100 - missing_pct * 0.65 - duplicate_pct * 0.45 + min(numeric, 10) * 0.8)))
+    return {"score": score, "rows": len(df), "columns": len(df.columns), "missing_pct": missing_pct, "duplicate_pct": duplicate_pct, "numeric": numeric}
+
+def business_signals(df):
+    """Return explainable, dataset-derived signals without pretending to know hidden business facts."""
+    if df is None or df.empty:
+        return []
+    signals = []
+    nums = _numeric_columns(df)
+    for col in nums[:20]:
+        s = pd.to_numeric(df[col], errors="coerce").dropna()
+        if len(s) < 4:
+            continue
+        mean = float(s.mean())
+        std = float(s.std()) if len(s) > 1 else 0.0
+        if std > 0:
+            high = int((s > mean + 3 * std).sum())
+            low = int((s < mean - 3 * std).sum())
+            if high or low:
+                signals.append({"type":"anomaly","column":str(col),"message":f"{col} contains {high + low} unusually distant value(s) from its average."})
+        if len(s) >= 8:
+            first = float(s.head(max(1, len(s)//5)).mean())
+            last = float(s.tail(max(1, len(s)//5)).mean())
+            if first != 0:
+                change = (last - first) / abs(first) * 100
+                if abs(change) >= 10:
+                    direction = "up" if change > 0 else "down"
+                    signals.append({"type":"trend","column":str(col),"message":f"{col} trends {direction} by about {abs(change):.1f}% between the early and recent portions of the dataset."})
+    missing = df.isna().sum().sort_values(ascending=False)
+    for col, count in missing[missing > 0].head(5).items():
+        signals.append({"type":"quality","column":str(col),"message":f"{col} has {int(count):,} missing value(s)."})
+    return signals[:12]
+
+def build_executive_brief(df, company):
+    if df is None or df.empty:
+        return "There is no active dataset to brief yet. Upload your business data and I will prepare an executive review."
+    health = business_health(df)
+    signals = business_signals(df)
+    nums = _numeric_columns(df)
+    lines = [f"Executive brief for {company}.", f"The active dataset contains {len(df):,} rows across {len(df.columns):,} columns. Data health is {health['score']}/100, with {health['missing_pct']:.1f}% missing cells and {health['duplicate_pct']:.1f}% duplicate rows."]
+    if nums:
+        for col in nums[:5]:
+            s = pd.to_numeric(df[col], errors="coerce").dropna()
+            if not s.empty:
+                lines.append(f"{col}: total {s.sum():,.2f}; average {s.mean():,.2f}; minimum {s.min():,.2f}; maximum {s.max():,.2f}.")
+    if signals:
+        lines.append("Key signals: " + " ".join(x["message"] for x in signals[:5]))
+    else:
+        lines.append("I did not detect a strong trend or anomaly from the available numeric fields, so I would review the business context before making a recommendation.")
+    return " ".join(lines)
+
+def ask_data_question(question, df):
+    """Lightweight natural-language data actions available without an external AI key."""
+    if df is None:
+        return "Upload a dataset first. Then ask me questions such as 'show the top products by sales', 'what is missing?', or 'give me an executive brief'."
+    q = question.lower()
+    nums = _numeric_columns(df)
+    if any(k in q for k in ["executive brief", "business brief", "management summary", "ceo summary"]):
+        return build_executive_brief(df, st.session_state.user["company"] if st.session_state.get("user") else "your organization")
+    if "health" in q or "quality score" in q or "data quality" in q:
+        h=business_health(df); return f"Data health is {h['score']}/100. Missing cells: {h['missing_pct']:.1f}%. Duplicate rows: {h['duplicate_pct']:.1f}%. Numeric columns: {h['numeric']}."
+    if ("top" in q or "highest" in q or "largest" in q) and nums:
+        target = next((c for c in nums if str(c).lower() in q), nums[0])
+        view=df[[target]].copy().sort_values(target, ascending=False).head(10)
+        return f"Top 10 records by {target}: " + "; ".join(f"{i+1}. {v:,.2f}" for i,v in enumerate(view[target].tolist()))
+    if ("total" in q or "sum" in q or "revenue" in q or "sales" in q) and nums:
+        target = next((c for c in nums if str(c).lower() in q), nums[0])
+        return f"The total for {target} is {pd.to_numeric(df[target], errors='coerce').sum():,.2f}."
+    return None
+
+# =============================================================================
 # DI KNOWLEDGE + ONLINE KNOWLEDGE
 # =============================================================================
 
@@ -652,6 +778,9 @@ def di_reply(message, user, df, allow_online=True):
     # Deterministic workspace intelligence remains available even without an API.
     if "what can you do" in low or "what can di do" in low:
         return "I can work with your DACRE workspace, inspect and clean data, calculate business metrics, identify missing values and duplicates, build charts, explain results, help plan reports and use current public online information when the question requires it."
+    data_answer = ask_data_question(text, df)
+    if data_answer:
+        return data_answer
     if "how many rows" in low or "row count" in low:
         return "There is no active dataset yet." if df is None else f"The active dataset contains {len(df):,} rows."
     if "how many columns" in low or "column count" in low:
@@ -852,7 +981,10 @@ def master_user_record():
 
 
 def master_passkey_gate(passkey):
-    return bool(passkey and hash_password(passkey.strip()) == hash_password(MASTER_PASSKEY))
+    if not MASTER_PASSKEY:
+        return False
+    ok, _ = verify_password(passkey.strip(), hash_password(MASTER_PASSKEY))
+    return bool(ok)
 
 
 def get_di_agents():
@@ -1237,7 +1369,7 @@ with st.sidebar:
     st.markdown(f"### {user['first_name']}'s Workspace")
     st.caption(f"{user['company']} · {user['role']}")
     st.markdown("<div style='font-size:.78rem;color:#8b6577!important;margin:4px 0 14px'>DI is available across your workspace.</div>",unsafe_allow_html=True)
-    navigation=["DI Home","Workspace & Data","Formula Lab","Charts","File Vault","Export Center"]
+    navigation=["DI Home","Business Command Center","Workspace & Data","Formula Lab","Charts","File Vault","Export Center"]
     if user["role"] in ("company_admin","master"):
         navigation.append("Organization Admin Portal")
     if user["role"]=="master": navigation.append("Overall Admin DI Portal")
@@ -1362,6 +1494,40 @@ if selected_page=="DI Home":
         st.rerun()
 
     st.caption("Voice mode uses your browser microphone and speech synthesis. If your browser does not expose continuous speech recognition, the text conversation remains available.")
+
+# BUSINESS COMMAND CENTER — additive executive intelligence page
+# =============================================================================
+elif selected_page=="Business Command Center":
+    st.header("Business Command Center")
+    df=st.session_state.processed_df
+    if df is None:
+        st.info("Upload a dataset from Workspace & Data first. Then DACRE will turn the numbers into an executive business view.")
+    else:
+        h=business_health(df)
+        st.markdown(f"<div class='dacre-user-hero'><div class='dacre-user-title'>Executive view</div><div class='dacre-user-sub'>DI has analysed the active workspace for {user['company']}. These signals are calculated from the data currently loaded — no invented business facts.</div></div>",unsafe_allow_html=True)
+        k1,k2,k3,k4=st.columns(4)
+        k1.metric("Business Data Health",f"{h['score']}/100")
+        k2.metric("Records",f"{len(df):,}")
+        k3.metric("Missing Cells",f"{int(df.isna().sum().sum()):,}")
+        k4.metric("Duplicate Rows",f"{int(df.duplicated().sum()):,}")
+        st.markdown("### DI Executive Brief")
+        st.write(build_executive_brief(df,user["company"]))
+        st.markdown("### Signals requiring attention")
+        signals=business_signals(df)
+        if not signals:
+            st.success("No strong automated warning signals were detected in the current dataset.")
+        else:
+            for sig in signals:
+                icon="📈" if sig["type"]=="trend" else "⚠️" if sig["type"]=="anomaly" else "🧹"
+                st.markdown(f"**{icon} {sig['column']}** — {sig['message']}")
+        st.markdown("### Ask the data")
+        with st.form("command_center_form",clear_on_submit=True):
+            q=st.text_input("Business question",placeholder="e.g. Give me an executive brief, show the top products, or check the data health")
+            go=st.form_submit_button("Ask DI",use_container_width=True)
+        if go and q.strip():
+            answer=di_reply(q,user,df,allow_online=True)
+            st.markdown(f"<div class='di-quick-card'><b>DI</b><div style='margin-top:8px;line-height:1.65'>{answer}</div></div>",unsafe_allow_html=True)
+            st.session_state.last_speech=answer
 
 # PAGE 1 WORKSPACE
 # =============================================================================
