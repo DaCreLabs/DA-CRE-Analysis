@@ -938,33 +938,18 @@ def landing_page():
             <div style="position:absolute;left:10px;right:10px;bottom:8px;color:#17202b;font:800 10px/1.25 Inter,Segoe UI,sans-serif;letter-spacing:.04em;text-align:center;">CEO OFFICE</div>
           </div>`;
 
-        // Use a real top-level anchor as the navigation mechanism. This is more
-        // reliable inside Streamlit's component iframe than assigning
-        // window.parent.location directly. A two-click sequence within 550ms
-        // is treated as the requested double-click/double-tap.
-        const gateLink = parentDoc.createElement('a');
-        gateLink.href = '?master_gate=1';
-        gateLink.target = '_top';
-        gateLink.rel = 'noopener';
-        gateLink.setAttribute('aria-label', 'Open DACRE-ANALYSIS CEO Master Access');
-        gateLink.style.cssText = 'position:absolute;inset:0;display:block;text-decoration:none;z-index:5;';
-        card.appendChild(gateLink);
-
-        let clickTimer = null;
-        let clickCount = 0;
-        const handleTap = function (event) {
+        // The building is a normal clickable control. A single click/tap opens
+        // the master passkey gate immediately. It is intentionally not a
+        // Streamlit button, so it remains fixed to the browser viewport instead
+        // of moving with the landing-page content.
+        const openMasterGate = function (event) {
           event.preventDefault();
-          clickCount += 1;
-          if (clickCount === 1) {
-            clickTimer = setTimeout(() => { clickCount = 0; }, 550);
-          } else if (clickCount === 2) {
-            clearTimeout(clickTimer);
-            clickCount = 0;
-            gateLink.removeEventListener('click', handleTap);
-            gateLink.click();
-          }
+          event.stopPropagation();
+          const url = new URL(parentDoc.location.href);
+          url.searchParams.set('master_gate', '1');
+          parentDoc.location.href = url.toString();
         };
-        gateLink.addEventListener('click', handleTap);
+        card.addEventListener('click', openMasterGate);
 
         card.addEventListener('mouseenter', () => {
           card.style.transform = 'translateY(-6px) scale(1.025)';
@@ -980,8 +965,7 @@ def landing_page():
         card.addEventListener('keydown', (event) => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
-            gateLink.removeEventListener('click', handleTap);
-            gateLink.click();
+            openMasterGate(event);
           }
         });
 
@@ -1102,6 +1086,21 @@ def landing_page():
 if st.session_state.user is None:
     landing_page()
     st.stop()
+
+# The CEO building belongs ONLY to the public landing page. Remove its
+# fixed DOM node as soon as a user enters the application so it cannot
+# remain floating over or scrolling with the workspace.
+components.html("""
+<script>
+(function(){
+  try {
+    const d = window.parent.document;
+    const old = d.getElementById('dacre-ceo-building-access');
+    if (old) old.remove();
+  } catch(e) {}
+})();
+</script>
+""", height=0)
 
 # Restore persistent DI conversation memory for this account.
 if not st.session_state.chat_history:
