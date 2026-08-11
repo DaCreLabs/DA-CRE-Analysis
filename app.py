@@ -701,13 +701,38 @@ def di_reply(message, user, df, allow_online=True):
 
 
 def load_chat_history(user, limit=40):
+    """Restore DI history safely for both old and new user-record shapes."""
+    username = str(user.get("username", "")).strip()
+    company = str(user.get("company_name", user.get("company", ""))).strip()
+    if not username or not company:
+        return []
     con = db()
     rows = con.execute(
         "SELECT sender, message FROM chat_history WHERE username=? AND company_name=? ORDER BY id DESC LIMIT ?",
-        (user["username"], user["company"], limit),
+        (username, company, int(limit)),
     ).fetchall()
     con.close()
     return [{"sender": r["sender"], "text": r["message"]} for r in reversed(rows)]
+
+
+def verify_recaptcha_token(token):
+    """Verify Google's reCAPTCHA token when DACRE_RECAPTCHA_SECRET is configured."""
+    secret = os.getenv("DACRE_RECAPTCHA_SECRET", "").strip()
+    if not secret or not token:
+        return False
+    try:
+        payload = urllib.parse.urlencode({"secret": secret, "response": token}).encode()
+        req = urllib.request.Request(
+            "https://www.google.com/recaptcha/api/siteverify",
+            data=payload,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=8) as response:
+            data = json.loads(response.read().decode("utf-8"))
+        return bool(data.get("success"))
+    except Exception:
+        return False
 
 
 def transcribe_audio(audio_value):
@@ -796,6 +821,8 @@ for key, default in {
     "user": None, "raw_df": None, "processed_df": None, "active_filename": "",
     "formula_logs": [], "chart_config": {}, "chat_history": [], "landing_mode": "home",
     "last_speech": None, "master_route": False,
+    "master_captcha_required": False, "master_captcha_passed": False,
+    "master_second_attempt": False,
 }.items():
     if key not in st.session_state:
         st.session_state[key] = default
@@ -811,9 +838,16 @@ def master_user_record():
         (MASTER_USERNAME,),
     ).fetchone()
     con.close()
-    return dict(row) if row else {
+    if row:
+        data = dict(row)
+        # The application workspace consistently uses `company`. Keep the
+        # database field `company_name` too so older code remains compatible.
+        data["company"] = data.get("company_name", "DACRE MASTER")
+        return data
+    return {
         "first_name": "David", "last_name": "Emenike", "username": MASTER_USERNAME,
-        "company": "DACRE MASTER", "email": "master@dacre.local", "role": "master"
+        "company_name": "DACRE MASTER", "company": "DACRE MASTER",
+        "email": "master@dacre.local", "role": "master"
     }
 
 
@@ -877,6 +911,23 @@ def landing_page():
     # Discreet CEO access: double-click the building mark. The master passkey is
     # never displayed on the public landing page.
     gate_requested = str(st.query_params.get("master_gate", "")) == "1"
+
+    # -------------------------------------------------------------------------
+    # PRIVATE CEO ENTRY POINT — one unique fixed building card.
+    # Any legacy building injected by an older deployment is removed by the
+    # small cleanup component before the new card is rendered.
+    # -------------------------------------------------------------------------
+    components.html("""
+    <script>
+    (function(){
+      try {
+        const d = window.parent.document;
+        d.querySelectorAll('#dacre-ceo-building-access, #dacre-ceo-building-access-v2').forEach(function(el){ el.remove(); });
+      } catch(e) {}
+    })();
+    </script>
+    """, height=0)
+
     top1, top2, top3 = st.columns([5,1,1])
     with top1:
         st.markdown("### **DACRE Analysis**")
@@ -889,21 +940,11 @@ def landing_page():
             st.session_state.landing_mode = "signup"
             st.rerun()
 
-    # -------------------------------------------------------------------------
-    # PRIVATE CEO ENTRY POINT — FIXED, REAL-PHOTO BUILDING CARD
-    #
-    # IMPORTANT: this uses a normal HTML <a> link instead of JavaScript inside
-    # components.html.  Streamlit renders components.html inside an iframe, so
-    # browser events that try to manipulate window.parent can be blocked or
-    # behave inconsistently.  A real anchor is handled by the browser itself.
-    # It stays fixed to the viewport, does not scroll with the landing page,
-    # and opens the existing master_gate passkey screen immediately.
-    # -------------------------------------------------------------------------
     st.markdown("""
-    <a id="dacre-ceo-building-access" href="?master_gate=1"
+    <a id="dacre-ceo-building-access-v2" href="?master_gate=1"
        title="DACRE-ANALYSIS — CEO Office access"
        aria-label="DACRE-ANALYSIS CEO Office access"
-       style="position:fixed;left:24px;bottom:24px;width:178px;height:172px;
+       style="position:fixed;left:24px;bottom:24px;width:190px;height:178px;
               z-index:2147483000;display:block;overflow:hidden;
               border-radius:20px;background:#fff;border:1px solid rgba(232,106,168,.38);
               box-shadow:0 18px 55px rgba(45,25,40,.25);text-decoration:none;
@@ -911,9 +952,9 @@ def landing_page():
       <div style="position:absolute;inset:0;background:#fff;">
         <img src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=900&q=90"
              alt="DACRE-ANALYSIS company building"
-             style="width:100%;height:130px;object-fit:cover;display:block;">
-        <div style="position:absolute;left:0;right:0;top:0;height:130px;
-                    background:linear-gradient(180deg,rgba(8,12,18,.24),rgba(8,12,18,.02) 48%,rgba(8,12,18,.50));">
+             style="width:100%;height:134px;object-fit:cover;display:block;">
+        <div style="position:absolute;left:0;right:0;top:0;height:134px;
+                    background:linear-gradient(180deg,rgba(8,12,18,.26),rgba(8,12,18,.02) 48%,rgba(8,12,18,.55));">
         </div>
         <div style="position:absolute;left:11px;top:10px;color:#fff;
                     font:800 12px/1.1 Inter,Segoe UI,sans-serif;letter-spacing:.11em;
@@ -924,46 +965,118 @@ def landing_page():
       </div>
     </a>
     <style>
-      #dacre-ceo-building-access:hover{
+      #dacre-ceo-building-access-v2:hover{
         transform:translateY(-7px) scale(1.035);
         box-shadow:0 28px 72px rgba(232,106,168,.34);
         border-color:rgba(232,106,168,.82);
       }
-      #dacre-ceo-building-access:active{
-        transform:translateY(-2px) scale(1.01);
-      }
+      #dacre-ceo-building-access-v2:active{transform:translateY(-2px) scale(1.01);}
       @media (max-width:700px){
-        #dacre-ceo-building-access{left:12px!important;bottom:12px!important;width:148px!important;height:146px!important;}
-        #dacre-ceo-building-access img{height:108px!important;}
+        #dacre-ceo-building-access-v2{left:12px!important;bottom:12px!important;width:154px!important;height:148px!important;}
+        #dacre-ceo-building-access-v2 img{height:109px!important;}
       }
     </style>
     """, unsafe_allow_html=True)
 
+    # -------------------------------------------------------------------------
+    # CEO GATE
+    # Stage 1: passkey. If it is wrong, require security verification.
+    # Stage 2: after verification, request the passkey again. A second wrong
+    # attempt sends the visitor back to the ordinary Sign Up page.
+    # -------------------------------------------------------------------------
     if gate_requested:
+        captcha_required = bool(st.session_state.get("master_captcha_required", False))
+        captcha_passed = bool(st.session_state.get("master_captcha_passed", False))
+        second_attempt = bool(st.session_state.get("master_second_attempt", False))
+
         st.markdown("""
-        <div class="dacre-hero" style="max-width:680px;margin:35px auto 20px;">
-          <div class="dacre-title" style="font-size:2.1rem;">Master Access</div>
-          <div class="dacre-sub">DACRE-ANALYSIS executive access. Enter the private master passkey to open the CEO Office and Overall Admin DI command centre.</div>
+        <div class="dacre-hero" style="max-width:720px;margin:35px auto 20px;text-align:center;">
+          <div class="dacre-title" style="font-size:2.05rem;">Overall Admin DI — Master Access</div>
+          <div class="dacre-sub" style="font-size:1.05rem;">Dear Master David, please kindly put in your account passkey. This is the private Overall Admin DI access for DACRE-ANALYSIS.</div>
         </div>
         """, unsafe_allow_html=True)
-        gate_col1,gate_col2,gate_col3=st.columns([1,2,1])
+
+        gate_col1, gate_col2, gate_col3 = st.columns([1,2,1])
         with gate_col2:
-            master_pk=st.text_input("Master Passkey", type="password", placeholder="Enter master passkey", key="master_gate_pk")
-            g1,g2=st.columns(2)
+            if captcha_required and not captcha_passed:
+                st.markdown("### Security verification")
+                site_key = os.getenv("DACRE_RECAPTCHA_SITE_KEY", "").strip()
+                if site_key:
+                    st.markdown("Google reCAPTCHA is enabled for this deployment. Complete the verification below, then continue.")
+                    components.html(f"""
+                    <div style="display:flex;justify-content:center;">
+                      <div class="g-recaptcha" data-sitekey="{site_key}"></div>
+                    </div>
+                    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+                    """, height=100)
+                    st.caption("For production verification, set DACRE_RECAPTCHA_SITE_KEY and DACRE_RECAPTCHA_SECRET in Streamlit Secrets. The server verifies the token before access is granted.")
+                    if st.button("I completed the reCAPTCHA", use_container_width=True):
+                        # The browser widget cannot safely hand its token to Python
+                        # through a plain HTML iframe. Therefore production mode
+                        # requires the official custom-component token bridge.
+                        st.warning("Complete the Google reCAPTCHA widget first. If the verification is not being accepted, configure the DACRE reCAPTCHA component bridge and secrets.")
+                else:
+                    st.markdown("""
+                    <div style="border:1px solid #d9d9d9;border-radius:4px;padding:16px 14px;background:#fff;max-width:430px;margin:0 auto;box-shadow:0 2px 8px rgba(0,0,0,.10);">
+                      <div style="display:flex;align-items:center;gap:12px;">
+                        <div style="width:28px;height:28px;border:1px solid #b8b8b8;border-radius:3px;background:#fafafa;"></div>
+                        <div style="font:500 15px Arial,sans-serif;color:#333;">I'm not a robot</div>
+                        <div style="margin-left:auto;font:11px Arial,sans-serif;color:#777;text-align:center;">reCAPTCHA<br>Privacy - Terms</div>
+                      </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    st.caption("Google reCAPTCHA is not configured on this deployment yet. This is a local security-verification fallback, not a claim that Google has verified you.")
+                    if st.checkbox("Complete security verification", key="local_captcha_check"):
+                        st.session_state.master_captcha_passed = True
+                        st.session_state.master_second_attempt = True
+                        st.rerun()
+
+                if st.button("Return to DACRE Sign Up", use_container_width=True):
+                    st.session_state.master_captcha_required = False
+                    st.session_state.master_captcha_passed = False
+                    st.session_state.master_second_attempt = False
+                    st.session_state.landing_mode = "signup"
+                    st.query_params.clear()
+                    st.rerun()
+                return
+
+            master_pk = st.text_input("Account Passkey", type="password", placeholder="Enter your private account passkey", key="master_gate_pk")
+            if second_attempt:
+                st.info("Security verification completed. Please enter the passkey again.")
+            g1, g2 = st.columns(2)
             with g1:
-                if st.button("Open CEO Office", use_container_width=True, type="primary"):
+                if st.button("Open Overall Admin DI", use_container_width=True, type="primary"):
                     if master_passkey_gate(master_pk):
-                        st.session_state.user=master_user_record()
-                        st.session_state.master_route=True
-                        st.session_state.last_speech="Welcome, Master David. The CEO Office is online. I have the organization, user, activity and DI workforce systems ready for your direction."
+                        st.session_state.user = master_user_record()
+                        st.session_state.master_route = True
+                        st.session_state.master_captcha_required = False
+                        st.session_state.master_captcha_passed = False
+                        st.session_state.master_second_attempt = False
+                        st.session_state.last_speech = "Welcome, Master David. The Overall Admin DI Office is online. I have the organization, user, activity and DI workforce systems ready for your direction."
                         st.query_params.clear()
                         log_activity(MASTER_USERNAME, "DACRE MASTER", "Opened Overall CEO Office", notify_admin=False)
                         st.rerun()
                     else:
-                        st.error("Master passkey rejected. Access remains locked.")
+                        if second_attempt:
+                            st.warning("The second passkey attempt was incorrect. For security, you are being returned to the normal DACRE Sign Up page.")
+                            st.session_state.master_captcha_required = False
+                            st.session_state.master_captcha_passed = False
+                            st.session_state.master_second_attempt = False
+                            st.session_state.landing_mode = "signup"
+                            st.query_params.clear()
+                            st.rerun()
+                        else:
+                            st.session_state.master_captcha_required = True
+                            st.session_state.master_captcha_passed = False
+                            st.session_state.master_second_attempt = False
+                            st.rerun()
             with g2:
-                if st.button("Close", use_container_width=True):
-                    st.query_params.clear(); st.rerun()
+                if st.button("Return to DACRE", use_container_width=True):
+                    st.session_state.master_captcha_required = False
+                    st.session_state.master_captcha_passed = False
+                    st.session_state.master_second_attempt = False
+                    st.query_params.clear()
+                    st.rerun()
         return
 
     if st.session_state.landing_mode in ("login","signup"):
