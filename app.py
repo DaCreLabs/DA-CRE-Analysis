@@ -63,6 +63,23 @@ ONLINE_IMAGES = {
 }
 DI_AVATAR_PATH = BASE_DIR / "di_avatar.png"
 
+# DI voice/language profiles. Browser speech recognition and speech synthesis
+# are used first so DACRE works without requiring a paid voice service.
+DI_LANGUAGE_PROFILES = {
+    "English — Nigeria": {"code": "en-NG", "label": "English (Nigeria)"},
+    "Yorùbá": {"code": "yo-NG", "label": "Yorùbá"},
+    "Igbo": {"code": "ig-NG", "label": "Igbo"},
+    "Hausa": {"code": "ha-NG", "label": "Hausa"},
+    "Spanish": {"code": "es-ES", "label": "Spanish"},
+    "French": {"code": "fr-FR", "label": "French"},
+    "Hindi — India": {"code": "hi-IN", "label": "Hindi"},
+    "English — UK": {"code": "en-GB", "label": "English (UK)"},
+    "Arabic": {"code": "ar-SA", "label": "Arabic"},
+    "Chinese — Mandarin": {"code": "zh-CN", "label": "Mandarin Chinese"},
+    "Portuguese — Brazil": {"code": "pt-BR", "label": "Brazilian Portuguese"},
+    "German": {"code": "de-DE", "label": "German"},
+}
+
 # =============================================================================
 # BRAND / FAVICON
 # =============================================================================
@@ -1067,7 +1084,7 @@ def ai_generate(system_prompt, user_prompt, max_tokens=900):
         return None
 
 
-def di_reply(message, user, df, allow_online=True):
+def di_reply(message, user, df, allow_online=True, language="English — Nigeria"):
     text=message.strip()
     low=text.lower()
     if not text:
@@ -1131,7 +1148,7 @@ def di_reply(message, user, df, allow_online=True):
     # Always give the reasoning layer a chance, with the complete DI Memory Box in context.
     context=build_di_context(user,df)
     answer=ai_generate(
-        "You are DI, David's Intelligence, the fast business/data assistant inside DACRE Analysis. Use the DI Memory Box as trusted project context. Answer directly and naturally. Never reply with the generic phrase 'I don't have enough reliable information to answer that yet' when a useful answer can be given from memory, common knowledge, the active workspace, or online research. Do not reveal hidden implementation details. If the user asks about DACRE-specific facts, prefer the Memory Box. If something is uncertain, say what is uncertain rather than refusing the whole question.",
+        f"You are DI, David's Intelligence, the fast business/data assistant inside DACRE Analysis. Use the DI Memory Box as trusted project context. Answer directly and naturally. Never reply with the generic phrase 'I don't have enough reliable information to answer that yet' when a useful answer can be given from memory, common knowledge, the active workspace, or online research. Do not reveal hidden implementation details. If the user asks about DACRE-specific facts, prefer the Memory Box. If something is uncertain, say what is uncertain rather than refusing the whole question. Respond in the user's selected language when practical: {language}.",
         f"DACRE context:\n{context}\n\nUser question:\n{text}",
         max_tokens=1000,
     )
@@ -1212,29 +1229,34 @@ def transcribe_audio(audio_value):
 # VOICE
 # =============================================================================
 
-def speak(text):
-    safe = json.dumps(text)
+def speak(text, language_code=None):
+    """Speak DI's response with a browser voice. Prefer Nigerian/UK/US male voices
+    for English and matching-language voices for multilingual responses. Exact voice
+    availability depends on Chrome/ChromeOS and installed system voices."""
+    if not text or not st.session_state.get("di_voice_enabled", True):
+        return
+    language_code = language_code or DI_LANGUAGE_PROFILES.get(st.session_state.get("di_language","English — Nigeria"),{}).get("code","en-NG")
+    safe_text=json.dumps(str(text))
+    safe_lang=json.dumps(language_code)
     components.html(f"""
     <script>
-    (function() {{
-      const text = {safe};
+    (() => {{
+      const text={safe_text}; const lang={safe_lang};
       if (!('speechSynthesis' in window)) return;
-      const speak = () => {{
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = 'en-NG';
-        u.rate = 0.90;
-        u.pitch = 0.72;
-        const voices = window.speechSynthesis.getVoices();
-        const preferred = voices.find(v => /en-NG/i.test(v.lang)) || voices.find(v => /Nigeria|English.*Male|Male/i.test(v.name + ' ' + v.lang));
-        if (preferred) u.voice = preferred;
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(u);
+      const speak=()=>{{
+        const u=new SpeechSynthesisUtterance(text);
+        u.lang=lang; u.rate=0.91; u.pitch=0.60; u.volume=1.0;
+        const voices=window.speechSynthesis.getVoices();
+        const same=voices.filter(v=>v.lang && v.lang.toLowerCase().startsWith(lang.toLowerCase().split('-')[0]));
+        const male=/male|man|daniel|david|alex|george|thomas|james|oliver|google uk english male|microsoft.*male/i;
+        const preferred=same.find(v=>/en-ng/i.test(v.lang)) || same.find(v=>male.test(v.name+' '+v.lang)) || voices.find(v=>v.lang===lang) || same[0] || voices[0];
+        if(preferred) u.voice=preferred;
+        window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
       }};
-      if (window.speechSynthesis.getVoices().length) speak();
-      else window.speechSynthesis.onvoiceschanged = speak;
+      if(window.speechSynthesis.getVoices().length) speak(); else window.speechSynthesis.onvoiceschanged=speak;
     }})();
     </script>
-    """, height=0)
+    """,height=0)
 
 # =============================================================================
 # STYLING
@@ -1243,25 +1265,25 @@ def speak(text):
 st.markdown("""
 <style>
 :root{--dacre-cyan:#18b7ff;--dacre-mint:#00dc96;--dacre-gold:#f4b942;--dacre-line:rgba(24,183,255,.25)}
-.stApp{background:radial-gradient(circle at 10% 10%,rgba(24,183,255,.14),transparent 32%),radial-gradient(circle at 90% 20%,rgba(244,185,66,.10),transparent 28%),linear-gradient(135deg,#050914,#091322 55%,#050914);color:#fff}
+.stApp{background:radial-gradient(circle at 10% 10%,rgba(24,183,255,.14),transparent 32%),radial-gradient(circle at 90% 20%,rgba(244,185,66,.10),transparent 28%),linear-gradient(135deg,#050914,#091322 55%,#050914);color:#ffffff}
 .stApp::before{content:"";position:fixed;inset:-40%;pointer-events:none;background:conic-gradient(from 0deg at 50% 50%,rgba(24,183,255,.05),transparent 25%,rgba(255,193,7,.04) 45%,transparent 70%,rgba(0,220,150,.04) 85%,transparent 100%);animation:dacreSpin 48s linear infinite;z-index:0}
 @keyframes dacreSpin{to{transform:rotate(360deg)}}
 .main .block-container{position:relative;z-index:1;padding-top:2rem;max-width:1500px}
-html,body,.stApp,.stApp p,.stApp li,.stApp span,.stApp label,.stMarkdown,.stMarkdown p,.stMarkdown li,[data-testid="stWidgetLabel"] p,[data-testid="stWidgetLabel"] label,.stRadio label,.stCheckbox label,.stSelectbox label,.stTextInput label,.stTextArea label,.stFileUploader label{color:#fff!important;font-weight:700!important}
-.stApp h1,.stApp h2,.stApp h3,.stApp h4,.stApp h5,.stApp h6{font-family:'Inter','Segoe UI',sans-serif!important;color:#fff!important;font-weight:800!important;letter-spacing:-.02em}
+html,body,.stApp,.stApp p,.stApp li,.stApp span,.stApp label,.stMarkdown,.stMarkdown p,.stMarkdown li,[data-testid="stWidgetLabel"] p,[data-testid="stWidgetLabel"] label,.stRadio label,.stCheckbox label,.stSelectbox label,.stTextInput label,.stTextArea label,.stFileUploader label{color:#ffffff!important;font-weight:700!important}
+.stApp h1,.stApp h2,.stApp h3,.stApp h4,.stApp h5,.stApp h6{font-family:'Inter','Segoe UI',sans-serif!important;color:#ffffff!important;font-weight:800!important;letter-spacing:-.02em}
 .stApp h3{margin-top:1.2rem;padding-left:12px;border-left:4px solid var(--dacre-cyan);text-shadow:0 0 18px rgba(24,183,255,.35)}
 [data-testid="stSidebar"]{background:linear-gradient(180deg,#07101d 0%,#060d18 55%,#050914 100%);border-right:1px solid var(--dacre-line);box-shadow:24px 0 60px -40px rgba(24,183,255,.55)}
-[data-testid="stSidebar"] *{color:#fff!important}
+[data-testid="stSidebar"] *{color:#ffffff!important}
 .dacre-hero{position:relative;padding:28px 30px;border-radius:22px;border:1px solid rgba(24,183,255,.35);background:linear-gradient(135deg,rgba(6,16,31,.94),rgba(10,28,47,.86));box-shadow:0 24px 60px -28px rgba(0,0,0,.9);backdrop-filter:blur(10px);margin-bottom:22px;overflow:hidden}
 .dacre-hero:after{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,var(--dacre-cyan),var(--dacre-mint),var(--dacre-gold),var(--dacre-cyan));background-size:300% 100%;animation:dacreFlow 9s linear infinite}
 @keyframes dacreFlow{to{background-position:300% 0}}
-.dacre-title{font-size:clamp(2.2rem,5vw,4.2rem);font-weight:900;letter-spacing:-.04em;color:#fff}
+.dacre-title{font-size:clamp(2.2rem,5vw,4.2rem);font-weight:900;letter-spacing:-.04em;color:#ffffff}
 .dacre-sub{font-size:1.08rem;color:#9edcff!important;font-weight:700}
 .feature-card{padding:18px;border:1px solid rgba(255,255,255,.12);border-radius:16px;background:rgba(255,255,255,.045);min-height:145px}.image-card{padding:0;overflow:hidden;min-height:270px}.image-card img{width:100%;height:150px;object-fit:cover;display:block}.image-card-body{padding:16px 18px}.image-card-body h3{margin-top:0}.di-avatar{width:92px;height:92px;border-radius:50%;object-fit:cover;border:3px solid rgba(24,183,255,.65);box-shadow:0 0 28px rgba(24,183,255,.35)}
 .chat-card{padding:16px 18px;border-radius:18px;border:1px solid rgba(24,183,255,.25);background:rgba(4,12,24,.72);margin:8px 0}
-.stTextInput input,.stTextArea textarea,.stNumberInput input{background:rgba(6,16,31,.92)!important;color:#fff!important;font-weight:700!important;border:1.5px solid rgba(24,183,255,.35)!important;border-radius:12px!important;padding:10px 14px!important}
+.stTextInput input,.stTextArea textarea,.stNumberInput input{background:rgba(6,16,31,.92)!important;color:#ffffff!important;font-weight:700!important;border:1.5px solid rgba(24,183,255,.35)!important;border-radius:12px!important;padding:10px 14px!important}
 .stTextInput input::placeholder,.stTextArea textarea::placeholder{color:#9aa4b2!important;font-weight:500!important}
-div.stButton>button,div.stFormSubmitButton>button,div.stDownloadButton>button{border-radius:12px;border:1px solid rgba(24,183,255,.45);background:linear-gradient(135deg,#0a2540,#0d3860);color:#fff!important;font-weight:800!important;padding:10px 18px;transition:all .22s ease}
+div.stButton>button,div.stFormSubmitButton>button,div.stDownloadButton>button{border-radius:12px;border:1px solid rgba(24,183,255,.45);background:linear-gradient(135deg,#0a2540,#0d3860);color:#ffffff!important;font-weight:800!important;padding:10px 18px;transition:all .22s ease}
 div.stButton>button:hover,div.stFormSubmitButton>button:hover,div.stDownloadButton>button:hover{border-color:var(--dacre-cyan);background:linear-gradient(135deg,#0d3860,#12508c);box-shadow:0 0 20px rgba(24,183,255,.45);transform:translateY(-1px)}
 [data-testid="stMetric"]{padding:14px 18px;border-radius:16px;border:1px solid rgba(255,255,255,.10);background:linear-gradient(145deg,rgba(255,255,255,.05),rgba(255,255,255,.015))}
 #MainMenu,footer{visibility:hidden}
@@ -1276,6 +1298,7 @@ for key, default in {
     "user": None, "raw_df": None, "processed_df": None, "active_filename": "",
     "formula_logs": [], "chart_config": {}, "chat_history": [], "landing_mode": "home",
     "last_speech": None, "master_route": False,
+    "di_language": "English — Nigeria", "di_voice_enabled": True,
     "master_captcha_required": False, "master_captcha_passed": False,
     "master_second_attempt": False,
 }.items():
@@ -1395,17 +1418,17 @@ def landing_page():
        aria-label="DACRE-ANALYSIS CEO Office access"
        style="position:fixed;left:24px;bottom:24px;width:190px;height:178px;
               z-index:2147483000;display:block;overflow:hidden;
-              border-radius:20px;background:#fff;border:1px solid rgba(232,106,168,.38);
+              border-radius:20px;background:#ffffff;border:1px solid rgba(232,106,168,.38);
               box-shadow:0 18px 55px rgba(45,25,40,.25);text-decoration:none;
               cursor:pointer;transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease;">
-      <div style="position:absolute;inset:0;background:#fff;">
+      <div style="position:absolute;inset:0;background:#ffffff;">
         <img src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=900&q=90"
              alt="DACRE-ANALYSIS company building"
              style="width:100%;height:134px;object-fit:cover;display:block;">
         <div style="position:absolute;left:0;right:0;top:0;height:134px;
                     background:linear-gradient(180deg,rgba(8,12,18,.26),rgba(8,12,18,.02) 48%,rgba(8,12,18,.55));">
         </div>
-        <div style="position:absolute;left:11px;top:10px;color:#fff;
+        <div style="position:absolute;left:11px;top:10px;color:#ffffff;
                     font:800 12px/1.1 Inter,Segoe UI,sans-serif;letter-spacing:.11em;
                     text-shadow:0 2px 10px rgba(0,0,0,.60);">DACRE-ANALYSIS</div>
         <div style="position:absolute;left:10px;right:10px;bottom:8px;color:#17202b;
@@ -1466,7 +1489,7 @@ def landing_page():
                         st.warning("Complete the Google reCAPTCHA widget first. If the verification is not being accepted, configure the DACRE reCAPTCHA component bridge and secrets.")
                 else:
                     st.markdown("""
-                    <div style="border:1px solid #d9d9d9;border-radius:4px;padding:16px 14px;background:#fff;max-width:430px;margin:0 auto;box-shadow:0 2px 8px rgba(0,0,0,.10);">
+                    <div style="border:1px solid #d9d9d9;border-radius:4px;padding:16px 14px;background:#ffffff;max-width:430px;margin:0 auto;box-shadow:0 2px 8px rgba(0,0,0,.10);">
                       <div style="display:flex;align-items:center;gap:12px;">
                         <div style="width:28px;height:28px;border:1px solid #b8b8b8;border-radius:3px;background:#fafafa;"></div>
                         <div style="font:500 15px Arial,sans-serif;color:#333;">I'm not a robot</div>
@@ -1617,46 +1640,37 @@ if not st.session_state.chat_history:
     st.session_state.chat_history = load_chat_history(st.session_state.user, limit=40)
 
 # =============================================================================
-# DACRE USER EXPERIENCE V2 — LIGHT / WHITE / SOFT PINK BUSINESS CONSOLE
+# DACRE AURORA EXECUTIVE — LIGHT BLUE + ORANGE BUSINESS CONSOLE
 # =============================================================================
 st.markdown("""
 <style>
-:root{--di-pink:#e86aa8;--di-pink-soft:#fff1f7;--di-pink-line:#f5d7e6;--di-ink:#17202b;--di-muted:#657180;--di-shadow:0 18px 55px rgba(33,24,40,.10)}
-.stApp{background:linear-gradient(180deg,#fff 0%,#fff8fb 48%,#fff1f7 100%) !important;color:var(--di-ink) !important}
-.stApp::before{display:none !important}
-.main .block-container{max-width:1500px;padding-top:1.5rem;padding-bottom:4rem}
-.stApp p,.stApp span,.stApp label,.stApp div,.stApp li,.stApp td,.stApp th,.stApp h1,.stApp h2,.stApp h3,.stApp h4{color:var(--di-ink) !important}
-[data-testid="stSidebar"]{background:#fff !important;border-right:1px solid var(--di-pink-line) !important;box-shadow:8px 0 30px rgba(60,30,50,.04)}
-[data-testid="stSidebar"] *{color:var(--di-ink) !important}
-[data-testid="stSidebar"] [data-testid="stRadio"] label{border-radius:12px;padding:8px 10px;transition:.2s ease}
-[data-testid="stSidebar"] [data-testid="stRadio"] label:hover{background:var(--di-pink-soft);transform:translateX(3px)}
-.stButton>button{border:1px solid var(--di-pink-line)!important;background:#fff!important;color:var(--di-ink)!important;border-radius:12px!important;transition:.22s ease!important;box-shadow:0 5px 18px rgba(30,20,40,.05)!important}
-.stButton>button:hover{border-color:var(--di-pink)!important;background:var(--di-pink-soft)!important;transform:translateY(-2px);box-shadow:0 10px 28px rgba(232,106,168,.16)!important}
-.stTextInput input,.stTextArea textarea,.stSelectbox div[data-baseweb="select"]>div{background:#fff!important;border:1px solid var(--di-pink-line)!important;color:var(--di-ink)!important;border-radius:12px!important}
-.dacre-user-hero{background:linear-gradient(115deg,#fff,#fff5f9);border:1px solid var(--di-pink-line);border-radius:24px;padding:24px 28px;box-shadow:var(--di-shadow)}
-.dacre-user-title{font-size:2.35rem;font-weight:800;letter-spacing:-.04em;margin-bottom:4px}
-.dacre-user-sub{color:var(--di-muted)!important;font-size:1rem}
-.di-command{background:linear-gradient(135deg,#fff,#fff1f7);border:1px solid #f2d4e3;border-radius:26px;box-shadow:var(--di-shadow);overflow:hidden;position:relative}
-.di-stage{height:330px;position:relative;overflow:hidden;background-size:cover;background-position:center;transition:transform .5s ease,filter .5s ease}
-.di-command:hover .di-stage{transform:scale(1.018);filter:saturate(1.05)}
-.di-stage-overlay{position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,.96) 0%,rgba(255,245,249,.82) 42%,rgba(255,255,255,.20) 100%)}
-.di-orb{position:absolute;right:9%;top:18%;width:170px;height:170px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#f6bfd9 35%,#e86aa8 68%,rgba(232,106,168,0) 70%);box-shadow:0 0 80px rgba(232,106,168,.34);animation:diPulse 4s ease-in-out infinite}
-.di-orb:after{content:"";position:absolute;inset:28px;border:1px solid rgba(255,255,255,.8);border-radius:50%;animation:diSpin 8s linear infinite}
-@keyframes diPulse{50%{transform:scale(1.07);box-shadow:0 0 105px rgba(232,106,168,.42)}}
-@keyframes diSpin{to{transform:rotate(360deg)}}
-.di-stage-copy{position:absolute;left:30px;top:30px;max-width:58%}
-.di-kicker{font-size:.76rem;letter-spacing:.16em;text-transform:uppercase;font-weight:800;color:#b5487e!important}
-.di-stage-copy h2{font-size:2.05rem;margin:.45rem 0 .55rem;font-weight:800}
-.di-stage-copy p{color:#596573!important;line-height:1.55}
-.di-status{display:inline-flex;align-items:center;gap:8px;padding:7px 11px;border-radius:999px;background:#fff;border:1px solid var(--di-pink-line);font-size:.82rem;font-weight:700}
-.di-dot{width:8px;height:8px;border-radius:50%;background:#36b37e;box-shadow:0 0 0 5px rgba(54,179,126,.12)}
-.di-transcript{padding:18px 22px;background:#fff;border-top:1px solid var(--di-pink-line);min-height:92px}
-.di-transcript-label{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#9b6b83!important;font-weight:800}
-.di-transcript-text{font-size:1rem;line-height:1.55;margin-top:4px}
-.di-quick-card{height:100%;background:#fff;border:1px solid var(--di-pink-line);border-radius:18px;padding:18px;transition:.2s ease;box-shadow:0 10px 30px rgba(40,25,40,.05)}
-.di-quick-card:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(232,106,168,.12);border-color:#eab5cd}
-.di-metric{background:#fff;border:1px solid var(--di-pink-line);border-radius:16px;padding:16px 18px;box-shadow:0 8px 25px rgba(40,25,40,.05)}
-.di-metric .v{font-size:1.55rem;font-weight:800}.di-metric .l{font-size:.78rem;color:var(--di-muted)!important;margin-top:2px}
+:root{--dacre-blue:#e9f7ff;--dacre-blue-2:#d8efff;--dacre-navy:#102a43;--dacre-indigo:#4f46e5;--dacre-violet:#7c3aed;--dacre-cyan:#0ea5e9;--dacre-orange:#ff8a1f;--dacre-orange-2:#ffb45b;--dacre-ink:#102a43;--dacre-muted:#4b6680;--dacre-line:#b8ddf4;--dacre-shadow:0 18px 50px rgba(16,42,67,.12)}
+.stApp{background:radial-gradient(circle at 8% 0%,rgba(14,165,233,.16),transparent 28%),radial-gradient(circle at 92% 4%,rgba(255,138,31,.15),transparent 26%),linear-gradient(180deg,#f5fbff 0%,#eaf7ff 48%,#dff2ff 100%) !important;color:var(--dacre-ink)!important}
+.main .block-container{max-width:1540px;padding-top:1.25rem;padding-bottom:4rem}
+.stApp p,.stApp span,.stApp label,.stApp div,.stApp li,.stApp td,.stApp th,.stApp h1,.stApp h2,.stApp h3,.stApp h4,.stApp h5{color:var(--dacre-ink)!important}
+[data-testid="stSidebar"]{background:linear-gradient(180deg,#eaf7ff 0%,#d9efff 100%)!important;border-right:2px solid var(--dacre-line)!important;box-shadow:10px 0 35px rgba(16,42,67,.08)}
+[data-testid="stSidebar"] *{color:var(--dacre-ink)!important}
+[data-testid="stSidebar"] [data-testid="stRadio"] label{border-radius:14px;padding:9px 11px;transition:.2s ease;font-weight:700}
+[data-testid="stSidebar"] [data-testid="stRadio"] label:hover{background:rgba(14,165,233,.14);transform:translateX(3px)}
+.stButton>button,.stFormSubmitButton>button,.stDownloadButton>button{border:1px solid #a8d5ee!important;background:linear-gradient(135deg,#fffffffff,#e7f6ff)!important;color:var(--dacre-ink)!important;border-radius:13px!important;font-weight:800!important;transition:.22s ease!important;box-shadow:0 7px 20px rgba(16,42,67,.07)!important}
+.stButton>button:hover,.stFormSubmitButton>button:hover,.stDownloadButton>button:hover{border-color:var(--dacre-orange)!important;background:linear-gradient(135deg,#ffffff7ed,#e0f4ff)!important;transform:translateY(-2px);box-shadow:0 12px 28px rgba(255,138,31,.18)!important}
+.stTextInput input,.stTextArea textarea,.stNumberInput input,.stSelectbox div[data-baseweb="select"]>div{background:#f8fdff!important;border:1.5px solid #9ed0ed!important;color:var(--dacre-ink)!important;border-radius:13px!important;font-weight:650!important}
+.stTextInput input::placeholder,.stTextArea textarea::placeholder{color:#6b8298!important}
+.dacre-user-hero{background:linear-gradient(115deg,#fffffffff,#e4f5ff 58%,#ffffff1df);border:1px solid var(--dacre-line);border-radius:24px;padding:24px 28px;box-shadow:var(--dacre-shadow)}
+.dacre-user-title{font-size:2.35rem;font-weight:900;letter-spacing:-.04em;margin-bottom:4px}.dacre-user-sub{color:var(--dacre-muted)!important;font-size:1rem}
+.di-command{background:linear-gradient(135deg,#fffffffff,#e4f5ff 62%,#ffffff0dc);border:1px solid #a8d5ee;border-radius:26px;box-shadow:var(--dacre-shadow);overflow:hidden;position:relative}
+.di-stage{height:330px;position:relative;overflow:hidden;background-size:cover;background-position:center;transition:transform .5s ease,filter .5s ease}.di-command:hover .di-stage{transform:scale(1.012);filter:saturate(1.05)}
+.di-stage-overlay{position:absolute;inset:0;background:linear-gradient(90deg,rgba(247,252,255,.97) 0%,rgba(229,246,255,.88) 45%,rgba(255,240,220,.35) 100%)}
+.di-orb{position:absolute;right:9%;top:18%;width:170px;height:170px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffffff,#b9e8ff 35%,#0ea5e9 62%,#7c3aed 70%,rgba(124,58,237,0) 72%);box-shadow:0 0 90px rgba(14,165,233,.35),0 0 50px rgba(255,138,31,.18);animation:diPulse 4s ease-in-out infinite}.di-orb:after{content:"";position:absolute;inset:28px;border:2px solid rgba(255,255,255,.85);border-radius:50%;animation:diSpin 8s linear infinite}
+@keyframes diPulse{50%{transform:scale(1.07);box-shadow:0 0 115px rgba(14,165,233,.42),0 0 55px rgba(255,138,31,.24)}}@keyframes diSpin{to{transform:rotate(360deg)}}
+.di-stage-copy{position:absolute;left:30px;top:30px;max-width:60%}.di-kicker{font-size:.76rem;letter-spacing:.16em;text-transform:uppercase;font-weight:900;color:#c65f00!important}.di-stage-copy h2{font-size:2.05rem;margin:.45rem 0 .55rem;font-weight:900}.di-stage-copy p{color:#49677f!important;line-height:1.55}.di-status{display:inline-flex;align-items:center;gap:8px;padding:7px 11px;border-radius:999px;background:#fffffffff;border:1px solid #a8d5ee;font-size:.82rem;font-weight:800}.di-dot{width:8px;height:8px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 5px rgba(22,163,74,.12)}
+.di-transcript{padding:18px 22px;background:#f8fdff;border-top:1px solid #b8ddf4;min-height:92px}.di-transcript-label{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#376a91!important;font-weight:900}.di-transcript-text{font-size:1rem;line-height:1.55;margin-top:4px}
+.di-quick-card{height:100%;background:linear-gradient(145deg,#fffffffff,#eaf7ff);border:1px solid #b8ddf4;border-radius:18px;padding:18px;transition:.2s ease;box-shadow:0 10px 30px rgba(16,42,67,.06)}.di-quick-card:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(14,165,233,.14);border-color:#ffb45b}
+.di-metric{background:linear-gradient(145deg,#fffffffff,#e9f7ff);border:1px solid #b8ddf4;border-radius:16px;padding:16px 18px;box-shadow:0 8px 25px rgba(16,42,67,.06)}.di-metric .v{font-size:1.55rem;font-weight:900}.di-metric .l{font-size:.78rem;color:var(--dacre-muted)!important;margin-top:2px}
+.master-office-hero{background:linear-gradient(120deg,#dff3ff 0%,#edf9ff 48%,#ffffff0dc 100%);border:2px solid #8fc9ec;border-left:8px solid var(--dacre-orange);border-radius:24px;padding:28px 32px;box-shadow:0 18px 55px rgba(16,42,67,.12);margin-bottom:18px}.master-office-hero .title{font-size:3rem;font-weight:950;letter-spacing:-.045em;color:#102a43!important}.master-office-hero .sub{font-size:1.05rem;font-weight:750;color:#3e6078!important;margin-top:4px}.master-office-hero .authority{display:inline-block;margin-top:15px;padding:8px 13px;border-radius:999px;background:#ffffff;border:1px solid #ffb45b;color:#b45309!important;font-weight:900}.master-only-badge{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:999px;background:#ffffff7ed;border:1px solid #ffb45b;color:#b45309!important;font-weight:900;font-size:.75rem;letter-spacing:.06em}
+.voice-panel{background:linear-gradient(135deg,#fffffffff,#e4f5ff 70%,#ffffff0dc);border:1px solid #a8d5ee;border-radius:20px;padding:16px 18px;box-shadow:0 10px 30px rgba(16,42,67,.07)}
+.chat-card{padding:16px 18px;border-radius:18px;border:1px solid #b8ddf4;background:#f8fdff;margin:8px 0}.chat-card.di{border-left:5px solid var(--dacre-orange);background:linear-gradient(135deg,#fffffffff,#ffffff6ea)}.chat-card.user{border-left:5px solid var(--dacre-cyan);background:#eaf7ff}
+#MainMenu,footer{visibility:hidden}
 </style>
 """,unsafe_allow_html=True)
 
@@ -1677,7 +1691,7 @@ with st.sidebar:
     st.caption(f"{user['company']} · {user['role']}")
     st.markdown("<div style='font-size:.78rem;color:#3556a8!important;margin:4px 0 14px'>DI is available across your workspace.</div>",unsafe_allow_html=True)
     if user["role"]=="master":
-        st.markdown("""<div style='margin:8px 0 14px;padding:14px;border-radius:18px;background:linear-gradient(135deg,#dff3ff,#c8e6ff 55%,#ddd6fe);border:1px solid #8cc8eb;box-shadow:0 10px 28px rgba(63,95,192,.14)'><div style='font-size:.68rem;letter-spacing:.16em;font-weight:900;color:#3f5fc0'>MASTER CONTROL</div><div style='font-size:1rem;font-weight:900;color:#14233d;margin-top:4px'>Overall Admin DI</div><div style='font-size:.76rem;color:#52657d;margin-top:3px'>System-wide command centre</div></div>""",unsafe_allow_html=True)
+        st.markdown("""<div style='margin:8px 0 14px;padding:14px;border-radius:18px;background:linear-gradient(135deg,#dff3ff,#c9edff 55%,#fff0dc);border:2px solid #ffb45b;border-left:6px solid #ff8a1f;box-shadow:0 10px 28px rgba(63,95,192,.14)'><div style='font-size:.68rem;letter-spacing:.16em;font-weight:900;color:#b45309'>MASTER CONTROL</div><div style='font-size:1rem;font-weight:900;color:#102a43;margin-top:4px'>Overall Admin DI</div><div style='font-size:.76rem;color:#49677f;margin-top:3px'>System-wide command centre</div></div>""",unsafe_allow_html=True)
     navigation=["DI Home","DI Memory Box","Business Command Center","Workspace & Data","Formula Lab","Charts","File Vault","Export Center"]
     if user["role"] in ("company_admin","master"):
         navigation.append("Organization Admin Portal")
@@ -1690,7 +1704,7 @@ with st.sidebar:
 # DI HOME / CONTINUOUS BUSINESS CONVERSATION
 # =============================================================================
 
-def di_voice_bridge():
+def di_voice_bridge(language_code="en-NG"):
     """Browser voice bridge. Speech is captured by Chrome and sent back to the
     Streamlit app through a query parameter. The app then runs the same DI
     engine used by text chat and speaks the response with browser speech synthesis.
@@ -1703,7 +1717,7 @@ def di_voice_bridge():
       if (window.__dacreVoiceStarted) return;
       window.__dacreVoiceStarted = true;
       const rec = new SpeechRecognition();
-      rec.lang = 'en-NG';
+      rec.lang = __LANG__;
       rec.continuous = true;
       rec.interimResults = false;
       rec.maxAlternatives = 1;
@@ -1714,6 +1728,7 @@ def di_voice_bridge():
         if (!text) return;
         const url = new URL(window.parent.location.href);
         url.searchParams.set('di_voice', text);
+         url.searchParams.set('di_voice_lang', __LANG__);
         window.parent.location.href = url.toString();
       };
       rec.onerror = () => { setTimeout(() => { try { rec.start(); } catch(e) {} }, 900); };
@@ -1721,17 +1736,18 @@ def di_voice_bridge():
       try { rec.start(); } catch(e) {}
     })();
     </script>
-    """,height=0)
+    """.replace("__LANG__", json.dumps(language_code)),height=0)
 
 # Process a voice turn before rendering the page. This gives DI a real
 # server-side answer instead of pretending the browser itself is the brain.
 voice_turn = st.query_params.get("di_voice")
+voice_lang_code = st.query_params.get("di_voice_lang") or "en-NG"
 if voice_turn:
     st.query_params.clear()
     spoken = str(voice_turn).strip()
     if spoken:
         st.session_state.chat_history.append({"sender":user["first_name"],"text":spoken})
-        reply=di_reply(spoken,user,st.session_state.processed_df,allow_online=True)
+        reply=di_reply(spoken,user,st.session_state.processed_df,allow_online=True,language=st.session_state.get("di_language","English — Nigeria"))
         st.session_state.chat_history.append({"sender":"DI","text":reply})
         con=db(); now=datetime.now().isoformat(timespec="seconds")
         con.execute("INSERT INTO chat_history(username,company_name,sender,message,created_at) VALUES(?,?,?,?,?)",(user["username"],user["company"],user["first_name"],spoken,now))
@@ -1763,8 +1779,18 @@ if selected_page=="DI Home":
     </div>
     """,unsafe_allow_html=True)
 
-    # Continuous voice starts automatically on supported Chromium browsers.
-    di_voice_bridge()
+    # Natural voice + multilingual control. Speech recognition and speech synthesis
+    # run in the browser, so no audio file has to be uploaded to the server.
+    vc1,vc2,vc3=st.columns([1.45,1,1])
+    with vc1:
+        selected_language=st.selectbox("DI language",list(DI_LANGUAGE_PROFILES.keys()),index=list(DI_LANGUAGE_PROFILES.keys()).index(st.session_state.di_language),key="di_language_select")
+        st.session_state.di_language=selected_language
+    with vc2:
+        st.session_state.di_voice_enabled=st.toggle("Voice replies",value=st.session_state.di_voice_enabled,key="di_voice_toggle")
+    with vc3:
+        st.markdown("<div class='voice-panel'><b>🎙️ Natural conversation</b><br><span style='font-size:.84rem;color:#49677f!important'>Speak to DI and DI can answer aloud. Chrome/OS voices determine the exact accent and timbre.</span></div>",unsafe_allow_html=True)
+    if st.session_state.di_voice_enabled:
+        di_voice_bridge(DI_LANGUAGE_PROFILES[st.session_state.di_language]["code"])
 
     st.markdown("### Start with a business goal")
     q1,q2,q3,q4=st.columns(4)
@@ -1776,7 +1802,7 @@ if selected_page=="DI Home":
     ]
     for col,(title,headline,desc) in zip([q1,q2,q3,q4],cards):
         with col:
-            st.markdown(f"<div class='di-quick-card'><div style='font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:#b5487e!important;font-weight:800'>{title}</div><h4 style='margin:.45rem 0'>{headline}</h4><p style='color:#657180!important;font-size:.9rem;line-height:1.45'>{desc}</p></div>",unsafe_allow_html=True)
+            st.markdown(f"<div class='di-quick-card'><div style='font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:#c65f00!important;font-weight:800'>{title}</div><h4 style='margin:.45rem 0'>{headline}</h4><p style='color:#657180!important;font-size:.9rem;line-height:1.45'>{desc}</p></div>",unsafe_allow_html=True)
 
     if st.session_state.processed_df is not None:
         df=st.session_state.processed_df
@@ -1788,14 +1814,14 @@ if selected_page=="DI Home":
     st.markdown("### Conversation")
     for msg in st.session_state.chat_history[-12:]:
         who="DI" if msg["sender"]=="DI" else msg["sender"]
-        st.markdown(f"<div style='background:{'#fff1f7' if who=='DI' else '#fff'};border:1px solid #f5d7e6;border-radius:14px;padding:13px 16px;margin:8px 0'><b>{who}</b><div style='margin-top:5px;line-height:1.55'>{msg['text']}</div></div>",unsafe_allow_html=True)
+        st.markdown(f"<div style='background:{'#eaf7ff' if who=='DI' else '#ffffff'};border:1px solid #b8ddf4;border-radius:14px;padding:13px 16px;margin:8px 0'><b>{who}</b><div style='margin-top:5px;line-height:1.55'>{msg['text']}</div></div>",unsafe_allow_html=True)
 
     with st.form("di_chat_form",clear_on_submit=True):
         chat_text=st.text_input("Ask DI",placeholder="Type here if you prefer text…",label_visibility="collapsed")
         send=st.form_submit_button("Send to DI",use_container_width=True)
     if send and chat_text.strip():
         st.session_state.chat_history.append({"sender":user["first_name"],"text":chat_text.strip()})
-        reply=di_reply(chat_text,user,st.session_state.processed_df,allow_online=True)
+        reply=di_reply(chat_text,user,st.session_state.processed_df,allow_online=True,language=st.session_state.get("di_language","English — Nigeria"))
         st.session_state.chat_history.append({"sender":"DI","text":reply})
         con=db(); now=datetime.now().isoformat(timespec="seconds")
         con.execute("INSERT INTO chat_history(username,company_name,sender,message,created_at) VALUES(?,?,?,?,?)",(user["username"],user["company"],user["first_name"],chat_text.strip(),now))
@@ -1844,7 +1870,7 @@ elif selected_page=="Business Command Center":
             q=st.text_input("Business question",placeholder="e.g. Give me an executive brief, show the top products, or check the data health")
             go=st.form_submit_button("Ask DI",use_container_width=True)
         if go and q.strip():
-            answer=di_reply(q,user,df,allow_online=True)
+            answer=di_reply(q,user,df,allow_online=True,language=st.session_state.get("di_language","English — Nigeria"))
             st.markdown(f"<div class='di-quick-card'><b>DI</b><div style='margin-top:8px;line-height:1.65'>{answer}</div></div>",unsafe_allow_html=True)
             st.session_state.last_speech=answer
 
@@ -1996,10 +2022,11 @@ elif selected_page=="Organization Admin Portal" and user["role"] in ("company_ad
 elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
     counts=admin_metric_counts()
     st.markdown("""
-    <div class="dacre-hero">
-      <div class="dacre-title" style="font-size:3rem;">CEO Office</div>
-      <div class="dacre-sub">DACRE Analysis executive command centre · Overall Administration · DI Workforce</div>
-      <div style="margin-top:14px;color:#9edcff;font-weight:700;">Master: David Emenike · System authority: Overall Administrator</div>
+    <div class="master-office-hero">
+      <span class="master-only-badge">🔐 MASTER ONLY · SYSTEM-WIDE ACCESS</span>
+      <div class="title">CEO Office</div>
+      <div class="sub">DACRE Analysis executive command centre · Overall Administration · DI Workforce</div>
+      <div class="authority">David Emenike · Overall Administrator · DACRE MASTER</div>
     </div>
     """,unsafe_allow_html=True)
 
@@ -2191,7 +2218,7 @@ with st.expander("Chat with DI — quick assistant",expanded=False):
         send=st.form_submit_button("Send")
     if send and q.strip():
         st.session_state.chat_history.append({"sender":user["first_name"],"text":q.strip()})
-        reply=di_reply(q,user,st.session_state.processed_df,allow_online=True)
+        reply=di_reply(q,user,st.session_state.processed_df,allow_online=True,language=st.session_state.get("di_language","English — Nigeria"))
         st.session_state.chat_history.append({"sender":"DI","text":reply})
         st.session_state.last_speech=reply
         st.rerun()
@@ -2199,4 +2226,4 @@ with st.expander("Chat with DI — quick assistant",expanded=False):
 if st.session_state.last_speech:
     speech=st.session_state.last_speech
     st.session_state.last_speech=None
-    speak(speech)
+    speak(speech, DI_LANGUAGE_PROFILES.get(st.session_state.get("di_language","English — Nigeria"),{}).get("code","en-NG")
