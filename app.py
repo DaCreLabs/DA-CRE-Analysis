@@ -794,18 +794,38 @@ def authenticate(company_name, full_name, passkey, email=""):
 
 
 def create_account(first, last, company, email, email_password, passkey):
-    company_clean = canonical_company_name(company)
-    email_clean = email.strip().lower()
-    passkey_clean = passkey.strip()
-    if not company_clean or not email_clean or not passkey_clean:
-        return False, "Please fill in Company Name, Email Address, and Account Passkey.", None
+    # Normalize every signup value defensively. Streamlit can return None/empty
+    # values during a rerun, and the old validation treated those as a hard
+    # failure even when the visible fields had been filled.
+    first_raw = "" if first is None else str(first)
+    last_raw = "" if last is None else str(last)
+    company_raw = "" if company is None else str(company)
+    email_raw = "" if email is None else str(email)
+    email_password_raw = "" if email_password is None else str(email_password)
+    passkey_raw = "" if passkey is None else str(passkey)
+
+    company_clean = canonical_company_name(company_raw)
+    email_clean = email_raw.strip().lower()
+    passkey_clean = passkey_raw.strip()
+
+    # Only these three fields are mandatory. First/Last name and email password
+    # are intentionally allowed to be optional.
+    missing = []
+    if not company_clean:
+        missing.append("Company Name")
+    if not email_clean:
+        missing.append("Email Address")
+    if not passkey_clean:
+        missing.append("Account Passkey")
+    if missing:
+        return False, "Please fill in: " + ", ".join(missing) + ".", None
 
     if "@" not in email_clean or "." not in email_clean.split("@")[-1]:
         return False, "Please enter a valid email address.", None
 
     email_prefix = email_clean.split("@")[0].replace(".", " ").replace("_", " ").title()
-    first_clean = first.strip() if first and first.strip() else (email_prefix.split()[0] if email_prefix else "User")
-    last_clean = last.strip() if last and last.strip() else (" ".join(email_prefix.split()[1:]) if len(email_prefix.split()) > 1 else "Member")
+    first_clean = first_raw.strip() if first_raw.strip() else (email_prefix.split()[0] if email_prefix else "User")
+    last_clean = last_raw.strip() if last_raw.strip() else (" ".join(email_prefix.split()[1:]) if len(email_prefix.split()) > 1 else "Member")
     username_clean = email_clean
 
     if username_clean == MASTER_USERNAME:
@@ -843,12 +863,12 @@ def create_account(first, last, company, email, email_password, passkey):
             (first_name,last_name,username,company_name,email,email_password,password_hash,passkey_hash,role,login_count,created_at,last_login)
             VALUES (?,?,?,?,?,?,?,?,?,1,?,?)
         """, (
-            first_clean, last_clean, username_clean, company_clean, email_clean, email_password.strip(),
+            first_clean, last_clean, username_clean, company_clean, email_clean, email_password_raw.strip(),
             hash_password(passkey_clean), hash_password(passkey_clean), role, now, now,
         ))
         con.commit()
 
-        send_di_welcome_email(first_clean, last_clean, company_clean, email_clean, email_password.strip())
+        send_di_welcome_email(first_clean, last_clean, company_clean, email_clean, email_password_raw.strip())
         log_activity(username_clean, company_clean, "Created account & signed in", notify_admin=(role == "user"))
         if role == "company_admin":
             notify_company_admin(company_clean, f"New organization created by {first_clean} {last_clean}. You are the organization admin.", "new_company")
@@ -1459,6 +1479,13 @@ html,body,.stApp,.stApp p,.stApp li,.stApp span,.stApp label,.stMarkdown,.stMark
 div.stButton>button,div.stFormSubmitButton>button,div.stDownloadButton>button{border-radius:12px;border:1px solid rgba(24,183,255,.45);background:linear-gradient(135deg,#0a2540,#0d3860);color:#ffffff!important;font-weight:800!important;padding:10px 18px;transition:all .22s ease}
 div.stButton>button:hover,div.stFormSubmitButton>button:hover,div.stDownloadButton>button:hover{border-color:var(--dacre-cyan);background:linear-gradient(135deg,#0d3860,#12508c);box-shadow:0 0 20px rgba(24,183,255,.45);transform:translateY(-1px)}
 [data-testid="stMetric"]{padding:14px 18px;border-radius:16px;border:1px solid rgba(255,255,255,.10);background:linear-gradient(145deg,rgba(255,255,255,.05),rgba(255,255,255,.015))}
+/* Unified DACRE visual language: landing, authentication, user workspace and CEO Office */
+[data-testid="stAppViewContainer"] .stTabs [data-baseweb="tab-list"]{background:rgba(8,22,38,.72)!important;border:1px solid rgba(24,183,255,.20)!important;border-radius:14px!important;padding:5px!important;gap:5px!important}
+[data-testid="stAppViewContainer"] .stTabs [data-baseweb="tab"]{color:#b9d9eb!important;border-radius:10px!important;font-weight:800!important}
+[data-testid="stAppViewContainer"] .stTabs [aria-selected="true"]{background:linear-gradient(135deg,#123b60,#a85f2a)!important;color:#ffffff!important;box-shadow:0 0 18px rgba(244,185,66,.18)!important}
+[data-testid="stAppViewContainer"] .stAlert{background:linear-gradient(135deg,rgba(8,25,43,.96),rgba(55,34,24,.88))!important;border:1px solid rgba(244,185,66,.30)!important;color:#ffffff!important}
+[data-testid="stAppViewContainer"] [data-testid="stExpander"]{background:rgba(7,18,31,.78)!important;border:1px solid rgba(24,183,255,.18)!important;border-radius:14px!important}
+.landing-panel{background:linear-gradient(135deg,rgba(7,16,29,.94),rgba(25,35,45,.90))!important;border:1px solid rgba(244,185,66,.22)!important;border-radius:22px!important;box-shadow:0 24px 70px rgba(0,0,0,.30)!important}
 #MainMenu,footer{visibility:hidden}
 </style>
 """, unsafe_allow_html=True)
@@ -1705,11 +1732,11 @@ def landing_page():
                         st.warning("Complete the Google reCAPTCHA widget first. If the verification is not being accepted, configure the DACRE reCAPTCHA component bridge and secrets.")
                 else:
                     st.markdown("""
-                    <div style="border:1px solid #d9d9d9;border-radius:4px;padding:16px 14px;background:#ffffff;max-width:430px;margin:0 auto;box-shadow:0 2px 8px rgba(0,0,0,.10);">
+                    <div style="border:1px solid rgba(24,183,255,.35);border-radius:14px;padding:16px 14px;background:linear-gradient(135deg,#07101d,#10263d);max-width:430px;margin:0 auto;box-shadow:0 14px 35px rgba(0,0,0,.35);">
                       <div style="display:flex;align-items:center;gap:12px;">
-                        <div style="width:28px;height:28px;border:1px solid #b8b8b8;border-radius:3px;background:#fafafa;"></div>
-                        <div style="font:500 15px Arial,sans-serif;color:#333;">I'm not a robot</div>
-                        <div style="margin-left:auto;font:11px Arial,sans-serif;color:#777;text-align:center;">reCAPTCHA<br>Privacy - Terms</div>
+                        <div style="width:28px;height:28px;border:1px solid rgba(24,183,255,.65);border-radius:7px;background:#0a2540;"></div>
+                        <div style="font:700 15px Arial,sans-serif;color:#ffffff;">I'm not a robot</div>
+                        <div style="margin-left:auto;font:11px Arial,sans-serif;color:#9edcff;text-align:center;">DACRE<br>Security</div>
                       </div>
                     </div>
                     """, unsafe_allow_html=True)
