@@ -890,96 +890,54 @@ def landing_page():
             st.rerun()
 
     # -------------------------------------------------------------------------
-    # PRIVATE CEO ENTRY POINT
-    # A real photographic company-building card is injected into the parent
-    # Streamlit page.  The old SVG/emoji-style mark was unreliable because the
-    # JavaScript lived inside the markdown renderer rather than a stable iframe.
-    # This component creates the card in the parent document and listens for a
-    # genuine browser dblclick event, then opens the existing master_gate route.
+    # PRIVATE CEO ENTRY POINT — FIXED, REAL-PHOTO BUILDING CARD
+    #
+    # IMPORTANT: this uses a normal HTML <a> link instead of JavaScript inside
+    # components.html.  Streamlit renders components.html inside an iframe, so
+    # browser events that try to manipulate window.parent can be blocked or
+    # behave inconsistently.  A real anchor is handled by the browser itself.
+    # It stays fixed to the viewport, does not scroll with the landing page,
+    # and opens the existing master_gate passkey screen immediately.
     # -------------------------------------------------------------------------
-    components.html("""
-    <script>
-    (function () {
-      const parentDoc = window.parent.document;
-      const ID = 'dacre-ceo-building-access';
-
-      function mount() {
-        if (parentDoc.getElementById(ID)) return;
-
-        const card = parentDoc.createElement('div');
-        card.id = ID;
-        card.setAttribute('title', 'DACRE-ANALYSIS — double-click for CEO access');
-        card.setAttribute('role', 'button');
-        card.setAttribute('tabindex', '0');
-        card.style.cssText = `
-          position: fixed;
-          left: 24px;
-          bottom: 24px;
-          width: 148px;
-          height: 150px;
-          z-index: 2147483000;
-          cursor: pointer;
-          border-radius: 18px;
-          overflow: hidden;
-          background: #ffffff;
-          border: 1px solid rgba(232,106,168,.34);
-          box-shadow: 0 18px 50px rgba(45,25,40,.22);
-          transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
-          user-select: none;
-        `;
-
-        card.innerHTML = `
-          <div style="position:absolute;inset:0;background:#fff;">
-            <img src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=700&q=88"
-                 alt="DACRE-ANALYSIS company building"
-                 style="width:100%;height:112px;object-fit:cover;display:block;" />
-            <div style="position:absolute;left:0;right:0;top:0;height:112px;background:linear-gradient(180deg,rgba(10,12,18,.16),rgba(10,12,18,.02) 55%,rgba(10,12,18,.46));"></div>
-            <div style="position:absolute;left:10px;top:8px;color:#fff;font:800 11px/1.1 Inter,Segoe UI,sans-serif;letter-spacing:.11em;text-shadow:0 2px 8px rgba(0,0,0,.5);">DACRE-ANALYSIS</div>
-            <div style="position:absolute;left:10px;right:10px;bottom:8px;color:#17202b;font:800 10px/1.25 Inter,Segoe UI,sans-serif;letter-spacing:.04em;text-align:center;">CEO OFFICE</div>
-          </div>`;
-
-        // The building is a normal clickable control. A single click/tap opens
-        // the master passkey gate immediately. It is intentionally not a
-        // Streamlit button, so it remains fixed to the browser viewport instead
-        // of moving with the landing-page content.
-        const openMasterGate = function (event) {
-          event.preventDefault();
-          event.stopPropagation();
-          const url = new URL(parentDoc.location.href);
-          url.searchParams.set('master_gate', '1');
-          parentDoc.location.href = url.toString();
-        };
-        card.addEventListener('click', openMasterGate);
-
-        card.addEventListener('mouseenter', () => {
-          card.style.transform = 'translateY(-6px) scale(1.025)';
-          card.style.boxShadow = '0 25px 65px rgba(232,106,168,.30)';
-          card.style.borderColor = 'rgba(232,106,168,.70)';
-        });
-        card.addEventListener('mouseleave', () => {
-          card.style.transform = 'translateY(0) scale(1)';
-          card.style.boxShadow = '0 18px 50px rgba(45,25,40,.22)';
-          card.style.borderColor = 'rgba(232,106,168,.34)';
-        });
-        // Keyboard access remains available for accessibility.
-        card.addEventListener('keydown', (event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            openMasterGate(event);
-          }
-        });
-
-        parentDoc.body.appendChild(card);
+    st.markdown("""
+    <a id="dacre-ceo-building-access" href="?master_gate=1"
+       title="DACRE-ANALYSIS — CEO Office access"
+       aria-label="DACRE-ANALYSIS CEO Office access"
+       style="position:fixed;left:24px;bottom:24px;width:178px;height:172px;
+              z-index:2147483000;display:block;overflow:hidden;
+              border-radius:20px;background:#fff;border:1px solid rgba(232,106,168,.38);
+              box-shadow:0 18px 55px rgba(45,25,40,.25);text-decoration:none;
+              cursor:pointer;transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease;">
+      <div style="position:absolute;inset:0;background:#fff;">
+        <img src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=900&q=90"
+             alt="DACRE-ANALYSIS company building"
+             style="width:100%;height:130px;object-fit:cover;display:block;">
+        <div style="position:absolute;left:0;right:0;top:0;height:130px;
+                    background:linear-gradient(180deg,rgba(8,12,18,.24),rgba(8,12,18,.02) 48%,rgba(8,12,18,.50));">
+        </div>
+        <div style="position:absolute;left:11px;top:10px;color:#fff;
+                    font:800 12px/1.1 Inter,Segoe UI,sans-serif;letter-spacing:.11em;
+                    text-shadow:0 2px 10px rgba(0,0,0,.60);">DACRE-ANALYSIS</div>
+        <div style="position:absolute;left:10px;right:10px;bottom:8px;color:#17202b;
+                    font:800 11px/1.2 Inter,Segoe UI,sans-serif;letter-spacing:.08em;
+                    text-align:center;">CEO OFFICE</div>
+      </div>
+    </a>
+    <style>
+      #dacre-ceo-building-access:hover{
+        transform:translateY(-7px) scale(1.035);
+        box-shadow:0 28px 72px rgba(232,106,168,.34);
+        border-color:rgba(232,106,168,.82);
       }
-
-      if (parentDoc.readyState === 'loading') {
-        parentDoc.addEventListener('DOMContentLoaded', mount, {once:true});
-      } else {
-        mount();
+      #dacre-ceo-building-access:active{
+        transform:translateY(-2px) scale(1.01);
       }
-    })();
-    </script>
-    """, height=0)
+      @media (max-width:700px){
+        #dacre-ceo-building-access{left:12px!important;bottom:12px!important;width:148px!important;height:146px!important;}
+        #dacre-ceo-building-access img{height:108px!important;}
+      }
+    </style>
+    """, unsafe_allow_html=True)
 
     if gate_requested:
         st.markdown("""
