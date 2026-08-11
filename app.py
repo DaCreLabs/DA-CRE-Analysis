@@ -2226,4 +2226,4 @@ with st.expander("Chat with DI — quick assistant",expanded=False):
 if st.session_state.last_speech:
     speech=st.session_state.last_speech
     st.session_state.last_speech=None
-    speak(speech, DI_LANGUAGE_PROFILES.get(st.session_state.get("di_language","English — Nigeria"),{}).get("code","en-NG")
+    speak(speech, DI_LANGUAGE_PROFILES.get(st.session_state.get("di_language","English — Nigeria"),{}).get("code","en-NG"))
