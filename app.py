@@ -1,5 +1,4 @@
 import hashlib
-import hmac
 import io
 import json
 import os
@@ -55,7 +54,8 @@ ONLINE_IMAGES = {
     "conversation": "https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1200&q=82",
 }
 DI_AVATAR_PATH = BASE_DIR / "di_avatar.png"
-MASTER_PORTRAIT_PATH = BASE_DIR / "master_portrait.png"
+MASTER_PHOTO_CANDIDATES = [BASE_DIR / "david_emenike.png", BASE_DIR / "david_emenike.jpg", BASE_DIR / "master_profile.png"]
+MASTER_PHOTO_PATH = next((x for x in MASTER_PHOTO_CANDIDATES if x.exists()), None)
 
 # =============================================================================
 # BRAND / FAVICON
@@ -100,36 +100,7 @@ def db():
 
 
 def hash_password(value):
-    """Create a salted PBKDF2-HMAC-SHA256 password hash.
-
-    Format: pbkdf2$iterations$salt_hex$digest_hex
-    """
-    salt = os.urandom(16)
-    iterations = 600_000
-    digest = hashlib.pbkdf2_hmac("sha256", value.encode("utf-8"), salt, iterations)
-    return f"pbkdf2${iterations}${salt.hex()}${digest.hex()}"
-
-
-def verify_password(value, stored_hash):
-    """Verify both new PBKDF2 hashes and legacy SHA-256 hashes.
-    Legacy hashes are accepted once so existing accounts keep working; callers
-    can then replace them with a fresh PBKDF2 hash.
-    """
-    if not value or not stored_hash:
-        return False, False
-    if stored_hash.startswith("pbkdf2$"):
-        try:
-            _, iterations_text, salt_hex, digest_hex = stored_hash.split("$", 3)
-            iterations = int(iterations_text)
-            salt = bytes.fromhex(salt_hex)
-            expected = bytes.fromhex(digest_hex)
-            actual = hashlib.pbkdf2_hmac("sha256", value.encode("utf-8"), salt, iterations)
-            return hmac.compare_digest(actual, expected), False
-        except (ValueError, TypeError):
-            return False, False
-    # Legacy accounts from the earlier DACRE build used unsalted SHA-256.
-    legacy = hashlib.sha256(value.encode("utf-8")).hexdigest()
-    return hmac.compare_digest(legacy, stored_hash), True
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
 def init_db():
@@ -373,51 +344,41 @@ def authenticate(company_name, full_name, passkey, email=""):
 
     if not passkey_clean:
         return None, "Please enter your Account Passkey."
-
-    # Master authentication is intentionally independent of normal user
-    # account fields. The Master can enter the passkey alone, or use the
-    # normal master identity fields. This prevents the previous 'company/email
-    # required' gate from blocking the Overall Admin account.
-    if passkey_clean == MASTER_PASSKEY and (
-        not company_clean and not email_clean
-        or company_clean == "dacre master"
-        or full_name_clean == "david emenike"
-        or email_clean == "master@dacre.local"
-    ):
-        return master_user_record(), None
-
     if not company_clean and not email_clean:
-        return None, "Enter your Company / Organization Name or Email Address, or use the Master passkey for Overall Admin access."
+        return None, "Please enter your Company / Organization Name or Email Address."
 
     con = db()
     try:
+        if (company_clean == "dacre master" or full_name_clean == "david emenike" or email_clean == "master@dacre.local") and passkey_clean == MASTER_PASSKEY:
+            row = con.execute("SELECT first_name,last_name,username,company_name,email,role FROM users WHERE username=?", (MASTER_USERNAME,)).fetchone()
+            if row:
+                return dict(row), None
+
+        pass_hash = hash_password(passkey_clean)
         if email_clean:
-            rows = con.execute("SELECT first_name,last_name,username,company_name,email,passkey_hash,role FROM users WHERE lower(email)=?", (email_clean,)).fetchall()
+            rows = con.execute("SELECT first_name,last_name,username,company_name,email,passkey_hash,role FROM users WHERE lower(email)=? AND passkey_hash=?", (email_clean, pass_hash)).fetchall()
         else:
-            rows = con.execute("SELECT first_name,last_name,username,company_name,email,passkey_hash,role FROM users WHERE lower(company_name)=?", (company_clean,)).fetchall()
+            rows = con.execute("SELECT first_name,last_name,username,company_name,email,passkey_hash,role FROM users WHERE lower(company_name)=? AND passkey_hash=?", (company_clean, pass_hash)).fetchall()
 
         if not rows:
-            return None, "This account has not been created. Please use Sign Up first, then sign in with the same details."
+            if email_clean:
+                exists = con.execute("SELECT 1 FROM users WHERE lower(email)=? LIMIT 1", (email_clean,)).fetchone()
+            else:
+                exists = con.execute("SELECT 1 FROM users WHERE lower(company_name)=? LIMIT 1", (company_clean,)).fetchone()
+            if exists:
+                return None, "This account has already been created, but the passkey does not match. Please check your passkey and try again."
+            return None, "This account has not been created. Please go to the Sign Up page and create your account to access DACRE Analysis."
 
         matched = None
-        needs_upgrade = False
         for r in rows:
-            ok, legacy = verify_password(passkey_clean, r["passkey_hash"])
-            if not ok:
-                continue
             candidate = f"{r['first_name']} {r['last_name']}".strip().lower()
-            if full_name_clean and candidate != full_name_clean:
-                continue
-            matched = r
-            needs_upgrade = legacy
-            break
-
+            if not full_name_clean or candidate == full_name_clean:
+                matched = r
+                break
         if matched is None:
-            return None, "The account exists, but the passkey or Full Name does not match. Please use exactly the details you entered during Sign Up."
+            return None, "The account exists, but the Full Name does not match the account. Please enter the name used during Sign Up."
 
         now = datetime.now().isoformat(timespec="seconds")
-        if needs_upgrade:
-            con.execute("UPDATE users SET passkey_hash=?, password_hash=? WHERE username=?", (hash_password(passkey_clean), hash_password(passkey_clean), matched["username"]))
         con.execute("UPDATE users SET login_count=login_count+1,last_login=? WHERE username=?", (now, matched["username"]))
         con.commit()
         result = {"first_name":matched["first_name"],"last_name":matched["last_name"],"username":matched["username"],"company":matched["company_name"],"email":matched["email"],"role":matched["role"]}
@@ -828,74 +789,29 @@ def speak(text):
 
 st.markdown("""
 <style>
-/* =====================================================================
-   DACRE GLOBAL OBSIDIAN THEME — APPLIES TO LANDING, SIGN-IN, SIGN-UP
-   AND EVERY WORKSPACE PAGE. NO WHITE/PINK SURFACES.
-   ===================================================================== */
-:root{
-  --dacre-bg:#020107; --dacre-bg2:#070510; --dacre-panel:#0b0815; --dacre-panel2:#120c20;
-  --dacre-ink:#f7f3ff; --dacre-muted:#aaa1bd; --dacre-line:rgba(139,92,246,.24);
-  --dacre-indigo:#6366f1; --dacre-violet:#8b5cf6; --dacre-purple:#a855f7;
-  --dacre-fuchsia:#d946ef; --dacre-cyan:#22d3ee; --dacre-green:#34d399;
-}
-html,body,#root{background:#020107!important;color:var(--dacre-ink)!important}
-body,[data-testid="stApp"],[data-testid="stAppViewContainer"],[data-testid="stAppViewContainer"]>section,[data-testid="stAppViewContainer"]>.main,[data-testid="stAppViewContainer"] .main{background:#020107!important;color:var(--dacre-ink)!important}
-[data-testid="stHeader"]{background:rgba(2,1,7,.96)!important}
-.stApp{
-  background:
-    radial-gradient(circle at 8% 4%,rgba(99,102,241,.20),transparent 26%),
-    radial-gradient(circle at 92% 8%,rgba(168,85,247,.18),transparent 25%),
-    radial-gradient(circle at 52% 92%,rgba(217,70,239,.09),transparent 30%),
-    linear-gradient(135deg,#020107 0%,#06040d 48%,#030208 100%)!important;
-  color:var(--dacre-ink)!important;
-}
-.stApp::before{content:"";position:fixed;inset:-30%;pointer-events:none;background:conic-gradient(from 90deg at 50% 50%,rgba(99,102,241,.035),transparent 22%,rgba(168,85,247,.045) 43%,transparent 65%,rgba(34,211,238,.025) 82%,transparent);animation:dacreGlobalSpin 42s linear infinite;z-index:0}
-@keyframes dacreGlobalSpin{to{transform:rotate(360deg)}}
-[data-testid="stHeader"]{background:rgba(2,1,7,.88)!important;border-bottom:1px solid rgba(139,92,246,.12)!important}
-[data-testid="stToolbar"]{background:rgba(7,5,14,.92)!important}
-[data-testid="stAppViewContainer"] .main,[data-testid="stAppViewContainer"] .main .block-container,.main,.main .block-container{background:transparent!important;position:relative;z-index:1}
-.main .block-container{max-width:1540px;padding-top:1.35rem;padding-bottom:5rem}
-.stApp p,.stApp li,.stApp td,.stApp th,.stApp label,.stApp h1,.stApp h2,.stApp h3,.stApp h4,.stApp h5,.stApp h6,.stApp span,.stApp div{color:var(--dacre-ink)}
-.stApp .stCaption,.stApp small,[data-testid="stWidgetLabel"] p{color:var(--dacre-muted)!important}
-/* Sidebar */
-[data-testid="stSidebar"]{background:linear-gradient(180deg,#05030b 0%,#090613 48%,#030208 100%)!important;border-right:1px solid rgba(139,92,246,.25)!important;box-shadow:22px 0 65px rgba(0,0,0,.52)!important}
-[data-testid="stSidebar"]>div{background:transparent!important}
-[data-testid="stSidebar"] *{color:#f7f3ff!important}
-[data-testid="stSidebar"] [data-testid="stRadio"]>label{background:transparent!important;border-radius:12px;padding:9px 11px!important;margin:3px 0;transition:.2s ease}
-[data-testid="stSidebar"] [data-testid="stRadio"]>label:hover{background:linear-gradient(90deg,rgba(99,102,241,.16),rgba(168,85,247,.08))!important;transform:translateX(3px)}
-[data-testid="stSidebar"] [data-testid="stRadio"]>label[data-checked="true"]{background:linear-gradient(90deg,rgba(99,102,241,.24),rgba(217,70,239,.11))!important;border-left:3px solid #8b5cf6;box-shadow:0 0 24px rgba(99,102,241,.10)}
-/* Inputs / forms */
-.stTextInput input,.stTextArea textarea,.stNumberInput input,.stDateInput input,.stTimeInput input{background:#080611!important;color:#fff!important;border:1px solid rgba(139,92,246,.34)!important;border-radius:12px!important;box-shadow:inset 0 1px rgba(255,255,255,.025)!important}
-.stTextInput input:focus,.stTextArea textarea:focus,.stNumberInput input:focus,.stDateInput input:focus{border-color:#a855f7!important;box-shadow:0 0 0 1px #8b5cf6,0 0 25px rgba(139,92,246,.14)!important}
-.stTextInput input::placeholder,.stTextArea textarea::placeholder{color:#6f6781!important}
-.stSelectbox div[data-baseweb="select"]>div,.stMultiSelect div[data-baseweb="select"]>div,.stDateInput>div>div{background:#080611!important;color:#fff!important;border:1px solid rgba(139,92,246,.34)!important;border-radius:12px!important}
-[data-baseweb="popover"],[data-baseweb="menu"],[data-baseweb="calendar"]{background:#0b0815!important;border:1px solid rgba(139,92,246,.34)!important;color:#fff!important}
-[data-baseweb="menu"] *,[data-baseweb="calendar"] *{color:#f7f3ff!important}
-/* Buttons */
-.stButton>button,.stDownloadButton>button,.stFormSubmitButton>button{border:1px solid rgba(139,92,246,.38)!important;background:linear-gradient(135deg,#0b0816,#17102a)!important;color:#fff!important;border-radius:13px!important;box-shadow:0 8px 25px rgba(0,0,0,.32),inset 0 1px rgba(255,255,255,.04)!important;font-weight:800!important;transition:.22s ease!important}
-.stButton>button:hover,.stDownloadButton>button:hover,.stFormSubmitButton>button:hover{border-color:rgba(217,70,239,.82)!important;background:linear-gradient(135deg,#15102a,#24133c)!important;box-shadow:0 12px 36px rgba(139,92,246,.25),0 0 28px rgba(217,70,239,.10)!important;transform:translateY(-2px)}
-/* Expanders, tabs, alerts, metrics */
-[data-testid="stExpander"],.stExpander{background:rgba(10,7,18,.90)!important;border:1px solid rgba(139,92,246,.22)!important;border-radius:16px!important}
-[data-testid="stExpander"] details,[data-testid="stExpander"] summary{background:transparent!important}
-[data-testid="stMetric"]{background:linear-gradient(145deg,rgba(17,12,30,.96),rgba(7,5,13,.94))!important;border:1px solid rgba(139,92,246,.22)!important;border-radius:18px!important;box-shadow:0 15px 35px rgba(0,0,0,.30)!important}
-[data-testid="stMetricValue"],[data-testid="stMetricLabel"]{color:#fff!important}
-[data-testid="stTabs"] button{color:#aaa1bd!important;font-weight:800!important}
-[data-testid="stTabs"] button[aria-selected="true"]{color:#fff!important}
-[data-testid="stTabs"] [data-baseweb="tab-highlight"]{background:linear-gradient(90deg,#6366f1,#d946ef)!important}
-.stAlert,[data-testid="stAlert"]{background:rgba(12,8,21,.94)!important;border:1px solid rgba(139,92,246,.28)!important;color:#fff!important}
-/* File uploader — explicitly dark */
-[data-testid="stFileUploader"], [data-testid="stFileUploader"] section, [data-testid="stFileUploaderDropzone"], [data-testid="stFileUploaderDropzoneInstructions"]{background:#090711!important;color:#f7f3ff!important;border-color:rgba(139,92,246,.30)!important}
-[data-testid="stFileUploader"] button{background:#120c20!important;color:#fff!important;border:1px solid rgba(139,92,246,.35)!important}
-/* Tables / code / status containers */
-[data-testid="stDataFrame"],[data-testid="stDataEditor"]{background:#07050e!important;border:1px solid rgba(139,92,246,.20)!important;border-radius:16px!important;overflow:hidden!important;box-shadow:0 18px 50px rgba(0,0,0,.28)!important}
-[data-testid="stStatusWidget"],.stStatus{background:#0b0815!important;color:#fff!important;border:1px solid rgba(139,92,246,.25)!important}
-.stCodeBlock,pre,code{background:#06040c!important;color:#ddd5ff!important;border-color:rgba(139,92,246,.25)!important}
-/* Links / dividers / scrollbars */
-a{color:#a78bfa!important}
-hr{border-color:rgba(139,92,246,.18)!important}
-::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-track{background:#030208}::-webkit-scrollbar-thumb{background:linear-gradient(#4f46e5,#a855f7);border-radius:999px;border:2px solid #030208}
+:root{--dacre-cyan:#18b7ff;--dacre-mint:#00dc96;--dacre-gold:#f4b942;--dacre-line:rgba(24,183,255,.25)}
+.stApp{background:radial-gradient(circle at 10% 10%,rgba(24,183,255,.14),transparent 32%),radial-gradient(circle at 90% 20%,rgba(244,185,66,.10),transparent 28%),linear-gradient(135deg,#050914,#091322 55%,#050914);color:#fff}
+.stApp::before{content:"";position:fixed;inset:-40%;pointer-events:none;background:conic-gradient(from 0deg at 50% 50%,rgba(24,183,255,.05),transparent 25%,rgba(255,193,7,.04) 45%,transparent 70%,rgba(0,220,150,.04) 85%,transparent 100%);animation:dacreSpin 48s linear infinite;z-index:0}
+@keyframes dacreSpin{to{transform:rotate(360deg)}}
+.main .block-container{position:relative;z-index:1;padding-top:2rem;max-width:1500px}
+html,body,.stApp,.stApp p,.stApp li,.stApp span,.stApp label,.stMarkdown,.stMarkdown p,.stMarkdown li,[data-testid="stWidgetLabel"] p,[data-testid="stWidgetLabel"] label,.stRadio label,.stCheckbox label,.stSelectbox label,.stTextInput label,.stTextArea label,.stFileUploader label{color:#fff!important;font-weight:700!important}
+.stApp h1,.stApp h2,.stApp h3,.stApp h4,.stApp h5,.stApp h6{font-family:'Inter','Segoe UI',sans-serif!important;color:#fff!important;font-weight:800!important;letter-spacing:-.02em}
+.stApp h3{margin-top:1.2rem;padding-left:12px;border-left:4px solid var(--dacre-cyan);text-shadow:0 0 18px rgba(24,183,255,.35)}
+[data-testid="stSidebar"]{background:linear-gradient(180deg,#07101d 0%,#060d18 55%,#050914 100%);border-right:1px solid var(--dacre-line);box-shadow:24px 0 60px -40px rgba(24,183,255,.55)}
+[data-testid="stSidebar"] *{color:#fff!important}
+.dacre-hero{position:relative;padding:28px 30px;border-radius:22px;border:1px solid rgba(24,183,255,.35);background:linear-gradient(135deg,rgba(6,16,31,.94),rgba(10,28,47,.86));box-shadow:0 24px 60px -28px rgba(0,0,0,.9);backdrop-filter:blur(10px);margin-bottom:22px;overflow:hidden}
+.dacre-hero:after{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,var(--dacre-cyan),var(--dacre-mint),var(--dacre-gold),var(--dacre-cyan));background-size:300% 100%;animation:dacreFlow 9s linear infinite}
+@keyframes dacreFlow{to{background-position:300% 0}}
+.dacre-title{font-size:clamp(2.2rem,5vw,4.2rem);font-weight:900;letter-spacing:-.04em;color:#fff}
+.dacre-sub{font-size:1.08rem;color:#9edcff!important;font-weight:700}
+.feature-card{padding:18px;border:1px solid rgba(255,255,255,.12);border-radius:16px;background:rgba(255,255,255,.045);min-height:145px}.image-card{padding:0;overflow:hidden;min-height:270px}.image-card img{width:100%;height:150px;object-fit:cover;display:block}.image-card-body{padding:16px 18px}.image-card-body h3{margin-top:0}.di-avatar{width:92px;height:92px;border-radius:50%;object-fit:cover;border:3px solid rgba(24,183,255,.65);box-shadow:0 0 28px rgba(24,183,255,.35)}
+.chat-card{padding:16px 18px;border-radius:18px;border:1px solid rgba(24,183,255,.25);background:rgba(4,12,24,.72);margin:8px 0}
+.stTextInput input,.stTextArea textarea,.stNumberInput input{background:rgba(6,16,31,.92)!important;color:#fff!important;font-weight:700!important;border:1.5px solid rgba(24,183,255,.35)!important;border-radius:12px!important;padding:10px 14px!important}
+.stTextInput input::placeholder,.stTextArea textarea::placeholder{color:#9aa4b2!important;font-weight:500!important}
+div.stButton>button,div.stFormSubmitButton>button,div.stDownloadButton>button{border-radius:12px;border:1px solid rgba(24,183,255,.45);background:linear-gradient(135deg,#0a2540,#0d3860);color:#fff!important;font-weight:800!important;padding:10px 18px;transition:all .22s ease}
+div.stButton>button:hover,div.stFormSubmitButton>button:hover,div.stDownloadButton>button:hover{border-color:var(--dacre-cyan);background:linear-gradient(135deg,#0d3860,#12508c);box-shadow:0 0 20px rgba(24,183,255,.45);transform:translateY(-1px)}
+[data-testid="stMetric"]{padding:14px 18px;border-radius:16px;border:1px solid rgba(255,255,255,.10);background:linear-gradient(145deg,rgba(255,255,255,.05),rgba(255,255,255,.015))}
 #MainMenu,footer{visibility:hidden}
-@media(max-width:900px){.main .block-container{padding-left:1rem;padding-right:1rem}.stApp h1{font-size:2rem!important}.stApp h2{font-size:1.55rem!important}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -938,9 +854,7 @@ def master_user_record():
 
 
 def master_passkey_gate(passkey):
-    # Do not hash-and-compare with a random-salt hash; that will never match.
-    # Compare the entered secret directly to the configured Master secret.
-    return bool(passkey and passkey.strip() == MASTER_PASSKEY)
+    return bool(passkey and hash_password(passkey.strip()) == hash_password(MASTER_PASSKEY))
 
 
 def get_di_agents():
@@ -981,62 +895,29 @@ def update_di_agent(di_id, status, assigned_company):
     con.close()
 
 
-def permanently_delete_user(username, confirm_text=""):
-    """Permanently delete a non-master DACRE account and its owned records."""
-    username = (username or "").strip()
-    if not username:
-        return False, "No account selected."
-    if username == MASTER_USERNAME:
-        return False, "The Overall Administrator account cannot be deleted from the CEO Office."
-    if confirm_text.strip() != "DELETE PERMANENTLY":
-        return False, "Type DELETE PERMANENTLY to confirm."
-
-    con = db()
+def delete_user_permanently(username):
+    """Permanently remove a non-master account and its user-owned records."""
+    username=(username or "").strip()
+    if not username or username==MASTER_USERNAME:
+        return False,"The Overall Master account cannot be deleted."
+    con=db()
     try:
-        user_row = con.execute("SELECT username, company_name, role FROM users WHERE username=?", (username,)).fetchone()
-        if not user_row:
-            return False, "Account not found."
-        company = user_row["company_name"]
-
-        # Remove all account-owned and account-referenced records.
-        for table, column in [
-            ("files", "username"),
-            ("projects", "username"),
-            ("activity", "username"),
-            ("chat_history", "username"),
-        ]:
-            try:
-                con.execute(f"DELETE FROM {table} WHERE {column}=?", (username,))
-            except sqlite3.OperationalError:
-                pass
-
-        # Notifications and mail are company/account related rather than password data.
-        try:
-            con.execute("DELETE FROM notifications WHERE company_name=? AND target_username=?", (company, username))
-        except sqlite3.OperationalError:
-            pass
-        try:
-            con.execute("DELETE FROM emails_log WHERE recipient_email=(SELECT email FROM users WHERE username=?)", (username,))
-        except sqlite3.OperationalError:
-            pass
-
-        con.execute("DELETE FROM users WHERE username=? AND role!='master'", (username,))
-
-        # If this was the final account in the organization, remove the organization too.
-        remaining = con.execute("SELECT COUNT(*) FROM users WHERE company_name=? AND role!='master'", (company,)).fetchone()[0]
-        if remaining == 0:
-            try:
-                con.execute("DELETE FROM companies WHERE name=?", (company,))
-            except sqlite3.OperationalError:
-                pass
-
-        con.commit()
-        return True, f"Account '{username}' and its stored account records were permanently deleted."
+        row=con.execute("SELECT company_name,role,email FROM users WHERE username=?",(username,)).fetchone()
+        if not row: return False,"Account not found."
+        company=row["company_name"]; role=row["role"]; email=row["email"]
+        con.execute("DELETE FROM files WHERE username=?",(username,))
+        con.execute("DELETE FROM projects WHERE username=?",(username,))
+        con.execute("DELETE FROM chat_history WHERE username=?",(username,))
+        con.execute("DELETE FROM notifications WHERE target_username=?",(username,))
+        con.execute("DELETE FROM emails_log WHERE recipient_email=?",(email,))
+        con.execute("DELETE FROM activity WHERE username=?",(username,))
+        con.execute("DELETE FROM users WHERE username=?",(username,))
+        if role=="company_admin" and con.execute("SELECT COUNT(*) FROM users WHERE company_name=?",(company,)).fetchone()[0]==0:
+            con.execute("DELETE FROM companies WHERE lower(name)=lower(?)",(company,))
+        con.commit(); return True,f"Account {username} was permanently deleted."
     except Exception as exc:
-        con.rollback()
-        return False, f"Permanent deletion failed: {exc}"
-    finally:
-        con.close()
+        con.rollback(); return False,f"Deletion failed: {exc}"
+    finally: con.close()
 
 
 def admin_metric_counts():
@@ -1063,9 +944,16 @@ def landing_page():
     # Any legacy building injected by an older deployment is removed by the
     # small cleanup component before the new card is rendered.
     # -------------------------------------------------------------------------
-    # IMPORTANT: do not mutate Streamlit/React DOM nodes from an iframe.
-    # Older versions removed the CEO card here with el.remove(), which could
-    # race React reconciliation and produce NotFoundError: removeChild.
+    components.html("""
+    <script>
+    (function(){
+      try {
+        const d = window.parent.document;
+        d.querySelectorAll('#dacre-ceo-building-access, #dacre-ceo-building-access-v2').forEach(function(el){ el.remove(); });
+      } catch(e) {}
+    })();
+    </script>
+    """, height=0)
 
     top1, top2, top3 = st.columns([5,1,1])
     with top1:
@@ -1085,10 +973,10 @@ def landing_page():
        aria-label="DACRE-ANALYSIS CEO Office access"
        style="position:fixed;left:24px;bottom:24px;width:190px;height:178px;
               z-index:2147483000;display:block;overflow:hidden;
-              border-radius:20px;background:linear-gradient(145deg,#0b0715,#18102b);border:1px solid rgba(139,92,246,.42);
-              box-shadow:0 22px 65px rgba(0,0,0,.45),0 0 35px rgba(99,102,241,.10);text-decoration:none;
+              border-radius:20px;background:#fff;border:1px solid rgba(232,106,168,.38);
+              box-shadow:0 18px 55px rgba(45,25,40,.25);text-decoration:none;
               cursor:pointer;transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease;">
-      <div style="position:absolute;inset:0;background:linear-gradient(180deg,#0d0917,#08050f);">
+      <div style="position:absolute;inset:0;background:#fff;">
         <img src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=900&q=90"
              alt="DACRE-ANALYSIS company building"
              style="width:100%;height:134px;object-fit:cover;display:block;">
@@ -1098,7 +986,7 @@ def landing_page():
         <div style="position:absolute;left:11px;top:10px;color:#fff;
                     font:800 12px/1.1 Inter,Segoe UI,sans-serif;letter-spacing:.11em;
                     text-shadow:0 2px 10px rgba(0,0,0,.60);">DACRE-ANALYSIS</div>
-        <div style="position:absolute;left:10px;right:10px;bottom:8px;color:#f4efff;
+        <div style="position:absolute;left:10px;right:10px;bottom:8px;color:#17202b;
                     font:800 11px/1.2 Inter,Segoe UI,sans-serif;letter-spacing:.08em;
                     text-align:center;">CEO OFFICE</div>
       </div>
@@ -1106,8 +994,8 @@ def landing_page():
     <style>
       #dacre-ceo-building-access-v2:hover{
         transform:translateY(-7px) scale(1.035);
-        box-shadow:0 30px 80px rgba(99,102,241,.32),0 0 45px rgba(217,70,239,.18);
-        border-color:rgba(168,85,247,.90);
+        box-shadow:0 28px 72px rgba(232,106,168,.34);
+        border-color:rgba(232,106,168,.82);
       }
       #dacre-ceo-building-access-v2:active{transform:translateY(-2px) scale(1.01);}
       @media (max-width:700px){
@@ -1156,11 +1044,11 @@ def landing_page():
                         st.warning("Complete the Google reCAPTCHA widget first. If the verification is not being accepted, configure the DACRE reCAPTCHA component bridge and secrets.")
                 else:
                     st.markdown("""
-                    <div style="border:1px solid #d9d9d9;border-radius:4px;padding:16px 14px;background:#0d0917;max-width:430px;margin:0 auto;box-shadow:0 10px 30px rgba(0,0,0,.35);">
+                    <div style="border:1px solid #d9d9d9;border-radius:4px;padding:16px 14px;background:#fff;max-width:430px;margin:0 auto;box-shadow:0 2px 8px rgba(0,0,0,.10);">
                       <div style="display:flex;align-items:center;gap:12px;">
-                        <div style="width:28px;height:28px;border:1px solid #b8b8b8;border-radius:3px;background:#171126;"></div>
-                        <div style="font:500 15px Arial,sans-serif;color:#f4efff;">I'm not a robot</div>
-                        <div style="margin-left:auto;font:11px Arial,sans-serif;color:#9e95ad;text-align:center;">reCAPTCHA<br>Privacy - Terms</div>
+                        <div style="width:28px;height:28px;border:1px solid #b8b8b8;border-radius:3px;background:#fafafa;"></div>
+                        <div style="font:500 15px Arial,sans-serif;color:#333;">I'm not a robot</div>
+                        <div style="margin-left:auto;font:11px Arial,sans-serif;color:#777;text-align:center;">reCAPTCHA<br>Privacy - Terms</div>
                       </div>
                     </div>
                     """, unsafe_allow_html=True)
@@ -1300,111 +1188,48 @@ if st.session_state.user is None:
 # The CEO building belongs ONLY to the public landing page. Remove its
 # fixed DOM node as soon as a user enters the application so it cannot
 # remain floating over or scrolling with the workspace.
-# The previous build tried to remove the landing-page CEO card by directly
-# changing Streamlit's React-managed DOM. That caused the browser error
-# "NotFoundError: Failed to execute 'removeChild' on 'Node'".
-# The card is now rendered only by landing_page(), so no DOM cleanup is needed.
+components.html("""
+<script>
+(function(){
+  try {
+    const d = window.parent.document;
+    const old = d.getElementById('dacre-ceo-building-access');
+    if (old) old.remove();
+  } catch(e) {}
+})();
+</script>
+""", height=0)
 
 # Restore persistent DI conversation memory for this account.
 if not st.session_state.chat_history:
     st.session_state.chat_history = load_chat_history(st.session_state.user, limit=40)
 
 # =============================================================================
-# DACRE USER EXPERIENCE V3 — OBSIDIAN / INDIGO / VIOLET EXECUTIVE CONSOLE
+# DACRE USER EXPERIENCE V2 — LIGHT / WHITE / SOFT PINK BUSINESS CONSOLE
 # =============================================================================
 st.markdown("""
 <style>
-:root{
-  --dacre-bg:#05030a; --dacre-bg2:#080612; --dacre-panel:#0d0a18; --dacre-panel2:#120d22;
-  --dacre-ink:#f7f5ff; --dacre-muted:#a9a2bd; --dacre-line:rgba(139,92,246,.24);
-  --dacre-indigo:#6366f1; --dacre-violet:#8b5cf6; --dacre-purple:#a855f7;
-  --dacre-fuchsia:#d946ef; --dacre-cyan:#22d3ee; --dacre-green:#34d399;
-  --dacre-danger:#fb7185; --dacre-shadow:0 24px 80px rgba(0,0,0,.46);
-}
-.stApp{
-  background:
-    radial-gradient(circle at 8% 8%,rgba(99,102,241,.18),transparent 25%),
-    radial-gradient(circle at 92% 10%,rgba(168,85,247,.16),transparent 24%),
-    radial-gradient(circle at 55% 90%,rgba(217,70,239,.08),transparent 30%),
-    linear-gradient(135deg,#030207 0%,#07050e 45%,#05030a 100%) !important;
-  color:var(--dacre-ink) !important;
-}
-.stApp::before{content:"";position:fixed;inset:-25%;pointer-events:none;background:conic-gradient(from 90deg at 50% 50%,rgba(99,102,241,.035),transparent 22%,rgba(168,85,247,.04) 43%,transparent 65%,rgba(34,211,238,.025) 82%,transparent);animation:dacreAmbient 36s linear infinite;z-index:0}
-@keyframes dacreAmbient{to{transform:rotate(360deg)}}
-.main .block-container{position:relative;z-index:1;max-width:1540px;padding-top:1.35rem;padding-bottom:5rem}
-.stApp p,.stApp li,.stApp td,.stApp th,.stApp label,.stApp h1,.stApp h2,.stApp h3,.stApp h4,.stApp h5,.stApp h6{color:var(--dacre-ink)!important}
-.stApp .stCaption,.stApp small{color:var(--dacre-muted)!important}
-[data-testid="stSidebar"]{background:linear-gradient(180deg,#07050e 0%,#090613 48%,#05030a 100%)!important;border-right:1px solid rgba(139,92,246,.22)!important;box-shadow:18px 0 60px rgba(0,0,0,.42)}
-[data-testid="stSidebar"] *{color:#f7f5ff!important}
-[data-testid="stSidebar"] img{filter:drop-shadow(0 0 20px rgba(139,92,246,.28));border-radius:18px}
-[data-testid="stSidebar"] [data-testid="stRadio"]>label{border-radius:12px;padding:9px 11px!important;margin:3px 0;transition:.2s ease;background:transparent}
-[data-testid="stSidebar"] [data-testid="stRadio"]>label:hover{background:linear-gradient(90deg,rgba(99,102,241,.14),rgba(168,85,247,.07));transform:translateX(3px)}
-[data-testid="stSidebar"] [data-testid="stRadio"]>label[data-checked="true"]{background:linear-gradient(90deg,rgba(99,102,241,.22),rgba(168,85,247,.13));border-left:3px solid var(--dacre-violet);box-shadow:0 0 22px rgba(99,102,241,.10)}
-.stButton>button,.stDownloadButton>button,.stFormSubmitButton>button{border:1px solid rgba(139,92,246,.34)!important;background:linear-gradient(135deg,#0d0a19,#17102a)!important;color:#fff!important;border-radius:13px!important;box-shadow:0 8px 25px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.04)!important;transition:.22s ease!important;font-weight:800!important}
-.stButton>button:hover,.stDownloadButton>button:hover,.stFormSubmitButton>button:hover{border-color:rgba(217,70,239,.78)!important;background:linear-gradient(135deg,#16102b,#24143d)!important;box-shadow:0 12px 34px rgba(139,92,246,.24),0 0 25px rgba(217,70,239,.10)!important;transform:translateY(-2px)}
-.stTextInput input,.stTextArea textarea,.stNumberInput input,.stDateInput input{background:#090711!important;border:1px solid rgba(139,92,246,.30)!important;color:#fff!important;border-radius:12px!important;box-shadow:inset 0 1px rgba(255,255,255,.025)}
-.stTextInput input:focus,.stTextArea textarea:focus,.stNumberInput input:focus{border-color:#8b5cf6!important;box-shadow:0 0 0 1px #8b5cf6,0 0 25px rgba(139,92,246,.12)!important}
-.stTextInput input::placeholder,.stTextArea textarea::placeholder{color:#716b83!important}
-.stSelectbox div[data-baseweb="select"]>div,.stMultiSelect div[data-baseweb="select"]>div{background:#090711!important;border:1px solid rgba(139,92,246,.30)!important;color:#fff!important;border-radius:12px!important}
-[data-baseweb="popover"]{background:#0c0915!important;border:1px solid rgba(139,92,246,.35)!important}
-[data-baseweb="menu"]{background:#0c0915!important}
-[data-baseweb="menu"] *{color:#f7f5ff!important}
-[data-testid="stMetric"]{padding:16px 17px;border-radius:18px;border:1px solid rgba(139,92,246,.20);background:linear-gradient(145deg,rgba(17,12,30,.94),rgba(8,6,14,.90));box-shadow:0 15px 35px rgba(0,0,0,.24);position:relative;overflow:hidden}
-[data-testid="stMetric"]:after{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,#6366f1,#a855f7,#d946ef,#22d3ee)}
-[data-testid="stMetricValue"]{color:#fff!important}
-[data-testid="stDataFrame"]{border:1px solid rgba(139,92,246,.20)!important;border-radius:16px!important;overflow:hidden!important;box-shadow:0 18px 50px rgba(0,0,0,.25)}
-[data-testid="stExpander"]{background:rgba(12,8,21,.88)!important;border:1px solid rgba(139,92,246,.20)!important;border-radius:16px!important}
-[data-testid="stTabs"] button{color:#aaa1bb!important;font-weight:800!important}
-[data-testid="stTabs"] button[aria-selected="true"]{color:#fff!important}
-[data-testid="stTabs"] [data-baseweb="tab-highlight"]{background:linear-gradient(90deg,#6366f1,#d946ef)!important}
-.dacre-user-hero{position:relative;overflow:hidden;background:linear-gradient(135deg,rgba(11,8,20,.96),rgba(21,13,38,.88));border:1px solid rgba(139,92,246,.30);border-radius:26px;padding:25px 29px;box-shadow:var(--dacre-shadow);backdrop-filter:blur(16px)}
-.dacre-user-hero:after{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,#6366f1,#8b5cf6,#d946ef,#22d3ee);background-size:250% 100%;animation:dacreFlow 8s linear infinite}
-@keyframes dacreFlow{to{background-position:250% 0}}
-.dacre-user-title{font-size:2.35rem;font-weight:900;letter-spacing:-.045em;margin-bottom:4px;color:#fff!important}
-.dacre-user-sub{color:#b8b1c9!important;font-size:1rem}
-.di-command{background:linear-gradient(135deg,rgba(10,7,18,.98),rgba(20,12,34,.90));border:1px solid rgba(139,92,246,.28);border-radius:28px;box-shadow:var(--dacre-shadow);overflow:hidden;position:relative}
-.di-stage{height:330px;position:relative;overflow:hidden;background-size:cover;background-position:center;transition:transform .5s ease,filter .5s ease;filter:saturate(.82) brightness(.72)}
-.di-command:hover .di-stage{transform:scale(1.018);filter:saturate(1) brightness(.78)}
-.di-stage-overlay{position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,3,10,.97) 0%,rgba(8,5,16,.86) 44%,rgba(5,3,10,.28) 100%)}
-.di-orb{position:absolute;right:9%;top:17%;width:178px;height:178px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff 0%,#b7a4ff 18%,#8b5cf6 43%,#d946ef 67%,rgba(217,70,239,0) 71%);box-shadow:0 0 85px rgba(139,92,246,.38),0 0 150px rgba(217,70,239,.16);animation:diPulse 4s ease-in-out infinite}
-.di-orb:after{content:"";position:absolute;inset:27px;border:1px solid rgba(255,255,255,.75);border-radius:50%;animation:diSpin 8s linear infinite}
-@keyframes diPulse{50%{transform:scale(1.07);box-shadow:0 0 110px rgba(139,92,246,.48),0 0 180px rgba(217,70,239,.20)}}
-@keyframes diSpin{to{transform:rotate(360deg)}}
-.di-stage-copy{position:absolute;left:30px;top:30px;max-width:58%}
-.di-kicker{font-size:.76rem;letter-spacing:.16em;text-transform:uppercase;font-weight:900;color:#a78bfa!important}
-.di-stage-copy h2{font-size:2.05rem;margin:.45rem 0 .55rem;font-weight:900;color:#fff!important}
-.di-stage-copy p{color:#c0b9ce!important;line-height:1.55}
-.di-status{display:inline-flex;align-items:center;gap:8px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.055);border:1px solid rgba(139,92,246,.32);font-size:.82rem;font-weight:800;color:#fff!important;backdrop-filter:blur(10px)}
-.di-dot{width:8px;height:8px;border-radius:50%;background:#34d399;box-shadow:0 0 0 5px rgba(52,211,153,.12),0 0 16px rgba(52,211,153,.6)}
-.di-transcript{padding:18px 22px;background:rgba(8,5,14,.96);border-top:1px solid rgba(139,92,246,.20);min-height:92px}
-.di-transcript-label{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#a78bfa!important;font-weight:900}
-.di-transcript-text{font-size:1rem;line-height:1.55;margin-top:4px;color:#f4f0ff!important}
-.di-quick-card{height:100%;background:linear-gradient(145deg,rgba(17,11,29,.95),rgba(9,6,15,.92));border:1px solid rgba(139,92,246,.20);border-radius:19px;padding:18px;transition:.22s ease;box-shadow:0 14px 38px rgba(0,0,0,.24)}
-.di-quick-card:hover{transform:translateY(-5px);box-shadow:0 22px 48px rgba(99,102,241,.16);border-color:rgba(217,70,239,.45)}
-.di-metric{background:linear-gradient(145deg,rgba(17,11,29,.95),rgba(8,6,14,.92));border:1px solid rgba(139,92,246,.20);border-radius:17px;padding:16px 18px;box-shadow:0 12px 30px rgba(0,0,0,.22)}
-.di-metric .v{font-size:1.55rem;font-weight:900;color:#fff!important}.di-metric .l{font-size:.78rem;color:#91899f!important;margin-top:2px}
-.master-section{padding:19px 22px;margin:4px 0 18px;border:1px solid rgba(139,92,246,.30);border-radius:22px;background:linear-gradient(135deg,rgba(13,8,25,.98),rgba(25,13,43,.84));box-shadow:0 20px 60px rgba(0,0,0,.32)}
-.master-kicker{font-size:.68rem;letter-spacing:.18em;font-weight:900;color:#a78bfa!important;text-transform:uppercase}
-.master-section-title{font-size:1.75rem;font-weight:950;letter-spacing:-.03em;margin-top:4px;color:#fff!important}
-.master-section-sub{font-size:.88rem;color:#a9a2bd!important;margin-top:4px;line-height:1.5}
-.danger-panel{margin-top:22px;padding:18px 20px;border-radius:20px;border:1px solid rgba(251,113,133,.38);background:linear-gradient(135deg,rgba(56,8,22,.72),rgba(25,7,16,.82));box-shadow:0 14px 45px rgba(127,29,29,.16)}
-.danger-title{font-size:1.05rem;font-weight:950;color:#fecdd3!important}.danger-copy{font-size:.86rem;line-height:1.55;color:#fda4af!important;margin-top:5px}
-.stAlert{background:rgba(16,10,26,.92)!important;border:1px solid rgba(139,92,246,.25)!important;color:#fff!important}
-hr{border-color:rgba(139,92,246,.18)!important}
-#MainMenu,footer{visibility:hidden}
-@media(max-width:900px){.di-stage-copy{max-width:82%}.di-orb{right:-25px;opacity:.55}.dacre-user-title{font-size:1.8rem}}
-</style>
-""",unsafe_allow_html=True)
-
-st.markdown("""
-<style>
-.master-section{padding:18px 22px;margin:4px 0 18px;border:1px solid rgba(56,189,248,.22);border-radius:22px;background:linear-gradient(135deg,rgba(9,18,35,.96),rgba(18,29,51,.82));box-shadow:0 18px 55px rgba(0,0,0,.18)}
-.master-kicker{font-size:.68rem;letter-spacing:.18em;font-weight:900;color:#67e8f9!important;text-transform:uppercase}
-.master-section-title{font-size:1.75rem;font-weight:950;letter-spacing:-.03em;margin-top:4px;color:#fff!important}
-.master-section-sub{font-size:.88rem;color:#9fb4cc!important;margin-top:4px;line-height:1.5}
-.danger-panel{margin-top:22px;padding:18px 20px;border-radius:20px;border:1px solid rgba(248,113,113,.42);background:linear-gradient(135deg,rgba(69,10,10,.55),rgba(40,12,18,.72));box-shadow:0 14px 45px rgba(127,29,29,.16)}
-.danger-title{font-size:1.05rem;font-weight:950;color:#fecaca!important}
-.danger-copy{font-size:.86rem;line-height:1.55;color:#fca5a5!important;margin-top:5px}
+:root{--di-indigo:#5b5ce2;--di-violet:#8b5cf6;--di-cyan:#06b6d4;--di-rose:#ec4899;--di-ink:#17213b;--di-muted:#64748b;--di-line:rgba(91,92,226,.17);--di-shadow:0 18px 55px rgba(72,61,139,.12)}
+.stApp{background:radial-gradient(circle at 6% 8%,rgba(139,92,246,.18),transparent 28%),radial-gradient(circle at 94% 8%,rgba(6,182,212,.14),transparent 27%),radial-gradient(circle at 60% 100%,rgba(236,72,153,.10),transparent 32%),linear-gradient(135deg,#f8f9ff 0%,#eef2ff 48%,#f5f3ff 100%)!important;color:var(--di-ink)!important}
+.stApp::before{display:none!important}.main .block-container{max-width:1500px;padding-top:1.5rem;padding-bottom:4rem}
+.stApp p,.stApp span,.stApp label,.stApp div,.stApp li,.stApp td,.stApp th,.stApp h1,.stApp h2,.stApp h3,.stApp h4{color:var(--di-ink)!important}
+[data-testid="stSidebar"]{background:linear-gradient(180deg,rgba(247,248,255,.98),rgba(237,233,254,.96))!important;border-right:1px solid var(--di-line)!important;box-shadow:10px 0 34px rgba(72,61,139,.08)}
+[data-testid="stSidebar"] *{color:var(--di-ink)!important}
+[data-testid="stSidebar"] [data-testid="stRadio"] label{border-radius:14px;padding:8px 10px;transition:.2s ease}.stButton>button,.stFormSubmitButton>button,.stDownloadButton>button{border:1px solid var(--di-line)!important;background:linear-gradient(135deg,rgba(255,255,255,.85),rgba(238,242,255,.86))!important;color:#26315e!important;border-radius:13px!important;font-weight:800!important;box-shadow:0 8px 24px rgba(72,61,139,.08)!important;transition:.22s ease!important}
+.stButton>button:hover,.stFormSubmitButton>button:hover,.stDownloadButton>button:hover{border-color:var(--di-violet)!important;background:linear-gradient(135deg,#f5f3ff,#e0e7ff)!important;transform:translateY(-2px);box-shadow:0 14px 32px rgba(91,92,226,.16)!important}
+.stTextInput input,.stTextArea textarea,.stNumberInput input,.stSelectbox div[data-baseweb="select"]>div{background:rgba(255,255,255,.70)!important;border:1px solid var(--di-line)!important;color:var(--di-ink)!important;border-radius:13px!important}
+.dacre-user-hero{background:linear-gradient(115deg,rgba(255,255,255,.78),rgba(237,233,254,.72));border:1px solid var(--di-line);border-radius:26px;padding:25px 28px;box-shadow:var(--di-shadow);backdrop-filter:blur(14px)}
+.dacre-user-title{font-size:2.35rem;font-weight:850;letter-spacing:-.04em;margin-bottom:4px}.dacre-user-sub{color:var(--di-muted)!important;font-size:1rem}
+.di-command{background:linear-gradient(135deg,rgba(255,255,255,.76),rgba(237,233,254,.62));border:1px solid var(--di-line);border-radius:28px;box-shadow:var(--di-shadow);overflow:hidden;position:relative}.di-stage{height:330px;position:relative;overflow:hidden;background-size:cover;background-position:center;transition:transform .5s ease,filter .5s ease}.di-command:hover .di-stage{transform:scale(1.018);filter:saturate(1.05)}
+.di-stage-overlay{position:absolute;inset:0;background:linear-gradient(90deg,rgba(248,249,255,.96) 0%,rgba(237,233,254,.78) 45%,rgba(224,231,255,.18) 100%)}
+.di-orb{position:absolute;right:9%;top:18%;width:170px;height:170px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#c4b5fd 34%,#8b5cf6 63%,rgba(139,92,246,0) 70%);box-shadow:0 0 90px rgba(139,92,246,.34);animation:diPulse 4s ease-in-out infinite}.di-orb:after{content:"";position:absolute;inset:28px;border:1px solid rgba(255,255,255,.85);border-radius:50%;animation:diSpin 8s linear infinite}@keyframes diPulse{50%{transform:scale(1.07);box-shadow:0 0 110px rgba(91,92,226,.42)}}@keyframes diSpin{to{transform:rotate(360deg)}}
+.di-stage-copy{position:absolute;left:30px;top:30px;max-width:58%}.di-kicker{font-size:.76rem;letter-spacing:.16em;text-transform:uppercase;font-weight:800;color:#5b5ce2!important}.di-stage-copy h2{font-size:2.05rem;margin:.45rem 0 .55rem;font-weight:850}.di-stage-copy p{color:#596573!important;line-height:1.55}
+.di-status{display:inline-flex;align-items:center;gap:8px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.75);border:1px solid var(--di-line);font-size:.82rem;font-weight:700}.di-dot{width:8px;height:8px;border-radius:50%;background:#10b981;box-shadow:0 0 0 5px rgba(16,185,129,.12)}
+.di-transcript{padding:18px 22px;background:rgba(255,255,255,.58);border-top:1px solid var(--di-line);min-height:92px}.di-transcript-label{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#6d63a8!important;font-weight:800}.di-transcript-text{font-size:1rem;line-height:1.55;margin-top:4px}
+.di-quick-card{height:100%;background:rgba(255,255,255,.66);border:1px solid var(--di-line);border-radius:20px;padding:18px;transition:.2s ease;box-shadow:0 10px 30px rgba(72,61,139,.06)}.di-quick-card:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(91,92,226,.12);border-color:rgba(139,92,246,.35)}
+.di-metric{background:rgba(255,255,255,.68);border:1px solid var(--di-line);border-radius:17px;padding:16px 18px;box-shadow:0 8px 25px rgba(72,61,139,.06)}.di-metric .v{font-size:1.55rem;font-weight:850}.di-metric .l{font-size:.78rem;color:var(--di-muted)!important;margin-top:2px}
+.dacre-admin-hero{background:linear-gradient(120deg,rgba(91,92,226,.96),rgba(139,92,246,.94) 52%,rgba(6,182,212,.92));color:#fff!important;border-radius:28px;padding:30px;box-shadow:0 24px 65px rgba(91,92,226,.25);position:relative;overflow:hidden}.dacre-admin-hero *{color:#fff!important}.dacre-admin-hero:after{content:"";position:absolute;width:280px;height:280px;border-radius:50%;right:-90px;top:-120px;background:rgba(255,255,255,.13)}
+.dacre-panel{background:rgba(255,255,255,.68);border:1px solid var(--di-line);border-radius:22px;padding:20px;box-shadow:0 12px 34px rgba(72,61,139,.07);backdrop-filter:blur(12px)}
 </style>
 """,unsafe_allow_html=True)
 
@@ -1420,22 +1245,18 @@ with head_col2:
         st.rerun()
 
 with st.sidebar:
-    if LOGO_PATH.exists(): st.image(str(LOGO_PATH),use_container_width=True)
+    if LOGO_PATH.exists():
+        st.markdown('<div style="padding:8px;border-radius:20px;background:linear-gradient(135deg,rgba(255,255,255,.70),rgba(221,214,254,.65));border:1px solid rgba(91,92,226,.14);box-shadow:0 12px 30px rgba(72,61,139,.10)">',unsafe_allow_html=True)
+        st.image(str(LOGO_PATH),use_container_width=True)
+        st.markdown('</div>',unsafe_allow_html=True)
     st.markdown(f"### {user['first_name']}'s Workspace")
     st.caption(f"{user['company']} · {user['role']}")
-    st.markdown("<div style='font-size:.78rem;color:#9f8bb8!important;margin:4px 0 10px'>DI is available across your workspace.</div>",unsafe_allow_html=True)
-    if user["role"]=="master":
-        st.markdown("<div style='padding:9px 11px;margin-bottom:10px;border:1px solid rgba(34,211,238,.28);border-radius:12px;background:linear-gradient(90deg,rgba(99,102,241,.16),rgba(217,70,239,.10));color:#67e8f9;font-weight:900;font-size:.78rem;letter-spacing:.05em'>👑 OVERALL ADMIN · MASTER</div>",unsafe_allow_html=True)
-    elif user["role"]=="company_admin":
-        st.markdown("<div style='padding:9px 11px;margin-bottom:10px;border:1px solid rgba(139,92,246,.28);border-radius:12px;background:rgba(139,92,246,.09);color:#c4b5fd;font-weight:900;font-size:.78rem;letter-spacing:.04em'>🛡️ ORGANIZATION ADMIN</div>",unsafe_allow_html=True)
+    st.markdown("<div style='font-size:.78rem;color:#8b6577!important;margin:4px 0 14px'>DI is available across your workspace.</div>",unsafe_allow_html=True)
     navigation=["DI Home","Workspace & Data","Formula Lab","Charts","File Vault","Export Center"]
-    # Organization admins get their organization control centre clearly surfaced.
     if user["role"] in ("company_admin","master"):
-        navigation.append("🛡️ Organization Admin Portal")
-    # The Overall Admin/CEO Office is intentionally visible ONLY to the master account.
-    if user["role"]=="master":
-        navigation.append("👑 Overall Admin DI Portal")
-    default_page = "👑 Overall Admin DI Portal" if user["role"]=="master" and st.session_state.get("master_route") else navigation[0]
+        navigation.append("Organization Admin Portal")
+    if user["role"]=="master": navigation.append("Overall Admin DI Portal")
+    default_page = "Overall Admin DI Portal" if user["role"]=="master" and st.session_state.get("master_route") else navigation[0]
     selected_page=st.radio("Navigation",navigation,index=navigation.index(default_page) if default_page in navigation else 0)
 
 # =============================================================================
@@ -1528,7 +1349,7 @@ if selected_page=="DI Home":
     ]
     for col,(title,headline,desc) in zip([q1,q2,q3,q4],cards):
         with col:
-            st.markdown(f"<div class='di-quick-card'><div style='font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:#a78bfa!important;font-weight:800'>{title}</div><h4 style='margin:.45rem 0'>{headline}</h4><p style='color:#aaa1bd!important;font-size:.9rem;line-height:1.45'>{desc}</p></div>",unsafe_allow_html=True)
+            st.markdown(f"<div class='di-quick-card'><div style='font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:#b5487e!important;font-weight:800'>{title}</div><h4 style='margin:.45rem 0'>{headline}</h4><p style='color:#657180!important;font-size:.9rem;line-height:1.45'>{desc}</p></div>",unsafe_allow_html=True)
 
     if st.session_state.processed_df is not None:
         df=st.session_state.processed_df
@@ -1540,7 +1361,7 @@ if selected_page=="DI Home":
     st.markdown("### Conversation")
     for msg in st.session_state.chat_history[-12:]:
         who="DI" if msg["sender"]=="DI" else msg["sender"]
-        st.markdown(f"<div style='background:linear-gradient(145deg,rgba(14,9,25,.98),rgba(8,6,15,.96));border:1px solid rgba(139,92,246,.28);border-left:3px solid {'#22d3ee' if who=='DI' else '#8b5cf6'};border-radius:14px;padding:13px 16px;margin:8px 0;box-shadow:0 10px 28px rgba(0,0,0,.24)'><b style='color:#c4b5fd'>{who}</b><div style='margin-top:5px;line-height:1.55;color:#f7f3ff'>{msg['text']}</div></div>",unsafe_allow_html=True)
+        st.markdown(f"<div style='background:{'#fff1f7' if who=='DI' else '#fff'};border:1px solid #f5d7e6;border-radius:14px;padding:13px 16px;margin:8px 0'><b>{who}</b><div style='margin-top:5px;line-height:1.55'>{msg['text']}</div></div>",unsafe_allow_html=True)
 
     with st.form("di_chat_form",clear_on_submit=True):
         chat_text=st.text_input("Ask DI",placeholder="Type here if you prefer text…",label_visibility="collapsed")
@@ -1661,7 +1482,7 @@ elif selected_page=="Export Center":
 # =============================================================================
 # ORGANIZATION ADMIN PORTAL
 # =============================================================================
-elif selected_page=="🛡️ Organization Admin Portal" and user["role"] in ("company_admin","master"):
+elif selected_page=="Organization Admin Portal" and user["role"] in ("company_admin","master"):
     st.header("Organization Admin Portal")
     if user["role"]=="master":
         st.success("Master access confirmed. You can inspect all organizations.")
@@ -1702,70 +1523,22 @@ elif selected_page=="🛡️ Organization Admin Portal" and user["role"] in ("co
 # =============================================================================
 # MASTER ADMIN PORTAL / CEO OFFICE
 # =============================================================================
-elif selected_page=="👑 Overall Admin DI Portal" and user["role"]=="master":
+elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
     counts=admin_metric_counts()
-    st.markdown("""
-    <style>
-    .ceo-super{position:relative;overflow:hidden;padding:34px 36px;border-radius:30px;margin-bottom:18px;background:radial-gradient(circle at 78% 12%,rgba(103,232,249,.20),transparent 25%),radial-gradient(circle at 12% 105%,rgba(245,158,11,.13),transparent 32%),linear-gradient(135deg,#030712 0%,#071426 48%,#06101d 100%);border:1px solid rgba(103,232,249,.34);box-shadow:0 34px 100px rgba(0,0,0,.35),inset 0 1px rgba(255,255,255,.08)}
-    .ceo-super:after{content:"";position:absolute;width:520px;height:520px;border:1px solid rgba(103,232,249,.08);border-radius:50%;right:-240px;top:-260px;box-shadow:0 0 0 55px rgba(103,232,249,.025),0 0 0 110px rgba(103,232,249,.015)}
-    .ceo-kicker{font-size:.68rem;letter-spacing:.24em;text-transform:uppercase;color:#67e8f9!important;font-weight:950}
-    .ceo-title{font-size:3.35rem;line-height:.98;font-weight:950;letter-spacing:-.06em;color:#fff!important;margin-top:8px}
-    .ceo-sub{max-width:790px;color:#a9bed5!important;font-size:.98rem;line-height:1.62;margin-top:12px}
-    .ceo-badges{display:flex;gap:9px;flex-wrap:wrap;margin-top:19px}
-    .ceo-badge{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.11);color:#d9faff!important;font-size:.74rem;font-weight:850;backdrop-filter:blur(12px)}
-    .ceo-pulse{width:8px;height:8px;border-radius:50%;background:#34d399;box-shadow:0 0 0 5px rgba(52,211,153,.12),0 0 18px rgba(52,211,153,.65)}
-    .ceo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:0 0 22px}
-    .ceo-mini{padding:16px 17px;border-radius:19px;background:linear-gradient(145deg,rgba(5,14,28,.96),rgba(12,29,49,.78));border:1px solid rgba(255,255,255,.08);box-shadow:0 15px 35px rgba(0,0,0,.16)}
-    .ceo-mini-label{font-size:.67rem;color:#7f9bb5!important;text-transform:uppercase;letter-spacing:.13em;font-weight:850}
-    .ceo-mini-value{font-size:1.04rem;color:#fff!important;font-weight:900;margin-top:5px}
-    .ceo-profile{padding:20px 22px;border-radius:26px;background:linear-gradient(160deg,rgba(8,18,32,.98),rgba(11,29,48,.82));border:1px solid rgba(103,232,249,.25);box-shadow:0 28px 70px rgba(0,0,0,.24)}
-    .ceo-profile-kicker{font-size:.64rem;letter-spacing:.18em;text-transform:uppercase;color:#67e8f9!important;font-weight:900;margin-bottom:9px}
-    .ceo-profile-name{font-size:1.35rem;color:#fff!important;font-weight:950;letter-spacing:-.02em}
-    .ceo-profile-role{font-size:.82rem;color:#9fb5cb!important;margin-top:4px;line-height:1.45}
-    .ceo-profile-line{height:1px;background:linear-gradient(90deg,rgba(103,232,249,.35),transparent);margin:16px 0}
-    .ceo-profile-note{font-size:.76rem;color:#8da6bd!important;line-height:1.55}
-    .ceo-portrait-wrap{padding:8px;border-radius:28px;background:linear-gradient(145deg,rgba(103,232,249,.28),rgba(245,158,11,.16),rgba(255,255,255,.03));border:1px solid rgba(103,232,249,.22);box-shadow:0 25px 70px rgba(0,0,0,.30)}
-    [data-testid="stImage"] img{border-radius:22px!important;border:1px solid rgba(103,232,249,.30)!important;box-shadow:0 18px 45px rgba(0,0,0,.30)!important}
-    @media(max-width:900px){.ceo-title{font-size:2.45rem}.ceo-grid{grid-template-columns:1fr}.ceo-super{padding:26px 24px}}
-    </style>
-    """,unsafe_allow_html=True)
-
-    hero_left, hero_right = st.columns([3.35,1.05], gap="large")
-    with hero_left:
+    hero_a,hero_b=st.columns([5,1])
+    with hero_a:
         st.markdown("""
-        <div class="ceo-super">
-          <div class="ceo-kicker">DACRE // OVERALL ADMINISTRATION</div>
-          <div class="ceo-title">CEO Office</div>
-          <div class="ceo-sub">The executive command layer above every organization, account, file, conversation and DI worker. A private control room for platform-wide decisions, intelligence and administration.</div>
-          <div class="ceo-badges">
-            <span class="ceo-badge"><span class="ceo-pulse"></span> DI Workforce Online</span>
-            <span class="ceo-badge">MASTER · DAVID EMENIKE</span>
-            <span class="ceo-badge">SYSTEM AUTHORITY · OVERALL ADMIN</span>
-          </div>
+        <div class="dacre-admin-hero">
+          <div style="font-size:.78rem;letter-spacing:.16em;font-weight:900;opacity:.88;">DACRE // OVERALL ADMIN DI</div>
+          <div style="font-size:clamp(2.3rem,5vw,4rem);font-weight:950;letter-spacing:-.05em;margin-top:6px;">Executive Command Centre</div>
+          <div style="font-size:1.05rem;font-weight:700;opacity:.90;margin-top:8px;">Master: David Emenike · System authority: Overall Administrator</div>
         </div>
         """,unsafe_allow_html=True)
-    with hero_right:
-        if MASTER_PORTRAIT_PATH.exists():
-            st.markdown('<div class="ceo-portrait-wrap">',unsafe_allow_html=True)
-            st.image(str(MASTER_PORTRAIT_PATH), use_container_width=True)
-            st.markdown('</div>',unsafe_allow_html=True)
-        st.markdown("""
-        <div class="ceo-profile">
-          <div class="ceo-profile-kicker">Master Identity</div>
-          <div class="ceo-profile-name">David Emenike</div>
-          <div class="ceo-profile-role">Overall Administrator · DACRE Platform Authority</div>
-          <div class="ceo-profile-line"></div>
-          <div class="ceo-profile-note">Master-level command is active. Organization, account, data, DI workforce and platform controls are available from this office.</div>
-        </div>
-        """,unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class="ceo-grid">
-      <div class="ceo-mini"><div class="ceo-mini-label">Command Level</div><div class="ceo-mini-value">Sovereign / Master</div></div>
-      <div class="ceo-mini"><div class="ceo-mini-label">Scope</div><div class="ceo-mini-value">Entire DACRE Platform</div></div>
-      <div class="ceo-mini"><div class="ceo-mini-label">Control Mode</div><div class="ceo-mini-value">Live Administrative Control</div></div>
-    </div>
-    """,unsafe_allow_html=True)
+    with hero_b:
+        if MASTER_PHOTO_PATH:
+            st.image(str(MASTER_PHOTO_PATH),caption="Master David Emenike",use_container_width=True)
+        else:
+            st.markdown('<div class="dacre-panel" style="height:100%;text-align:center"><div style="font-size:2.5rem">👤</div><b>Master Profile</b><br><span style="color:#64748b">Add david_emenike.png to display your portrait.</span></div>',unsafe_allow_html=True)
 
     m1,m2,m3,m4,m5,m6=st.columns(6)
     m1.metric("Business Accounts",counts["users"])
@@ -1774,15 +1547,6 @@ elif selected_page=="👑 Overall Admin DI Portal" and user["role"]=="master":
     m4.metric("DI Conversations",counts["messages"])
     m5.metric("Stored Files",counts["files"])
     m6.metric("DI Workforce",counts["agents"])
-
-    st.markdown("""
-    <div style="margin:4px 0 20px;padding:10px 14px;border-radius:14px;border:1px solid rgba(139,92,246,.18);background:linear-gradient(90deg,rgba(99,102,241,.09),rgba(168,85,247,.06),rgba(34,211,238,.05));display:flex;gap:18px;flex-wrap:wrap;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.20)">
-      <span style="color:#34d399;font-weight:900">● SYSTEM ONLINE</span>
-      <span style="color:#b9b0c8">Database connected</span>
-      <span style="color:#b9b0c8">DI services ready</span>
-      <span style="color:#b9b0c8">Master controls protected</span>
-    </div>
-    """,unsafe_allow_html=True)
 
     con=db()
     tabs=st.tabs(["Executive Overview","DI Workforce","Organizations","People & Accounts","Live Activity","DI Conversations","Mail Source","System Controls"])
@@ -1848,36 +1612,26 @@ elif selected_page=="👑 Overall Admin DI Portal" and user["role"]=="master":
         st.metric("Organizations",len(companies_df))
 
     with tabs[3]:
-        st.markdown("<div class='master-section'><div class='master-kicker'>PEOPLE & ACCESS</div><div class='master-section-title'>Account Command Centre</div><div class='master-section-sub'>System-wide account visibility with controlled, irreversible deletion for the Overall Administrator.</div></div>", unsafe_allow_html=True)
+        st.subheader("All People & Accounts")
         users_df=pd.read_sql_query("SELECT id,first_name,last_name,username,company_name,email,role,login_count,created_at,last_login FROM users ORDER BY id DESC",con)
-        normal_users=users_df[users_df["role"]!="master"].copy()
-        k1,k2,k3=st.columns(3)
-        k1.metric("Registered Users",len(normal_users))
-        k2.metric("Companies",normal_users["company_name"].nunique() if not normal_users.empty else 0)
-        k3.metric("Active Roles",normal_users["role"].nunique() if not normal_users.empty else 0)
         st.dataframe(users_df,use_container_width=True,hide_index=True)
-
-        st.markdown("<div class='danger-panel'><div class='danger-title'>⚠ Permanent Account Deletion</div><div class='danger-copy'>This action cannot be undone. It removes the selected non-master account and its account-owned files, projects, activity, conversations and related records. The Overall Administrator account is protected.</div></div>", unsafe_allow_html=True)
-        delete_candidates=normal_users["username"].tolist() if not normal_users.empty else []
-        if delete_candidates:
-            d1,d2=st.columns([1,1])
-            with d1:
-                delete_username=st.selectbox("Account to permanently delete",delete_candidates, key="master_delete_user")
-                selected_delete=normal_users[normal_users["username"]==delete_username].iloc[0]
-                st.caption(f"{selected_delete['first_name']} {selected_delete['last_name']} · {selected_delete['company_name']} · {selected_delete['role']}")
-            with d2:
-                delete_confirm=st.text_input("Confirmation phrase", placeholder="Type DELETE PERMANENTLY", key="master_delete_confirm")
-                st.caption("Required exactly as shown. This is an irreversible operation.")
-            if st.button("🗑️ PERMANENTLY DELETE ACCOUNT", use_container_width=True, type="secondary", key="master_delete_account"):
-                ok,msg=permanently_delete_user(delete_username,delete_confirm)
+        st.metric("Registered accounts excluding master",len(users_df[users_df["role"]!="master"]))
+        st.markdown("### Permanent Account Control")
+        st.warning("This action is irreversible. It removes the selected non-master account and its user-owned DACRE records.")
+        deletable=con.execute("SELECT username,first_name,last_name,company_name,role FROM users WHERE role!='master' ORDER BY username").fetchall()
+        if deletable:
+            opts=[r["username"] for r in deletable]
+            chosen=st.selectbox("Account to permanently delete",opts,format_func=lambda u: next((f"{r['first_name']} {r['last_name']} · {r['company_name']} · {r['username']}" for r in deletable if r['username']==u),u),key="master_delete_user")
+            confirm=st.checkbox("I understand that this cannot be undone.",key="master_delete_confirm")
+            typed=st.text_input("Type DELETE to confirm",placeholder="DELETE",key="master_delete_text")
+            if st.button("Permanently Delete Account",use_container_width=True,disabled=not(confirm and typed.strip()=="DELETE")):
+                ok,msg=delete_user_permanently(chosen)
                 if ok:
-                    log_activity(MASTER_USERNAME,"DACRE MASTER",f"Permanently deleted account {delete_username}",notify_admin=False)
-                    st.success(msg)
-                    st.rerun()
-                else:
-                    st.error(msg)
+                    log_activity(MASTER_USERNAME,"DACRE MASTER",f"Permanently deleted account {chosen}",notify_admin=False)
+                    st.success(msg); st.rerun()
+                else: st.error(msg)
         else:
-            st.info("There are no non-master accounts available for deletion.")
+            st.info("There are currently no non-master accounts available for deletion.")
 
     with tabs[4]:
         st.subheader("System Activity")
