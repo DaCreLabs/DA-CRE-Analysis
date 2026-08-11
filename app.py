@@ -1,5 +1,5 @@
-
 import hashlib
+import hmac
 import io
 import json
 import os
@@ -8,7 +8,6 @@ import sqlite3
 import urllib.parse
 import urllib.request
 import smtplib
-from concurrent.futures import ThreadPoolExecutor
 
 try:
     import speech_recognition as sr
@@ -37,7 +36,14 @@ APP_NAME = "DACRE Analysis"
 DI_NAME = "DI — David's Intelligence"
 MASTER_USERNAME = "david"
 MASTER_FULL_NAME = "David Emenike"
-MASTER_PASSKEY = os.getenv("DACRE_MASTER_PASSKEY", "theWORDofGOD@111")
+MASTER_PASSKEY = os.getenv("DACRE_MASTER_PASSKEY", "").strip()
+# The default master credential is stored as a SHA-256 hash so the private
+# passkey is not exposed in the source code. If DACRE_MASTER_PASSKEY is set
+# in Streamlit Secrets/environment, that value takes precedence.
+MASTER_PASSKEY_HASH = os.getenv(
+    "DACRE_MASTER_PASSKEY_HASH",
+    "1d9763eb96e88387bf4a18b7ca1a94a4a3a80ea0353cf4203764c0bccfbda27f"
+).strip()
 
 BASE_DIR = Path(__file__).resolve().parent
 LOGO_CANDIDATES = [
@@ -56,8 +62,6 @@ ONLINE_IMAGES = {
     "conversation": "https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1200&q=82",
 }
 DI_AVATAR_PATH = BASE_DIR / "di_avatar.png"
-MASTER_PHOTO_CANDIDATES = [BASE_DIR / "david_emenike.png", BASE_DIR / "david_emenike.jpg", BASE_DIR / "master_profile.png"]
-MASTER_PHOTO_PATH = next((x for x in MASTER_PHOTO_CANDIDATES if x.exists()), None)
 
 # =============================================================================
 # BRAND / FAVICON
@@ -101,8 +105,32 @@ def db():
     return con
 
 
-def hash_password(value):
-    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+PBKDF2_ITERATIONS = 600_000
+
+def hash_password(value, salt=None, iterations=PBKDF2_ITERATIONS):
+    """Create a salted PBKDF2 password hash. Format: pbkdf2_sha256$iterations$salt$hash."""
+    if salt is None:
+        salt = os.urandom(16)
+    if isinstance(salt, str):
+        salt = bytes.fromhex(salt)
+    digest = hashlib.pbkdf2_hmac("sha256", str(value).encode("utf-8"), salt, int(iterations))
+    return f"pbkdf2_sha256${int(iterations)}${salt.hex()}${digest.hex()}"
+
+
+def verify_password(value, stored):
+    """Verify modern PBKDF2 hashes and transparently accept legacy SHA-256 hashes."""
+    if not stored:
+        return False, False
+    if stored.startswith("pbkdf2_sha256$"):
+        try:
+            _, iterations, salt_hex, digest_hex = stored.split("$", 3)
+            salt = bytes.fromhex(salt_hex)
+            candidate = hashlib.pbkdf2_hmac("sha256", str(value).encode("utf-8"), salt, int(iterations)).hex()
+            return hmac.compare_digest(candidate, digest_hex), False
+        except Exception:
+            return False, False
+    legacy = hashlib.sha256(str(value).encode("utf-8")).hexdigest()
+    return hmac.compare_digest(legacy, stored), True
 
 
 def init_db():
@@ -212,64 +240,20 @@ def init_db():
         )
     """)
 
-    # DI Question Board (QB): every user question is stored before DI answers.
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS di_question_board (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL,
-            company_name TEXT NOT NULL,
-            question TEXT NOT NULL,
-            answer TEXT,
-            status TEXT NOT NULL DEFAULT 'queued',
-            search_used INTEGER NOT NULL DEFAULT 0,
-            source_json TEXT,
-            created_at TEXT NOT NULL,
-            answered_at TEXT
-        )
-    """)
-
-    # DI Memory Box: shared, persistent knowledge available to every DI conversation.
+    # DI Memory Box: the persistent source of truth used by every DI answer.
+    # Entries are intentionally human-readable so the master can inspect and extend DI's knowledge.
     cur.execute("""
         CREATE TABLE IF NOT EXISTS di_memory (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             category TEXT NOT NULL,
             title TEXT NOT NULL,
             content TEXT NOT NULL,
-            priority INTEGER NOT NULL DEFAULT 50,
-            created_by TEXT NOT NULL,
+            priority INTEGER NOT NULL DEFAULT 100,
+            active INTEGER NOT NULL DEFAULT 1,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )
     """)
-
-    # -------------------------------------------------------------------------
-    # DI MEMORY MIGRATION
-    # Older DACRE databases may already contain a di_memory table created by a
-    # previous version. CREATE TABLE IF NOT EXISTS does NOT add new columns to
-    # an existing SQLite table, so explicitly migrate the table here.
-    # -------------------------------------------------------------------------
-    memory_columns = {row[1] for row in cur.execute("PRAGMA table_info(di_memory)").fetchall()}
-    # Migrate every column used by the current Memory Box code. Older DACRE
-    # deployments may have created di_memory with only the basic fields.
-    memory_migrations = [
-        ("category", "TEXT NOT NULL DEFAULT 'GENERAL'"),
-        ("title", "TEXT NOT NULL DEFAULT 'Untitled memory'"),
-        ("content", "TEXT NOT NULL DEFAULT ''"),
-        ("priority", "INTEGER NOT NULL DEFAULT 50"),
-        ("created_by", "TEXT NOT NULL DEFAULT 'DACRE SYSTEM'"),
-        ("created_at", "TEXT NOT NULL DEFAULT ''"),
-        ("updated_at", "TEXT NOT NULL DEFAULT ''"),
-        ("is_active", "INTEGER NOT NULL DEFAULT 1"),
-    ]
-    for column, definition in memory_migrations:
-        if column not in memory_columns:
-            cur.execute(f"ALTER TABLE di_memory ADD COLUMN {column} {definition}")
-
-    # Backfill timestamps in migrated rows so later UPDATE/ORDER operations
-    # always have usable values.
-    migration_now = datetime.now().isoformat(timespec="seconds")
-    cur.execute("UPDATE di_memory SET created_at=? WHERE created_at IS NULL OR created_at=''", (migration_now,))
-    cur.execute("UPDATE di_memory SET updated_at=? WHERE updated_at IS NULL OR updated_at=''", (migration_now,))
 
     # Master DI workforce registry. Existing databases are preserved.
     cur.execute("""
@@ -294,59 +278,10 @@ def init_db():
 init_db()
 
 
-DI_MEMORY_SEED = [
-    ("IDENTITY", "DI identity", "My name is DI — David's Intelligence. I am the built-in intelligence and business/data assistant of DACRE Analysis.", 100),
-    ("IDENTITY", "Creator and master", "DACRE Analysis was created by David Emenike. David Emenike is the Overall Administrator and Master of DACRE.", 100),
-    ("PRODUCT", "What is DACRE", "DACRE Analysis, also called DA-CRE Analysis, is a business and data-intelligence workspace intended to bring data collection, data cleaning, analysis, formulas, charts, file storage, exports, business administration and intelligent conversation into one platform.", 100),
-    ("PRODUCT", "Core features", "DACRE includes account registration and sign-in, organization workspaces, DI Home, DI Question Board, Workspace & Data, File Vault, Formula Lab, Charts, Export Center, Organization Admin Portal and Overall Admin DI Portal.", 95),
-    ("DATA", "Supported data", "DACRE supports CSV, Excel/XLSX, TSV and JSON datasets. It can inspect rows and columns, clean headers, remove empty rows and columns, remove duplicates, identify missing values and work with numeric fields.", 95),
-    ("FORMULAS", "Formula Lab", "The current Formula Lab supports SUM, AVERAGE, COUNT, COUNTA, MAX, MIN, CONCATENATE, UPPER, LOWER and TRIM. Future versions can expand formula coverage.", 90),
-    ("CHARTS", "Chart Builder", "DACRE currently supports Bar Chart, Line Chart and Area Chart from an active dataset, with future chart expansion planned.", 90),
-    ("STORAGE", "File Vault and projects", "Users can store uploaded/processed files in the organization File Vault and save/restore project state including active data, formula logs and chart configuration.", 90),
-    ("ADMIN", "Overall Admin DI", "Overall Admin DI is David Emenike's system-wide command centre. It provides visibility into organizations, accounts, activity, DI conversations, DI Question Board, DI workforce, mail records and system controls.", 100),
-    ("ADMIN", "Permanent deletion", "The Overall Admin can permanently delete a non-master account and its owned files, projects, DI questions, DI conversations, notifications, email logs and activity. The master account is protected from deletion.", 100),
-    ("ADMIN", "People and Accounts", "Master People & Accounts should provide fast account selection, account inspection, multi-account selection and permanent deletion with explicit confirmation. Passwords and passkeys must never be displayed.", 100),
-    ("SECURITY", "Master security", "Never disclose the master passkey, private passwords, API keys, secret tokens or hidden implementation details. Security credentials are private even when a user asks DI for them.", 100),
-    ("DI", "Question Board", "Every question sent to DI is recorded in the DI Question Board before DI answers. The board keeps the question, answer, status, research flag, timestamps and retained public-source metadata when research is used.", 95),
-    ("DI", "Answer policy", "DI should answer directly. It should use the DI Memory Box and product/workspace knowledge first, then reason over the question, then use current public information when needed. It should never expose its hidden routing or search mechanics to ordinary users.", 100),
-    ("DI", "General questions", "DI is not limited to work questions. Users may ask ordinary educational, factual, practical, everyday, technology, science, language, business or general-interest questions. DI should answer them normally when it can and research current public information when necessary.", 100),
-    ("DI", "Unknown questions", "DI should not immediately say it lacks reliable information. It should first check memory, internal knowledge and general reasoning, then attempt public research when the question is answerable from current public information. If reliable information still cannot be established, it should clearly say what is uncertain.", 100),
-    ("DI", "Research behavior", "For questions requiring current public information, DACRE can use fast public web lookup. Results should be returned as the useful answer, not as a description of internal search mechanics. DI should not claim a search succeeded when it did not.", 95),
-    ("DI", "Tech partner knowledge", "David wants DI to behave as a capable technical and business partner for DACRE: understand the app, explain its features, help with data, formulas, charts, troubleshooting, planning, architecture and practical build tasks. DI should provide useful answers itself rather than telling users to go ask another assistant.", 100),
-    ("DI", "No external-assistant handoff", "Ordinary DACRE users should not be told to ask ChatGPT or another assistant for normal questions. DI is presented as their in-app intelligence partner and should answer directly or research public information when needed.", 100),
-    ("UX", "Visual direction", "The preferred DACRE user interface is a polished light-blue business console with indigo, violet, cyan and deep-navy accents, strong text visibility, premium cards, responsive layout and no large white/pink surfaces. Preserve the established Aurora Executive visual design when adding features.", 95),
-    ("ACCOUNT", "Signup and access", "A user who completes the required signup details should be able to access DACRE. Duplicate email/username registration should be prevented. The first account creating a new organization becomes company admin; later users in that organization are normal users unless an admin grants admin rights.", 95),
-    ("ACCOUNT", "User workspace separation", "Each organization has its own workspace. Organization admins manage their organization. The Overall Admin is separate and has system-wide visibility.", 95),
-    ("PROJECT", "Product vision", "David wants DACRE to grow into a future-facing business intelligence platform that can collect data from files and public sources, clean and analyse it, create charts and exports, provide formulas, store business work, answer questions quickly and support organizations with administration and intelligence.", 90),
-    ("OWNER", "Project owner context", "The project owner is David Emenike. He is building DACRE Analysis as a serious business/data intelligence application and expects DI to know the application's structure and help users directly.", 90),
-    ("BASIC", "Dog is an animal", "Yes. A dog is an animal. Dogs are mammals and are members of the species Canis lupus familiaris.", 70),
-]
-
-def seed_di_memory():
-    con=db(); now=datetime.now().isoformat(timespec="seconds")
-    for category,title,content,priority in DI_MEMORY_SEED:
-        exists=con.execute("SELECT id FROM di_memory WHERE title=? LIMIT 1",(title,)).fetchone()
-        if exists:
-            con.execute("UPDATE di_memory SET content=?,priority=?,updated_at=? WHERE id=?",(content,priority,now,exists["id"]))
-        else:
-            con.execute("INSERT INTO di_memory(category,title,content,priority,created_by,created_at,updated_at) VALUES(?,?,?,?,?,?,?)",(category,title,content,priority,MASTER_USERNAME,now,now))
-    con.commit(); con.close()
-
-def get_di_memory(limit=80):
-    con=db()
-    # is_active is migrated in init_db(); keeping the filter here prevents
-    # disabled memory entries from influencing DI answers.
-    rows=con.execute("SELECT category,title,content,priority FROM di_memory WHERE is_active=1 ORDER BY priority DESC,id ASC LIMIT ?",(int(limit),)).fetchall()
-    con.close()
-    return rows
-
-def memory_text(limit=80):
-    return "\n".join([f"[{r['category']}] {r['title']}: {r['content']}" for r in get_di_memory(limit)])
-
-seed_di_memory()
-
-
 def ensure_master():
+    if not MASTER_PASSKEY:
+        # Do not create a usable master account until the deployment secret is configured.
+        return
     con = db()
     cur = con.cursor()
     cur.execute("SELECT id FROM users WHERE username = ?", (MASTER_USERNAME,))
@@ -359,13 +294,299 @@ def ensure_master():
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             "David", "Emenike", MASTER_USERNAME, "DACRE MASTER", "master@dacre.local", "",
-            hash_password(MASTER_PASSKEY), hash_password(MASTER_PASSKEY), "master", 0, now,
+            MASTER_PASSKEY_HASH, MASTER_PASSKEY_HASH, "master", 0, now,
         ))
         con.commit()
     con.close()
 
 
 ensure_master()
+
+
+DI_MEMORY_SEED = [
+    ("IDENTITY", "DI identity", "My name is DI — David's Intelligence. I am the built-in intelligence assistant inside DACRE Analysis.", 2000),
+    ("IDENTITY", "Creator and master", "DACRE Analysis and DI were created by David Emenike. David is the Overall Administrator and master of the platform.", 2000),
+    ("IDENTITY", "David Emenike", "David Emenike is the creator and master administrator of DACRE Analysis. If asked who created DACRE, answer David Emenike.", 2000),
+    ("PLATFORM", "What DACRE is", "DACRE Analysis is a business and data-intelligence workspace combining data ingestion, cleaning, analysis, formulas, charts, file storage, exports, administration and DI intelligence.", 1900),
+    ("PLATFORM", "Supported data", "DACRE is designed to work with CSV, Excel/XLSX, TSV and JSON datasets and to inspect, clean, analyse, visualise and export data.", 1850),
+    ("PLATFORM", "Formula Lab", "DACRE Formula Lab supports practical operations including SUM, AVERAGE, COUNT, COUNTA, MAX, MIN, CONCATENATE, UPPER, LOWER and TRIM.", 1800),
+    ("PLATFORM", "File Vault", "The File Vault is intended to store user/company files inside the DACRE workspace so important working files can remain organized and accessible.", 1800),
+    ("PLATFORM", "Chart Builder", "DACRE can create business visualisations such as bar, line and area charts from analysed data, with room for future chart expansion.", 1750),
+    ("PLATFORM", "Export Center", "The Export Center is designed to let users export processed results, including CSV and Excel outputs.", 1750),
+    ("PLATFORM", "Workspace and Data", "Workspace & Data is the working area for uploading/opening datasets, inspecting data and carrying out analysis and cleaning tasks.", 1750),
+    ("PLATFORM", "DI Home", "DI Home is the continuous conversation area where users can ask DI business, data, technical and general questions.", 1750),
+    ("PLATFORM", "DI Question Board", "Every question sent to DI should be recorded in the DI Question Board so DACRE maintains a reliable trail of questions and answers.", 1900),
+    ("PLATFORM", "Organization Admin Portal", "Organization Admin Portal provides organization-level administration for the company workspace, including users and company activity.", 1800),
+    ("SECURITY", "Overall Admin DI", "Overall Admin DI is the master-only system-wide command centre. It is separate from ordinary company administration.", 2000),
+    ("SECURITY", "Master visibility", "Only the master Overall Administrator should be able to view the system-wide DI Memory Box and master administration controls.", 2000),
+    ("SECURITY", "Permanent deletion", "The Overall Administrator can permanently delete non-master accounts from People & Accounts after explicit confirmation. The operation is irreversible.", 2000),
+    ("SECURITY", "Master protection", "The master account must be protected from permanent account deletion through normal account controls.", 2000),
+    ("SECURITY", "Credential protection", "DACRE must never reveal the master passkey, password hashes, API keys, tokens or other private credentials in DI answers or ordinary screens.", 2000),
+    ("ACCOUNT", "Signup and access", "A user who completes the required signup information should be able to access DACRE. Duplicate usernames or emails should be prevented.", 1900),
+    ("ACCOUNT", "Company separation", "Each organization has its own workspace. Normal company users should not receive system-wide visibility into other organizations.", 1900),
+    ("ACCOUNT", "Company admin", "The first account creating a new organization becomes that organization's company admin. Later users are normal users unless an admin grants admin access.", 1850),
+    ("DI", "Memory Box purpose", "The DI Memory Box is the persistent trusted knowledge source for DI. It stores durable DACRE facts, creator identity, operating rules, product capabilities and approved knowledge.", 2000),
+    ("DI", "Shared DI memory", "All DI workers can use active DI Memory Box records as shared context, so platform facts do not have to be manually re-taught to every DI worker.", 2000),
+    ("DI", "Memory retrieval", "DI should retrieve the most relevant Memory Box records for a question rather than blindly sending every memory record to the reasoning layer.", 1950),
+    ("DI", "Online research", "When internal memory is insufficient and current public information is needed, DI can attempt a public web lookup and use reliable retrieved sources.", 1900),
+    ("DI", "Direct answers", "DI should answer directly whenever reliable knowledge is available. It should not repeatedly use a generic 'not enough reliable information' response when a useful answer is possible.", 2000),
+    ("DI", "Ordinary factual questions", "DI should answer ordinary factual questions when it knows the answer or can verify it. Example: a dog is an animal because dogs are mammals in the animal kingdom.", 1700),
+    ("DI", "Unknown text", "If a message looks like meaningless or random text such as fghjk, DI should say it appears unclear and ask the user to restate it rather than inventing a meaning.", 1600),
+    ("DI", "Tech partner", "David uses a ChatGPT-based technical partner to help build, debug, improve, design and extend DACRE. DI should not falsely claim to be that separate conversation, but it can provide technical help itself.", 1800),
+    ("UX", "Visual direction", "The preferred DACRE design is a polished light-blue business console with indigo, violet, cyan and deep-navy accents, strong text visibility, premium cards and no large white or pink surfaces.", 1800),
+    ("UX", "Business-ready design", "DACRE should feel premium, technically polished, responsive, future-facing and suitable for serious business users.", 1750),
+    ("PROJECT", "Product vision", "David wants DACRE to grow into a future-facing business intelligence platform that collects data, cleans and analyses it, creates charts and exports, stores business work, answers questions and supports organizations.", 1900),
+    ("PROJECT", "Long-term DI vision", "The desired DI experience is a capable business and technical partner that can answer questions, explain data, help with formulas, analyse workspaces, research current information and assist with practical business tasks.", 1900),
+    ("PROJECT", "Fast experience", "The preferred DI experience is fast: use internal knowledge first, use public research only when needed, and return the useful result rather than exposing internal routing or implementation details.", 1800),
+]
+
+# Project history captured from the DACRE build conversations. These are durable
+# product facts, not private credentials or sensitive personal information.
+PROJECT_HISTORY = [
+    ("PROJECT_HISTORY", "Early DACRE concept", "The original DACRE idea was to create an app that could collect data from websites and links, perform data entry, and provide built-in capabilities inspired by SQL, Google Sheets, Excel, Power BI and Python data science workflows.", 1500),
+    ("PROJECT_HISTORY", "Get Data vision", "The Get Data concept includes obtaining data from websites, uploaded XLSX/CSV/PDF files and platform links, with the longer-term goal of turning collected information into usable spreadsheet-style outputs.", 1500),
+    ("PROJECT_HISTORY", "Data entry vision", "DACRE is intended to reduce repetitive data-entry work by helping users collect, structure, clean and analyse information in one workspace.", 1500),
+    ("PROJECT_HISTORY", "Vendor data workflow", "A practical data workflow behind the project involved maintaining vendor product price lists with fields such as product price, part number, warranty, stock status and stock quantity.", 1300),
+    ("PROJECT_HISTORY", "Product-list structure", "A representative product data structure used during development included Brand, Category, Price, Name, CPU Name, CPU Details, Storage Capacity, Storage Type, RAM, Screen, Screen Feature, Graphics Chips, Keyboard Feature, Operating System, Part Number, Camera, Warranty, Features, Other Features, Stock Status and Stock Qty.", 1300),
+    ("PROJECT_HISTORY", "Data matching principle", "When updating structured product lists, data must be mapped to the correct headers and must not be mismatched across products or columns.", 1500),
+    ("PROJECT_HISTORY", "Spreadsheet learning direction", "The project development included learning and applying spreadsheet skills such as filtering, sorting, data cleaning, Pivot Tables, VLOOKUP and CONCATENATE.", 1200),
+    ("PROJECT_HISTORY", "Pivot Table goal", "Pivot Tables are useful in DACRE-style analysis for summarising dimensions such as brand or category and measures such as price, quantity or sales.", 1200),
+    ("PROJECT_HISTORY", "Data cleaning goal", "Data cleaning in DACRE should help users remove empty rows or columns, duplicate records and other quality issues before analysis.", 1400),
+    ("PROJECT_HISTORY", "Formula learning goal", "DACRE's Formula Lab is intended to make practical spreadsheet-style calculations accessible without requiring every user to write code.", 1300),
+]
+DI_MEMORY_SEED.extend(PROJECT_HISTORY)
+
+# -----------------------------------------------------------------------------
+# 4,000-record DI Memory Box expansion
+# -----------------------------------------------------------------------------
+# The first records above are DACRE-specific. The structured reference library
+# below gives DI a broad business/data vocabulary while keeping the Memory Box
+# deterministic, local and searchable. It intentionally avoids secrets.
+BUSINESS_DOMAINS = {
+    "BUSINESS": [
+        "business model", "value proposition", "customer segment", "revenue model", "cost structure", "gross margin", "operating margin", "break-even point", "unit economics", "competitive advantage", "market size", "service quality", "business process", "standard operating procedure", "key performance indicator", "business objective", "strategic goal", "operating plan", "business risk", "business continuity", "vendor management", "procurement", "inventory management", "order management", "customer lifecycle", "retention", "churn", "customer lifetime value", "acquisition cost", "profitability", "cash flow", "working capital", "forecasting", "budgeting", "scenario planning", "capacity planning", "resource allocation", "productivity", "efficiency", "effectiveness"
+    ],
+    "DATA": [
+        "dataset", "row", "column", "record", "field", "data type", "numeric data", "categorical data", "date data", "missing value", "duplicate row", "outlier", "null value", "data validation", "data consistency", "data completeness", "data accuracy", "data uniqueness", "data quality", "data lineage", "data dictionary", "metadata", "schema", "primary key", "foreign key", "dimension", "measure", "fact table", "lookup table", "aggregation", "filtering", "sorting", "grouping", "join", "merge", "pivot table", "sampling", "population", "distribution", "correlation"
+    ],
+    "ANALYTICS": [
+        "descriptive analytics", "diagnostic analytics", "predictive analytics", "prescriptive analytics", "trend analysis", "variance analysis", "cohort analysis", "segmentation", "benchmarking", "root cause analysis", "funnel analysis", "time series", "moving average", "growth rate", "conversion rate", "retention rate", "churn rate", "average order value", "return on investment", "return on ad spend", "forecast accuracy", "confidence interval", "hypothesis", "statistical significance", "mean", "median", "mode", "standard deviation", "percentile", "quartile", "minimum", "maximum", "range", "weighted average", "ratio", "percentage change", "index", "trend", "seasonality", "anomaly"
+    ],
+    "FINANCE": [
+        "revenue", "sales revenue", "cost of goods sold", "gross profit", "operating expense", "net profit", "EBITDA", "cash flow", "accounts receivable", "accounts payable", "invoice", "payment terms", "credit period", "working capital", "current asset", "current liability", "balance sheet", "income statement", "cash flow statement", "budget", "actual spend", "budget variance", "financial forecast", "profit margin", "gross margin", "net margin", "contribution margin", "fixed cost", "variable cost", "sunk cost", "capital expenditure", "operating expenditure", "depreciation", "amortisation", "tax", "interest expense", "discount", "pricing", "unit cost", "break-even analysis"
+    ],
+    "SALES": [
+        "lead", "prospect", "opportunity", "sales pipeline", "sales stage", "conversion", "win rate", "close rate", "sales quota", "sales target", "sales forecast", "average deal size", "sales cycle", "customer acquisition", "upsell", "cross-sell", "renewal", "territory", "account owner", "sales activity", "contact rate", "response rate", "proposal", "quotation", "purchase order", "deal value", "pipeline coverage", "forecast category", "lost deal", "win reason", "loss reason", "customer need", "discovery", "qualification", "negotiation", "objection handling", "account management", "key account", "sales productivity", "sales dashboard"
+    ],
+    "MARKETING": [
+        "marketing campaign", "impression", "reach", "engagement", "click-through rate", "conversion rate", "cost per click", "cost per lead", "cost per acquisition", "return on ad spend", "marketing qualified lead", "brand awareness", "content marketing", "email marketing", "social media marketing", "search marketing", "landing page", "call to action", "audience", "persona", "customer journey", "attribution", "campaign budget", "campaign objective", "creative asset", "A/B test", "organic traffic", "paid traffic", "referral traffic", "website session", "bounce rate", "lead source", "channel mix", "marketing funnel", "retargeting", "keyword", "search intent", "content calendar", "marketing dashboard", "marketing ROI"
+    ],
+    "OPERATIONS": [
+        "process mapping", "workflow", "cycle time", "lead time", "throughput", "capacity", "utilisation", "bottleneck", "service level", "turnaround time", "queue", "backlog", "order fulfilment", "inventory turnover", "stockout", "reorder point", "safety stock", "supplier lead time", "purchase order", "receiving", "quality control", "quality assurance", "standard work", "continuous improvement", "root cause", "corrective action", "preventive action", "operational KPI", "shift planning", "staffing", "scheduling", "resource plan", "maintenance", "downtime", "uptime", "incident", "escalation", "handover", "operations dashboard", "process efficiency"
+    ],
+    "CUSTOMER": [
+        "customer satisfaction", "customer experience", "customer support", "support ticket", "first response time", "resolution time", "first contact resolution", "service level agreement", "customer complaint", "customer feedback", "customer effort score", "net promoter score", "customer retention", "customer churn", "customer lifetime value", "customer onboarding", "customer success", "knowledge base", "support queue", "ticket priority", "ticket status", "escalation", "service recovery", "response template", "customer segment", "customer profile", "customer history", "case management", "contact centre", "support channel", "email support", "chat support", "self-service", "help article", "feedback loop", "voice of customer", "customer health score", "renewal risk", "customer dashboard", "service analytics"
+    ],
+    "HR": [
+        "headcount", "employee turnover", "attrition", "recruitment", "candidate pipeline", "time to hire", "cost per hire", "onboarding", "training", "performance review", "performance goal", "employee productivity", "attendance", "absence rate", "overtime", "workforce planning", "capacity", "skills inventory", "succession planning", "compensation", "benefits", "payroll", "employee engagement", "retention", "job satisfaction", "team structure", "manager span", "role clarity", "learning plan", "development plan", "competency", "job description", "interview scorecard", "candidate source", "offer acceptance", "probation", "employee record", "HR dashboard", "people analytics", "workforce KPI"
+    ],
+    "PRODUCT": [
+        "product strategy", "product roadmap", "feature", "user story", "acceptance criteria", "product requirement", "product metric", "activation", "retention", "feature adoption", "usage frequency", "product-market fit", "customer need", "user persona", "user journey", "product backlog", "prioritisation", "MVP", "release", "version", "bug", "severity", "usability", "accessibility", "user interface", "user experience", "design system", "component", "prototype", "experiment", "A/B test", "feedback", "product analytics", "release notes", "changelog", "product risk", "technical debt", "roadmap dependency", "product dashboard", "product health"
+    ],
+    "PROJECT": [
+        "project scope", "project objective", "deliverable", "milestone", "task", "dependency", "critical path", "project schedule", "resource plan", "budget", "risk register", "issue log", "change request", "stakeholder", "project sponsor", "project manager", "status report", "project KPI", "work breakdown structure", "requirements", "acceptance criteria", "deadline", "baseline", "variance", "progress", "capacity", "workload", "priority", "owner", "handover", "retrospective", "lessons learned", "project closure", "scope creep", "change control", "communication plan", "project dashboard", "delivery risk", "project health"
+    ],
+    "CYBERSECURITY": [
+        "authentication", "authorization", "least privilege", "access control", "password policy", "multi-factor authentication", "session security", "audit log", "security incident", "vulnerability", "patch management", "backup", "recovery", "encryption", "data protection", "privacy", "secret management", "API key", "token", "phishing", "malware", "ransomware", "social engineering", "security monitoring", "incident response", "business continuity", "disaster recovery", "network security", "application security", "secure coding", "input validation", "database security", "role-based access", "account lockout", "credential rotation", "security review", "threat model", "security control", "security dashboard", "security awareness"
+    ],
+    "BI": [
+        "business intelligence", "dashboard", "KPI", "data source", "data model", "semantic layer", "dimension", "measure", "drill-down", "filter", "slicer", "report", "scorecard", "executive dashboard", "operational dashboard", "analytical dashboard", "data refresh", "data pipeline", "ETL", "ELT", "data warehouse", "data mart", "lakehouse", "business metric", "metric definition", "report governance", "self-service analytics", "ad hoc analysis", "data storytelling", "insight", "recommendation", "alert", "threshold", "benchmark", "target", "actual", "variance", "trend", "BI adoption", "analytics governance"
+    ],
+    "AI": [
+        "artificial intelligence", "machine learning", "language model", "prompt", "context", "retrieval", "knowledge base", "grounding", "hallucination", "evaluation", "accuracy", "latency", "automation", "classification", "prediction", "summarisation", "information extraction", "recommendation", "agent", "tool use", "workflow automation", "human review", "AI governance", "model monitoring", "data privacy", "responsible AI", "confidence", "fallback", "error handling", "knowledge retrieval", "semantic search", "keyword search", "ranking", "relevance", "feedback", "AI product metric", "AI cost", "AI response time", "AI quality", "AI reliability"
+    ],
+    "EXCEL_SHEETS": [
+        "spreadsheet", "worksheet", "cell", "range", "formula", "function", "filter", "sort", "freeze panes", "conditional formatting", "data validation", "pivot table", "lookup", "VLOOKUP", "XLOOKUP", "INDEX MATCH", "CONCATENATE", "TEXTJOIN", "SUM", "AVERAGE", "COUNT", "COUNTA", "MAX", "MIN", "IF", "IFERROR", "TRIM", "UPPER", "LOWER", "LEFT", "RIGHT", "MID", "date formatting", "number formatting", "currency formatting", "chart", "named range", "duplicate removal", "split text", "fill down", "copy paste", "sheet protection"
+    ],
+}
+
+TEMPLATES = [
+    ("definition", "What {term} means", "{term} is a business/data concept used to describe, measure or manage a specific part of an organisation's work. In DACRE, DI can explain the concept, relate it to a dataset and suggest practical ways to use it."),
+    ("purpose", "Why {term} matters", "{term} matters because it can help a business understand performance, make decisions, reduce uncertainty or improve an operational process. The exact value depends on the organisation and its objectives."),
+    ("measurement", "How to measure {term}", "A practical way to work with {term} is to define its unit, source data, calculation method, reporting period and target. DACRE can help structure the underlying data and calculate or visualise the resulting measure."),
+    ("analysis", "How to analyse {term}", "To analyse {term}, define the business question first, identify the relevant fields, clean the data, segment meaningful groups, compare periods or targets and communicate the result with a clear conclusion."),
+    ("data", "Data needed for {term}", "Useful data for {term} depends on context, but commonly includes a date or period, an entity or category, a numeric value, a status and an appropriate identifier. Data quality should be checked before conclusions are drawn."),
+    ("KPI", "KPI example for {term}", "A useful KPI related to {term} should be specific, measurable, time-bound and connected to a business objective. A good KPI normally has a definition, owner, source, target and reporting frequency."),
+    ("dashboard", "Dashboard view for {term}", "A dashboard for {term} can show the headline KPI, current value, target, variance, trend over time and the main categories or drivers. DACRE charts can support this style of analysis."),
+    ("quality", "Data quality for {term}", "Before analysing {term}, check completeness, accuracy, consistency, uniqueness, validity and timeliness. Duplicate records, missing fields and inconsistent categories can distort the result."),
+    ("risk", "Risk associated with {term}", "A common risk when using {term} is making a decision from incomplete, biased, outdated or incorrectly interpreted data. The mitigation is to validate the source, definition, calculation and assumptions."),
+    ("action", "Business action for {term}", "After analysing {term}, the next step should be a concrete action with an owner, deadline and success measure. Insight is most valuable when it leads to a measurable business decision."),
+    ("example", "Example use of {term}", "For example, a business could place {term} in a monthly analysis, compare the current period with the previous period and target, identify the largest driver of change and assign an action to the responsible team."),
+    ("common mistake", "Common mistake with {term}", "A common mistake with {term} is using a vague definition or mixing incompatible periods, categories or units. Clear definitions and consistent data preparation reduce this problem."),
+    ("best practice", "Best practice for {term}", "A strong practice for {term} is to document the definition, source, owner, calculation, reporting frequency and intended decision. This makes analysis repeatable and easier to audit."),
+]
+
+# Generate exactly 4,000 records while distributing coverage across all
+# business/data domains rather than filling the library from only the first few.
+_target_extra=4000-len(DI_MEMORY_SEED)
+per_domain=[]
+for domain, terms in BUSINESS_DOMAINS.items():
+    items=[]
+    for term in terms:
+        for kind, title_tpl, body_tpl in TEMPLATES:
+            items.append((domain,term,kind,title_tpl,body_tpl))
+    per_domain.append(items)
+_extra=[]
+round_index=0
+while len(_extra) < _target_extra:
+    added=False
+    for items in per_domain:
+        if round_index < len(items) and len(_extra) < _target_extra:
+            domain,term,kind,title_tpl,body_tpl=items[round_index]
+            title=f"{domain} · {title_tpl.format(term=term)}"
+            content=body_tpl.format(term=term)
+            priority=500 if kind in ("definition","best practice") else 450
+            _extra.append((domain,title,content,priority))
+            added=True
+    if not added:
+        break
+    round_index += 1
+DI_MEMORY_SEED.extend(_extra)
+while len(DI_MEMORY_SEED) < 4000:
+    n=len(DI_MEMORY_SEED)+1
+    DI_MEMORY_SEED.append(("REFERENCE", f"DACRE business reference {n}", "DI should use this record as general business/data reference context and combine it with the user's actual question, workspace data and other trusted Memory Box records.", 300))
+DI_MEMORY_SEED = DI_MEMORY_SEED[:4000]
+
+def seed_di_memory():
+    """Seed the shared DI Memory Box without overwriting user-created memory."""
+    con=db(); now=datetime.now().isoformat(timespec="seconds")
+    con.execute("PRAGMA journal_mode=WAL")
+    # Ensure the current schema can accept the seed records even when upgrading
+    # an older DACRE SQLite database.
+    cols={r[1] for r in con.execute("PRAGMA table_info(di_memory)").fetchall()}
+    migrations={
+        "category":"TEXT DEFAULT 'GENERAL'", "title":"TEXT DEFAULT ''", "content":"TEXT DEFAULT ''",
+        "priority":"INTEGER DEFAULT 500", "active":"INTEGER DEFAULT 1", "created_by":"TEXT DEFAULT ''",
+        "created_at":"TEXT DEFAULT ''", "updated_at":"TEXT DEFAULT ''"
+    }
+    for name,decl in migrations.items():
+        if name not in cols:
+            con.execute(f"ALTER TABLE di_memory ADD COLUMN {name} {decl}")
+    con.commit()
+    rows=[(c,t,x,p,MASTER_USERNAME,now,now) for c,t,x,p in DI_MEMORY_SEED]
+    con.executemany("INSERT INTO di_memory(category,title,content,priority,created_by,created_at,updated_at) SELECT ?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM di_memory WHERE title=? )", [r+(r[1],) for r in rows])
+    con.commit(); con.close()
+
+
+def get_di_memory(limit=80, query=""):
+    """Retrieve the most relevant active memories for the current question."""
+    con=db()
+    rows=con.execute("SELECT id,category,title,content,priority,active,created_at,updated_at FROM di_memory WHERE active=1 ORDER BY priority DESC,id ASC").fetchall()
+    con.close()
+    if not query:
+        return [dict(r) for r in rows[:int(limit)]]
+    words=set(re.findall(r"[a-z0-9]{3,}", query.lower()))
+    scored=[]
+    for r in rows:
+        text=f"{r['category']} {r['title']} {r['content']}".lower()
+        hits=sum(1 for w in words if w in text)
+        exact=2 if r['title'].lower() in query.lower() else 0
+        score=(hits*25)+exact+int(r['priority'] or 0)/1000
+        if hits:
+            scored.append((score,dict(r)))
+    scored.sort(key=lambda x:x[0], reverse=True)
+    return [r for _,r in scored[:int(limit)]]
+
+
+def di_memory_context(limit=80, query=""):
+    rows=get_di_memory(limit, query=query)
+    if not rows:
+        return "DI Memory Box has no matching records for this question."
+    return "\n".join([f"[{r['category']}] {r['title']}: {r['content']}" for r in rows])
+
+
+def memory_box_direct_answer(text):
+    """Give a deterministic direct answer when a trusted memory record matches."""
+    matches=get_di_memory(limit=5, query=text)
+    if not matches:
+        return None
+    low=text.lower().strip()
+    # Identity questions should return the exact identity record immediately.
+    if any(k in low for k in ["your name", "who are you", "what should i call you"]):
+        return "My name is DI — David's Intelligence."
+    if "who created" in low or "who made" in low or "creator" in low:
+        return "DACRE Analysis and DI were created by David Emenike."
+    if "david emenike" in low and any(k in low for k in ["know", "who", "creator"]):
+        return "Yes. David Emenike is the creator and Overall Administrator of DACRE Analysis."
+    # Return a high-confidence factual memory only when several question words
+    # overlap the matched title/content; otherwise let the normal reasoning/web path handle it.
+    qwords=set(re.findall(r"[a-z0-9]{3,}", low))
+    best=matches[0]
+    mtext=f"{best['title']} {best['content']}".lower()
+    hits=sum(1 for w in qwords if w in mtext)
+    if hits>=2 and best['category'] in {"IDENTITY","PLATFORM","PROJECT","PROJECT_HISTORY","SECURITY","DI","UX","ACCOUNT","BASIC","EXCEL_SHEETS","DATA","ANALYTICS","BUSINESS","BI"}:
+        return best['content']
+    return None
+
+seed_di_memory()
+
+
+def get_di_memory(limit=80):
+    con=db()
+    rows=con.execute("SELECT id,category,title,content,priority,active,created_at,updated_at FROM di_memory WHERE active=1 ORDER BY priority DESC,id ASC LIMIT ?",(int(limit),)).fetchall()
+    con.close()
+    return [dict(r) for r in rows]
+
+
+def di_memory_context(limit=80):
+    rows=get_di_memory(limit)
+    if not rows:
+        return "DI Memory Box is currently empty."
+    return "\n".join([f"[{r['category']}] {r['title']}: {r['content']}" for r in rows])
+
+
+seed_di_memory()
+
+
+def permanently_delete_accounts(user_ids):
+    """Permanently remove non-master accounts and their workspace records."""
+    ids=[]
+    for value in user_ids:
+        try: ids.append(int(value))
+        except Exception: pass
+    ids=list(dict.fromkeys(ids))
+    if not ids:
+        return 0, []
+    con=db(); placeholders=','.join('?' for _ in ids)
+    rows=con.execute(f"SELECT id,username,first_name,last_name,company_name,email,role FROM users WHERE id IN ({placeholders})",ids).fetchall()
+    safe=[r for r in rows if r['role']!='master' and r['username']!=MASTER_USERNAME]
+    if not safe:
+        con.close(); return 0, []
+    safe_ids=[r['id'] for r in safe]
+    ph=','.join('?' for _ in safe_ids)
+    # Remove all user-owned records first. Companies are removed only when no users remain.
+    for table,col in [("files","username"),("projects","username"),("activity","username"),("chat_history","username")]:
+        con.execute(f"DELETE FROM {table} WHERE {col} IN (SELECT username FROM users WHERE id IN ({ph}))",safe_ids)
+    con.execute(f"DELETE FROM notifications WHERE target_username IN (SELECT username FROM users WHERE id IN ({ph}))",safe_ids)
+    con.execute(f"DELETE FROM emails_log WHERE recipient_email IN (SELECT email FROM users WHERE id IN ({ph}))",safe_ids)
+    con.execute(f"DELETE FROM users WHERE id IN ({ph}) AND role!='master' AND username!=?",safe_ids+[MASTER_USERNAME])
+    deleted=len(safe)
+    # Clean orphaned organizations and their DI assignments.
+    companies=con.execute("SELECT name FROM companies WHERE name NOT IN (SELECT DISTINCT company_name FROM users) AND name!='DACRE MASTER'").fetchall()
+    for c in companies:
+        con.execute("DELETE FROM companies WHERE name=?",(c['name'],))
+        con.execute("UPDATE di_agents SET assigned_company=NULL WHERE assigned_company=?",(c['name'],))
+    con.commit(); con.close()
+    return deleted, [dict(r) for r in safe]
+
+
+def maybe_upgrade_password_hash(con, username, supplied_value, stored_hash, column="passkey_hash"):
+    """Upgrade a legacy SHA-256 credential after a successful login."""
+    ok, legacy = verify_password(supplied_value, stored_hash)
+    if ok and legacy:
+        con.execute(f"UPDATE users SET {column}=? WHERE username=?", (hash_password(supplied_value), username))
+        con.commit()
+    return ok
 
 
 def log_activity(username, company, action, notify_admin=True):
@@ -462,16 +683,21 @@ def authenticate(company_name, full_name, passkey, email=""):
 
     con = db()
     try:
-        if (company_clean == "dacre master" or full_name_clean == "david emenike" or email_clean == "master@dacre.local") and passkey_clean == MASTER_PASSKEY:
+        if (company_clean == "dacre master" or full_name_clean == "david emenike" or email_clean == "master@dacre.local") and master_passkey_gate(passkey_clean):
             row = con.execute("SELECT first_name,last_name,username,company_name,email,role FROM users WHERE username=?", (MASTER_USERNAME,)).fetchone()
             if row:
                 return dict(row), None
 
-        pass_hash = hash_password(passkey_clean)
         if email_clean:
-            rows = con.execute("SELECT first_name,last_name,username,company_name,email,passkey_hash,role FROM users WHERE lower(email)=? AND passkey_hash=?", (email_clean, pass_hash)).fetchall()
+            rows = con.execute("SELECT first_name,last_name,username,company_name,email,passkey_hash,role FROM users WHERE lower(email)=?", (email_clean,)).fetchall()
         else:
-            rows = con.execute("SELECT first_name,last_name,username,company_name,email,passkey_hash,role FROM users WHERE lower(company_name)=? AND passkey_hash=?", (company_clean, pass_hash)).fetchall()
+            rows = con.execute("SELECT first_name,last_name,username,company_name,email,passkey_hash,role FROM users WHERE lower(company_name)=?", (company_clean,)).fetchall()
+
+        valid_rows = []
+        for candidate_row in rows:
+            if maybe_upgrade_password_hash(con, candidate_row["username"], passkey_clean, candidate_row["passkey_hash"]):
+                valid_rows.append(candidate_row)
+        rows = valid_rows
 
         if not rows:
             if email_clean:
@@ -686,195 +912,123 @@ def apply_formula(df, formula, options):
     return None
 
 # =============================================================================
+# BUSINESS INTELLIGENCE LAYER — additive, non-destructive
+# =============================================================================
+
+def _numeric_columns(df):
+    return df.select_dtypes(include="number").columns.tolist() if df is not None else []
+
+def business_health(df):
+    if df is None or df.empty:
+        return {"score": 0, "rows": 0, "columns": 0, "missing_pct": 100.0, "duplicate_pct": 0.0, "numeric": 0}
+    total_cells = max(1, df.shape[0] * df.shape[1])
+    missing_pct = float(df.isna().sum().sum() / total_cells * 100)
+    duplicate_pct = float(df.duplicated().mean() * 100)
+    numeric = len(_numeric_columns(df))
+    score = max(0, min(100, round(100 - missing_pct * 0.65 - duplicate_pct * 0.45 + min(numeric, 10) * 0.8)))
+    return {"score": score, "rows": len(df), "columns": len(df.columns), "missing_pct": missing_pct, "duplicate_pct": duplicate_pct, "numeric": numeric}
+
+def business_signals(df):
+    """Return explainable, dataset-derived signals without pretending to know hidden business facts."""
+    if df is None or df.empty:
+        return []
+    signals = []
+    nums = _numeric_columns(df)
+    for col in nums[:20]:
+        s = pd.to_numeric(df[col], errors="coerce").dropna()
+        if len(s) < 4:
+            continue
+        mean = float(s.mean())
+        std = float(s.std()) if len(s) > 1 else 0.0
+        if std > 0:
+            high = int((s > mean + 3 * std).sum())
+            low = int((s < mean - 3 * std).sum())
+            if high or low:
+                signals.append({"type":"anomaly","column":str(col),"message":f"{col} contains {high + low} unusually distant value(s) from its average."})
+        if len(s) >= 8:
+            first = float(s.head(max(1, len(s)//5)).mean())
+            last = float(s.tail(max(1, len(s)//5)).mean())
+            if first != 0:
+                change = (last - first) / abs(first) * 100
+                if abs(change) >= 10:
+                    direction = "up" if change > 0 else "down"
+                    signals.append({"type":"trend","column":str(col),"message":f"{col} trends {direction} by about {abs(change):.1f}% between the early and recent portions of the dataset."})
+    missing = df.isna().sum().sort_values(ascending=False)
+    for col, count in missing[missing > 0].head(5).items():
+        signals.append({"type":"quality","column":str(col),"message":f"{col} has {int(count):,} missing value(s)."})
+    return signals[:12]
+
+def build_executive_brief(df, company):
+    if df is None or df.empty:
+        return "There is no active dataset to brief yet. Upload your business data and I will prepare an executive review."
+    health = business_health(df)
+    signals = business_signals(df)
+    nums = _numeric_columns(df)
+    lines = [f"Executive brief for {company}.", f"The active dataset contains {len(df):,} rows across {len(df.columns):,} columns. Data health is {health['score']}/100, with {health['missing_pct']:.1f}% missing cells and {health['duplicate_pct']:.1f}% duplicate rows."]
+    if nums:
+        for col in nums[:5]:
+            s = pd.to_numeric(df[col], errors="coerce").dropna()
+            if not s.empty:
+                lines.append(f"{col}: total {s.sum():,.2f}; average {s.mean():,.2f}; minimum {s.min():,.2f}; maximum {s.max():,.2f}.")
+    if signals:
+        lines.append("Key signals: " + " ".join(x["message"] for x in signals[:5]))
+    else:
+        lines.append("I did not detect a strong trend or anomaly from the available numeric fields, so I would review the business context before making a recommendation.")
+    return " ".join(lines)
+
+def ask_data_question(question, df):
+    """Lightweight natural-language data actions available without an external AI key."""
+    if df is None:
+        return "Upload a dataset first. Then ask me questions such as 'show the top products by sales', 'what is missing?', or 'give me an executive brief'."
+    q = question.lower()
+    nums = _numeric_columns(df)
+    if any(k in q for k in ["executive brief", "business brief", "management summary", "ceo summary"]):
+        return build_executive_brief(df, st.session_state.user["company"] if st.session_state.get("user") else "your organization")
+    if "health" in q or "quality score" in q or "data quality" in q:
+        h=business_health(df); return f"Data health is {h['score']}/100. Missing cells: {h['missing_pct']:.1f}%. Duplicate rows: {h['duplicate_pct']:.1f}%. Numeric columns: {h['numeric']}."
+    if ("top" in q or "highest" in q or "largest" in q) and nums:
+        target = next((c for c in nums if str(c).lower() in q), nums[0])
+        view=df[[target]].copy().sort_values(target, ascending=False).head(10)
+        return f"Top 10 records by {target}: " + "; ".join(f"{i+1}. {v:,.2f}" for i,v in enumerate(view[target].tolist()))
+    if ("total" in q or "sum" in q or "revenue" in q or "sales" in q) and nums:
+        target = next((c for c in nums if str(c).lower() in q), nums[0])
+        return f"The total for {target} is {pd.to_numeric(df[target], errors='coerce').sum():,.2f}."
+    return None
+
+# =============================================================================
 # DI KNOWLEDGE + ONLINE KNOWLEDGE
 # =============================================================================
 
 APP_KNOWLEDGE = """
-DACRE / DA-CRE FOUNDER KNOWLEDGE — AUTHORITATIVE PRODUCT BRIEF
-
-CREATOR AND PRODUCT IDENTITY
-- Product name: DACRE Analysis / DA-CRE Analysis.
-- Creator: David Emenike.
-- DI means David's Intelligence. DI is the built-in intelligence assistant of DACRE.
-- DI's own name is DI — David's Intelligence. If a user asks "what is your name?", "who are you?", or "what should I call you?", answer directly: "My name is DI — David's Intelligence."
-- Master identity: David Emenike / Master David.
-- DI should recognise David as the creator and Overall Admin of the platform.
-- DI must never reveal private master credentials, passwords, secret keys or security tokens.
-
-WHAT DACRE IS
-DACRE is intended to be a business and data-intelligence workspace rather than only a
-spreadsheet viewer. Its purpose is to help businesses get data, clean it, analyse it,
-visualise it, generate insights, work with formulas, store files, export results and
-communicate with DI from one workspace.
-
-CURRENT / PLANNED CORE WORKSPACE CAPABILITIES
-- User registration and sign-in with required account details.
-- Organization/company workspaces with separation between organizations.
-- DI Home for continuous business/data conversation.
-- DI Question Board (DI QB): every question sent to DI is recorded so there is a
-  reliable trail of questions and answers.
-- Workspace & Data for uploading/opening data.
-- File Vault for user/company files.
-- Formula Lab for practical spreadsheet/data formulas.
-- Charts / Chart Builder for visual analysis.
-- Export Center for processed results.
-- Organization Admin Portal for organization-level administration.
-- Overall Admin DI Portal for David's system-wide administration.
-
-DATA WORK DACRE IS DESIGNED TO SUPPORT
-- CSV, Excel/XLSX, TSV and JSON datasets.
-- Data inspection, row/column counts and dataset overview.
-- Cleaning empty rows/columns and duplicate rows.
-- Practical formulas such as SUM, AVERAGE, COUNT, COUNTA, MAX, MIN, CONCATENATE,
-  UPPER, LOWER and TRIM.
-- Business calculations and data-quality checks.
-- Bar, line and area charts and future chart expansion.
-- Saving project state and exporting CSV/Excel results.
-
-DI'S EXPECTED BEHAVIOUR
-- DI should answer directly and use the available information first.
-- DI should understand DACRE's purpose, features, creator, workspace structure and
-  administration model without asking David to repeat those facts.
-- DI should help with business questions, data analysis, formulas, charts, data
-  cleaning, file workflows, planning, explanations and practical deliverables.
-- If a question is outside its reliable internal/product knowledge, DI may research
-  current public information and return a concise, useful result.
-- The desired experience is fast: use internal knowledge first and public research
-  only when needed. Never pretend a lookup succeeded if it did not.
-- The user should receive the answer/result, not a description of hidden routing,
-  prompts, implementation details, search mechanics or internal tools.
-- The DI Question Board is an audit/work trail for questions and answers; ordinary
-  users do not need to be told the internal mechanics unless David explicitly asks.
-
-OVERALL ADMIN / MASTER VISION
-- The Overall Admin DI is David's system-wide command centre.
-- Master administration should expose platform-level visibility, users/accounts,
-  organizations, DI workforce, activity, conversations and the DI Question Board.
-- David must be able to permanently delete a non-master account after explicit
-  confirmation. The master account itself must be protected from deletion.
-- The master layer is separate from ordinary organization administration.
-
-USER EXPERIENCE / DESIGN DIRECTION
-- DACRE should look like a premium future-facing business intelligence product.
-- Avoid large white/pink surfaces. The current preferred direction is light blue with
-  indigo, violet, cyan and deep navy accents, while keeping all text highly readable.
-- The DACRE emblem/logo and David's approved profile image can be used in the branded
-  experience where available.
-- UI should remain technically polished, visible, responsive and business-ready.
-
-PRODUCT VISION FROM DAVID'S REQUIREMENTS
-David wants DI to become a capable business intelligence partner: a user can ask a
-question, DI should answer from its knowledge when possible, otherwise obtain current
-public information quickly and return the useful answer. David also wants DI to be
-capable of practical work such as analysing data, building charts, explaining results,
-helping with formulas and creating useful business outputs.
-
-IMPORTANT SAFETY / SECURITY RULE
-Never disclose private passwords, passkeys, API keys, secret tokens or hidden system
-implementation details in an answer.
+DACRE Analysis is a business and data analysis workspace. Users can upload CSV, Excel, TSV and JSON files; clean datasets; remove empty rows/columns and duplicates; inspect rows and columns; run formulas such as SUM, AVERAGE, COUNT, COUNTA, MAX, MIN, CONCATENATE, UPPER, LOWER and TRIM; build bar, line and area charts; save workspace state; use a File Vault; and export processed data as CSV or Excel.
+DI means David's Intelligence. DI is the assistant inside DACRE Analysis. Each organization has its own workspace. The first person who creates a new organization becomes that organization's company admin. Later users joining an existing organization are regular users unless an admin grants them admin rights. Company admins can inspect users, account creation, sign-ins, file activity and changes for their organization. The master account can see system-wide activity.
 """.strip()
 
 
-def _clean_html(text):
-    text=re.sub(r"<script.*?</script>|<style.*?</style>"," ",text,flags=re.I|re.S)
-    text=re.sub(r"<[^>]+>"," ",text)
-    return re.sub(r"\s+"," ",text).strip()
-
-
-@st.cache_data(ttl=300, show_spinner=False)
-def google_lookup(query, max_results=5):
-    """Fast public Google HTML search. Cached for 5 minutes."""
-    try:
-        url="https://www.google.com/search?hl=en&num=%d&q=%s" % (max_results, urllib.parse.quote_plus(query))
-        req=urllib.request.Request(url,headers={
-            "User-Agent":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/150 Safari/537.36",
-            "Accept-Language":"en-US,en;q=0.9",
-        })
-        with urllib.request.urlopen(req,timeout=2.8) as response:
-            html=response.read().decode("utf-8",errors="ignore")
-        results=[]
-        # Google search result blocks commonly contain an h3 title and a link.
-        for block in re.findall(r"<div[^>]+class=\"[^\"]*(?:MjjYud|g)[^\"]*\"[^>]*>(.*?)</div>\s*</div>",html,flags=re.I|re.S):
-            h3=re.search(r"<h3[^>]*>(.*?)</h3>",block,flags=re.I|re.S)
-            if not h3: continue
-            title=_clean_html(h3.group(1))
-            hrefs=re.findall(r'href=\"(https?://[^\"]+|/url\?q=([^&\"]+))',block,flags=re.I)
-            href=None
-            for h in hrefs:
-                candidate=h[0] if isinstance(h,tuple) else h
-                if candidate.startswith("/url?q="):
-                    candidate=urllib.parse.unquote(candidate.split("/url?q=",1)[1])
-                if candidate.startswith("http") and "google.com" not in urllib.parse.urlparse(candidate).netloc:
-                    href=candidate; break
-            if not href:
-                m=re.search(r'href=\"(/url\?q=([^&\"]+))',block,flags=re.I)
-                if m: href=urllib.parse.unquote(m.group(2))
-            snippet=_clean_html(block)
-            if title and href and not any(x[1]==href for x in results):
-                results.append((title,href,snippet[:650]))
-            if len(results)>=max_results: break
-        return results
-    except Exception:
-        return []
-
-
-@st.cache_data(ttl=300, show_spinner=False)
 def online_lookup(query, max_results=5):
-    """DuckDuckGo fallback if Google is unavailable."""
+    """Small dependency-free DuckDuckGo HTML lookup. It is optional and fails safely."""
     try:
         url = "https://html.duckduckgo.com/html/?q=" + urllib.parse.quote_plus(query)
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 DACRE-DI/2.0"})
-        with urllib.request.urlopen(req, timeout=2.8) as response:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 DACRE-DI/1.0"})
+        with urllib.request.urlopen(req, timeout=8) as response:
             html = response.read().decode("utf-8", errors="ignore")
         items = re.findall(r'<a rel="nofollow" class="result__a" href="([^"]+)"[^>]*>(.*?)</a>', html, flags=re.I|re.S)
         results = []
         for href, title in items[:max_results]:
-            clean_title = _clean_html(title)
+            clean_title = re.sub(r"<.*?>", "", title).strip()
             clean_href = urllib.parse.unquote(href)
-            results.append((clean_title, clean_href, clean_title))
+            results.append((clean_title, clean_href))
         return results
     except Exception:
         return []
 
 
-def web_research(query,max_results=5):
-    """Google-first public research with a fast fallback."""
-    results=google_lookup(query,max_results)
-    provider="Google" if results else "DuckDuckGo"
-    if not results:
-        results=online_lookup(query,max_results)
-    return provider,results
-
-
-def queue_question(user, question):
-    con=db(); now=datetime.now().isoformat(timespec="seconds")
-    cur=con.execute(
-        "INSERT INTO di_question_board(username,company_name,question,status,created_at) VALUES(?,?,?,?,?)",
-        (user["username"],user["company"],question,"queued",now)
-    )
-    qid=cur.lastrowid; con.commit(); con.close(); return qid
-
-
-def complete_question(qid, answer, search_used=False, sources=None, status="answered"):
-    con=db(); now=datetime.now().isoformat(timespec="seconds")
-    con.execute(
-        "UPDATE di_question_board SET answer=?,status=?,search_used=?,source_json=?,answered_at=? WHERE id=?",
-        (answer,status,1 if search_used else 0,json.dumps(sources or [],ensure_ascii=False),now,qid)
-    )
-    con.commit(); con.close()
-
-
-def question_board(user=None, limit=100):
-    con=db()
-    if user and user.get("role")!="master":
-        rows=con.execute("SELECT * FROM di_question_board WHERE username=? AND company_name=? ORDER BY id DESC LIMIT ?",(user["username"],user["company"],limit)).fetchall()
-    else:
-        rows=con.execute("SELECT * FROM di_question_board ORDER BY id DESC LIMIT ?",(limit,)).fetchall()
-    con.close(); return rows
-
-
 def build_di_context(user, df):
-    context = [APP_KNOWLEDGE, "PERSISTENT DI MEMORY BOX — use this as the primary shared knowledge source:", memory_text(), f"Current organization: {user['company']}. Current user: {user['first_name']} {user['last_name']}. Role: {user['role']}."]
+    context = [
+        APP_KNOWLEDGE,
+        "DI MEMORY BOX (persistent source of truth):\n" + di_memory_context(query=getattr(st.session_state, "di_memory_query", "")),
+        f"Current organization: {user['company']}. Current user: {user['first_name']} {user['last_name']}. Role: {user['role']}.",
+    ]
     if df is not None:
         context.append(f"Active dataset has {len(df):,} rows and {len(df.columns):,} columns.")
         context.append("Columns: " + ", ".join(map(str, df.columns)))
@@ -888,16 +1042,8 @@ def ai_generate(system_prompt, user_prompt, max_tokens=900):
     """
     api_key=os.getenv("DACRE_AI_API_KEY","").strip()
     if not api_key:
-        try:
-            api_key=str(st.secrets.get("DACRE_AI_API_KEY","")).strip()
-        except Exception:
-            api_key=""
-    if not api_key:
         return None
     model=os.getenv("DACRE_AI_MODEL","gpt-4o-mini").strip()
-    if not model:
-        try: model=str(st.secrets.get("DACRE_AI_MODEL","gpt-4o-mini")).strip()
-        except Exception: model="gpt-4o-mini"
     payload={
         "model":model,
         "messages":[
@@ -914,157 +1060,100 @@ def ai_generate(system_prompt, user_prompt, max_tokens=900):
             headers={"Authorization":f"Bearer {api_key}","Content-Type":"application/json"},
             method="POST",
         )
-        with urllib.request.urlopen(req,timeout=4.0) as response:
+        with urllib.request.urlopen(req,timeout=35) as response:
             data=json.loads(response.read().decode("utf-8"))
         return data["choices"][0]["message"]["content"].strip()
     except Exception:
         return None
 
 
-def di_reply(message, user, df, allow_online=True, question_id=None):
+def di_reply(message, user, df, allow_online=True):
     text=message.strip()
     low=text.lower()
     if not text:
-        return "I am ready. Tell me the result you want."
+        return "I am ready. Tell me the business result you want to achieve."
 
     name="Master David" if user["role"]=="master" else user["first_name"]
-    greetings=["hello","hi","good morning","good afternoon","good evening","good day","hey"]
-    if any(p in low for p in greetings) and len(low.split())<=7:
-        answer=f"Good day {name}. DI is online. What would you like us to work on?"
-        if question_id: complete_question(question_id,answer,False,[])
-        return answer
+    greetings=["hello","hi","good morning","good afternoon","good evening","good day"]
+    if any(p in low for p in greetings) and len(low.split())<=6:
+        return f"Good day {name}. DI is online. What would you like us to work on first?"
 
-    # High-confidence DI Memory Box/general knowledge is answered locally first.
-    answer=None
-    if any(p in low for p in ["are you there", "are you online", "can you hear me", "are u there"]):
-        answer="Yes. I am here and ready. You can ask me work questions or ordinary general questions."
-    elif any(p in low for p in ["do you know me", "do you know david", "am i david", "who is david emenike"]):
-        answer="Yes. David Emenike is the creator and Overall Administrator of DACRE Analysis, and I know him as the Master of this platform."
-    elif "is a dog an animal" in low or "dog an animal" in low:
-        answer="Yes. A dog is an animal. Dogs are mammals and are members of the species Canis lupus familiaris."
-    elif "how can i delete account" in low or "how do i delete my account" in low or "delete account" in low:
-        if user.get("role") == "master":
-            answer="In Overall Admin DI, open People & Accounts, select the account, confirm the permanent-deletion warning, type DELETE, and use Permanently Delete Selected Account. The Master account is protected."
-        else:
-            answer="If you want your DACRE account removed permanently, contact the organization administrator or the DACRE Overall Administrator. Permanent deletion removes the account and its associated DACRE records."
-    if any(p in low for p in ["what is your name", "whats your name", "what's your name", "who are you", "what should i call you", "what do i call you"]):
-        answer="My name is DI — David's Intelligence. I am the built-in intelligence assistant of DACRE Analysis, created by David Emenike."
-    elif "what can you do" in low or "what can di do" in low:
-        answer="I can analyse and clean your data, calculate business metrics, build charts, help with formulas, explain results, plan business work, create practical deliverables, and answer wider questions when public information is needed."
-    elif "who created" in low or "who made" in low or "who is the creator" in low:
-        answer="DACRE Analysis was created by David Emenike. DI means David's Intelligence, the intelligence assistant built into the platform."
-    elif "what is dacre" in low or "what is da-cre" in low:
-        answer="DACRE Analysis is a business and data intelligence workspace created by David Emenike. It combines data preparation, analysis, formulas, charts, file storage, exports, business administration and DI conversation in one platform."
-    elif any(k in low for k in [
-        "tell me everything about dacre", "tell me about dacre", "tell me everything about the app",
-        "tell me about the app", "what does dacre have", "what features does dacre have",
-        "what is this app about", "explain dacre", "explain the app", "what do you know about dacre",
-        "what do you know about the app", "who is david emenike"
-    ]):
-        answer=(
-            "DACRE Analysis (DA-CRE) is a business and data-intelligence platform created by David Emenike. "
-            "DI means David's Intelligence and is the built-in assistant. DACRE is designed as a complete business workspace: "
-            "users can create accounts, work inside organization workspaces, upload CSV/Excel/TSV/JSON data, inspect and clean data, "
-            "remove empty rows/columns and duplicates, use practical formulas such as SUM, AVERAGE, COUNT, COUNTA, MAX, MIN, "
-            "CONCATENATE, UPPER, LOWER and TRIM, build charts, save project work, store files in the File Vault, export results, "
-            "and communicate with DI. The platform also has an Organization Admin Portal and David's Overall Admin DI Portal. "
-            "The Overall Admin layer is for system-wide oversight: organizations, accounts, activity, DI conversations, the DI Question Board "
-            "and the DI workforce. David's master account can permanently remove a non-master account after explicit confirmation. "
-            "Every question sent to DI is recorded in the DI Question Board so there is a reliable work trail. DI is intended to answer "
-            "from its product/workspace knowledge first and, when reliable internal information is not enough, obtain current public information "
-            "and return the useful result directly. The current visual direction is a premium light-blue interface with indigo, violet, cyan "
-            "and deep-navy accents, with strong text contrast and the DACRE branding."
-        )
-    elif "how many rows" in low or "row count" in low:
-        answer="There is no active dataset yet." if df is None else f"The active dataset contains {len(df):,} rows."
-    elif "how many columns" in low or "column count" in low:
-        answer="There is no active dataset yet." if df is None else f"The active dataset contains {len(df.columns):,} columns."
-    elif "duplicate" in low:
-        answer="There is no active dataset yet." if df is None else f"The current dataset has {int(df.duplicated().sum()):,} duplicate rows."
-    elif "columns" in low and df is not None:
-        answer="The current columns are: " + ", ".join(map(str,df.columns))
-    elif "missing" in low or "empty" in low:
-        if df is None: answer="There is no active dataset yet. Upload a dataset and I can inspect it."
-        else:
-            missing=df.isna().sum().sort_values(ascending=False); top=missing[missing>0].head(8)
-            answer="I checked the active dataset. I do not see missing values in the current columns." if top.empty else "The columns with the most missing values are: " + "; ".join(f"{c}: {int(v)}" for c,v in top.items())
-    elif any(k in low for k in ["describe","summary","overview"]):
-        if df is None: answer="There is no active dataset yet. Upload a dataset and I can summarise it."
-        else: answer=f"Dataset overview: {len(df):,} rows, {len(df.columns):,} columns, {len(df.select_dtypes(include='number').columns)} numeric columns and {int(df.duplicated().sum()):,} duplicate rows."
-    elif any(k in low for k in ["dacre","file vault","formula lab","export center","admin portal","workspace"]):
-        answer="DACRE is the business workspace. You can upload and clean data, run formulas, create charts, save project state, use the File Vault, export results and work with DI. Each organization has its own workspace and administration layer."
+    # Identity and platform answers are resolved from the DI Memory Box first.
+    if any(k in low for k in ["your name","what is your name","who are you","what's your name"]):
+        return "My name is DI — David's Intelligence. I am the intelligence assistant inside DACRE Analysis, created by David Emenike."
+    if any(k in low for k in ["who created you","who made you","who created dacre","who made dacre"]):
+        return "DACRE Analysis and DI were created by David Emenike. David Emenike is the master/Overall Administrator of the platform."
+    if "david emenike" in low and any(k in low for k in ["do you know","who is","is he","creator"]):
+        return "Yes. David Emenike is the creator and master administrator of DACRE Analysis."
+    if "dog" in low and "animal" in low:
+        return "Yes. A dog is an animal; more specifically, dogs are mammals in the animal kingdom."
+    if any(k in low for k in ["delete account","remove account","permanently delete","delete a user"]):
+        if user["role"]=="master":
+            return "As the Overall Administrator, open Overall Admin DI → People & Accounts. Select the account(s) you want to remove, review the deletion summary, confirm the permanent deletion, and click the permanent-delete action. The master account is protected and cannot be deleted there."
+        return "For account removal, contact your company administrator or the Overall Administrator. The permanent account-deletion control is intentionally restricted to the master administration layer."
+    if any(k in low for k in ["what can you do","what can di do","what do you know"]):
+        return "I can work with DACRE's Memory Box, inspect and clean data, calculate business metrics, identify missing values and duplicates, build charts, explain results, help with workspace/account questions, keep a question trail, and research public online information when my internal knowledge is not enough."
+    if "memory box" in low or "di mb" in low:
+        return "The DI Memory Box (DI MB) is my persistent knowledge base. I use it first for DACRE identity, platform rules, account administration, security, DI behavior and other trusted project information. The Overall Administrator can maintain it from the master portal."
+    if any(k in low for k in ["tech partner","ask david","chatgpt partner"]):
+        return "David's tech partner is the ChatGPT assistant David uses to build and improve DACRE. I can use the project information stored in my DI Memory Box, but I cannot directly invoke that separate ChatGPT conversation. For deeper code, architecture or UI/UX work, David can ask his tech partner directly in the main ChatGPT project."
 
-    if answer is not None:
-        if question_id: complete_question(question_id,answer,False,[])
-        return answer
+    # Deterministic workspace intelligence remains available even without an API.
+    if "what can" in low and "dacre" in low:
+        return "DACRE is a business and data analysis workspace with data cleaning, formulas, charts, File Vault, exports, organization administration and DI intelligence."
+    data_answer = ask_data_question(text, df)
+    if data_answer:
+        return data_answer
+    if "how many rows" in low or "row count" in low:
+        return "There is no active dataset yet." if df is None else f"The active dataset contains {len(df):,} rows."
+    if "how many columns" in low or "column count" in low:
+        return "There is no active dataset yet." if df is None else f"The active dataset contains {len(df.columns):,} columns."
+    if "duplicate" in low:
+        return "There is no active dataset yet." if df is None else f"The current dataset has {int(df.duplicated().sum()):,} duplicate rows."
+    if "columns" in low and df is not None:
+        return "The current columns are: " + ", ".join(map(str,df.columns))
+    if "missing" in low or "empty" in low:
+        if df is None: return "There is no active dataset yet. Upload a dataset and I can inspect it."
+        missing=df.isna().sum().sort_values(ascending=False); top=missing[missing>0].head(8)
+        if top.empty: return "I checked the active dataset. I do not see missing values in the current columns."
+        return "The columns with the most missing values are: " + "; ".join(f"{c}: {int(v)}" for c,v in top.items())
+    if any(k in low for k in ["describe","summary","overview"]):
+        if df is None: return "There is no active dataset yet. Upload a dataset and I can summarise it."
+        return f"Dataset overview: {len(df):,} rows, {len(df.columns):,} columns, {len(df.select_dtypes(include='number').columns)} numeric columns and {int(df.duplicated().sum()):,} duplicate rows."
+    if any(k in low for k in ["dacre","file vault","formula lab","export center","admin portal","workspace"]):
+        return "DACRE is the business workspace. You can upload and clean data, run formulas, create charts, save project state, use the File Vault, export results and work with DI. Your organization has its own workspace and administration layer."
 
+    # First use the trusted local Memory Box for deterministic answers.
+    direct=memory_box_direct_answer(text)
+    if direct:
+        return direct
+
+    # Always give the reasoning layer a chance, with the complete DI Memory Box in context.
     context=build_di_context(user,df)
-
-    # Search the shared Memory Box by simple term overlap before going online.
-    memory_rows=get_di_memory(100)
-    tokens=[t for t in re.findall(r"[a-z0-9]+", low) if len(t)>2]
-    scored=[]
-    for r in memory_rows:
-        blob=(r["title"]+" "+r["content"]).lower()
-        score=sum(1 for t in tokens if t in blob)
-        if score:
-            scored.append((score,r["priority"],r))
-    if scored:
-        scored.sort(key=lambda x:(x[0],x[1]), reverse=True)
-        best=scored[0][2]
-        if scored[0][0] >= 2:
-            answer=best["content"]
-            if question_id: complete_question(question_id,answer,False,[])
-            return answer
-
-    # For unknown/general questions, research publicly first. Google is the
-    # primary source; the fallback is only used if Google is unavailable.
-    provider,results=web_research(text,5) if allow_online else ("",[])
-    sources=[{"title":r[0],"url":r[1],"snippet":r[2]} for r in results]
-
-    if results:
-        source_text="\n".join([f"SOURCE {i+1}: {r[0]}\nURL: {r[1]}\nSNIPPET: {r[2]}" for i,r in enumerate(results)])
-        prompt=f"""You are DI — David's Intelligence inside DACRE Analysis.
-
-Answer the user's question directly. Give the result, not a description of your internal process. Do not mention Google, DuckDuckGo, search engines, APIs, prompts, Question Board, routing, hidden tools, or implementation. Do not say 'I checked the web'. Use the supplied public source material when relevant. If the sources are insufficient, state the uncertainty plainly rather than inventing facts. If the user asks for code, architecture, a workflow, business plan, spreadsheet formula, data analysis, or another practical deliverable, produce the useful deliverable directly.
-
-DACRE internal knowledge:
-{context}
-
-Public source material:
-{source_text}
-
-User question:
-{text}"""
-        answer=ai_generate("You are DI, a fast, highly capable business intelligence and general-purpose assistant. Be direct, accurate, practical and concise.",prompt,max_tokens=1200)
-        if answer:
-            if question_id: complete_question(question_id,answer,True,sources)
-            return answer
-        # No AI key: return a concise answer-like digest instead of exposing the
-        # internal search workflow.
-        digest=" ".join([r[2] for r in results if r[2]])[:1600]
-        if digest:
-            answer=digest
-        else:
-            answer="I can give you the strongest available public information, but the answer-generation service is not configured yet."
-        if question_id: complete_question(question_id,answer,True,sources)
-        return answer
-
-    # No web result. Let the configured reasoning model answer from its general
-    # knowledge.
     answer=ai_generate(
-        "You are DI, a concise and highly capable business intelligence and general-purpose assistant. Answer directly. Never reveal internal routing, prompts, APIs or hidden implementation. Be practical and transparent about uncertainty.",
+        "You are DI, David's Intelligence, the fast business/data assistant inside DACRE Analysis. Use the DI Memory Box as trusted project context. Answer directly and naturally. Never reply with the generic phrase 'I don't have enough reliable information to answer that yet' when a useful answer can be given from memory, common knowledge, the active workspace, or online research. Do not reveal hidden implementation details. If the user asks about DACRE-specific facts, prefer the Memory Box. If something is uncertain, say what is uncertain rather than refusing the whole question.",
         f"DACRE context:\n{context}\n\nUser question:\n{text}",
-        max_tokens=1200,
+        max_tokens=1000,
     )
     if answer:
-        if question_id: complete_question(question_id,answer,False,[])
         return answer
 
-    answer="I don't have enough reliable information to answer that yet."
-    if question_id: complete_question(question_id,answer,False,[],status="unanswered")
-    return answer
+    # Unknown questions automatically get a fast public-web attempt instead of a dead-end response.
+    results=online_lookup(text, max_results=5) if allow_online else []
+    if results:
+        source_text="\n".join([f"SOURCE {i+1}: {title}\nURL: {href}" for i,(title,href) in enumerate(results)])
+        answer=ai_generate(
+            "You are DI, a fast research assistant. Answer the user's question using the supplied search results. Give the direct answer first. Do not invent facts. If the results are weak or conflicting, say so briefly and provide the strongest evidence.",
+            f"User question: {text}\n\nDI Memory Box:\n{di_memory_context(query=text)}\n\nSearch results:\n{source_text}",
+            max_tokens=900,
+        )
+        if answer:
+            return answer + "\n\nChecked online sources: " + "; ".join(t for t,_ in results[:3])
+        return "I found these public sources for your question: " + "; ".join(f"{t} — {u}" for t,u in results[:3]) + ". I could not safely synthesize a final answer because the optional reasoning service is not configured."
 
+    if len(low.split()) <= 2 and re.fullmatch(r"[a-z0-9]+", low):
+        return f"I couldn't identify a reliable meaning for '{text}'. It looks like short or random text. Please restate the question and I will try again."
+    return "I couldn't verify a reliable answer from my current DI Memory Box, workspace data or available public sources. Please rephrase the question or give me a little more context."
 
 def load_chat_history(user, limit=40):
     """Restore DI history safely for both old and new user-record shapes."""
@@ -1218,7 +1307,12 @@ def master_user_record():
 
 
 def master_passkey_gate(passkey):
-    return bool(passkey and hash_password(passkey.strip()) == hash_password(MASTER_PASSKEY))
+    candidate = (passkey or "").strip()
+    if not candidate:
+        return False
+    expected_hash = hash_password(MASTER_PASSKEY) if MASTER_PASSKEY else MASTER_PASSKEY_HASH
+    ok, _ = verify_password(candidate, expected_hash)
+    return bool(ok)
 
 
 def get_di_agents():
@@ -1259,32 +1353,6 @@ def update_di_agent(di_id, status, assigned_company):
     con.close()
 
 
-def delete_user_permanently(username):
-    """Permanently remove a non-master account and its user-owned records."""
-    username=(username or "").strip()
-    if not username or username==MASTER_USERNAME:
-        return False,"The Overall Master account cannot be deleted."
-    con=db()
-    try:
-        row=con.execute("SELECT company_name,role,email FROM users WHERE username=?",(username,)).fetchone()
-        if not row: return False,"Account not found."
-        company=row["company_name"]; role=row["role"]; email=row["email"]
-        con.execute("DELETE FROM files WHERE username=?",(username,))
-        con.execute("DELETE FROM projects WHERE username=?",(username,))
-        con.execute("DELETE FROM chat_history WHERE username=?",(username,))
-        con.execute("DELETE FROM di_question_board WHERE username=?",(username,))
-        con.execute("DELETE FROM notifications WHERE target_username=?",(username,))
-        con.execute("DELETE FROM emails_log WHERE recipient_email=?",(email,))
-        con.execute("DELETE FROM activity WHERE username=?",(username,))
-        con.execute("DELETE FROM users WHERE username=?",(username,))
-        if role=="company_admin" and con.execute("SELECT COUNT(*) FROM users WHERE company_name=?",(company,)).fetchone()[0]==0:
-            con.execute("DELETE FROM companies WHERE lower(name)=lower(?)",(company,))
-        con.commit(); return True,f"Account {username} was permanently deleted."
-    except Exception as exc:
-        con.rollback(); return False,f"Deletion failed: {exc}"
-    finally: con.close()
-
-
 def admin_metric_counts():
     con = db()
     counts = {
@@ -1292,7 +1360,6 @@ def admin_metric_counts():
         "companies": con.execute("SELECT COUNT(*) FROM companies").fetchone()[0],
         "activities": con.execute("SELECT COUNT(*) FROM activity").fetchone()[0],
         "messages": con.execute("SELECT COUNT(*) FROM chat_history").fetchone()[0],
-        "questions": con.execute("SELECT COUNT(*) FROM di_question_board").fetchone()[0],
         "files": con.execute("SELECT COUNT(*) FROM files").fetchone()[0],
         "agents": con.execute("SELECT COUNT(*) FROM di_agents").fetchone()[0],
     }
@@ -1310,17 +1377,6 @@ def landing_page():
     # Any legacy building injected by an older deployment is removed by the
     # small cleanup component before the new card is rendered.
     # -------------------------------------------------------------------------
-    components.html("""
-    <script>
-    (function(){
-      try {
-        const d = window.parent.document;
-        d.querySelectorAll('#dacre-ceo-building-access, #dacre-ceo-building-access-v2').forEach(function(el){ el.remove(); });
-      } catch(e) {}
-    })();
-    </script>
-    """, height=0)
-
     top1, top2, top3 = st.columns([5,1,1])
     with top1:
         st.markdown("### **DACRE Analysis**")
@@ -1488,6 +1544,7 @@ def landing_page():
                     auth, auth_message=authenticate(login_company,login_fullname,login_passkey,login_email)
                     if auth:
                         st.session_state.user=auth
+                        st.session_state.master_route = (auth.get("role") == "master")
                         st.session_state.last_speech=f"Welcome back, {auth['first_name']}. I am DI. Where would you like to start today? You can ask me a business question, upload data, investigate a problem, or ask me to research something current."
                         project=restore_project(auth)
                         if project:
@@ -1511,6 +1568,7 @@ def landing_page():
                     success,msg,created=create_account(s_first,s_last,s_company,s_email,s_email_pass,s_passkey)
                     if success:
                         st.session_state.user=created
+                        st.session_state.master_route = False
                         st.session_state.last_speech=f"Welcome to DACRE, {created['first_name']}. I am DI, your business intelligence assistant. What would you like us to work on first?"
                         st.toast(f"Welcome to DACRE, {created['first_name']}!")
                         st.rerun()
@@ -1554,18 +1612,6 @@ if st.session_state.user is None:
 # The CEO building belongs ONLY to the public landing page. Remove its
 # fixed DOM node as soon as a user enters the application so it cannot
 # remain floating over or scrolling with the workspace.
-components.html("""
-<script>
-(function(){
-  try {
-    const d = window.parent.document;
-    const old = d.getElementById('dacre-ceo-building-access');
-    if (old) old.remove();
-  } catch(e) {}
-})();
-</script>
-""", height=0)
-
 # Restore persistent DI conversation memory for this account.
 if not st.session_state.chat_history:
     st.session_state.chat_history = load_chat_history(st.session_state.user, limit=40)
@@ -1575,45 +1621,42 @@ if not st.session_state.chat_history:
 # =============================================================================
 st.markdown("""
 <style>
-:root{--di-indigo:#5966d8;--di-violet:#7c6ce7;--di-cyan:#4aaee8;--di-rose:#8f7bd9;--di-ink:#14233d;--di-muted:#52657d;--di-line:rgba(74,142,203,.24);--di-blue-soft:#dff3ff;--di-blue-panel:#cfeaff;--di-blue-deep:#b9def5;--di-shadow:0 18px 55px rgba(43,91,132,.12)}
-.stApp{background:radial-gradient(circle at 6% 8%,rgba(139,92,246,.18),transparent 28%),radial-gradient(circle at 94% 8%,rgba(6,182,212,.14),transparent 27%),radial-gradient(circle at 60% 100%,rgba(236,72,153,.10),transparent 32%),linear-gradient(135deg,#f8f9ff 0%,#eef2ff 48%,#f5f3ff 100%)!important;color:var(--di-ink)!important}
-.stApp::before{display:none!important}.main .block-container{max-width:1500px;padding-top:1.5rem;padding-bottom:4rem}
-.stApp p,.stApp span,.stApp label,.stApp div,.stApp li,.stApp td,.stApp th,.stApp h1,.stApp h2,.stApp h3,.stApp h4{color:var(--di-ink)!important}
-[data-testid="stSidebar"]{background:linear-gradient(180deg,rgba(247,248,255,.98),rgba(237,233,254,.96))!important;border-right:1px solid var(--di-line)!important;box-shadow:10px 0 34px rgba(72,61,139,.08)}
-[data-testid="stSidebar"] *{color:var(--di-ink)!important}
-[data-testid="stSidebar"] [data-testid="stRadio"] label{border-radius:14px;padding:8px 10px;transition:.2s ease}.stButton>button,.stFormSubmitButton>button,.stDownloadButton>button{border:1px solid var(--di-line)!important;background:linear-gradient(135deg,rgba(255,255,255,.85),rgba(238,242,255,.86))!important;color:#26315e!important;border-radius:13px!important;font-weight:800!important;box-shadow:0 8px 24px rgba(72,61,139,.08)!important;transition:.22s ease!important}
-.stButton>button:hover,.stFormSubmitButton>button:hover,.stDownloadButton>button:hover{border-color:var(--di-violet)!important;background:linear-gradient(135deg,#f5f3ff,#e0e7ff)!important;transform:translateY(-2px);box-shadow:0 14px 32px rgba(91,92,226,.16)!important}
-.stTextInput input,.stTextArea textarea,.stNumberInput input,.stSelectbox div[data-baseweb="select"]>div{background:rgba(255,255,255,.70)!important;border:1px solid var(--di-line)!important;color:var(--di-ink)!important;border-radius:13px!important}
-.dacre-user-hero{background:linear-gradient(115deg,rgba(255,255,255,.78),rgba(237,233,254,.72));border:1px solid var(--di-line);border-radius:26px;padding:25px 28px;box-shadow:var(--di-shadow);backdrop-filter:blur(14px)}
-.dacre-user-title{font-size:2.35rem;font-weight:850;letter-spacing:-.04em;margin-bottom:4px}.dacre-user-sub{color:var(--di-muted)!important;font-size:1rem}
-.di-command{background:linear-gradient(135deg,rgba(255,255,255,.76),rgba(237,233,254,.62));border:1px solid var(--di-line);border-radius:28px;box-shadow:var(--di-shadow);overflow:hidden;position:relative}.di-stage{height:330px;position:relative;overflow:hidden;background-size:cover;background-position:center;transition:transform .5s ease,filter .5s ease}.di-command:hover .di-stage{transform:scale(1.018);filter:saturate(1.05)}
-.di-stage-overlay{position:absolute;inset:0;background:linear-gradient(90deg,rgba(248,249,255,.96) 0%,rgba(237,233,254,.78) 45%,rgba(224,231,255,.18) 100%)}
-.di-orb{position:absolute;right:9%;top:18%;width:170px;height:170px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#c4b5fd 34%,#8b5cf6 63%,rgba(139,92,246,0) 70%);box-shadow:0 0 90px rgba(139,92,246,.34);animation:diPulse 4s ease-in-out infinite}.di-orb:after{content:"";position:absolute;inset:28px;border:1px solid rgba(255,255,255,.85);border-radius:50%;animation:diSpin 8s linear infinite}@keyframes diPulse{50%{transform:scale(1.07);box-shadow:0 0 110px rgba(91,92,226,.42)}}@keyframes diSpin{to{transform:rotate(360deg)}}
-.di-stage-copy{position:absolute;left:30px;top:30px;max-width:58%}.di-kicker{font-size:.76rem;letter-spacing:.16em;text-transform:uppercase;font-weight:800;color:#5b5ce2!important}.di-stage-copy h2{font-size:2.05rem;margin:.45rem 0 .55rem;font-weight:850}.di-stage-copy p{color:#596573!important;line-height:1.55}
-.di-status{display:inline-flex;align-items:center;gap:8px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.75);border:1px solid var(--di-line);font-size:.82rem;font-weight:700}.di-dot{width:8px;height:8px;border-radius:50%;background:#10b981;box-shadow:0 0 0 5px rgba(16,185,129,.12)}
-.di-transcript{padding:18px 22px;background:rgba(255,255,255,.58);border-top:1px solid var(--di-line);min-height:92px}.di-transcript-label{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#6d63a8!important;font-weight:800}.di-transcript-text{font-size:1rem;line-height:1.55;margin-top:4px}
-.di-quick-card{height:100%;background:rgba(255,255,255,.66);border:1px solid var(--di-line);border-radius:20px;padding:18px;transition:.2s ease;box-shadow:0 10px 30px rgba(72,61,139,.06)}.di-quick-card:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(91,92,226,.12);border-color:rgba(139,92,246,.35)}
-.di-metric{background:rgba(255,255,255,.68);border:1px solid var(--di-line);border-radius:17px;padding:16px 18px;box-shadow:0 8px 25px rgba(72,61,139,.06)}.di-metric .v{font-size:1.55rem;font-weight:850}.di-metric .l{font-size:.78rem;color:var(--di-muted)!important;margin-top:2px}
-.dacre-admin-hero{background:linear-gradient(120deg,rgba(91,92,226,.96),rgba(139,92,246,.94) 52%,rgba(6,182,212,.92));color:#fff!important;border-radius:28px;padding:30px;box-shadow:0 24px 65px rgba(91,92,226,.25);position:relative;overflow:hidden}.dacre-admin-hero *{color:#fff!important}.dacre-admin-hero:after{content:"";position:absolute;width:280px;height:280px;border-radius:50%;right:-90px;top:-120px;background:rgba(255,255,255,.13)}
-.dacre-panel{background:rgba(255,255,255,.68);border:1px solid var(--di-line);border-radius:22px;padding:20px;box-shadow:0 12px 34px rgba(72,61,139,.07);backdrop-filter:blur(12px)}
-/* FINAL LIGHT-BLUE VISIBILITY POLISH */
-.dacre-panel{background:linear-gradient(145deg,rgba(223,243,255,.94),rgba(207,234,255,.82))!important;border-color:rgba(74,142,203,.24)!important;color:var(--di-ink)!important}
-.chat-bubble{border-radius:14px;padding:13px 16px;margin:8px 0;border:1px solid rgba(74,142,203,.24)!important;color:var(--di-ink)!important;box-shadow:0 6px 18px rgba(43,91,132,.06)}
-.di-message{background:linear-gradient(135deg,#dff3ff,#cfeaff)!important}.user-message{background:linear-gradient(135deg,#eaf7ff,#d9efff)!important}
-.chat-who{font-weight:850;color:#3556a8!important}.chat-text{margin-top:5px;line-height:1.55;color:#14233d!important}
-.di-quick-card,.di-metric{background:linear-gradient(145deg,rgba(223,243,255,.94),rgba(207,234,255,.78))!important;border-color:rgba(74,142,203,.25)!important;color:var(--di-ink)!important}
-.dacre-user-hero,.di-command{background:linear-gradient(115deg,rgba(223,243,255,.96),rgba(207,234,255,.82))!important}
-.di-status{background:rgba(223,243,255,.92)!important;color:var(--di-ink)!important}.di-transcript{background:rgba(207,234,255,.72)!important}
-.stTextInput input,.stTextArea textarea,.stNumberInput input,.stSelectbox div[data-baseweb="select"]>div{background:#e8f6ff!important;color:#14233d!important}
-.stTextInput input::placeholder,.stTextArea textarea::placeholder{color:#60758c!important;opacity:1!important}
-.stButton>button,.stFormSubmitButton>button,.stDownloadButton>button{background:linear-gradient(135deg,#dff3ff,#c5e7fb)!important;color:#163b5b!important;border-color:#8cc8eb!important}
-.stButton>button:hover,.stFormSubmitButton>button:hover,.stDownloadButton>button:hover{background:linear-gradient(135deg,#cfeaff,#b9def5)!important;color:#102f49!important}
-[data-testid="stSidebar"]{background:linear-gradient(180deg,#eaf7ff 0%,#dff3ff 52%,#d5ecfb 100%)!important}[data-testid="stSidebar"] *{color:#14233d!important}
-[data-testid="stDataFrame"]{border:1px solid rgba(74,142,203,.25)!important;border-radius:12px!important}
-.stTabs [data-baseweb="tab-list"]{background:rgba(207,234,255,.55)!important;border-radius:14px;padding:4px}.stTabs [data-baseweb="tab"]{color:#294968!important}.stTabs [aria-selected="true"]{color:#3f5fc0!important;background:#dff3ff!important;border-radius:10px}
-[data-testid="stFileUploader"]{background:rgba(223,243,255,.70)!important;border:1px dashed #8cc8eb!important;border-radius:14px!important}[data-testid="stFileUploader"] *{color:#294968!important}
-.stAlert p,.stAlert span{color:#14233d!important}a{color:#4268bf!important}
-
+:root{--di-pink:#e86aa8;--di-pink-soft:#fff1f7;--di-pink-line:#f5d7e6;--di-ink:#17202b;--di-muted:#657180;--di-shadow:0 18px 55px rgba(33,24,40,.10)}
+.stApp{background:linear-gradient(180deg,#fff 0%,#fff8fb 48%,#fff1f7 100%) !important;color:var(--di-ink) !important}
+.stApp::before{display:none !important}
+.main .block-container{max-width:1500px;padding-top:1.5rem;padding-bottom:4rem}
+.stApp p,.stApp span,.stApp label,.stApp div,.stApp li,.stApp td,.stApp th,.stApp h1,.stApp h2,.stApp h3,.stApp h4{color:var(--di-ink) !important}
+[data-testid="stSidebar"]{background:#fff !important;border-right:1px solid var(--di-pink-line) !important;box-shadow:8px 0 30px rgba(60,30,50,.04)}
+[data-testid="stSidebar"] *{color:var(--di-ink) !important}
+[data-testid="stSidebar"] [data-testid="stRadio"] label{border-radius:12px;padding:8px 10px;transition:.2s ease}
+[data-testid="stSidebar"] [data-testid="stRadio"] label:hover{background:var(--di-pink-soft);transform:translateX(3px)}
+.stButton>button{border:1px solid var(--di-pink-line)!important;background:#fff!important;color:var(--di-ink)!important;border-radius:12px!important;transition:.22s ease!important;box-shadow:0 5px 18px rgba(30,20,40,.05)!important}
+.stButton>button:hover{border-color:var(--di-pink)!important;background:var(--di-pink-soft)!important;transform:translateY(-2px);box-shadow:0 10px 28px rgba(232,106,168,.16)!important}
+.stTextInput input,.stTextArea textarea,.stSelectbox div[data-baseweb="select"]>div{background:#fff!important;border:1px solid var(--di-pink-line)!important;color:var(--di-ink)!important;border-radius:12px!important}
+.dacre-user-hero{background:linear-gradient(115deg,#fff,#fff5f9);border:1px solid var(--di-pink-line);border-radius:24px;padding:24px 28px;box-shadow:var(--di-shadow)}
+.dacre-user-title{font-size:2.35rem;font-weight:800;letter-spacing:-.04em;margin-bottom:4px}
+.dacre-user-sub{color:var(--di-muted)!important;font-size:1rem}
+.di-command{background:linear-gradient(135deg,#fff,#fff1f7);border:1px solid #f2d4e3;border-radius:26px;box-shadow:var(--di-shadow);overflow:hidden;position:relative}
+.di-stage{height:330px;position:relative;overflow:hidden;background-size:cover;background-position:center;transition:transform .5s ease,filter .5s ease}
+.di-command:hover .di-stage{transform:scale(1.018);filter:saturate(1.05)}
+.di-stage-overlay{position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,.96) 0%,rgba(255,245,249,.82) 42%,rgba(255,255,255,.20) 100%)}
+.di-orb{position:absolute;right:9%;top:18%;width:170px;height:170px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#f6bfd9 35%,#e86aa8 68%,rgba(232,106,168,0) 70%);box-shadow:0 0 80px rgba(232,106,168,.34);animation:diPulse 4s ease-in-out infinite}
+.di-orb:after{content:"";position:absolute;inset:28px;border:1px solid rgba(255,255,255,.8);border-radius:50%;animation:diSpin 8s linear infinite}
+@keyframes diPulse{50%{transform:scale(1.07);box-shadow:0 0 105px rgba(232,106,168,.42)}}
+@keyframes diSpin{to{transform:rotate(360deg)}}
+.di-stage-copy{position:absolute;left:30px;top:30px;max-width:58%}
+.di-kicker{font-size:.76rem;letter-spacing:.16em;text-transform:uppercase;font-weight:800;color:#b5487e!important}
+.di-stage-copy h2{font-size:2.05rem;margin:.45rem 0 .55rem;font-weight:800}
+.di-stage-copy p{color:#596573!important;line-height:1.55}
+.di-status{display:inline-flex;align-items:center;gap:8px;padding:7px 11px;border-radius:999px;background:#fff;border:1px solid var(--di-pink-line);font-size:.82rem;font-weight:700}
+.di-dot{width:8px;height:8px;border-radius:50%;background:#36b37e;box-shadow:0 0 0 5px rgba(54,179,126,.12)}
+.di-transcript{padding:18px 22px;background:#fff;border-top:1px solid var(--di-pink-line);min-height:92px}
+.di-transcript-label{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#9b6b83!important;font-weight:800}
+.di-transcript-text{font-size:1rem;line-height:1.55;margin-top:4px}
+.di-quick-card{height:100%;background:#fff;border:1px solid var(--di-pink-line);border-radius:18px;padding:18px;transition:.2s ease;box-shadow:0 10px 30px rgba(40,25,40,.05)}
+.di-quick-card:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(232,106,168,.12);border-color:#eab5cd}
+.di-metric{background:#fff;border:1px solid var(--di-pink-line);border-radius:16px;padding:16px 18px;box-shadow:0 8px 25px rgba(40,25,40,.05)}
+.di-metric .v{font-size:1.55rem;font-weight:800}.di-metric .l{font-size:.78rem;color:var(--di-muted)!important;margin-top:2px}
 </style>
 """,unsafe_allow_html=True)
 
@@ -1629,55 +1672,19 @@ with head_col2:
         st.rerun()
 
 with st.sidebar:
-    if LOGO_PATH.exists():
-        st.markdown('<div style="padding:8px;border-radius:20px;background:linear-gradient(135deg,rgba(255,255,255,.70),rgba(221,214,254,.65));border:1px solid rgba(91,92,226,.14);box-shadow:0 12px 30px rgba(72,61,139,.10)">',unsafe_allow_html=True)
-        st.image(str(LOGO_PATH),use_container_width=True)
-        st.markdown('</div>',unsafe_allow_html=True)
+    if LOGO_PATH.exists(): st.image(str(LOGO_PATH),use_container_width=True)
     st.markdown(f"### {user['first_name']}'s Workspace")
     st.caption(f"{user['company']} · {user['role']}")
-    st.markdown("<div style='font-size:.78rem;color:#8b6577!important;margin:4px 0 14px'>DI is available across your workspace.</div>",unsafe_allow_html=True)
-    # -------------------------------------------------------------------------
-    # MASTER / OVERALL ADMIN DI ENTRY
-    # -------------------------------------------------------------------------
-    # The Overall Admin DI must be easy to find, while remaining protected by
-    # the master passkey. Master users see it directly in Navigation. Normal
-    # users see a clearly labelled secure entry button; clicking it takes them
-    # to the protected Master Access gate rather than exposing the portal.
-    navigation=["DI Home","DI Memory Box","DI Question Board","Workspace & Data","Formula Lab","Charts","File Vault","Export Center"]
+    st.markdown("<div style='font-size:.78rem;color:#3556a8!important;margin:4px 0 14px'>DI is available across your workspace.</div>",unsafe_allow_html=True)
+    if user["role"]=="master":
+        st.markdown("""<div style='margin:8px 0 14px;padding:14px;border-radius:18px;background:linear-gradient(135deg,#dff3ff,#c8e6ff 55%,#ddd6fe);border:1px solid #8cc8eb;box-shadow:0 10px 28px rgba(63,95,192,.14)'><div style='font-size:.68rem;letter-spacing:.16em;font-weight:900;color:#3f5fc0'>MASTER CONTROL</div><div style='font-size:1rem;font-weight:900;color:#14233d;margin-top:4px'>Overall Admin DI</div><div style='font-size:.76rem;color:#52657d;margin-top:3px'>System-wide command centre</div></div>""",unsafe_allow_html=True)
+    navigation=["DI Home","DI Memory Box","Business Command Center","Workspace & Data","Formula Lab","Charts","File Vault","Export Center"]
     if user["role"] in ("company_admin","master"):
         navigation.append("Organization Admin Portal")
     if user["role"]=="master":
-        navigation.append("Overall Admin DI Portal")
-
-    if user["role"] == "master":
-        st.markdown("""
-        <div style="margin:10px 0 12px;padding:13px 14px;border-radius:16px;
-                    background:linear-gradient(135deg,rgba(91,92,226,.14),rgba(139,92,246,.18),rgba(6,182,212,.12));
-                    border:1px solid rgba(91,92,226,.24);
-                    box-shadow:0 10px 28px rgba(91,92,226,.08);">
-          <div style="font-size:.70rem;letter-spacing:.14em;font-weight:900;color:#5b5ce2!important;">MASTER CONTROL</div>
-          <div style="font-size:.98rem;font-weight:900;margin-top:3px;">Overall Admin DI is unlocked</div>
-          <div style="font-size:.76rem;color:#64748b!important;margin-top:2px;">System-wide command centre for David Emenike</div>
-        </div>
-        """,unsafe_allow_html=True)
-
-    default_page = "Overall Admin DI Portal" if user["role"]=="master" and st.session_state.get("master_route") else navigation[0]
+        navigation=["Overall Admin DI Portal"]+[x for x in navigation if x!="Overall Admin DI Portal"]
+    default_page = "Overall Admin DI Portal" if user["role"]=="master" else navigation[0]
     selected_page=st.radio("Navigation",navigation,index=navigation.index(default_page) if default_page in navigation else 0)
-
-    if user["role"] != "master":
-        st.markdown("---")
-        st.markdown("**🔐 Overall Admin DI**")
-        st.caption("Master-only system command centre")
-        if st.button("Open Secure Master Access",use_container_width=True,key="sidebar_master_access"):
-            # Move the current session to the protected master gate. No master
-            # privileges are granted here; the passkey gate is still required.
-            st.session_state.user=None
-            st.session_state.master_route=False
-            st.session_state.master_captcha_required=False
-            st.session_state.master_captcha_passed=False
-            st.session_state.master_second_attempt=False
-            st.query_params["master_gate"]="1"
-            st.rerun()
 
 # =============================================================================
 # DI HOME / CONTINUOUS BUSINESS CONVERSATION
@@ -1724,8 +1731,7 @@ if voice_turn:
     spoken = str(voice_turn).strip()
     if spoken:
         st.session_state.chat_history.append({"sender":user["first_name"],"text":spoken})
-        qid=queue_question(user,spoken)
-        reply=di_reply(spoken,user,st.session_state.processed_df,allow_online=True,question_id=qid)
+        reply=di_reply(spoken,user,st.session_state.processed_df,allow_online=True)
         st.session_state.chat_history.append({"sender":"DI","text":reply})
         con=db(); now=datetime.now().isoformat(timespec="seconds")
         con.execute("INSERT INTO chat_history(username,company_name,sender,message,created_at) VALUES(?,?,?,?,?)",(user["username"],user["company"],user["first_name"],spoken,now))
@@ -1765,7 +1771,7 @@ if selected_page=="DI Home":
     cards=[
       ("Investigate", "Find what is changing in my business", "Ask DI to inspect your active dataset and identify important patterns."),
       ("Analyse data", "Explain this dataset to me", "DI can inspect rows, columns, missing values, duplicates and numeric fields."),
-      ("Research", "Find the latest information", "DI can obtain current public information when your question needs it and return the useful result directly."),
+      ("Research", "Find the latest information", "DI can attempt a public-web lookup for current topics and tell you that it used online sources."),
       ("Create", "Build something useful", "Ask DI to plan a report, chart, presentation, workflow or business action."),
     ]
     for col,(title,headline,desc) in zip([q1,q2,q3,q4],cards):
@@ -1782,16 +1788,14 @@ if selected_page=="DI Home":
     st.markdown("### Conversation")
     for msg in st.session_state.chat_history[-12:]:
         who="DI" if msg["sender"]=="DI" else msg["sender"]
-        chat_role="di-message" if who=="DI" else "user-message"
-        st.markdown(f"<div class='chat-bubble {chat_role}'><div class='chat-who'>{who}</div><div class='chat-text'>{msg['text']}</div></div>",unsafe_allow_html=True)
+        st.markdown(f"<div style='background:{'#fff1f7' if who=='DI' else '#fff'};border:1px solid #f5d7e6;border-radius:14px;padding:13px 16px;margin:8px 0'><b>{who}</b><div style='margin-top:5px;line-height:1.55'>{msg['text']}</div></div>",unsafe_allow_html=True)
 
     with st.form("di_chat_form",clear_on_submit=True):
         chat_text=st.text_input("Ask DI",placeholder="Type here if you prefer text…",label_visibility="collapsed")
         send=st.form_submit_button("Send to DI",use_container_width=True)
     if send and chat_text.strip():
         st.session_state.chat_history.append({"sender":user["first_name"],"text":chat_text.strip()})
-        qid=queue_question(user,chat_text.strip())
-        reply=di_reply(chat_text,user,st.session_state.processed_df,allow_online=True,question_id=qid)
+        reply=di_reply(chat_text,user,st.session_state.processed_df,allow_online=True)
         st.session_state.chat_history.append({"sender":"DI","text":reply})
         con=db(); now=datetime.now().isoformat(timespec="seconds")
         con.execute("INSERT INTO chat_history(username,company_name,sender,message,created_at) VALUES(?,?,?,?,?)",(user["username"],user["company"],user["first_name"],chat_text.strip(),now))
@@ -1801,59 +1805,48 @@ if selected_page=="DI Home":
 
     st.caption("Voice mode uses your browser microphone and speech synthesis. If your browser does not expose continuous speech recognition, the text conversation remains available.")
 
-# DI MEMORY BOX
+# BUSINESS COMMAND CENTER — additive executive intelligence page
 # =============================================================================
 elif selected_page=="DI Memory Box":
-    st.header("DI Memory Box")
-    st.caption("Shared persistent knowledge used by DI across DACRE. Users can read the approved knowledge; master users can add and update it.")
-    memory_rows=get_di_memory(200)
-    if memory_rows:
-        mdf=pd.DataFrame([dict(r) for r in memory_rows])
-        st.dataframe(mdf[["category","title","content","priority"]],use_container_width=True,hide_index=True)
-    if user["role"]=="master":
-        st.markdown("### Add knowledge to DI MB")
-        a1,a2=st.columns(2)
-        with a1:
-            mem_category=st.text_input("Category",placeholder="PRODUCT / DI / ADMIN / GENERAL")
-            mem_title=st.text_input("Memory title",placeholder="A clear fact or capability")
-        with a2:
-            mem_priority=st.slider("Priority",1,100,90)
-            mem_content=st.text_area("Memory content",height=120,placeholder="Write the information DI should know and use.")
-        if st.button("Save to DI Memory Box",use_container_width=True,type="primary"):
-            if mem_title.strip() and mem_content.strip():
-                con=db(); now=datetime.now().isoformat(timespec="seconds")
-                con.execute("INSERT INTO di_memory(category,title,content,priority,created_by,created_at,updated_at,is_active) VALUES(?,?,?,?,?,?,?,1)",(mem_category.strip() or "GENERAL",mem_title.strip(),mem_content.strip(),mem_priority,MASTER_USERNAME,now,now)); con.commit(); con.close()
-                st.success("Memory added to DI MB."); st.rerun()
-            else: st.error("Memory title and content are required.")
+    st.markdown("<div class='dacre-hero'><div class='dacre-title'>DI Memory Box</div><div class='dacre-sub'>Shared knowledge used by DI across DACRE</div></div>",unsafe_allow_html=True)
+    st.info("This is the trusted project knowledge that DI uses before it researches online. The Overall Administrator can add or update records from the master portal.")
+    mem_df=pd.read_sql_query("SELECT category,title,content,priority,updated_at FROM di_memory WHERE active=1 ORDER BY priority DESC,id ASC",db())
+    for row in mem_df.itertuples(index=False):
+        with st.expander(f"{row.category} · {row.title}",expanded=False):
+            st.write(row.content)
+    st.caption("DI also uses your active workspace and can use public online research when the Memory Box does not contain the answer.")
 
-# DI QUESTION BOARD
-# =============================================================================
-elif selected_page=="DI Question Board":
-    st.header("DI Question Board")
-    st.caption("Every question sent to DI is recorded here so DI can keep a reliable trail of the work it has answered.")
-    rows=question_board(user,200)
-    if rows:
-        qdf=pd.DataFrame([dict(r) for r in rows])
-        display_cols=["id","question","status","search_used","created_at","answered_at"]
-        if user["role"]=="master":
-            display_cols=["id","username","company_name","question","status","search_used","created_at","answered_at"]
-        # Streamlit/PyArrow rejects duplicate DataFrame column names. The previous
-        # master view accidentally added `id` twice. Keep the display schema unique
-        # so the Question Board works for both master and ordinary users.
-        display_cols=list(dict.fromkeys(display_cols))
-        display_cols=[c for c in display_cols if c in qdf.columns]
-        display_df=qdf.loc[:, display_cols].copy()
-        display_df.columns=[str(c) for c in display_df.columns]
-        st.dataframe(display_df,use_container_width=True,hide_index=True)
-        selected_q=st.selectbox("Open a question",[r["id"] for r in rows],format_func=lambda x: next((r["question"][:90] for r in rows if r["id"]==x),str(x)))
-        row=next(r for r in rows if r["id"]==selected_q)
-        st.markdown("### Question")
-        st.write(row["question"])
-        if row["answer"]:
-            st.markdown("### DI Answer")
-            st.write(row["answer"])
+elif selected_page=="Business Command Center":
+    st.header("Business Command Center")
+    df=st.session_state.processed_df
+    if df is None:
+        st.info("Upload a dataset from Workspace & Data first. Then DACRE will turn the numbers into an executive business view.")
     else:
-        st.info("No questions have been sent to DI yet.")
+        h=business_health(df)
+        st.markdown(f"<div class='dacre-user-hero'><div class='dacre-user-title'>Executive view</div><div class='dacre-user-sub'>DI has analysed the active workspace for {user['company']}. These signals are calculated from the data currently loaded — no invented business facts.</div></div>",unsafe_allow_html=True)
+        k1,k2,k3,k4=st.columns(4)
+        k1.metric("Business Data Health",f"{h['score']}/100")
+        k2.metric("Records",f"{len(df):,}")
+        k3.metric("Missing Cells",f"{int(df.isna().sum().sum()):,}")
+        k4.metric("Duplicate Rows",f"{int(df.duplicated().sum()):,}")
+        st.markdown("### DI Executive Brief")
+        st.write(build_executive_brief(df,user["company"]))
+        st.markdown("### Signals requiring attention")
+        signals=business_signals(df)
+        if not signals:
+            st.success("No strong automated warning signals were detected in the current dataset.")
+        else:
+            for sig in signals:
+                icon="📈" if sig["type"]=="trend" else "⚠️" if sig["type"]=="anomaly" else "🧹"
+                st.markdown(f"**{icon} {sig['column']}** — {sig['message']}")
+        st.markdown("### Ask the data")
+        with st.form("command_center_form",clear_on_submit=True):
+            q=st.text_input("Business question",placeholder="e.g. Give me an executive brief, show the top products, or check the data health")
+            go=st.form_submit_button("Ask DI",use_container_width=True)
+        if go and q.strip():
+            answer=di_reply(q,user,df,allow_online=True)
+            st.markdown(f"<div class='di-quick-card'><b>DI</b><div style='margin-top:8px;line-height:1.65'>{answer}</div></div>",unsafe_allow_html=True)
+            st.session_state.last_speech=answer
 
 # PAGE 1 WORKSPACE
 # =============================================================================
@@ -2002,32 +1995,24 @@ elif selected_page=="Organization Admin Portal" and user["role"] in ("company_ad
 # =============================================================================
 elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
     counts=admin_metric_counts()
-    hero_a,hero_b=st.columns([5,1])
-    with hero_a:
-        st.markdown("""
-        <div class="dacre-admin-hero">
-          <div style="font-size:.78rem;letter-spacing:.16em;font-weight:900;opacity:.88;">DACRE // OVERALL ADMIN DI</div>
-          <div style="font-size:clamp(2.3rem,5vw,4rem);font-weight:950;letter-spacing:-.05em;margin-top:6px;">Executive Command Centre</div>
-          <div style="font-size:1.05rem;font-weight:700;opacity:.90;margin-top:8px;">Master: David Emenike · System authority: Overall Administrator</div>
-        </div>
-        """,unsafe_allow_html=True)
-    with hero_b:
-        if MASTER_PHOTO_PATH:
-            st.image(str(MASTER_PHOTO_PATH),caption="Master David Emenike",use_container_width=True)
-        else:
-            st.markdown('<div class="dacre-panel" style="height:100%;text-align:center"><div style="font-size:2.5rem">👤</div><b>Master Profile</b><br><span style="color:#64748b">Add david_emenike.png to display your portrait.</span></div>',unsafe_allow_html=True)
+    st.markdown("""
+    <div class="dacre-hero">
+      <div class="dacre-title" style="font-size:3rem;">CEO Office</div>
+      <div class="dacre-sub">DACRE Analysis executive command centre · Overall Administration · DI Workforce</div>
+      <div style="margin-top:14px;color:#9edcff;font-weight:700;">Master: David Emenike · System authority: Overall Administrator</div>
+    </div>
+    """,unsafe_allow_html=True)
 
-    m1,m2,m3,m4,m5,m6,m7=st.columns(7)
+    m1,m2,m3,m4,m5,m6=st.columns(6)
     m1.metric("Business Accounts",counts["users"])
     m2.metric("Organizations",counts["companies"])
     m3.metric("Activities",counts["activities"])
     m4.metric("DI Conversations",counts["messages"])
-    m5.metric("DI Questions",counts["questions"])
-    m6.metric("Stored Files",counts["files"])
-    m7.metric("DI Workforce",counts["agents"])
+    m5.metric("Stored Files",counts["files"])
+    m6.metric("DI Workforce",counts["agents"])
 
     con=db()
-    tabs=st.tabs(["Executive Overview","DI Workforce","Organizations","People & Accounts","DI Question Board","Live Activity","DI Conversations","Mail Source","System Controls"])
+    tabs=st.tabs(["Executive Overview","DI Workforce","Organizations","People & Accounts","Live Activity","DI Conversations","DI Memory Box","Mail Source","System Controls"])
 
     with tabs[0]:
         st.subheader("Executive Overview")
@@ -2090,145 +2075,85 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
         st.metric("Organizations",len(companies_df))
 
     with tabs[3]:
-        st.subheader("All People & Accounts")
-        st.caption("Master-only account intelligence. Select an account to inspect its business identity, access history and DACRE activity. Passwords and passkeys are never displayed.")
-
-        users_df=pd.read_sql_query(
-            "SELECT id,first_name,last_name,username,company_name,email,role,login_count,created_at,last_login FROM users ORDER BY id DESC",
-            con
-        )
-        # Keep the table schema unique so PyArrow cannot fail on duplicate columns.
-        users_df=users_df.loc[:,~users_df.columns.duplicated()].copy()
-        st.dataframe(users_df,use_container_width=True,hide_index=True)
-        st.metric("Registered accounts excluding master",len(users_df[users_df["role"]!="master"]))
-
-        st.markdown("### Fast Account Cleanup")
-        fast_accounts=users_df[users_df["role"]!="master"].copy()
-        if not fast_accounts.empty:
-            labels={r.username:f"{r.first_name} {r.last_name} · {r.company_name} · {r.username}" for r in fast_accounts.itertuples()}
-            fast_selected=st.multiselect("Select one or many accounts to permanently delete",fast_accounts["username"].tolist(),format_func=lambda x:labels.get(x,x),key="fast_delete_accounts")
-            fast_confirm=st.checkbox("I understand the selected accounts and their DACRE records will be permanently deleted.",key="fast_delete_confirm")
-            fast_typed=st.text_input("Type DELETE to authorize bulk deletion",key="fast_delete_text",placeholder="DELETE")
-            if st.button("Permanently Delete Selected Accounts",use_container_width=True,type="primary",disabled=not(fast_selected and fast_confirm and fast_typed.strip().upper()=="DELETE"),key="fast_delete_button"):
-                deleted=[]
-                failed=[]
-                for acct in list(fast_selected):
-                    ok,msg=delete_user_permanently(acct)
-                    (deleted if ok else failed).append(acct)
-                if deleted:
-                    log_activity(MASTER_USERNAME,"DACRE MASTER",f"Permanently deleted {len(deleted)} selected account(s): {', '.join(deleted)}",notify_admin=False)
-                if failed: st.error("Some accounts could not be deleted: "+", ".join(failed))
-                else: st.success(f"Permanently deleted {len(deleted)} account(s).")
-                st.rerun()
+        st.subheader("People & Accounts — Permanent Control")
+        st.caption("Fast account cleanup for the Overall Administrator. The master account is protected. Deletion is permanent and cannot be undone.")
+        users_df=pd.read_sql_query("SELECT id,first_name,last_name,username,company_name,email,role,login_count,created_at,last_login FROM users WHERE role!='master' ORDER BY id DESC",con)
+        st.metric("Deletable accounts",len(users_df))
+        if users_df.empty:
+            st.success("There are currently no non-master accounts to delete.")
         else:
-            st.info("No non-master accounts remain.")
-
-        st.markdown("### Account Inspector")
-        deletable=con.execute(
-            "SELECT username,first_name,last_name,company_name,email,role,login_count,created_at,last_login FROM users WHERE role!='master' ORDER BY username"
-        ).fetchall()
-
-        if deletable:
-            opts=[r["username"] for r in deletable]
-            chosen=st.selectbox(
-                "Select / highlight an account",
-                opts,
-                format_func=lambda u: next(
-                    (f"{r['first_name']} {r['last_name']} · {r['company_name']} · {r['username']}" for r in deletable if r['username']==u),
-                    u
-                ),
-                key="master_account_inspector"
-            )
-            selected=next(r for r in deletable if r["username"]==chosen)
-
-            # Per-account activity totals. These make the master portal a real account-control centre.
-            username=selected["username"]
-            company=selected["company_name"]
-            file_count=con.execute("SELECT COUNT(*) FROM files WHERE username=?",(username,)).fetchone()[0]
-            project_count=con.execute("SELECT COUNT(*) FROM projects WHERE username=?",(username,)).fetchone()[0]
-            question_count=con.execute("SELECT COUNT(*) FROM di_question_board WHERE username=?",(username,)).fetchone()[0]
-            conversation_count=con.execute("SELECT COUNT(*) FROM chat_history WHERE username=?",(username,)).fetchone()[0]
-            activity_count=con.execute("SELECT COUNT(*) FROM activity WHERE username=?",(username,)).fetchone()[0]
-            company_user_count=con.execute("SELECT COUNT(*) FROM users WHERE company_name=? AND role!='master'",(company,)).fetchone()[0]
-
-            d1,d2,d3,d4=st.columns(4)
-            d1.metric("Files",file_count)
-            d2.metric("Projects",project_count)
-            d3.metric("DI Questions",question_count)
-            d4.metric("DI Messages",conversation_count)
-
-            st.markdown(f"""
-            <div class="dacre-panel" style="padding:20px;margin:12px 0 18px 0;">
-              <div style="font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;font-weight:900;color:#4f46e5;">SELECTED ACCOUNT</div>
-              <h3 style="margin:.35rem 0 .8rem 0;">{selected['first_name']} {selected['last_name']}</h3>
-              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">
-                <div><b>Username</b><br>{selected['username']}</div>
-                <div><b>Company</b><br>{selected['company_name']}</div>
-                <div><b>Email</b><br>{selected['email']}</div>
-                <div><b>Role</b><br>{selected['role']}</div>
-                <div><b>Login count</b><br>{selected['login_count']}</div>
-                <div><b>Created</b><br>{selected['created_at']}</div>
-                <div><b>Last login</b><br>{selected['last_login'] or 'Never'}</div>
-                <div><b>Company users</b><br>{company_user_count}</div>
-                <div><b>Recorded activity</b><br>{activity_count}</div>
-              </div>
-            </div>
-            """,unsafe_allow_html=True)
-
-            # Show the selected user's recent work without exposing credentials.
-            with st.expander("View selected user's recent activity",expanded=False):
-                recent_user_activity=pd.read_sql_query(
-                    "SELECT id,action,created_at FROM activity WHERE username=? ORDER BY id DESC LIMIT 50",
-                    con,params=(username,)
-                )
-                st.dataframe(recent_user_activity,use_container_width=True,hide_index=True)
-
-            st.markdown("### Permanent Account Control")
-            st.warning("Permanent deletion is irreversible. The selected non-master account, its owned files, projects, DI questions, DI conversations, notifications, email logs and activity records will be removed. The Master account can never be deleted from this control.")
-            confirm=st.checkbox("I understand this account and its DACRE records will be permanently deleted.",key="master_delete_confirm")
-            typed=st.text_input("Type DELETE to confirm",placeholder="DELETE",key="master_delete_text")
-            delete_ready=confirm and typed.strip().upper()=="DELETE"
-            if st.button("Permanently Delete Selected Account",use_container_width=True,type="primary",disabled=not delete_ready,key="master_permanent_delete"):
-                ok,msg=delete_user_permanently(username)
-                if ok:
-                    # Preserve only a master-level deletion event; do not retain the deleted user's private records.
-                    log_activity(MASTER_USERNAME,"DACRE MASTER",f"Permanently deleted account {username} from {company}",notify_admin=False)
-                    st.success(msg)
+            account_options={int(r.id): f"#{int(r.id)} · {r.first_name} {r.last_name} · {r.email} · {r.company_name}" for r in users_df.itertuples()}
+            selected_delete=st.multiselect("Select account(s) to permanently delete",options=list(account_options),format_func=lambda x: account_options[x],key="master_delete_accounts")
+            if selected_delete:
+                preview=users_df[users_df["id"].isin(selected_delete)][["id","first_name","last_name","email","company_name","role","created_at"]]
+                st.dataframe(preview,use_container_width=True,hide_index=True)
+                st.warning(f"You selected {len(selected_delete)} account(s). This removes the account and its stored workspace records. This cannot be undone.")
+                confirm=st.checkbox("I understand these selected accounts will be permanently deleted.",key="confirm_bulk_delete")
+                if confirm and st.button("DELETE SELECTED ACCOUNTS PERMANENTLY",use_container_width=True,type="primary",key="bulk_delete_accounts_btn"):
+                    deleted,removed=permanently_delete_accounts(selected_delete)
+                    for r in removed:
+                        log_activity(MASTER_USERNAME,"DACRE MASTER",f"PERMANENTLY DELETED account {r['username']} ({r['email']})",notify_admin=False)
+                    st.success(f"Permanently deleted {deleted} account(s).")
                     st.rerun()
-                else:
-                    st.error(msg)
-        else:
-            st.info("There are currently no non-master accounts available for deletion.")
+            st.markdown("#### Current accounts")
+            st.dataframe(users_df,use_container_width=True,hide_index=True)
 
     with tabs[4]:
-        st.subheader("DI Question Board — System Wide")
-        st.caption("Master David can see the question trail across DACRE. The board stores the question, answer status and research metadata so DI can continuously account for its work.")
-        qb_df=pd.read_sql_query("SELECT id,username,company_name,question,status,search_used,created_at,answered_at FROM di_question_board ORDER BY id DESC",con)
-        st.dataframe(qb_df,use_container_width=True,hide_index=True)
-        if not qb_df.empty:
-            qid_admin=st.selectbox("Open Question",qb_df["id"].tolist(),format_func=lambda x: next((str(r.question)[:100] for r in qb_df.itertuples() if r.id==x),str(x)),key="master_qb_open")
-            qr=con.execute("SELECT * FROM di_question_board WHERE id=?",(qid_admin,)).fetchone()
-            if qr:
-                st.markdown("**Question**")
-                st.write(qr["question"])
-                st.markdown("**DI Answer**")
-                st.write(qr["answer"] or "Still unanswered")
-                if qr["source_json"]:
-                    try:
-                        src=json.loads(qr["source_json"]);
-                        if src: st.caption("Research references retained for audit: " + " · ".join(x.get("title","") for x in src[:5]))
-                    except Exception: pass
-
-    with tabs[5]:
         st.subheader("System Activity")
         activity_df=pd.read_sql_query("SELECT id,username,company_name,action,created_at FROM activity ORDER BY id DESC",con)
         st.dataframe(activity_df,use_container_width=True,hide_index=True)
 
-    with tabs[6]:
+    with tabs[5]:
         st.subheader("DI Conversations Across DACRE")
         chat_df=pd.read_sql_query("SELECT id,username,company_name,sender,message,created_at FROM chat_history ORDER BY id DESC",con)
         st.dataframe(chat_df,use_container_width=True,hide_index=True)
         st.caption("This view gives the master administration layer system-wide visibility into DI conversations. It is not shown to ordinary users.")
+
+    with tabs[6]:
+        # This entire tab is inside the master-only Overall Admin branch.
+        # Keep the extra identity check so the Memory Box can never be rendered
+        # to an ordinary company user by mistake.
+        if user.get("role") != "master" or user.get("username") != MASTER_USERNAME:
+            st.error("DI Memory Box is restricted to the Overall Administrator.")
+        else:
+            st.subheader("DI Memory Box — MASTER ONLY")
+            st.caption("Private master knowledge store. DI workers use active records as trusted context, but ordinary company users cannot open or manage this page.")
+            mem_search=st.text_input("Search the DI Memory Box",placeholder="Search DACRE, DI, accounts, business analytics, formulas, security...",key="di_memory_admin_search")
+            mem_filter=st.selectbox("Memory category",["ALL"]+sorted([r[0] for r in con.execute("SELECT DISTINCT category FROM di_memory ORDER BY category").fetchall()]),key="di_memory_category")
+            if mem_search.strip():
+                pattern="%"+mem_search.strip()+"%"
+                mem_sql="SELECT id,category,title,content,priority,active,created_at,updated_at FROM di_memory WHERE (title LIKE ? OR content LIKE ? OR category LIKE ?)"
+                params=(pattern,pattern,pattern)
+                if mem_filter!="ALL":
+                    mem_sql+=" AND category=?"; params=params+(mem_filter,)
+                mem_sql+=" ORDER BY priority DESC,id ASC LIMIT 500"
+                mem_df=pd.read_sql_query(mem_sql,con,params=params)
+            elif mem_filter!="ALL":
+                mem_df=pd.read_sql_query("SELECT id,category,title,content,priority,active,created_at,updated_at FROM di_memory WHERE category=? ORDER BY priority DESC,id ASC",con,params=(mem_filter,))
+            else:
+                mem_df=pd.read_sql_query("SELECT id,category,title,content,priority,active,created_at,updated_at FROM di_memory ORDER BY priority DESC,id ASC",con)
+            total_mem=con.execute("SELECT COUNT(*) FROM di_memory").fetchone()[0]
+            active_mem=con.execute("SELECT COUNT(*) FROM di_memory WHERE active=1").fetchone()[0]
+            a,b,c=st.columns(3)
+            a.metric("Total Memory Records",total_mem)
+            b.metric("Active Records",active_mem)
+            c.metric("Target Library", "4,000")
+            st.dataframe(mem_df,use_container_width=True,hide_index=True)
+            with st.expander("Add a new DI Memory Box record",expanded=False):
+                mc1,mc2=st.columns([1,2])
+                with mc1:
+                    mem_category=st.text_input("Category",placeholder="PLATFORM / SECURITY / DI / HELP")
+                    mem_title=st.text_input("Memory title")
+                    mem_priority=st.number_input("Priority",min_value=1,max_value=2000,value=500,step=10)
+                with mc2:
+                    mem_content=st.text_area("Trusted information",height=150,placeholder="Write the exact information DI should know.")
+                if st.button("Save to DI Memory Box",use_container_width=True,type="primary"):
+                    if not mem_title.strip() or not mem_content.strip():
+                        st.error("Memory title and trusted information are required.")
+                    else:
+                        now=datetime.now().isoformat(timespec="seconds")
+                        con.execute("INSERT INTO di_memory(category,title,content,priority,active,created_at,updated_at) VALUES(?,?,?,?,1,?,?)",(mem_category.strip().upper() or "GENERAL",mem_title.strip(),mem_content.strip(),int(mem_priority),now,now)); con.commit(); st.success("Saved to DI Memory Box."); st.rerun()
+            st.info("Use this box for durable project facts, approved operating rules, creator information, security rules, product capabilities and other knowledge that every DI should share.")
 
     with tabs[7]:
         st.subheader("DI Mail Source")
@@ -2266,8 +2191,7 @@ with st.expander("Chat with DI — quick assistant",expanded=False):
         send=st.form_submit_button("Send")
     if send and q.strip():
         st.session_state.chat_history.append({"sender":user["first_name"],"text":q.strip()})
-        qid=queue_question(user,q.strip())
-        reply=di_reply(q,user,st.session_state.processed_df,allow_online=True,question_id=qid)
+        reply=di_reply(q,user,st.session_state.processed_df,allow_online=True)
         st.session_state.chat_history.append({"sender":"DI","text":reply})
         st.session_state.last_speech=reply
         st.rerun()
