@@ -187,15 +187,6 @@ def init_db():
         )
     """)
 
-    # DI Memory Box: persistent shared knowledge consulted by every DI turn.
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS di_memory (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, category TEXT NOT NULL, title TEXT NOT NULL,
-            content TEXT NOT NULL, source TEXT NOT NULL DEFAULT 'DACRE MASTER',
-            is_active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
-        )
-    """)
-
     # New additions; IF NOT EXISTS keeps existing databases intact.
     cur.execute("""
         CREATE TABLE IF NOT EXISTS notifications (
@@ -236,6 +227,30 @@ def init_db():
         )
     """)
 
+    # DI Memory Box: shared, persistent knowledge available to every DI conversation.
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS di_memory (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category TEXT NOT NULL,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            priority INTEGER NOT NULL DEFAULT 50,
+            created_by TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+    """)
+
+    # -------------------------------------------------------------------------
+    # DI MEMORY MIGRATION
+    # Older DACRE databases may already contain a di_memory table created by a
+    # previous version. CREATE TABLE IF NOT EXISTS does NOT add new columns to
+    # an existing SQLite table, so explicitly migrate the table here.
+    # -------------------------------------------------------------------------
+    memory_columns = {row[1] for row in cur.execute("PRAGMA table_info(di_memory)").fetchall()}
+    if "is_active" not in memory_columns:
+        cur.execute("ALTER TABLE di_memory ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1")
+
     # Master DI workforce registry. Existing databases are preserved.
     cur.execute("""
         CREATE TABLE IF NOT EXISTS di_agents (
@@ -259,6 +274,58 @@ def init_db():
 init_db()
 
 
+DI_MEMORY_SEED = [
+    ("IDENTITY", "DI identity", "My name is DI — David's Intelligence. I am the built-in intelligence and business/data assistant of DACRE Analysis.", 100),
+    ("IDENTITY", "Creator and master", "DACRE Analysis was created by David Emenike. David Emenike is the Overall Administrator and Master of DACRE.", 100),
+    ("PRODUCT", "What is DACRE", "DACRE Analysis, also called DA-CRE Analysis, is a business and data-intelligence workspace intended to bring data collection, data cleaning, analysis, formulas, charts, file storage, exports, business administration and intelligent conversation into one platform.", 100),
+    ("PRODUCT", "Core features", "DACRE includes account registration and sign-in, organization workspaces, DI Home, DI Question Board, Workspace & Data, File Vault, Formula Lab, Charts, Export Center, Organization Admin Portal and Overall Admin DI Portal.", 95),
+    ("DATA", "Supported data", "DACRE supports CSV, Excel/XLSX, TSV and JSON datasets. It can inspect rows and columns, clean headers, remove empty rows and columns, remove duplicates, identify missing values and work with numeric fields.", 95),
+    ("FORMULAS", "Formula Lab", "The current Formula Lab supports SUM, AVERAGE, COUNT, COUNTA, MAX, MIN, CONCATENATE, UPPER, LOWER and TRIM. Future versions can expand formula coverage.", 90),
+    ("CHARTS", "Chart Builder", "DACRE currently supports Bar Chart, Line Chart and Area Chart from an active dataset, with future chart expansion planned.", 90),
+    ("STORAGE", "File Vault and projects", "Users can store uploaded/processed files in the organization File Vault and save/restore project state including active data, formula logs and chart configuration.", 90),
+    ("ADMIN", "Overall Admin DI", "Overall Admin DI is David Emenike's system-wide command centre. It provides visibility into organizations, accounts, activity, DI conversations, DI Question Board, DI workforce, mail records and system controls.", 100),
+    ("ADMIN", "Permanent deletion", "The Overall Admin can permanently delete a non-master account and its owned files, projects, DI questions, DI conversations, notifications, email logs and activity. The master account is protected from deletion.", 100),
+    ("ADMIN", "People and Accounts", "Master People & Accounts should provide fast account selection, account inspection, multi-account selection and permanent deletion with explicit confirmation. Passwords and passkeys must never be displayed.", 100),
+    ("SECURITY", "Master security", "Never disclose the master passkey, private passwords, API keys, secret tokens or hidden implementation details. Security credentials are private even when a user asks DI for them.", 100),
+    ("DI", "Question Board", "Every question sent to DI is recorded in the DI Question Board before DI answers. The board keeps the question, answer, status, research flag, timestamps and retained public-source metadata when research is used.", 95),
+    ("DI", "Answer policy", "DI should answer directly. It should use the DI Memory Box and product/workspace knowledge first, then reason over the question, then use current public information when needed. It should never expose its hidden routing or search mechanics to ordinary users.", 100),
+    ("DI", "General questions", "DI is not limited to work questions. Users may ask ordinary educational, factual, practical, everyday, technology, science, language, business or general-interest questions. DI should answer them normally when it can and research current public information when necessary.", 100),
+    ("DI", "Unknown questions", "DI should not immediately say it lacks reliable information. It should first check memory, internal knowledge and general reasoning, then attempt public research when the question is answerable from current public information. If reliable information still cannot be established, it should clearly say what is uncertain.", 100),
+    ("DI", "Research behavior", "For questions requiring current public information, DACRE can use fast public web lookup. Results should be returned as the useful answer, not as a description of internal search mechanics. DI should not claim a search succeeded when it did not.", 95),
+    ("DI", "Tech partner knowledge", "David wants DI to behave as a capable technical and business partner for DACRE: understand the app, explain its features, help with data, formulas, charts, troubleshooting, planning, architecture and practical build tasks. DI should provide useful answers itself rather than telling users to go ask another assistant.", 100),
+    ("DI", "No external-assistant handoff", "Ordinary DACRE users should not be told to ask ChatGPT or another assistant for normal questions. DI is presented as their in-app intelligence partner and should answer directly or research public information when needed.", 100),
+    ("UX", "Visual direction", "The preferred DACRE user interface is a polished light-blue business console with indigo, violet, cyan and deep-navy accents, strong text visibility, premium cards, responsive layout and no large white/pink surfaces. Preserve the established Aurora Executive visual design when adding features.", 95),
+    ("ACCOUNT", "Signup and access", "A user who completes the required signup details should be able to access DACRE. Duplicate email/username registration should be prevented. The first account creating a new organization becomes company admin; later users in that organization are normal users unless an admin grants admin rights.", 95),
+    ("ACCOUNT", "User workspace separation", "Each organization has its own workspace. Organization admins manage their organization. The Overall Admin is separate and has system-wide visibility.", 95),
+    ("PROJECT", "Product vision", "David wants DACRE to grow into a future-facing business intelligence platform that can collect data from files and public sources, clean and analyse it, create charts and exports, provide formulas, store business work, answer questions quickly and support organizations with administration and intelligence.", 90),
+    ("OWNER", "Project owner context", "The project owner is David Emenike. He is building DACRE Analysis as a serious business/data intelligence application and expects DI to know the application's structure and help users directly.", 90),
+    ("BASIC", "Dog is an animal", "Yes. A dog is an animal. Dogs are mammals and are members of the species Canis lupus familiaris.", 70),
+]
+
+def seed_di_memory():
+    con=db(); now=datetime.now().isoformat(timespec="seconds")
+    for category,title,content,priority in DI_MEMORY_SEED:
+        exists=con.execute("SELECT id FROM di_memory WHERE title=? LIMIT 1",(title,)).fetchone()
+        if exists:
+            con.execute("UPDATE di_memory SET content=?,priority=?,updated_at=? WHERE id=?",(content,priority,now,exists["id"]))
+        else:
+            con.execute("INSERT INTO di_memory(category,title,content,priority,created_by,created_at,updated_at) VALUES(?,?,?,?,?,?,?)",(category,title,content,priority,MASTER_USERNAME,now,now))
+    con.commit(); con.close()
+
+def get_di_memory(limit=80):
+    con=db()
+    # is_active is migrated in init_db(); keeping the filter here prevents
+    # disabled memory entries from influencing DI answers.
+    rows=con.execute("SELECT category,title,content,priority FROM di_memory WHERE is_active=1 ORDER BY priority DESC,id ASC LIMIT ?",(int(limit),)).fetchall()
+    con.close()
+    return rows
+
+def memory_text(limit=80):
+    return "\n".join([f"[{r['category']}] {r['title']}: {r['content']}" for r in get_di_memory(limit)])
+
+seed_di_memory()
+
+
 def ensure_master():
     con = db()
     cur = con.cursor()
@@ -280,53 +347,6 @@ def ensure_master():
 
 ensure_master()
 
-
-def seed_di_memory():
-    con=db(); now=datetime.now().isoformat(timespec="seconds")
-    if con.execute("SELECT COUNT(*) FROM di_memory WHERE is_active=1").fetchone()[0]:
-        con.close(); return
-    entries=[
-("IDENTITY","DI identity","My name is DI — David's Intelligence. DI is the built-in intelligence assistant of DACRE Analysis, created by David Emenike."),
-("IDENTITY","Creator and master","DACRE Analysis was created by David Emenike. David Emenike is the Overall Administrator and master authority of the DACRE platform."),
-("IDENTITY","DI purpose","DI is a business, data and general-purpose intelligence assistant. It should answer directly, use internal knowledge first, and research current public information when needed."),
-("PRODUCT","What DACRE is","DACRE Analysis (DA-CRE) is a business and data-intelligence platform created by David Emenike. It combines data preparation, analysis, formulas, charts, file storage, exports, business administration and DI conversation in one platform."),
-("PRODUCT","Accounts","Users can register with the required account details and work inside organization/company workspaces. Normal users remain isolated inside their own organization."),
-("PRODUCT","Data formats","DACRE supports CSV, Excel/XLSX, TSV and JSON datasets."),
-("PRODUCT","Data work","DACRE supports data inspection, row/column counts, dataset overviews, cleaning empty rows/columns, duplicate-row detection/removal, business calculations and data-quality checks."),
-("PRODUCT","Formula Lab","DACRE supports SUM, AVERAGE, COUNT, COUNTA, MAX, MIN, CONCATENATE, UPPER, LOWER and TRIM plus practical business calculations."),
-("PRODUCT","Charts and outputs","DACRE supports bar, line and area charts, project saving and CSV/Excel result exports, with future chart expansion."),
-("PRODUCT","File Vault","DACRE includes a File Vault for storing user/company files and Workspace & Data for uploading/opening data."),
-("PRODUCT","Export Center","DACRE includes an Export Center for processed results."),
-("PRODUCT","Admin portals","DACRE has an Organization Admin Portal and David's Overall Admin DI Portal for system-wide administration."),
-("PRODUCT","Overall Admin DI","The Overall Admin DI is David's system-wide command centre with visibility into users/accounts, organizations, DI workforce, activity, conversations, Question Board records and system controls."),
-("PRODUCT","People and Accounts","The Overall Admin can inspect registered accounts, business identity, access history and DACRE activity. Passwords and passkeys must never be displayed."),
-("SECURITY","Permanent account deletion","David's master account is protected. The Overall Admin can permanently delete non-master accounts after explicit confirmation, removing their associated user-owned DACRE records."),
-("SECURITY","Master credentials","Master credentials are verified server-side and must never be displayed by DI or exposed to ordinary users."),
-("DI","Question Board","Every question sent to DI is recorded in the DI Question Board (DI QB) with the question, answer/status and research metadata for a reliable work trail."),
-("DI","Memory Box","The DI Memory Box is the shared persistent knowledge source for DI. DI should consult it on every question before deciding that it lacks information."),
-("DI","General questions","Users may ask DI questions that are not work-related. DI should answer normal general-knowledge questions directly when it can."),
-("DI","Online research","When internal DACRE knowledge is insufficient, DI may research current public information and return the useful answer directly. Users should see the result, not hidden routing, search mechanics, prompts, APIs or implementation details."),
-("DI","Speed","The desired experience is fast: internal knowledge first and public research only when needed."),
-("DI","No fake uncertainty","DI should not say it lacks reliable information when the answer is already in the Memory Box or is basic general knowledge."),
-("DI","Practical work","DI should help with business questions, data analysis, formulas, charts, data cleaning, file workflows, planning, explanations and practical deliverables."),
-("DI","Tech partner concept","David wants DI to feel like a capable technical partner and to help users directly inside DACRE rather than sending them elsewhere for ordinary questions."),
-("DESIGN","UI direction","The preferred DACRE design is premium and future-facing, using light blue, indigo, violet, cyan and deep-navy accents, avoiding large white/pink surfaces while keeping all text highly readable."),
-("DESIGN","Branding","The DACRE emblem/logo and David's approved profile image can be used in the branded experience where available."),
-("VISION","Long-term vision","David wants DACRE to become a capable business intelligence partner that can analyse data, build charts, explain results, help with formulas, create useful business outputs and answer wider questions using current public information when required."),
-    ]
-    con.executemany("INSERT INTO di_memory(category,title,content,source,is_active,created_at,updated_at) VALUES(?,?,?,?,1,?,?)",[(a,b,c,'DACRE MASTER',now,now) for a,b,c in entries])
-    con.commit(); con.close()
-
-def get_di_memory(limit=120):
-    con=db(); rows=con.execute("SELECT category,title,content FROM di_memory WHERE is_active=1 ORDER BY id LIMIT ?",(int(limit),)).fetchall(); con.close(); return rows
-
-def add_di_memory(category,title,content,source='DACRE MASTER'):
-    content=(content or '').strip()
-    if not content: return False
-    con=db(); now=datetime.now().isoformat(timespec='seconds')
-    con.execute("INSERT INTO di_memory(category,title,content,source,is_active,created_at,updated_at) VALUES(?,?,?,?,1,?,?)",((category or 'GENERAL').strip(),(title or 'Untitled').strip(),content,source,now,now)); con.commit(); con.close(); return True
-
-seed_di_memory()
 
 def log_activity(username, company, action, notify_admin=True):
     now = datetime.now().isoformat(timespec="seconds")
@@ -834,31 +854,11 @@ def question_board(user=None, limit=100):
 
 
 def build_di_context(user, df):
-    memory=["DI MEMORY BOX — SHARED DACRE KNOWLEDGE"]
-    memory += [f"[{r['category']}] {r['title']}: {r['content']}" for r in get_di_memory(120)]
-    memory.append(f"Current organization: {user.get('company_name',user.get('company',''))}. Current user: {user.get('first_name','')} {user.get('last_name','')}. Role: {user.get('role','user')}.")
+    context = [APP_KNOWLEDGE, "PERSISTENT DI MEMORY BOX — use this as the primary shared knowledge source:", memory_text(), f"Current organization: {user['company']}. Current user: {user['first_name']} {user['last_name']}. Role: {user['role']}."]
     if df is not None:
-        memory.append(f"Active dataset has {len(df):,} rows and {len(df.columns):,} columns.")
-        memory.append("Columns: " + ", ".join(map(str,df.columns)))
-    return "\n".join(memory)
-
-def memory_answer(low,user):
-    if any(p in low for p in ["what is your name","whats your name","what's your name","who are you","what should i call you","what do i call you"]):
-        return "My name is DI — David's Intelligence. I am the built-in intelligence assistant of DACRE Analysis, created by David Emenike."
-    if any(p in low for p in ["do you know david emenike","do you know david","who is david emenike","who created dacre","who made dacre","who created this app"]):
-        return "Yes. David Emenike is the creator and Overall Administrator of DACRE Analysis. He is the master authority of this platform."
-    if "is a dog an animal" in low or "are dogs animals" in low:
-        return "Yes. A dog is an animal; dogs are domesticated mammals in the family Canidae."
-    if "how can i delete account" in low or "how do i delete my account" in low:
-        if user.get('role')=='master': return "As the Overall Administrator, open Overall Admin DI → People & Accounts. Select the account, confirm the permanent-deletion warning, type DELETE, then choose Permanently Delete Selected Account. The master account itself is protected."
-        return "Account deletion is controlled by DACRE administration. If your organization provides account-management controls, use them; otherwise contact your organization administrator."
-    if any(p in low for p in ["what is dacre","what is da-cre","what does dacre do","what is this app"]):
-        return "DACRE Analysis is a business and data-intelligence platform created by David Emenike. It combines data work, formulas, charts, files, exports, organization administration and DI in one workspace."
-    if "what can you do" in low or "what can di do" in low:
-        return "I can answer general questions, explain concepts, analyse and clean data, calculate metrics, help with formulas, build charts, explain results, help with business work and research current public information when my internal DACRE knowledge is not enough."
-    if "who created" in low or "who made" in low or "creator" in low:
-        return "DACRE Analysis was created by David Emenike. DI means David's Intelligence."
-    return None
+        context.append(f"Active dataset has {len(df):,} rows and {len(df.columns):,} columns.")
+        context.append("Columns: " + ", ".join(map(str, df.columns)))
+    return "\n".join(context)
 
 
 def ai_generate(system_prompt, user_prompt, max_tokens=900):
@@ -914,14 +914,19 @@ def di_reply(message, user, df, allow_online=True, question_id=None):
         if question_id: complete_question(question_id,answer,False,[])
         return answer
 
-    # DI Memory Box is the first source of truth for every DI turn.
-    answer=memory_answer(low,user)
-    if answer is not None:
-        if question_id: complete_question(question_id,answer,False,[])
-        return answer
-
-    # High-confidence DACRE/workspace knowledge is answered locally first.
+    # High-confidence DI Memory Box/general knowledge is answered locally first.
     answer=None
+    if any(p in low for p in ["are you there", "are you online", "can you hear me", "are u there"]):
+        answer="Yes. I am here and ready. You can ask me work questions or ordinary general questions."
+    elif any(p in low for p in ["do you know me", "do you know david", "am i david", "who is david emenike"]):
+        answer="Yes. David Emenike is the creator and Overall Administrator of DACRE Analysis, and I know him as the Master of this platform."
+    elif "is a dog an animal" in low or "dog an animal" in low:
+        answer="Yes. A dog is an animal. Dogs are mammals and are members of the species Canis lupus familiaris."
+    elif "how can i delete account" in low or "how do i delete my account" in low or "delete account" in low:
+        if user.get("role") == "master":
+            answer="In Overall Admin DI, open People & Accounts, select the account, confirm the permanent-deletion warning, type DELETE, and use Permanently Delete Selected Account. The Master account is protected."
+        else:
+            answer="If you want your DACRE account removed permanently, contact the organization administrator or the DACRE Overall Administrator. Permanent deletion removes the account and its associated DACRE records."
     if any(p in low for p in ["what is your name", "whats your name", "what's your name", "who are you", "what should i call you", "what do i call you"]):
         answer="My name is DI — David's Intelligence. I am the built-in intelligence assistant of DACRE Analysis, created by David Emenike."
     elif "what can you do" in low or "what can di do" in low:
@@ -975,6 +980,23 @@ def di_reply(message, user, df, allow_online=True, question_id=None):
 
     context=build_di_context(user,df)
 
+    # Search the shared Memory Box by simple term overlap before going online.
+    memory_rows=get_di_memory(100)
+    tokens=[t for t in re.findall(r"[a-z0-9]+", low) if len(t)>2]
+    scored=[]
+    for r in memory_rows:
+        blob=(r["title"]+" "+r["content"]).lower()
+        score=sum(1 for t in tokens if t in blob)
+        if score:
+            scored.append((score,r["priority"],r))
+    if scored:
+        scored.sort(key=lambda x:(x[0],x[1]), reverse=True)
+        best=scored[0][2]
+        if scored[0][0] >= 2:
+            answer=best["content"]
+            if question_id: complete_question(question_id,answer,False,[])
+            return answer
+
     # For unknown/general questions, research publicly first. Google is the
     # primary source; the fallback is only used if Google is unavailable.
     provider,results=web_research(text,5) if allow_online else ("",[])
@@ -1019,7 +1041,7 @@ User question:
         if question_id: complete_question(question_id,answer,False,[])
         return answer
 
-    answer="I could not establish a reliable answer from my current DACRE Memory Box or available public information. Give me a little more detail and I will work it out directly."
+    answer="I don't have enough reliable information to answer that yet."
     if question_id: complete_question(question_id,answer,False,[],status="unanswered")
     return answer
 
@@ -1601,7 +1623,7 @@ with st.sidebar:
     # the master passkey. Master users see it directly in Navigation. Normal
     # users see a clearly labelled secure entry button; clicking it takes them
     # to the protected Master Access gate rather than exposing the portal.
-    navigation=["DI Home","DI Question Board","Workspace & Data","Formula Lab","Charts","File Vault","Export Center"]
+    navigation=["DI Home","DI Memory Box","DI Question Board","Workspace & Data","Formula Lab","Charts","File Vault","Export Center"]
     if user["role"] in ("company_admin","master"):
         navigation.append("Organization Admin Portal")
     if user["role"]=="master":
@@ -1723,7 +1745,7 @@ if selected_page=="DI Home":
     cards=[
       ("Investigate", "Find what is changing in my business", "Ask DI to inspect your active dataset and identify important patterns."),
       ("Analyse data", "Explain this dataset to me", "DI can inspect rows, columns, missing values, duplicates and numeric fields."),
-      ("Research", "Find the latest information", "DI can attempt a public-web lookup for current topics and tell you that it used online sources."),
+      ("Research", "Find the latest information", "DI can obtain current public information when your question needs it and return the useful result directly."),
       ("Create", "Build something useful", "Ask DI to plan a report, chart, presentation, workflow or business action."),
     ]
     for col,(title,headline,desc) in zip([q1,q2,q3,q4],cards):
@@ -1758,6 +1780,31 @@ if selected_page=="DI Home":
         st.rerun()
 
     st.caption("Voice mode uses your browser microphone and speech synthesis. If your browser does not expose continuous speech recognition, the text conversation remains available.")
+
+# DI MEMORY BOX
+# =============================================================================
+elif selected_page=="DI Memory Box":
+    st.header("DI Memory Box")
+    st.caption("Shared persistent knowledge used by DI across DACRE. Users can read the approved knowledge; master users can add and update it.")
+    memory_rows=get_di_memory(200)
+    if memory_rows:
+        mdf=pd.DataFrame([dict(r) for r in memory_rows])
+        st.dataframe(mdf[["category","title","content","priority"]],use_container_width=True,hide_index=True)
+    if user["role"]=="master":
+        st.markdown("### Add knowledge to DI MB")
+        a1,a2=st.columns(2)
+        with a1:
+            mem_category=st.text_input("Category",placeholder="PRODUCT / DI / ADMIN / GENERAL")
+            mem_title=st.text_input("Memory title",placeholder="A clear fact or capability")
+        with a2:
+            mem_priority=st.slider("Priority",1,100,90)
+            mem_content=st.text_area("Memory content",height=120,placeholder="Write the information DI should know and use.")
+        if st.button("Save to DI Memory Box",use_container_width=True,type="primary"):
+            if mem_title.strip() and mem_content.strip():
+                con=db(); now=datetime.now().isoformat(timespec="seconds")
+                con.execute("INSERT INTO di_memory(category,title,content,priority,created_by,created_at,updated_at,is_active) VALUES(?,?,?,?,?,?,?,1)",(mem_category.strip() or "GENERAL",mem_title.strip(),mem_content.strip(),mem_priority,MASTER_USERNAME,now,now)); con.commit(); con.close()
+                st.success("Memory added to DI MB."); st.rerun()
+            else: st.error("Memory title and content are required.")
 
 # DI QUESTION BOARD
 # =============================================================================
@@ -1960,7 +2007,7 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
     m7.metric("DI Workforce",counts["agents"])
 
     con=db()
-    tabs=st.tabs(["Executive Overview","DI Workforce","Organizations","People & Accounts","DI Question Board","Live Activity","DI Conversations","DI Memory Box","Mail Source","System Controls"])
+    tabs=st.tabs(["Executive Overview","DI Workforce","Organizations","People & Accounts","DI Question Board","Live Activity","DI Conversations","Mail Source","System Controls"])
 
     with tabs[0]:
         st.subheader("Executive Overview")
@@ -2035,26 +2082,26 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
         st.dataframe(users_df,use_container_width=True,hide_index=True)
         st.metric("Registered accounts excluding master",len(users_df[users_df["role"]!="master"]))
 
-        st.markdown("### ⚡ Fast Permanent Account Cleanup")
-        st.caption("Select one or many non-master accounts and remove them in one confirmed operation. Master accounts are automatically excluded.")
-        deletable_bulk=users_df[users_df["role"]!="master"].copy()
-        if not deletable_bulk.empty:
-            bulk_selected=st.multiselect("Select accounts to permanently delete",deletable_bulk["username"].tolist(),format_func=lambda u: next((f"{r.first_name} {r.last_name} · {r.company_name} · {r.username}" for r in deletable_bulk.itertuples() if r.username==u),u),key="master_bulk_delete_accounts")
-            if bulk_selected:
-                st.warning(f"{len(bulk_selected)} account(s) selected. This action permanently removes their account records and user-owned DACRE data.")
-                bconfirm=st.checkbox("I understand these selected accounts will be permanently deleted.",key="bulk_delete_confirm")
-                btyped=st.text_input("Type DELETE to confirm bulk deletion",key="bulk_delete_text")
-                if st.button("🗑 Permanently Delete Selected Accounts",use_container_width=True,type="primary",disabled=not (bconfirm and btyped.strip().upper()=="DELETE"),key="bulk_delete_button"):
-                    deleted=[]; failed=[]
-                    for u in bulk_selected:
-                        ok,msg=delete_user_permanently(u)
-                        (deleted if ok else failed).append((u,msg))
-                    if deleted: log_activity(MASTER_USERNAME,"DACRE MASTER",f"Permanently deleted {len(deleted)} selected account(s)",notify_admin=False)
-                    if failed: st.error("Some accounts could not be deleted: " + "; ".join(f"{u}: {m}" for u,m in failed))
-                    if deleted: st.success(f"Permanently deleted {len(deleted)} account(s).")
-                    st.rerun()
+        st.markdown("### Fast Account Cleanup")
+        fast_accounts=users_df[users_df["role"]!="master"].copy()
+        if not fast_accounts.empty:
+            labels={r.username:f"{r.first_name} {r.last_name} · {r.company_name} · {r.username}" for r in fast_accounts.itertuples()}
+            fast_selected=st.multiselect("Select one or many accounts to permanently delete",fast_accounts["username"].tolist(),format_func=lambda x:labels.get(x,x),key="fast_delete_accounts")
+            fast_confirm=st.checkbox("I understand the selected accounts and their DACRE records will be permanently deleted.",key="fast_delete_confirm")
+            fast_typed=st.text_input("Type DELETE to authorize bulk deletion",key="fast_delete_text",placeholder="DELETE")
+            if st.button("Permanently Delete Selected Accounts",use_container_width=True,type="primary",disabled=not(fast_selected and fast_confirm and fast_typed.strip().upper()=="DELETE"),key="fast_delete_button"):
+                deleted=[]
+                failed=[]
+                for acct in list(fast_selected):
+                    ok,msg=delete_user_permanently(acct)
+                    (deleted if ok else failed).append(acct)
+                if deleted:
+                    log_activity(MASTER_USERNAME,"DACRE MASTER",f"Permanently deleted {len(deleted)} selected account(s): {', '.join(deleted)}",notify_admin=False)
+                if failed: st.error("Some accounts could not be deleted: "+", ".join(failed))
+                else: st.success(f"Permanently deleted {len(deleted)} account(s).")
+                st.rerun()
         else:
-            st.info("No non-master accounts are currently available for bulk deletion.")
+            st.info("No non-master accounts remain.")
 
         st.markdown("### Account Inspector")
         deletable=con.execute(
@@ -2164,28 +2211,11 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
         st.caption("This view gives the master administration layer system-wide visibility into DI conversations. It is not shown to ordinary users.")
 
     with tabs[7]:
-        st.subheader("🧠 DI Memory Box")
-        st.caption("Shared persistent knowledge used by every DI. DI reads this Memory Box before deciding it needs online research.")
-        memory_df=pd.read_sql_query("SELECT id,category,title,content,source,created_at,updated_at FROM di_memory WHERE is_active=1 ORDER BY id DESC",con)
-        memory_df=memory_df.loc[:,~memory_df.columns.duplicated()].copy()
-        st.dataframe(memory_df,use_container_width=True,hide_index=True)
-        with st.expander("Add knowledge to DI Memory Box",expanded=False):
-            mc1,mc2=st.columns([1,2])
-            with mc1:
-                mem_cat=st.text_input("Category",value="GENERAL",key="mem_cat")
-                mem_title=st.text_input("Memory title",key="mem_title")
-            with mc2:
-                mem_content=st.text_area("Information DI should know",height=130,key="mem_content")
-            if st.button("Save to DI Memory Box",use_container_width=True,type="primary",key="save_di_memory"):
-                if add_di_memory(mem_cat,mem_title,mem_content): st.success("Knowledge added to DI Memory Box."); st.rerun()
-                else: st.error("Please provide the information to store.")
-
-    with tabs[8]:
         st.subheader("DI Mail Source")
         mails_df=pd.read_sql_query("SELECT id,recipient_name,recipient_email,company_name,subject,sender_email,status,sent_at,body FROM emails_log ORDER BY id DESC",con)
         st.dataframe(mails_df,use_container_width=True,hide_index=True)
 
-    with tabs[9]:
+    with tabs[8]:
         st.subheader("System Controls")
         st.write("Master-level controls are deliberately separated from normal company administration.")
         c1,c2=st.columns(2)
