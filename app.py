@@ -1252,12 +1252,48 @@ with st.sidebar:
     st.markdown(f"### {user['first_name']}'s Workspace")
     st.caption(f"{user['company']} · {user['role']}")
     st.markdown("<div style='font-size:.78rem;color:#8b6577!important;margin:4px 0 14px'>DI is available across your workspace.</div>",unsafe_allow_html=True)
+    # -------------------------------------------------------------------------
+    # MASTER / OVERALL ADMIN DI ENTRY
+    # -------------------------------------------------------------------------
+    # The Overall Admin DI must be easy to find, while remaining protected by
+    # the master passkey. Master users see it directly in Navigation. Normal
+    # users see a clearly labelled secure entry button; clicking it takes them
+    # to the protected Master Access gate rather than exposing the portal.
     navigation=["DI Home","Workspace & Data","Formula Lab","Charts","File Vault","Export Center"]
     if user["role"] in ("company_admin","master"):
         navigation.append("Organization Admin Portal")
-    if user["role"]=="master": navigation.append("Overall Admin DI Portal")
+    if user["role"]=="master":
+        navigation.append("Overall Admin DI Portal")
+
+    if user["role"] == "master":
+        st.markdown("""
+        <div style="margin:10px 0 12px;padding:13px 14px;border-radius:16px;
+                    background:linear-gradient(135deg,rgba(91,92,226,.14),rgba(139,92,246,.18),rgba(6,182,212,.12));
+                    border:1px solid rgba(91,92,226,.24);
+                    box-shadow:0 10px 28px rgba(91,92,226,.08);">
+          <div style="font-size:.70rem;letter-spacing:.14em;font-weight:900;color:#5b5ce2!important;">MASTER CONTROL</div>
+          <div style="font-size:.98rem;font-weight:900;margin-top:3px;">Overall Admin DI is unlocked</div>
+          <div style="font-size:.76rem;color:#64748b!important;margin-top:2px;">System-wide command centre for David Emenike</div>
+        </div>
+        """,unsafe_allow_html=True)
+
     default_page = "Overall Admin DI Portal" if user["role"]=="master" and st.session_state.get("master_route") else navigation[0]
     selected_page=st.radio("Navigation",navigation,index=navigation.index(default_page) if default_page in navigation else 0)
+
+    if user["role"] != "master":
+        st.markdown("---")
+        st.markdown("**🔐 Overall Admin DI**")
+        st.caption("Master-only system command centre")
+        if st.button("Open Secure Master Access",use_container_width=True,key="sidebar_master_access"):
+            # Move the current session to the protected master gate. No master
+            # privileges are granted here; the passkey gate is still required.
+            st.session_state.user=None
+            st.session_state.master_route=False
+            st.session_state.master_captcha_required=False
+            st.session_state.master_captcha_passed=False
+            st.session_state.master_second_attempt=False
+            st.query_params["master_gate"]="1"
+            st.rerun()
 
 # =============================================================================
 # DI HOME / CONTINUOUS BUSINESS CONVERSATION
