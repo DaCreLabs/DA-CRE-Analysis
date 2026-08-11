@@ -938,11 +938,33 @@ def landing_page():
             <div style="position:absolute;left:10px;right:10px;bottom:8px;color:#17202b;font:800 10px/1.25 Inter,Segoe UI,sans-serif;letter-spacing:.04em;text-align:center;">CEO OFFICE</div>
           </div>`;
 
-        const openGate = function () {
-          const url = new URL(window.parent.location.href);
-          url.searchParams.set('master_gate', '1');
-          window.parent.location.href = url.toString();
+        // Use a real top-level anchor as the navigation mechanism. This is more
+        // reliable inside Streamlit's component iframe than assigning
+        // window.parent.location directly. A two-click sequence within 550ms
+        // is treated as the requested double-click/double-tap.
+        const gateLink = parentDoc.createElement('a');
+        gateLink.href = '?master_gate=1';
+        gateLink.target = '_top';
+        gateLink.rel = 'noopener';
+        gateLink.setAttribute('aria-label', 'Open DACRE-ANALYSIS CEO Master Access');
+        gateLink.style.cssText = 'position:absolute;inset:0;display:block;text-decoration:none;z-index:5;';
+        card.appendChild(gateLink);
+
+        let clickTimer = null;
+        let clickCount = 0;
+        const handleTap = function (event) {
+          event.preventDefault();
+          clickCount += 1;
+          if (clickCount === 1) {
+            clickTimer = setTimeout(() => { clickCount = 0; }, 550);
+          } else if (clickCount === 2) {
+            clearTimeout(clickTimer);
+            clickCount = 0;
+            gateLink.removeEventListener('click', handleTap);
+            gateLink.click();
+          }
         };
+        gateLink.addEventListener('click', handleTap);
 
         card.addEventListener('mouseenter', () => {
           card.style.transform = 'translateY(-6px) scale(1.025)';
@@ -954,9 +976,13 @@ def landing_page():
           card.style.boxShadow = '0 18px 50px rgba(45,25,40,.22)';
           card.style.borderColor = 'rgba(232,106,168,.34)';
         });
-        card.addEventListener('dblclick', openGate);
+        // Keyboard access remains available for accessibility.
         card.addEventListener('keydown', (event) => {
-          if (event.key === 'Enter' || event.key === ' ') openGate();
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            gateLink.removeEventListener('click', handleTap);
+            gateLink.click();
+          }
         });
 
         parentDoc.body.appendChild(card);
