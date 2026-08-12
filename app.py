@@ -8,11 +8,18 @@ import sqlite3
 import urllib.parse
 import urllib.request
 import smtplib
+import uuid
+import html
 
 try:
     import speech_recognition as sr
 except Exception:
     sr = None
+
+try:
+    from livekit import api as livekit_api
+except Exception:
+    livekit_api = None
 
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
@@ -36,7 +43,7 @@ APP_NAME = "DACRE Analysis"
 DI_NAME = "DI — David's Intelligence"
 MASTER_USERNAME = "david"
 MASTER_FULL_NAME = "David Emenike"
-MASTER_PASSKEY = os.getenv("DACRE_MASTER_PASSKEY", "theWORDofGOD@111").strip()
+MASTER_PASSKEY = os.getenv("DACRE_MASTER_PASSKEY", "").strip()
 # The default master credential is stored as a SHA-256 hash so the private
 # passkey is not exposed in the source code. If DACRE_MASTER_PASSKEY is set
 # in Streamlit Secrets/environment, that value takes precedence.
@@ -346,6 +353,45 @@ def init_db():
             last_active TEXT
         )
     """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS call_rooms (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            room_code TEXT UNIQUE NOT NULL,
+            company_name TEXT NOT NULL,
+            title TEXT NOT NULL,
+            created_by TEXT NOT NULL,
+            provider TEXT NOT NULL DEFAULT 'jitsi',
+            status TEXT NOT NULL DEFAULT 'active',
+            created_at TEXT NOT NULL,
+            ended_at TEXT
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS call_members (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            room_code TEXT NOT NULL,
+            username TEXT NOT NULL,
+            company_name TEXT NOT NULL,
+            invited INTEGER NOT NULL DEFAULT 1,
+            joined_at TEXT,
+            left_at TEXT,
+            UNIQUE(room_code, username)
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS di_tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            agent_code TEXT NOT NULL,
+            agent_name TEXT NOT NULL,
+            company_name TEXT NOT NULL,
+            assigned_by TEXT NOT NULL,
+            task TEXT NOT NULL,
+            result TEXT,
+            status TEXT NOT NULL DEFAULT 'Queued',
+            created_at TEXT NOT NULL,
+            completed_at TEXT
+        )
+    """)
 
     con.commit()
     con.close()
@@ -375,10 +421,88 @@ def ensure_di_agent_columns():
 ensure_di_agent_columns()
 
 
+# =============================================================================
+# DA-CRE FUTURE BUSINESS COMMUNICATION + DI WORKFORCE
+# =============================================================================
+
+def _secret(name, default=""):
+    value=os.getenv(name, "").strip()
+    if value:
+        return value
+    try:
+        return str(st.secrets.get(name, default)).strip()
+    except Exception:
+        return default
+
+
+
+
+def _table_exists(con,name):
+    return con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=? LIMIT 1",(name,)).fetchone() is not None
+
+def create_call_room(user, title, invited_usernames):
+    room_code=f"dacre-{re.sub(r'[^a-z0-9]+','-',str(user.get('company','company')).lower()).strip('-')}-{uuid.uuid4().hex[:12]}"
+    provider="livekit" if (_secret("LIVEKIT_URL") and _secret("LIVEKIT_API_KEY") and _secret("LIVEKIT_API_SECRET") and livekit_api) else "jitsi"
+    now=datetime.now().isoformat(timespec="seconds")
+    con=db()
+    con.execute("INSERT INTO call_rooms(room_code,company_name,title,created_by,provider,status,created_at) VALUES(?,?,?,?,?,?,?)",(room_code,user["company"],title.strip() or "DA-CRE Team Call",user["username"],provider,"active",now))
+    members=set(invited_usernames or []); members.add(user["username"])
+    for username in members:
+        con.execute("INSERT OR IGNORE INTO call_members(room_code,username,company_name,invited,joined_at) VALUES(?,?,?,?,?)",(room_code,username,user["company"],1,now if username==user["username"] else None))
+    con.commit(); con.close()
+    log_activity(user["username"],user["company"],f"Created team call: {title.strip() or 'DA-CRE Team Call'} ({room_code})")
+    return room_code,provider
+
+
+def mark_call_joined(room_code,user):
+    now=datetime.now().isoformat(timespec="seconds")
+    con=db(); con.execute("INSERT OR IGNORE INTO call_members(room_code,username,company_name,invited,joined_at) VALUES(?,?,?,?,?)",(room_code,user["username"],user["company"],1,now)); con.execute("UPDATE call_members SET joined_at=COALESCE(joined_at,?) WHERE room_code=? AND username=?",(now,room_code,user["username"])); con.commit(); con.close()
+    log_activity(user["username"],user["company"],f"Joined team call {room_code}")
+
+
+def send_di_mail(recipient_email,recipient_name,company_name,subject,body):
+    smtp_host=_secret("DACRE_SMTP_HOST"); smtp_port=int(_secret("DACRE_SMTP_PORT","587") or 587); smtp_user=_secret("DACRE_SMTP_USER"); smtp_pass=_secret("DACRE_SMTP_PASSWORD"); sender=_secret("DACRE_SMTP_FROM",smtp_user or "di-system@dacre.local")
+    status="Logged only — SMTP not configured"
+    if smtp_host and smtp_user and smtp_pass:
+        try:
+            msg=MIMEMultipart(); msg["From"]=sender; msg["To"]=recipient_email; msg["Subject"]=subject; msg.attach(MIMEText(body,"plain","utf-8"))
+            with smtplib.SMTP(smtp_host,smtp_port,timeout=20) as server:
+                server.starttls(); server.login(smtp_user,smtp_pass); server.sendmail(sender,[recipient_email],msg.as_string())
+            status="Sent via configured SMTP"
+        except Exception as exc: status=f"SMTP failed: {type(exc).__name__}"
+    con=db(); con.execute("INSERT INTO emails_log(recipient_email,recipient_name,company_name,subject,body,sender_email,status,sent_at) VALUES(?,?,?,?,?,?,?,?)",(recipient_email,recipient_name,company_name,subject,body,sender,status,datetime.now().isoformat(timespec="seconds"))); con.commit(); con.close()
+    return status
+
+
+def run_di_agent_task(agent,task,user,dataframe=None):
+    specialty=agent.get("specialty") or agent.get("system_role") or "business intelligence"; style=agent.get("thinking_style") or "clear, practical and evidence-based"
+    prompt=(f"You are {agent.get('di_name','DI Worker')}, a DACRE DI workforce specialist. Your specialty is {specialty}. Thinking style: {style}. You work for {user.get('company','the organization')} and report to DI — David's Intelligence. Complete this task using available DACRE context. Never claim an external action occurred unless the application actually performed it. TASK: {task}")
+    result=di_reply(prompt,user,dataframe,allow_online=True,language=st.session_state.get("di_language","English — Nigeria"))
+    now=datetime.now().isoformat(timespec="seconds"); con=db(); con.execute("INSERT INTO di_tasks(agent_code,agent_name,company_name,assigned_by,task,result,status,created_at,completed_at) VALUES(?,?,?,?,?,?,?,?,?)",(agent.get("di_code","DI"),agent.get("di_name","DI Worker"),user.get("company",""),user.get("username",""),task,result,"Completed",now,now)); con.execute("UPDATE di_agents SET last_active=? WHERE di_code=?",(now,agent.get("di_code","DI"))); con.commit(); con.close(); log_activity(user.get("username",""),user.get("company",""),f"DI worker {agent.get('di_name','DI Worker')} completed assigned task"); return result
+
+
+def render_business_call(room_code,user):
+    con=db(); room=con.execute("SELECT room_code,title,company_name,created_by,provider,status,created_at FROM call_rooms WHERE room_code=?",(room_code,)).fetchone(); members=con.execute("SELECT username,joined_at FROM call_members WHERE room_code=? ORDER BY id",(room_code,)).fetchall(); con.close()
+    if not room or room["company_name"]!=user["company"]: st.error("This business call is not available in your organization."); return
+    mark_call_joined(room_code,user)
+    st.markdown(f"<div class='future-call-shell'><div class='future-call-kicker'>DA-CRE BUSINESS CALL</div><div class='future-call-title'>{html.escape(room['title'])}</div><div class='future-call-sub'>{html.escape(room['company_name'])} · {html.escape(room['provider'].upper())} · {len(members)} invited</div></div>",unsafe_allow_html=True)
+    st.info("Jitsi is the zero-configuration call provider. Configure LiveKit secrets for a controlled enterprise media backend.")
+    display_name=urllib.parse.quote(f"{user.get('first_name','User')} {user.get('last_name','')}".strip())
+    if room["provider"]=="livekit" and _secret("LIVEKIT_URL") and livekit_api:
+        try:
+            token=livekit_api.AccessToken(_secret("LIVEKIT_API_KEY"),_secret("LIVEKIT_API_SECRET")).with_identity(user["username"]).with_name(f"{user.get('first_name','')} {user.get('last_name','')}").with_grants(livekit_api.VideoGrants(room=room_code,room_join=True,can_publish=True,can_subscribe=True)).to_jwt()
+            safe_url=html.escape(_secret("LIVEKIT_URL")); safe_token=html.escape(token)
+            components.html(f"""<div style='height:720px;border-radius:20px;background:#081321;color:white;padding:24px;font-family:Inter,sans-serif'><h3>DA-CRE LiveKit Call</h3><p id='lk-status'>Connecting…</p><audio id='lk-audio' autoplay></audio></div><script src='https://cdn.jsdelivr.net/npm/livekit-client@2.15.0/dist/livekit-client.umd.min.js'></script><script>(async()=>{{const s=document.getElementById('lk-status');try{{const room=new LivekitClient.Room({{adaptiveStream:true,dynacast:true}});room.on(LivekitClient.RoomEvent.TrackSubscribed,(track)=>{{if(track.kind===LivekitClient.Track.Kind.Audio){{const el=track.attach();el.autoplay=true;document.getElementById('lk-audio').appendChild(el);}}}});await room.connect('{safe_url}','{safe_token}');await room.localParticipant.setMicrophoneEnabled(true);s.textContent='🟢 Connected — microphone on';}}catch(e){{s.textContent='Call connection failed: '+e.message;}}}})();</script>""",height=740); return
+        except Exception as exc: st.warning(f"LiveKit connection failed ({type(exc).__name__}); using Jitsi fallback.")
+    room_url=f"https://meet.jit.si/{urllib.parse.quote(room_code)}#userInfo.displayName={display_name}"
+    components.html(f"<iframe allow='camera; microphone; fullscreen; display-capture; autoplay' src='{html.escape(room_url)}' style='width:100%;height:720px;border:0;border-radius:20px;background:#07121f'></iframe>",height=740)
+    st.caption("For production private calls, use your own Jitsi/LiveKit deployment.")
+
+
 def ensure_master():
-    if not MASTER_PASSKEY:
-        # Do not create a usable master account until the deployment secret is configured.
-        return
+    # The master account is always materialized from the protected hash.
+    # The plaintext passkey is never stored in the database. A deployment secret
+    # may override the hash through DACRE_MASTER_PASSKEY_HASH.
     con = db()
     cur = con.cursor()
     cur.execute("SELECT id FROM users WHERE username = ?", (MASTER_USERNAME,))
@@ -631,6 +755,9 @@ def memory_box_direct_answer(text):
 
 seed_di_memory()
 
+if len(DI_MEMORY_SEED) != 4000:
+    raise RuntimeError(f"DACRE DI Memory Box seed must contain exactly 4,000 records; found {len(DI_MEMORY_SEED)}")
+
 
 def permanently_delete_accounts(user_ids):
     """Permanently remove non-master accounts and their workspace records."""
@@ -795,7 +922,12 @@ def authenticate(company_name, full_name, passkey, email=""):
         if (company_clean == "dacre master" or full_name_clean == "david emenike" or email_clean == "master@dacre.local") and master_passkey_gate(passkey_clean):
             row = con.execute("SELECT first_name,last_name,username,company_name,email,role FROM users WHERE username=?", (MASTER_USERNAME,)).fetchone()
             if row:
-                return dict(row), None
+                now=datetime.now().isoformat(timespec="seconds")
+                con.execute("UPDATE users SET login_count=login_count+1,last_login=? WHERE username=?",(now,MASTER_USERNAME))
+                con.commit()
+                result=dict(row); result["company"]=result.get("company_name", "DACRE MASTER")
+                log_activity(MASTER_USERNAME,"DACRE MASTER","Signed in as Overall Administrator",notify_admin=False)
+                return result, None
 
         if email_clean:
             rows = con.execute("SELECT first_name,last_name,username,company_name,email,passkey_hash,role FROM users WHERE lower(email)=?", (email_clean,)).fetchall()
@@ -1589,6 +1721,7 @@ def di_voice_player(text, language_code=None):
 
 st.markdown("""
 <style>
+.future-call-shell{padding:22px 24px;border-radius:26px;background:linear-gradient(135deg,#071a2e,#12365a 55%,#35233c);border:1px solid rgba(110,200,255,.25);box-shadow:0 18px 50px rgba(0,0,0,.18);margin-bottom:18px}.future-call-kicker{font-size:.7rem;letter-spacing:.18em;font-weight:900;color:#74d8ff}.future-call-title{font-size:2rem;font-weight:950;color:#f6fbff;margin-top:5px}.future-call-sub{color:#b9d5e9;font-size:.9rem;margin-top:5px}
 :root{--dacre-cyan:#18b7ff;--dacre-mint:#00dc96;--dacre-gold:#f4b942;--dacre-line:rgba(24,183,255,.25)}
 .stApp{background:radial-gradient(circle at 10% 10%,rgba(24,183,255,.14),transparent 32%),radial-gradient(circle at 90% 20%,rgba(244,185,66,.10),transparent 28%),linear-gradient(135deg,#050914,#091322 55%,#050914);color:#ffffff}
 .stApp::before{content:"";position:fixed;inset:-40%;pointer-events:none;background:conic-gradient(from 0deg at 50% 50%,rgba(24,183,255,.05),transparent 25%,rgba(255,193,7,.04) 45%,transparent 70%,rgba(0,220,150,.04) 85%,transparent 100%);animation:dacreSpin 48s linear infinite;z-index:0}
@@ -1616,32 +1749,57 @@ div.stButton>button:hover,div.stFormSubmitButton>button:hover,div.stDownloadButt
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# READABLE PROFESSIONAL BLUE THEME
-# -----------------------------------------------------------------------------
+# =============================================================================
+# DACRE GLOBAL THEME — SAME LANDING PAGE + INNER APP UI
+# =============================================================================
+# The public landing page deliberately uses the same visual language as the
+# signed-in workspace: deep blue, soft blue panels, restrained orange accents
+# and high-contrast text. No separate bright/light theme is applied before login.
 st.markdown("""
 <style>
-:root{--dacre-blue:#1769aa;--dacre-blue-dark:#0f4f86;--dacre-border:#c9ddec;--dacre-text:#17324d;--dacre-muted:#5d7286}
-.stApp{background:#f4f8fc!important;color:var(--dacre-text)!important}
-.stApp::before{display:none!important}
-html,body,.stApp,.stApp p,.stApp li,.stApp span,.stApp label,.stMarkdown,.stMarkdown p,.stMarkdown li,[data-testid="stWidgetLabel"] p,[data-testid="stWidgetLabel"] label,.stRadio label,.stCheckbox label,.stSelectbox label,.stTextInput label,.stTextArea label,.stFileUploader label{color:var(--dacre-text)!important;font-weight:500!important}
-.stApp h1,.stApp h2,.stApp h3,.stApp h4,.stApp h5,.stApp h6{color:#123b5d!important;text-shadow:none!important}
-.stApp h3{border-left-color:var(--dacre-blue)!important}
-[data-testid="stSidebar"]{background:#0f4f86!important;border-right:1px solid #0a3f6b!important;box-shadow:4px 0 18px rgba(16,71,112,.12)!important}
+:root{
+ --dacre-blue:#173b66;--dacre-blue-2:#245487;--dacre-navy:#071a31;
+ --dacre-panel:#102844;--dacre-panel-2:#153654;--dacre-cyan:#5eb8e8;
+ --dacre-orange:#ef8b3a;--dacre-orange-2:#ffb56b;--dacre-ink:#f5f9ff;
+ --dacre-muted:#c3d8eb;--dacre-line:rgba(120,170,210,.28)
+}
+.stApp{background:linear-gradient(135deg,#071a31,#0b2d50 50%,#124b7a)!important;color:#f5f9ff!important}
+.main .block-container{max-width:1540px;padding-top:1.25rem;padding-bottom:4rem}
+.stApp p,.stApp span,.stApp label,.stApp li,.stApp td,.stApp th,.stApp h1,.stApp h2,.stApp h3,.stApp h4,.stApp h5,.stApp h6{color:#f5f9ff!important}
+.stApp p,.stApp li{line-height:1.55}
+.stCaption,[data-testid=stCaptionContainer],.stApp small{color:#c3d8eb!important}
+[data-testid="stSidebar"]{background:linear-gradient(180deg,#0a2340,#0d3155)!important;border-right:3px solid #f28c28!important}
 [data-testid="stSidebar"] *{color:#fff!important}
-.dacre-hero,.dacre-user-hero,.master-office-hero{background:#fff!important;color:var(--dacre-text)!important;border:1px solid var(--dacre-border)!important;box-shadow:0 8px 24px rgba(30,75,110,.08)!important;backdrop-filter:none!important}
-.dacre-title,.master-office-hero .title,.dacre-user-title{color:#123b5d!important}
-.dacre-sub,.dacre-user-sub{color:var(--dacre-muted)!important}
-.feature-card,.image-card,.chat-card,.di-quick-card,.di-metric,.voice-panel{background:#fff!important;color:var(--dacre-text)!important;border:1px solid var(--dacre-border)!important;box-shadow:0 5px 16px rgba(30,75,110,.06)!important}
-.stTextInput input,.stTextArea textarea,.stNumberInput input,.stSelectbox div[data-baseweb="select"]>div,.stMultiSelect div[data-baseweb="select"]>div{background:#fff!important;color:#17324d!important;border:1px solid #b9cddd!important}
-.stTextInput input::placeholder,.stTextArea textarea::placeholder{color:#7b8d9d!important}
-div.stButton>button,div.stFormSubmitButton>button,div.stDownloadButton>button{background:var(--dacre-blue)!important;color:#fff!important;border:1px solid var(--dacre-blue)!important;box-shadow:none!important}
-div.stButton>button:hover,div.stFormSubmitButton>button:hover,div.stDownloadButton>button:hover{background:var(--dacre-blue-dark)!important;border-color:var(--dacre-blue-dark)!important;box-shadow:0 5px 14px rgba(23,105,170,.20)!important;transform:none!important}
-[data-testid="stMetric"]{background:#fff!important;border:1px solid var(--dacre-border)!important;color:var(--dacre-text)!important}
-[data-testid="stDataFrame"]{border:1px solid var(--dacre-border)!important;border-radius:10px!important;background:#fff!important}
-.stAlert{border-radius:10px!important}
-.dacre-private-admin-divider{height:1px;background:#dbe6ef;margin:18px 0 4px}
-button[title="Private system access"]{opacity:.18!important;width:18px!important;min-height:8px!important;height:8px!important;padding:0!important;border:0!important;background:transparent!important;color:#17324d!important;box-shadow:none!important}
-button[title="Private system access"]:hover{opacity:.45!important;background:transparent!important;box-shadow:none!important}
+.stButton>button,.stFormSubmitButton>button,.stDownloadButton>button{background:linear-gradient(135deg,#17518a,#236ca8)!important;color:#fff!important;border:1px solid #69b8ee!important;border-radius:13px!important;font-weight:800!important}
+.stButton>button:hover,.stFormSubmitButton>button:hover,.stDownloadButton>button:hover{background:#2b79b5!important;border-color:#f28c28!important}
+.stTextInput input,.stTextArea textarea,.stNumberInput input,.stDateInput input,.stSelectbox div[data-baseweb=select]>div{background:#12365b!important;color:#fff!important;border:1.5px solid #5aa9e6!important;border-radius:13px!important}
+.stTextInput input::placeholder,.stTextArea textarea::placeholder{color:#a9c2d9!important}
+[data-baseweb=popover],[data-baseweb=menu]{background:#12365b!important}
+[data-baseweb=option]{color:#fff!important}
+[data-baseweb=option]:hover{background:#1b4b77!important}
+.dacre-hero{background:linear-gradient(120deg,#102944 0%,#173b66 58%,#3d3028 100%);border:1px solid rgba(120,170,210,.28);border-top:4px solid #ef8b3a;border-radius:24px;padding:28px 32px;box-shadow:0 18px 50px rgba(0,0,0,.28);margin-bottom:22px}
+.dacre-title{font-size:clamp(2.2rem,5vw,4rem);font-weight:900;letter-spacing:-.04em;color:#f5fbff!important}
+.dacre-sub{font-size:1.05rem;color:#c3d8eb!important;font-weight:600}
+.feature-card{padding:18px;border:1px solid rgba(120,170,210,.24);border-radius:18px;background:linear-gradient(145deg,#112b47,#153654);min-height:145px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.feature-card h3,.feature-card p{color:#f5f9ff!important}
+.image-card{padding:0;overflow:hidden;min-height:270px}
+.image-card img{width:100%;height:150px;object-fit:cover;display:block}
+.image-card-body{padding:16px 18px}.image-card-body h3{margin-top:0}
+.chat-card{padding:16px 18px;border-radius:18px;border:1px solid rgba(120,170,210,.24);background:#112b47;margin:8px 0}
+.di-avatar{width:92px;height:92px;border-radius:50%;object-fit:cover;border:3px solid rgba(94,184,232,.65)}
+[data-testid="stMetric"]{background:#112b47!important;border:1px solid rgba(120,170,210,.24)!important;border-radius:16px!important}
+[data-testid="stMetricLabel"]{color:#b8c8d8!important}.stMetricValue,[data-testid="stMetricValue"]{color:#f5fbff!important}
+[data-testid="stDataFrame"]{border:1px solid rgba(120,170,210,.28);border-radius:14px;overflow:hidden}
+[data-testid="stDataFrame"] *{color:#17324d!important}
+[data-testid="stExpander"]{background:#102944!important;border:1px solid rgba(120,170,210,.24)!important;border-radius:14px!important}
+[data-testid="stAlert"]{color:#edf6ff!important}
+div[style*="#ffffff"]{background:#112b47!important;color:#edf6ff!important}
+div[style*="#eaf7ff"]{background:#153b5d!important;color:#edf6ff!important}
+div[style*="#fffaf4"]{background:#112b47!important;color:#edf6ff!important}
+.dacre-private-admin-divider{height:1px;background:rgba(120,170,210,.24);margin:18px 0 4px}
+button[title="Private system access"]{opacity:.18!important;width:18px!important;min-height:8px!important;height:8px!important;padding:0!important;border:0!important;background:transparent!important;color:#dbe9f5!important;box-shadow:none!important}
+button[title="Private system access"]:hover{opacity:.45!important;background:transparent!important}
+#MainMenu,footer{visibility:hidden}
 </style>
 """,unsafe_allow_html=True)
 
@@ -2109,7 +2267,8 @@ with st.sidebar:
     # of the normal user experience and is never promoted to the top.
     navigation=[
         "DI Home",
-        "DI Memory Box",
+        "DI Calls",
+        "DI Mail",
         "Business Command Center",
         "Workspace & Data",
         "Formula Lab",
@@ -2125,6 +2284,8 @@ with st.sidebar:
     # MASTER ONLY: Overall Admin DI is the LAST destination. Ordinary users
     # never receive this navigation item.
     if user["role"] == "master":
+        navigation.append("DI Memory Box")
+        navigation.append("Chibobec Service")
         navigation.append("Overall Admin DI Portal")
 
     # Nobody is automatically dropped into the CEO Office.
@@ -2272,6 +2433,45 @@ elif selected_page=="DI Memory Box":
         with st.expander(f"{row.category} · {row.title}",expanded=False):
             st.write(row.content)
     st.caption("DI also uses your active workspace and can use public online research when the Memory Box does not contain the answer.")
+
+elif selected_page=="DI Calls":
+    st.markdown("<div class='future-call-shell'><div class='future-call-kicker'>BUSINESS COMMUNICATIONS</div><div class='future-call-title'>DI Calls</div><div class='future-call-sub'>Business team calls inside DA-CRE — invite colleagues, open a shared audio/video room and keep the call history tied to your organization.</div></div>",unsafe_allow_html=True)
+    con=db(); teammates=pd.read_sql_query("SELECT first_name,last_name,username,email,role,last_login FROM users WHERE company_name=? ORDER BY first_name,last_name",con,params=(user["company"],)); rooms=pd.read_sql_query("SELECT room_code,title,created_by,provider,status,created_at FROM call_rooms WHERE company_name=? ORDER BY id DESC LIMIT 30",con,params=(user["company"],)); con.close()
+    if st.session_state.get("active_call_room"):
+        if st.button("← Leave / return to call lobby"): st.session_state.active_call_room=None; st.rerun()
+        render_business_call(st.session_state.active_call_room,user)
+    else:
+        with st.form("create_dacre_call"):
+            call_title=st.text_input("Call name",value="DA-CRE Team Call")
+            options=teammates["username"].tolist() if not teammates.empty else []
+            selected=st.multiselect("Invite team members",options,format_func=lambda u: next((f"{r.first_name} {r.last_name} · {r.role}" for r in teammates.itertuples() if r.username==u),u))
+            create=st.form_submit_button("🎙️ Create & Open Call",type="primary",use_container_width=True)
+        if create:
+            room_code,provider=create_call_room(user,call_title,selected); st.session_state.active_call_room=room_code
+            if selected:
+                con=db(); placeholders=",".join("?"*len(selected)); invited_rows=con.execute(f"SELECT first_name,last_name,email FROM users WHERE username IN ({placeholders})",selected).fetchall(); con.close()
+                for r in invited_rows:
+                    invitation_body=(f"You have been invited to a DA-CRE business call. Open DA-CRE → DI Calls.\n\nRoom: {room_code}\nProvider: {provider.upper()}\n\n— DI, David's Intelligence")
+                    send_di_mail(r["email"],f"{r['first_name']} {r['last_name']}",user["company"],f"DA-CRE call invitation: {call_title.strip() or 'DA-CRE Team Call'}",invitation_body)
+            st.rerun()
+        st.subheader("Recent business calls"); st.dataframe(rooms,use_container_width=True,hide_index=True)
+        if not rooms.empty:
+            chosen=st.selectbox("Open a previous call",rooms["room_code"].tolist(),format_func=lambda x: next((f"{r.title} · {r.created_at}" for r in rooms.itertuples() if r.room_code==x),x))
+            if st.button("Open selected call",use_container_width=True): st.session_state.active_call_room=chosen; st.rerun()
+
+elif selected_page=="DI Mail":
+    st.markdown("<div class='future-call-shell'><div class='future-call-kicker'>DI MAIL</div><div class='future-call-title'>Business email from DA-CRE</div><div class='future-call-sub'>Every signup email, call invitation and DI-generated business message can be logged here. Real sending uses your configured SMTP provider.</div></div>",unsafe_allow_html=True)
+    con=db(); contacts=pd.read_sql_query("SELECT first_name,last_name,username,email,role FROM users WHERE company_name=? ORDER BY first_name,last_name",con,params=(user["company"],)); mail_log=pd.read_sql_query("SELECT recipient_name,recipient_email,subject,status,sent_at FROM emails_log WHERE company_name=? ORDER BY id DESC LIMIT 50",con,params=(user["company"],)); con.close()
+    with st.form("di_mail_compose",clear_on_submit=True):
+        recipient_choice=st.selectbox("Dacre contact",["Custom email"]+([] if contacts.empty else contacts["username"].tolist()),format_func=lambda x: x if x=="Custom email" else next((f"{r.first_name} {r.last_name} · {r.email}" for r in contacts.itertuples() if r.username==x),x))
+        custom_email=st.text_input("Recipient email"); recipient_name=st.text_input("Recipient name"); subject=st.text_input("Subject",value="Message from DA-CRE"); body=st.text_area("Message",height=180)
+        send_mail=st.form_submit_button("✉️ Send with DI",type="primary",use_container_width=True)
+    if send_mail:
+        row=None if recipient_choice=="Custom email" else contacts[contacts["username"]==recipient_choice].iloc[0]
+        email=(row["email"] if row is not None else custom_email).strip(); name=(f"{row['first_name']} {row['last_name']}" if row is not None else recipient_name).strip()
+        if not email or not subject.strip() or not body.strip(): st.error("Recipient email, subject and message are required.")
+        else: st.success(send_di_mail(email,name,user["company"],subject.strip(),body.strip())); log_activity(user["username"],user["company"],f"DI Mail sent to {email}: {subject.strip()}")
+    st.subheader("Mail history"); st.dataframe(mail_log,use_container_width=True,hide_index=True)
 
 elif selected_page=="Business Command Center":
     st.header("Business Command Center")
@@ -2525,6 +2725,28 @@ elif selected_page=="Organization Admin Portal" and user["role"] in ("company_ad
 # =============================================================================
 # MASTER ADMIN PORTAL / CEO OFFICE
 # =============================================================================
+elif selected_page=="Chibobec Service" and user["role"]=="master":
+    st.markdown("<div class='future-call-shell'><div class='future-call-kicker'>MASTER CLIENT OVERSIGHT</div><div class='future-call-title'>Chibobec Service</div><div class='future-call-sub'>Master-only customer intelligence for the Chibobec organization: accounts, signups, logins, activity, DI conversations, mail, loan records, WhatsApp events and calls.</div></div>",unsafe_allow_html=True)
+    con=db()
+    users_df=pd.read_sql_query("SELECT id,first_name,last_name,username,email,company_name,role,login_count,created_at,last_login FROM users WHERE lower(company_name) LIKE '%chibobec%' OR lower(username) LIKE '%chibobec%' ORDER BY id DESC",con)
+    activity_df=pd.read_sql_query("SELECT id,username,company_name,action,created_at FROM activity WHERE lower(company_name) LIKE '%chibobec%' ORDER BY id DESC LIMIT 1000",con)
+    chat_df=pd.read_sql_query("SELECT id,username,company_name,sender,message,created_at FROM chat_history WHERE lower(company_name) LIKE '%chibobec%' ORDER BY id DESC LIMIT 1000",con)
+    mail_df=pd.read_sql_query("SELECT id,recipient_name,recipient_email,subject,status,sent_at FROM emails_log WHERE lower(company_name) LIKE '%chibobec%' ORDER BY id DESC LIMIT 1000",con)
+    loans_df=pd.read_sql_query("SELECT id,username,client_name,whatsapp_number,loan_amount,lent_date,due_date,reminder_2_sent,due_sent,last_whatsapp_status,last_whatsapp_error,created_at,updated_at FROM loan_clients WHERE lower(company_name) LIKE '%chibobec%' ORDER BY id DESC",con)
+    wa_df=pd.read_sql_query("SELECT id,loan_id,client_name,whatsapp_number,reminder_type,template_name,message_id,status,response,created_at FROM whatsapp_delivery_log WHERE lower(company_name) LIKE '%chibobec%' ORDER BY id DESC LIMIT 1000",con)
+    call_df=pd.read_sql_query("SELECT room_code,title,created_by,provider,status,created_at,ended_at FROM call_rooms WHERE lower(company_name) LIKE '%chibobec%' ORDER BY id DESC",con)
+    files_df=pd.read_sql_query("SELECT id,username,filename,file_type,created_at FROM files WHERE lower(company_name) LIKE '%chibobec%' ORDER BY id DESC LIMIT 1000",con)
+    projects_df=pd.read_sql_query("SELECT id,username,project_name,active_filename,updated_at FROM projects WHERE lower(company_name) LIKE '%chibobec%' ORDER BY id DESC LIMIT 1000",con)
+    charts_df=pd.read_sql_query("SELECT id,username,title,chart_type,created_at FROM chart_artifacts WHERE lower(company_name) LIKE '%chibobec%' ORDER BY id DESC LIMIT 1000",con) if _table_exists(con,"chart_artifacts") else pd.DataFrame()
+    presentations_df=pd.read_sql_query("SELECT id,username,title,filename,slide_count,created_at FROM presentations WHERE lower(company_name) LIKE '%chibobec%' ORDER BY id DESC LIMIT 1000",con) if _table_exists(con,"presentations") else pd.DataFrame()
+    notifications_df=pd.read_sql_query("SELECT id,company_name,target_username,event_type,message,is_read,created_at FROM notifications WHERE lower(company_name) LIKE '%chibobec%' ORDER BY id DESC LIMIT 1000",con)
+    con.close()
+    a,b,c,d=st.columns(4); a.metric("Accounts",len(users_df)); b.metric("Activity",len(activity_df)); c.metric("DI messages",len(chat_df)); d.metric("Loans",len(loans_df))
+    tabs=st.tabs(["People & Accounts","Everything","DI Conversations","Mail","Loans","WhatsApp","Calls","Files","Projects","Charts","Presentations","Notifications"])
+    frames=[users_df,activity_df,chat_df,mail_df,loans_df,wa_df,call_df,files_df,projects_df,charts_df,presentations_df,notifications_df]
+    for i,df in enumerate(frames):
+        with tabs[i]: st.dataframe(safe_dataframe_for_streamlit(df),use_container_width=True,hide_index=True)
+
 elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
     counts=admin_metric_counts()
     st.markdown("""
@@ -2545,7 +2767,7 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
     m6.metric("DI Workforce",counts["agents"])
 
     con=db()
-    tabs=st.tabs(["Executive Overview","DI Workforce","Organizations","People & Accounts","Live Activity","DI Conversations","DI Memory Box","Mail Source","System Controls"])
+    tabs=st.tabs(["Executive Overview","DI Workforce","Organizations","People & Accounts","Chibobec Oversight","Live Activity","DI Conversations","DI Memory Box","Mail Source","System Controls","DI Task Center"])
 
     with tabs[0]:
         st.subheader("Executive Overview")
@@ -2643,17 +2865,39 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
             st.dataframe(safe_dataframe_for_streamlit(users_df),use_container_width=True,hide_index=True)
 
     with tabs[4]:
+        st.subheader("Chibobec Oversight")
+        st.caption("System-wide view of Chibobec Loan Service accounts, login activity, loan records and reminder delivery.")
+        ch_users=pd.read_sql_query("SELECT id,first_name,last_name,username,email,role,login_count,created_at,last_login FROM users WHERE lower(company_name)=? ORDER BY id DESC",con,params=(CHIBOBEC_COMPANY.lower(),))
+        if ch_users.empty:
+            st.info("No Chibobec Loan Service account has been registered in this database yet.")
+        else:
+            st.markdown("#### Chibobec accounts")
+            st.dataframe(safe_dataframe_for_streamlit(ch_users),use_container_width=True,hide_index=True)
+            lc_count=con.execute("SELECT COUNT(*) FROM loan_clients WHERE lower(company_name)=?",(CHIBOBEC_COMPANY.lower(),)).fetchone()[0]
+            reminder_sent=con.execute("SELECT COUNT(*) FROM whatsapp_delivery_log WHERE lower(company_name)=? AND status LIKE 'Sent%'",(CHIBOBEC_COMPANY.lower(),)).fetchone()[0] if _table_exists(con,"whatsapp_delivery_log") else 0
+            a,b,c=st.columns(3); a.metric("Accounts",len(ch_users)); b.metric("Loan records",lc_count); c.metric("Confirmed WhatsApp sends",reminder_sent)
+            st.markdown("#### Chibobec activity")
+            ch_activity=pd.read_sql_query("SELECT id,username,action,created_at FROM activity WHERE lower(company_name)=? ORDER BY id DESC LIMIT 200",con,params=(CHIBOBEC_COMPANY.lower(),))
+            st.dataframe(safe_dataframe_for_streamlit(ch_activity),use_container_width=True,hide_index=True)
+            st.markdown("#### Chibobec loan book")
+            ch_loans=pd.read_sql_query("SELECT id,username,client_name,whatsapp_number,loan_amount,lent_date,due_date,reminder_2_sent,due_sent,last_whatsapp_status,last_whatsapp_error,created_at,updated_at FROM loan_clients WHERE lower(company_name)=? ORDER BY due_date ASC",con,params=(CHIBOBEC_COMPANY.lower(),))
+            if ch_loans.empty:
+                st.info("No Chibobec loan records have been added yet.")
+            else:
+                st.dataframe(safe_dataframe_for_streamlit(ch_loans),use_container_width=True,hide_index=True)
+
+    with tabs[5]:
         st.subheader("System Activity")
         activity_df=pd.read_sql_query("SELECT id,username,company_name,action,created_at FROM activity ORDER BY id DESC",con)
         st.dataframe(activity_df,use_container_width=True,hide_index=True)
 
-    with tabs[5]:
+    with tabs[6]:
         st.subheader("DI Conversations Across DACRE")
         chat_df=pd.read_sql_query("SELECT id,username,company_name,sender,message,created_at FROM chat_history ORDER BY id DESC",con)
         st.dataframe(chat_df,use_container_width=True,hide_index=True)
         st.caption("This view gives the master administration layer system-wide visibility into DI conversations. It is not shown to ordinary users.")
 
-    with tabs[6]:
+    with tabs[7]:
         # This entire tab is inside the master-only Overall Admin branch.
         # Keep the extra identity check so the Memory Box can never be rendered
         # to an ordinary company user by mistake.
@@ -2699,7 +2943,7 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
                         con.execute("INSERT INTO di_memory(category,title,content,priority,active,created_at,updated_at) VALUES(?,?,?,?,1,?,?)",(mem_category.strip().upper() or "GENERAL",mem_title.strip(),mem_content.strip(),int(mem_priority),now,now)); con.commit(); st.success("Saved to DI Memory Box."); st.rerun()
             st.info("Use this box for durable project facts, approved operating rules, creator information, security rules, product capabilities and other knowledge that every DI should share.")
 
-    with tabs[7]:
+    with tabs[8]:
         st.subheader("DI Mail Source")
         try:
             _smtp_cfg = {
@@ -2755,7 +2999,7 @@ DACRE_SMTP_FROM = \"\"
         mails_df=pd.read_sql_query("SELECT id,recipient_name,recipient_email,company_name,subject,sender_email,status,sent_at,body FROM emails_log ORDER BY id DESC",con)
         st.dataframe(safe_dataframe_for_streamlit(mails_df),use_container_width=True,hide_index=True)
 
-    with tabs[8]:
+    with tabs[9]:
         st.subheader("System Controls")
         st.write("Master-level controls are deliberately separated from normal company administration.")
         c1,c2=st.columns(2)
@@ -2772,7 +3016,63 @@ DACRE_SMTP_FROM = \"\"
                 st.session_state.master_route=False
                 st.query_params.clear()
                 st.rerun()
+    with tabs[10]:
+        st.subheader("DI Task Center")
+        st.caption("Assign work to any registered DI worker. Workers use the same core DI reasoning engine with their own specialty and operating identity.")
+        agents=get_di_agents()
+        if agents:
+            agent_code=st.selectbox("DI worker",[r["di_code"] for r in agents],format_func=lambda x: next((f"{r['di_name']} · {r['specialty']}" for r in agents if r["di_code"]==x),x))
+            task_text=st.text_area("Task",height=130,placeholder="Example: Review the current dataset and explain the three biggest business risks.")
+            if st.button("Run assigned DI task",type="primary",use_container_width=True) and task_text.strip():
+                agent=next(r for r in agents if r["di_code"]==agent_code)
+                result=run_di_agent_task(dict(agent),task_text.strip(),user,st.session_state.get("processed_df"))
+                st.success("DI worker completed the task.")
+                st.markdown(result)
+        else:
+            st.info("No DI workers are registered yet.")
+        task_log=pd.read_sql_query("SELECT id,agent_name,company_name,assigned_by,task,status,created_at,completed_at FROM di_tasks ORDER BY id DESC LIMIT 200",con)
+        st.dataframe(safe_dataframe_for_streamlit(task_log),use_container_width=True,hide_index=True)
+
     con.close()
+
+# =============================================================================
+# DI CODEX INTERFACE — capability registry for the master
+# =============================================================================
+if user.get("role") == "master" and selected_page == "Overall Admin DI Portal":
+    st.markdown("### DI Codex — DACRE Capability Registry")
+    st.caption("The Codex describes the controlled operations DI may be connected to. It is a capability catalogue, not arbitrary Python execution.")
+    codex_items = [
+        ("Workspace", "load_active_file", "Load the user's active or saved workspace dataset."),
+        ("Workspace", "clean_dataset", "Clean headers, blank rows/columns, convertible numeric fields and duplicates."),
+        ("Workspace", "inspect_dataset", "Inspect rows, columns, data types, missing values and basic statistics."),
+        ("Formula", "run_formula", "Run supported Formula Lab operations against the active dataframe."),
+        ("Formula", "create_combined_column", "Create a derived column from existing columns."),
+        ("Charts", "create_bar_chart", "Build a bar chart from permitted workspace fields."),
+        ("Charts", "create_line_chart", "Build a line chart from permitted workspace fields."),
+        ("Charts", "create_area_chart", "Build an area chart from permitted workspace fields."),
+        ("Exports", "export_csv", "Prepare a CSV export from the current processed dataframe."),
+        ("Exports", "export_excel", "Prepare an Excel workbook containing processed data and chart data."),
+        ("Exports", "export_powerpoint", "Prepare an executive PowerPoint from the active workspace."),
+        ("Vault", "list_files", "List files stored for the current organization."),
+        ("Vault", "load_file", "Load an organization file from the File Vault."),
+        ("Business", "business_health", "Calculate data-health metrics from the active dataset."),
+        ("Business", "business_signals", "Detect explainable trends, anomalies and missing-data signals."),
+        ("DI", "search_memory", "Search the trusted DI Memory Box for relevant knowledge."),
+        ("DI", "record_question", "Record a question and answer into the DI conversation trail."),
+        ("Accounts", "list_accounts", "List accounts according to the current user's permissions."),
+        ("Accounts", "delete_accounts", "Permanently delete selected non-master accounts; master-only permission."),
+        ("Chibobec", "list_loan_book", "Read the Chibobec loan book; restricted to authorized workspace users and master."),
+        ("Chibobec", "add_loan_client", "Create a Chibobec loan client record with dates and WhatsApp number."),
+        ("Chibobec", "run_reminder_check", "Process due/2-day WhatsApp reminders when provider credentials are configured."),
+        ("Admin", "inspect_activity", "Inspect system or organization activity according to role."),
+        ("Admin", "inspect_di_workforce", "Inspect DI workers, assignments and tasks; master-only system view."),
+    ]
+    codex_df=pd.DataFrame(codex_items,columns=["Domain","Operation","What DI Can Do"])
+    codex_search=st.text_input("Search DI Codex",placeholder="e.g. export, formula, loan, account, chart…",key="di_codex_search")
+    if codex_search.strip():
+        mask=codex_df.astype(str).apply(lambda c:c.str.contains(re.escape(codex_search),case=False,regex=True)).any(axis=1)
+        codex_df=codex_df[mask]
+    st.dataframe(safe_dataframe_for_streamlit(codex_df),use_container_width=True,hide_index=True)
 
 # =============================================================================
 # PERSISTENT DI DOCK
