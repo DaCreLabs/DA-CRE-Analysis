@@ -8,8 +8,11 @@ import sqlite3
 import urllib.parse
 import urllib.request
 import smtplib
-import threading
-import time
+
+try:
+    import speech_recognition as sr
+except Exception:
+    sr = None
 
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
@@ -20,10 +23,6 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 from PIL import Image
-
-# Optional desktop/audio-file speech recognition. Browser voice uses the Web Speech API
-# and does not require the SpeechRecognition Python package.
-sr = None
 
 # =============================================================================
 # DACRE ANALYSIS ENGINE
@@ -54,7 +53,11 @@ LOGO_CANDIDATES = [
 ]
 LOGO_PATH = next((BASE_DIR / x for x in LOGO_CANDIDATES if (BASE_DIR / x).exists()), BASE_DIR / LOGO_CANDIDATES[0])
 FAVICON_PATH = BASE_DIR / ".dacre_favicon.png"
-DB_PATH = BASE_DIR / "dacre_platform.db"
+# Streamlit Cloud can restart containers and older deployments may carry a database
+# created by a previous DACRE build. Keep the normal project-local DB path, but allow
+# an explicit writable path when the deployment provides one.
+DB_PATH = Path(os.getenv("DACRE_DB_PATH", str(BASE_DIR / "dacre_platform.db"))).expanduser()
+
 
 # Streamlit Community Cloud does not guarantee persistence for local files.
 def cloud_persistence_configured():
@@ -106,8 +109,11 @@ def prepare_favicon():
         crop_top = max(0, (crop.height - side) // 2)
         crop = crop.crop((left, crop_top, left + side, crop_top + side))
         crop.thumbnail((128, 128), Image.Resampling.LANCZOS)
-        crop.save(FAVICON_PATH, format="PNG", optimize=True)
-        return str(FAVICON_PATH)
+        try:
+            crop.save(FAVICON_PATH, format="PNG", optimize=True)
+            return str(FAVICON_PATH)
+        except Exception:
+            return str(LOGO_PATH)
     except Exception:
         return str(LOGO_PATH)
 
@@ -124,25 +130,9 @@ st.set_page_config(
 # DATABASE
 # =============================================================================
 
-# SQLite settings tuned for Streamlit's multi-session execution model.
-# Streamlit can execute the top-level script concurrently for multiple users,
-# so schema migrations must tolerate concurrent connections.
-_DB_SCHEMA_LOCK = threading.RLock()
-
-
 def db():
-    # A generous timeout prevents transient "database is locked" failures while
-    # another Streamlit session is committing a short transaction.
-    con = sqlite3.connect(DB_PATH, timeout=30, check_same_thread=False)
+    con = sqlite3.connect(DB_PATH, check_same_thread=False)
     con.row_factory = sqlite3.Row
-    try:
-        con.execute("PRAGMA busy_timeout=30000")
-        con.execute("PRAGMA foreign_keys=ON")
-        con.execute("PRAGMA synchronous=NORMAL")
-    except sqlite3.DatabaseError:
-        # Keep the connection usable even if a pragma is unsupported/temporarily
-        # unavailable. The normal timeout still applies.
-        pass
     return con
 
 
@@ -422,206 +412,122 @@ def init_db():
     con.close()
 
 
-init_db()
+def ensure_all_runtime_columns():
+    """Make older DACRE SQLite databases compatible with this build.
 
-
-def _table_columns(con, table_name):
-    """Return existing SQLite columns without assuming a particular historical schema."""
-    try:
-        return {row["name"] for row in con.execute(f"PRAGMA table_info({table_name})").fetchall()}
-    except Exception:
-        return set()
-
-
-def _ensure_columns(con, table_name, columns):
-    """Idempotent SQLite migration helper for old Dacre deployments."""
-    exists = con.execute(
-        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=? LIMIT 1",
-        (table_name,),
-    ).fetchone()
-    if not exists:
-        return
-    current = _table_columns(con, table_name)
-    for name, dtype in columns.items():
-        if name not in current:
-            con.execute(f"ALTER TABLE {table_name} ADD COLUMN {name} {dtype}")
-
-
-def _schema_exec(con, sql, params=(), retries=8):
-    """Execute a short schema statement with retry/backoff for SQLite locks."""
-    last_error = None
-    for attempt in range(retries):
-        try:
-            return con.execute(sql, params)
-        except sqlite3.OperationalError as exc:
-            last_error = exc
-            if "locked" not in str(exc).lower() and "busy" not in str(exc).lower():
-                raise
-            time.sleep(0.35 * (attempt + 1))
-    raise last_error
-
-
-def ensure_runtime_schema():
-    """Idempotently reconcile historical DACRE call/database schemas.
-
-    Streamlit executes the script separately for sessions, so two sessions may
-    reach startup simultaneously. A process-wide lock + SQLite busy timeout
-    prevents those sessions from racing while the schema is migrated.
+    SQLite's CREATE TABLE IF NOT EXISTS does not upgrade an existing table.
+    The previous build only migrated a few newer tables, so a database created by
+    an older version could crash the app during startup when a newly-added column
+    was queried. This migration is idempotent and only adds missing columns.
     """
-    with _DB_SCHEMA_LOCK:
-        con = db()
-        try:
-            # Enable WAL only while the startup migration lock is held. Doing it
-            # from every normal db() connection can itself create lock races.
-            try:
-                con.execute("PRAGMA journal_mode=WAL")
-            except sqlite3.DatabaseError:
-                pass
-            # Create the current call schema for fresh databases.
-            _schema_exec(con, """
-                CREATE TABLE IF NOT EXISTS call_rooms (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    company_name TEXT,
-                    room_name TEXT,
-                    title TEXT,
-                    host_username TEXT,
-                    mode TEXT DEFAULT 'team',
-                    created_at TEXT,
-                    ended_at TEXT
-                )
-            """)
-            _schema_exec(con, """
-                CREATE TABLE IF NOT EXISTS call_participants (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    room_name TEXT,
-                    company_name TEXT,
-                    participant_type TEXT,
-                    participant_id TEXT,
-                    display_name TEXT,
-                    joined_at TEXT,
-                    left_at TEXT
-                )
-            """)
-            _schema_exec(con, """
-                CREATE TABLE IF NOT EXISTS decision_ledger (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    company_name TEXT,
-                    username TEXT,
-                    title TEXT,
-                    context TEXT,
-                    decision TEXT,
-                    expected_outcome TEXT,
-                    review_date TEXT,
-                    status TEXT DEFAULT 'Open',
-                    outcome TEXT,
-                    created_at TEXT,
-                    updated_at TEXT
-                )
-            """)
-            _schema_exec(con, """
-                CREATE TABLE IF NOT EXISTS opportunity_radar (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    company_name TEXT,
-                    username TEXT,
-                    title TEXT,
-                    impact TEXT,
-                    evidence TEXT,
-                    action TEXT,
-                    created_at TEXT
-                )
-            """)
-            _schema_exec(con, """
-                CREATE TABLE IF NOT EXISTS di_action_log (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    company_name TEXT,
-                    username TEXT,
-                    agent_name TEXT,
-                    action_type TEXT,
-                    request TEXT,
-                    result TEXT,
-                    created_at TEXT
-                )
-            """)
-
-            # Add any newer columns that are missing from historical tables.
-            _ensure_columns(con, "call_rooms", {
-                "company_name": "TEXT",
-                "room_name": "TEXT",
-                "title": "TEXT",
-                "host_username": "TEXT",
-                "mode": "TEXT DEFAULT 'team'",
-                "created_at": "TEXT",
-                "ended_at": "TEXT",
-            })
-            _ensure_columns(con, "call_participants", {
-                "room_name": "TEXT",
-                "company_name": "TEXT",
-                "participant_type": "TEXT",
-                "participant_id": "TEXT",
-                "display_name": "TEXT",
-                "joined_at": "TEXT",
-                "left_at": "TEXT",
-            })
-
-            # Historical V7 call_rooms used room_code/created_by/provider/status.
-            # Do not delete or rewrite those columns; preserve them and map their
-            # values into the current columns where possible.
-            cols = _table_columns(con, "call_rooms")
-            if "room_name" in cols and "room_code" in cols:
-                _schema_exec(
-                    con,
-                    "UPDATE call_rooms SET room_name=COALESCE(NULLIF(room_name,''), room_code) "
-                    "WHERE room_name IS NULL OR room_name=''"
-                )
-            if "host_username" in cols and "created_by" in cols:
-                _schema_exec(
-                    con,
-                    "UPDATE call_rooms SET host_username=COALESCE(NULLIF(host_username,''), created_by) "
-                    "WHERE host_username IS NULL OR host_username=''"
-                )
-            if "mode" in cols:
-                _schema_exec(con, "UPDATE call_rooms SET mode='team' WHERE mode IS NULL OR mode=''")
-            if "created_at" in cols and "created" in cols:
-                _schema_exec(
-                    con,
-                    "UPDATE call_rooms SET created_at=COALESCE(NULLIF(created_at,''), created) "
-                    "WHERE created_at IS NULL OR created_at=''"
-                )
-
-            cols = _table_columns(con, "call_participants")
-            if "participant_type" in cols:
-                _schema_exec(
-                    con,
-                    "UPDATE call_participants SET participant_type='user' "
-                    "WHERE participant_type IS NULL OR participant_type=''"
-                )
-            if "joined_at" in cols:
-                _schema_exec(
-                    con,
-                    "UPDATE call_participants SET joined_at=? WHERE joined_at IS NULL OR joined_at=''",
-                    (datetime.now().isoformat(timespec="seconds"),),
-                )
-
-            _ensure_columns(con, "decision_ledger", {
-                "company_name": "TEXT", "username": "TEXT", "title": "TEXT",
-                "context": "TEXT", "decision": "TEXT", "expected_outcome": "TEXT",
-                "review_date": "TEXT", "status": "TEXT DEFAULT 'Open'", "outcome": "TEXT",
-                "created_at": "TEXT", "updated_at": "TEXT",
-            })
-            if "status" in _table_columns(con, "decision_ledger"):
-                _schema_exec(con, "UPDATE decision_ledger SET status='Open' WHERE status IS NULL OR status=''")
-
-            _ensure_columns(con, "opportunity_radar", {
-                "company_name": "TEXT", "username": "TEXT", "title": "TEXT",
-                "impact": "TEXT", "evidence": "TEXT", "action": "TEXT", "created_at": "TEXT",
-            })
-
-            con.commit()
-        finally:
-            con.close()
+    schemas = {
+        "companies": {
+            "name":"TEXT", "owner_username":"TEXT", "admin_password_hash":"TEXT", "created_at":"TEXT",
+        },
+        "users": {
+            "first_name":"TEXT", "last_name":"TEXT", "username":"TEXT", "company_name":"TEXT",
+            "email":"TEXT", "email_password":"TEXT", "password_hash":"TEXT", "passkey_hash":"TEXT",
+            "role":"TEXT DEFAULT 'user'", "login_count":"INTEGER DEFAULT 0", "created_at":"TEXT", "last_login":"TEXT",
+        },
+        "files": {
+            "username":"TEXT", "company_name":"TEXT", "filename":"TEXT", "file_type":"TEXT",
+            "file_json":"TEXT", "created_at":"TEXT",
+        },
+        "projects": {
+            "username":"TEXT", "company_name":"TEXT", "project_name":"TEXT", "active_filename":"TEXT",
+            "raw_json":"TEXT", "processed_json":"TEXT", "formula_logs":"TEXT", "chart_config":"TEXT", "updated_at":"TEXT",
+        },
+        "activity": {"username":"TEXT", "company_name":"TEXT", "action":"TEXT", "created_at":"TEXT"},
+        "emails_log": {
+            "recipient_email":"TEXT", "recipient_name":"TEXT", "company_name":"TEXT", "subject":"TEXT",
+            "body":"TEXT", "sender_email":"TEXT", "status":"TEXT", "sent_at":"TEXT",
+        },
+        "notifications": {
+            "company_name":"TEXT", "target_username":"TEXT", "event_type":"TEXT", "message":"TEXT",
+            "is_read":"INTEGER DEFAULT 0", "created_at":"TEXT",
+        },
+        "chat_history": {
+            "username":"TEXT", "company_name":"TEXT", "sender":"TEXT", "message":"TEXT", "created_at":"TEXT",
+        },
+        "loan_clients": {
+            "username":"TEXT", "company_name":"TEXT", "client_name":"TEXT", "whatsapp_number":"TEXT",
+            "loan_amount":"REAL DEFAULT 0", "lent_date":"TEXT", "due_date":"TEXT",
+            "reminder_2_sent":"INTEGER DEFAULT 0", "due_sent":"INTEGER DEFAULT 0",
+            "reminder_2_message_id":"TEXT", "due_message_id":"TEXT",
+            "last_whatsapp_status":"TEXT", "last_whatsapp_error":"TEXT",
+            "created_at":"TEXT", "updated_at":"TEXT",
+        },
+        "whatsapp_delivery_log": {
+            "loan_id":"INTEGER", "company_name":"TEXT", "client_name":"TEXT", "whatsapp_number":"TEXT",
+            "reminder_type":"TEXT", "template_name":"TEXT", "message_id":"TEXT", "status":"TEXT",
+            "response":"TEXT", "created_at":"TEXT",
+        },
+        "di_memory": {
+            "category":"TEXT DEFAULT 'GENERAL'", "title":"TEXT DEFAULT ''", "content":"TEXT DEFAULT ''",
+            "priority":"INTEGER DEFAULT 500", "active":"INTEGER DEFAULT 1", "created_by":"TEXT DEFAULT ''",
+            "created_at":"TEXT DEFAULT ''", "updated_at":"TEXT DEFAULT ''",
+        },
+        "di_agents": {
+            "di_name":"TEXT", "di_code":"TEXT", "specialty":"TEXT", "status":"TEXT DEFAULT 'Available'",
+            "assigned_company":"TEXT", "system_role":"TEXT", "avatar_url":"TEXT", "voice_profile":"TEXT",
+            "thinking_style":"TEXT", "created_by":"TEXT", "created_at":"TEXT", "last_active":"TEXT",
+        },
+        "call_rooms": {
+            "company_name":"TEXT", "room_name":"TEXT", "title":"TEXT", "host_username":"TEXT",
+            "mode":"TEXT DEFAULT 'team'", "created_at":"TEXT", "ended_at":"TEXT",
+        },
+        "call_participants": {
+            "room_name":"TEXT", "company_name":"TEXT", "participant_type":"TEXT", "participant_id":"TEXT",
+            "display_name":"TEXT", "joined_at":"TEXT", "left_at":"TEXT",
+        },
+        "decision_ledger": {
+            "company_name":"TEXT", "username":"TEXT", "title":"TEXT", "context":"TEXT", "decision":"TEXT",
+            "expected_outcome":"TEXT", "review_date":"TEXT", "status":"TEXT DEFAULT 'Open'", "outcome":"TEXT",
+            "created_at":"TEXT", "updated_at":"TEXT",
+        },
+        "opportunity_radar": {
+            "company_name":"TEXT", "username":"TEXT", "title":"TEXT", "impact":"TEXT", "evidence":"TEXT",
+            "action":"TEXT", "created_at":"TEXT",
+        },
+    }
+    con=db()
+    try:
+        for table, columns in schemas.items():
+            exists=con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",(table,)).fetchone()
+            if not exists:
+                continue
+            existing={row[1] for row in con.execute(f"PRAGMA table_info({table})").fetchall()}
+            for column, declaration in columns.items():
+                if column not in existing:
+                    con.execute(f"ALTER TABLE {table} ADD COLUMN {column} {declaration}")
+        # Safe defaults for older rows.
+        for table, column, value in [
+            ("users","role","user"),("users","login_count","0"),("notifications","is_read","0"),
+            ("loan_clients","loan_amount","0"),("loan_clients","reminder_2_sent","0"),("loan_clients","due_sent","0"),
+            ("di_memory","priority","500"),("di_memory","active","1"),("call_rooms","mode","team"),
+            ("decision_ledger","status","Open"),
+        ]:
+            if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",(table,)).fetchone():
+                con.execute(f"UPDATE {table} SET {column}=? WHERE {column} IS NULL",(value,))
+        con.commit()
+    finally:
+        con.close()
 
 
-ensure_runtime_schema()
+# Boot the database in a guarded sequence. If a deployment has an incompatible
+# legacy database, show the actual startup error instead of Streamlit's generic
+# "Oh no." page.
+try:
+    init_db()
+    ensure_all_runtime_columns()
+except Exception as _boot_db_error:
+    st.error("DACRE could not initialize its local database.")
+    st.exception(_boot_db_error)
+    st.stop()
+
+# The app must never silently fail during optional startup enhancements.
+# Keep this marker simple so it is safe on Streamlit Community Cloud.
+BOOT_STATUS = "Database ready"
 
 
 def ensure_di_agent_columns():
@@ -643,6 +549,85 @@ def ensure_di_agent_columns():
 
 
 ensure_di_agent_columns()
+
+
+def ensure_runtime_schema():
+    """Upgrade databases created by older DACRE builds in-place.
+
+    CREATE TABLE IF NOT EXISTS does not change an existing SQLite table.
+    The call system was added after some deployed databases already existed,
+    so those databases can have call_rooms/call_participants without the new
+    columns.  This migration is intentionally idempotent and runs on every
+    startup.
+    """
+    con = db()
+    try:
+        migrations = {
+            "call_rooms": {
+                "company_name": "TEXT",
+                "room_name": "TEXT",
+                "title": "TEXT",
+                "host_username": "TEXT",
+                "mode": "TEXT DEFAULT 'team'",
+                "created_at": "TEXT",
+                "ended_at": "TEXT",
+            },
+            "call_participants": {
+                "room_name": "TEXT",
+                "company_name": "TEXT",
+                "participant_type": "TEXT",
+                "participant_id": "TEXT",
+                "display_name": "TEXT",
+                "joined_at": "TEXT",
+                "left_at": "TEXT",
+            },
+            "decision_ledger": {
+                "company_name": "TEXT",
+                "username": "TEXT",
+                "title": "TEXT",
+                "context": "TEXT",
+                "decision": "TEXT",
+                "expected_outcome": "TEXT",
+                "review_date": "TEXT",
+                "status": "TEXT DEFAULT 'Open'",
+                "outcome": "TEXT",
+                "created_at": "TEXT",
+                "updated_at": "TEXT",
+            },
+            "opportunity_radar": {
+                "company_name": "TEXT",
+                "username": "TEXT",
+                "title": "TEXT",
+                "impact": "TEXT",
+                "evidence": "TEXT",
+                "action": "TEXT",
+                "created_at": "TEXT",
+            },
+        }
+
+        for table, columns in migrations.items():
+            table_exists = con.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
+            ).fetchone()
+            if not table_exists:
+                continue
+            existing = {row[1] for row in con.execute(f"PRAGMA table_info({table})").fetchall()}
+            for column, dtype in columns.items():
+                if column not in existing:
+                    con.execute(f"ALTER TABLE {table} ADD COLUMN {column} {dtype}")
+
+        # Backfill safe defaults for rows created by older builds.
+        if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='call_rooms'").fetchone():
+            con.execute("UPDATE call_rooms SET mode='team' WHERE mode IS NULL OR mode=''" )
+        if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='decision_ledger'").fetchone():
+            con.execute("UPDATE decision_ledger SET status='Open' WHERE status IS NULL OR status=''" )
+
+        con.commit()
+    finally:
+        con.close()
+
+
+ensure_runtime_schema()
 
 
 def ensure_master():
@@ -831,7 +816,15 @@ DI_MEMORY_SEED = DI_MEMORY_SEED[:4000]
 def seed_di_memory():
     """Seed the shared DI Memory Box without overwriting user-created memory."""
     con=db(); now=datetime.now().isoformat(timespec="seconds")
-    con.execute("PRAGMA journal_mode=WAL")
+    try:
+        con.execute("PRAGMA journal_mode=WAL")
+    except Exception:
+        # Some hosted filesystems do not permit changing SQLite journal mode.
+        pass
+    existing_count = con.execute("SELECT COUNT(*) FROM di_memory").fetchone()[0]
+    if existing_count >= 4000:
+        con.close()
+        return
     # Ensure the current schema can accept the seed records even when upgrading
     # an older DACRE SQLite database.
     cols={r[1] for r in con.execute("PRAGMA table_info(di_memory)").fetchall()}
@@ -899,7 +892,13 @@ def memory_box_direct_answer(text):
         return best['content']
     return None
 
-seed_di_memory()
+try:
+    seed_di_memory()
+except Exception as _memory_boot_error:
+    # DI Memory Box is an enhancement, not a reason for the whole application
+    # to crash. The workspace remains usable and the exact issue is shown in the
+    # Streamlit logs for repair.
+    pass
 
 
 def permanently_delete_accounts(user_ids):
@@ -1884,14 +1883,7 @@ html,body,.stApp,.stApp p,.stApp li,.stApp span,.stApp label,.stMarkdown,.stMark
 div.stButton>button,div.stFormSubmitButton>button,div.stDownloadButton>button{border-radius:12px;border:1px solid rgba(24,183,255,.45);background:linear-gradient(135deg,#0a2540,#0d3860);color:#ffffff!important;font-weight:800!important;padding:10px 18px;transition:all .22s ease}
 div.stButton>button:hover,div.stFormSubmitButton>button:hover,div.stDownloadButton>button:hover{border-color:var(--dacre-cyan);background:linear-gradient(135deg,#0d3860,#12508c);box-shadow:0 0 20px rgba(24,183,255,.45);transform:translateY(-1px)}
 [data-testid="stMetric"]{padding:14px 18px;border-radius:16px;border:1px solid rgba(255,255,255,.10);background:linear-gradient(145deg,rgba(255,255,255,.05),rgba(255,255,255,.015))}
-# Streamlit chrome is intentionally hidden: Dacre owns the visual shell.
-# This removes the Share / edit / GitHub toolbar and the empty top band.
-# The deployment controls remain available from Streamlit Cloud's Manage App outside the end-user workspace.
-#MainMenu,footer{visibility:hidden!important}
-header[data-testid="stHeader"]{display:none!important}
-div[data-testid="stToolbar"]{display:none!important}
-section[data-testid="stSidebar"]{top:0!important}
-.main .block-container{padding-top:.8rem!important}
+#MainMenu,footer{visibility:hidden}
 </style>
 """, unsafe_allow_html=True)
 
@@ -1946,7 +1938,18 @@ div[style*="#fffaf4"]{background:#112b47!important;color:#edf6ff!important}
 .dacre-private-admin-divider{height:1px;background:rgba(120,170,210,.24);margin:18px 0 4px}
 button[title="Private system access"]{opacity:.18!important;width:18px!important;min-height:8px!important;height:8px!important;padding:0!important;border:0!important;background:transparent!important;color:#dbe9f5!important;box-shadow:none!important}
 button[title="Private system access"]:hover{opacity:.45!important;background:transparent!important}
-#MainMenu,footer{visibility:hidden}
+
+/* DA-CRE owns the application viewport. Hide Streamlit host chrome and its empty top band. */
+header[data-testid="stHeader"], [data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"], #MainMenu, footer {
+  visibility:hidden!important;
+  display:none!important;
+  height:0!important;
+  min-height:0!important;
+}
+.main .block-container { padding-top:.35rem!important; }
+[data-testid="stAppViewContainer"] { padding-top:0!important; }
+[data-testid="stMainBlockContainer"] { padding-top:.35rem!important; }
+
 </style>
 """,unsafe_allow_html=True)
 
@@ -2038,14 +2041,23 @@ def seed_named_di_workforce():
         con.close()
 
 
-ensure_di_agent_columns()
-seed_named_di_workforce()
+try:
+    ensure_di_agent_columns()
+    seed_named_di_workforce()
+except Exception as _workforce_boot_error:
+    # Keep DACRE usable even if an old workforce row/database needs attention.
+    # The admin page can still be opened and the exact exception is available in logs.
+    pass
 
 def get_di_agents():
     con = db()
-    rows = con.execute("SELECT * FROM di_agents ORDER BY id DESC").fetchall()
-    con.close()
-    return rows
+    try:
+        rows = con.execute("SELECT * FROM di_agents ORDER BY id DESC").fetchall()
+        return rows
+    except Exception:
+        return []
+    finally:
+        con.close()
 
 
 def create_di_agent(name, specialty, status="Available", assigned_company="", system_role=""):
@@ -2116,89 +2128,17 @@ def di_specialist_reply(message,user,df,agent_name):
     return normalize_di_identity(specialist or base)
 
 
-def make_call_room(company, host_username, title, mode='team'):
-    """Create a call room across both current and historical DACRE schemas."""
-    slug = re.sub(r'[^a-z0-9]+', '-', str(company).lower()).strip('-')[:28] or 'company'
-    stamp = datetime.now().strftime('%Y%m%d%H%M%S%f')
-    room = f"DACRE-{slug}-{stamp}"
-    now = datetime.now().isoformat(timespec='seconds')
-
-    # Ensure the canonical schema exists before inserting. The migration is
-    # idempotent and synchronized for concurrent Streamlit sessions.
-    ensure_runtime_schema()
-
-    con = db()
-    try:
-        columns = {row["name"] for row in con.execute("PRAGMA table_info(call_rooms)").fetchall()}
-        values = {
-            "company_name": company,
-            "room_name": room,
-            "room_code": room,
-            "title": title,
-            "host_username": host_username,
-            "created_by": host_username,
-            "mode": mode,
-            "provider": "jitsi",
-            "status": "active",
-            "created_at": now,
-            "created": now,
-        }
-
-        # Supply every known legacy/current field that actually exists. This is
-        # what prevents the historical room_code NOT NULL failure in old DBs.
-        fields = [name for name in values if name in columns]
-
-        # If a legacy required column somehow exists but is missing from the
-        # value map, fail with a useful message rather than a generic SQLite error.
-        required = []
-        for row in con.execute("PRAGMA table_info(call_rooms)").fetchall():
-            name = row["name"]
-            not_null = int(row["notnull"] or 0) == 1
-            has_default = row["dflt_value"] is not None
-            if not_null and not has_default and name not in fields and name != "id":
-                required.append(name)
-        if required:
-            raise RuntimeError(
-                "DACRE call-room schema still contains required legacy columns with no safe default: "
-                + ", ".join(required)
-            )
-
-        placeholders = ",".join(["?"] * len(fields))
-        sql = f"INSERT INTO call_rooms({','.join(fields)}) VALUES({placeholders})"
-        for attempt in range(8):
-            try:
-                con.execute(sql, tuple(values[name] for name in fields))
-                con.commit()
-                return room
-            except sqlite3.OperationalError as exc:
-                if "locked" not in str(exc).lower() and "busy" not in str(exc).lower():
-                    raise
-                time.sleep(0.35 * (attempt + 1))
-        raise sqlite3.OperationalError("SQLite remained locked while creating the call room.")
-    finally:
-        con.close()
+def make_call_room(company,host_username,title,mode='team'):
+    slug=re.sub(r'[^a-z0-9]+','-',str(company).lower()).strip('-')[:28] or 'company'
+    stamp=datetime.now().strftime('%Y%m%d%H%M%S%f')
+    room=f"DACRE-{slug}-{stamp}"
+    now=datetime.now().isoformat(timespec='seconds')
+    con=db(); con.execute("INSERT INTO call_rooms(company_name,room_name,title,host_username,mode,created_at) VALUES(?,?,?,?,?,?)",(company,room,title,host_username,mode,now)); con.commit(); con.close()
+    return room
 
 
-def record_call_participant(room, company, ptype, pid, name):
-    ensure_runtime_schema()
-    con = db()
-    try:
-        for attempt in range(8):
-            try:
-                con.execute(
-                    "INSERT INTO call_participants(room_name,company_name,participant_type,participant_id,display_name,joined_at) "
-                    "VALUES(?,?,?,?,?,?)",
-                    (room, company, ptype, pid, name, datetime.now().isoformat(timespec='seconds')),
-                )
-                con.commit()
-                return
-            except sqlite3.OperationalError as exc:
-                if "locked" not in str(exc).lower() and "busy" not in str(exc).lower():
-                    raise
-                time.sleep(0.35 * (attempt + 1))
-        raise sqlite3.OperationalError("SQLite remained locked while recording the call participant.")
-    finally:
-        con.close()
+def record_call_participant(room,company,ptype,pid,name):
+    con=db(); con.execute("INSERT INTO call_participants(room_name,company_name,participant_type,participant_id,display_name,joined_at) VALUES(?,?,?,?,?,?)",(room,company,ptype,pid,name,datetime.now().isoformat(timespec='seconds'))); con.commit(); con.close()
 
 
 def create_decision(company,username,title,context,decision,expected,review_date):
@@ -2265,248 +2205,6 @@ def admin_metric_counts():
     }
     con.close()
     return counts
-
-
-def _escape_html(value):
-    return (str(value or "")
-            .replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-            .replace('"', "&quot;"))
-
-
-PAGE_META = {
-    "DI Home": ("◉", "DI Command", "Talk, investigate, analyze and move work forward with David's Intelligence."),
-    "DI Calls": ("◉", "DI Connect", "Business calls, DI calls and team rooms with a meeting-ready workspace."),
-    "DI Workforce": ("◉", "DI Workforce", "Your specialized digital workforce — each DI has its own identity, specialty and work style."),
-    "DI Action Center": ("✦", "DI Action Center", "Give DI a goal and let it turn the request into analysis, recommendations and next actions."),
-    "DI Memory Box": ("◈", "DI Memory", "The trusted institutional memory layer shared by the Dacre intelligence workforce."),
-    "Business Command Center": ("◆", "Business Command", "Executive signals, business health and the most important changes in your active data."),
-    "Business Twin": ("◇", "Business Twin", "A living snapshot of how your business is performing, changing and where attention is needed."),
-    "Decision Ledger": ("◌", "Decision Ledger", "Record decisions, expected outcomes and results so the organization learns from its own history."),
-    "Opportunity Radar": ("✧", "Opportunity Radar", "Surface measurable growth signals and turn them into actionable business opportunities."),
-    "Workspace & Data": ("▦", "Workspace & Data", "Bring data into Dacre and turn raw information into useful business knowledge."),
-    "Formula Lab": ("ƒ", "Formula Lab", "Practical spreadsheet-style formulas and transformations."),
-    "Charts": ("◫", "Charts", "Turn data into clear visual stories and business dashboards."),
-    "File Vault": ("▤", "File Vault", "Keep company files, working datasets and project artifacts organized."),
-    "Export Center": ("⇩", "Export Center", "Package analysis outputs for the people who need them."),
-    "Organization Admin Portal": ("⚙", "Organization Admin", "Manage people, roles, notifications and company activity."),
-    "Chibobec Service": ("◆", "Chibobec Intelligence", "Master-only customer intelligence and protected service oversight."),
-    "Chibobec Loan Desk": ("₦", "Chibobec Loan Desk", "Loan records, reminders and client servicing."),
-    "Overall Admin DI Portal": ("♛", "Founder Command", "Master-level platform intelligence, workforce, customers, memory and system controls."),
-}
-
-
-def render_page_chrome(page_name, user):
-    icon, title, subtitle = PAGE_META.get(page_name, ("•", page_name, "Dacre business intelligence workspace."))
-    master = user.get("role") == "master"
-    mode_label = "FOUNDER COMMAND" if master else str(user.get("company", "BUSINESS WORKSPACE")).upper()
-    st.markdown(
-        f"""
-        <div class="dacre-page-chrome {'master-page-chrome' if master else ''}">
-          <div class="page-chrome-left">
-            <div class="page-icon">{icon}</div>
-            <div>
-              <div class="page-kicker">{_escape_html(mode_label)} · DA-CRE</div>
-              <div class="page-title">{_escape_html(title)}</div>
-              <div class="page-subtitle">{_escape_html(subtitle)}</div>
-            </div>
-          </div>
-          <div class="page-chrome-right">
-            <span class="chrome-pill">● DI ONLINE</span>
-            <span class="chrome-pill soft">{datetime.now().strftime("%d %b %Y · %H:%M")}</span>
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def log_di_action(user, action_type, request, result, agent_name="DI"):
-    con = db()
-    con.execute(
-        """INSERT INTO di_action_log(company_name,username,agent_name,action_type,request,result,created_at)
-           VALUES(?,?,?,?,?,?,?)""",
-        (user["company"], user["username"], agent_name, action_type, request, result,
-         datetime.now().isoformat(timespec="seconds")),
-    )
-    con.commit()
-    con.close()
-
-
-def get_recent_di_actions(user, limit=20):
-    con = db()
-    df = pd.read_sql_query(
-        """SELECT agent_name,action_type,request,result,created_at
-           FROM di_action_log
-           WHERE company_name=? AND username=?
-           ORDER BY id DESC LIMIT ?""",
-        con, params=(user["company"], user["username"], int(limit)),
-    )
-    con.close()
-    return df
-
-
-def render_business_twin(df, user):
-    if df is None or df.empty:
-        st.info("Load a dataset in Workspace & Data and the Business Twin will build itself from real data.")
-        return
-    health = business_health(df)
-    signals = business_signals(df)
-    opportunities = opportunity_radar(df, user["company"], user["username"])
-    missing = int(df.isna().sum().sum())
-    duplicates = int(df.duplicated().sum())
-    numeric = len(df.select_dtypes(include="number").columns)
-
-    st.markdown(
-        f"""<div class="business-twin-banner">
-          <div><span class="twin-label">LIVE BUSINESS TWIN</span>
-          <h2>{_escape_html(user['company'])}</h2>
-          <p>This snapshot is generated from the active workspace only. Dacre does not invent company numbers.</p></div>
-          <div class="twin-score"><b>{health['score']}</b><span>/100</span><small>DATA HEALTH</small></div>
-        </div>""",
-        unsafe_allow_html=True,
-    )
-    k = st.columns(5)
-    for col, label, value in zip(
-        k,
-        ["Rows", "Columns", "Numeric fields", "Missing cells", "Duplicates"],
-        [f"{len(df):,}", f"{len(df.columns):,}", f"{numeric:,}", f"{missing:,}", f"{duplicates:,}"],
-    ):
-        with col:
-            st.markdown(f"<div class='twin-metric'><b>{value}</b><span>{label}</span></div>", unsafe_allow_html=True)
-
-    left, right = st.columns([1.15, 1])
-    with left:
-        st.markdown("### What deserves attention")
-        if signals:
-            for item in signals[:6]:
-                st.markdown(
-                    f"<div class='insight-row'><b>{_escape_html(item.get('title'))}</b><span>{_escape_html(item.get('detail'))}</span></div>",
-                    unsafe_allow_html=True,
-                )
-        else:
-            st.success("No major deterministic data-quality/business signals were detected in the current dataset.")
-    with right:
-        st.markdown("### Opportunity signals")
-        if opportunities:
-            for item in opportunities:
-                st.markdown(
-                    f"<div class='opportunity-row'><b>{_escape_html(item['title'])}</b><span>{_escape_html(item['impact'])}</span><small>{_escape_html(item['action'])}</small></div>",
-                    unsafe_allow_html=True,
-                )
-        else:
-            st.info("No measurable opportunity signal has crossed the current detection threshold.")
-
-    st.markdown("### Ask DI to explain the twin")
-    prompt = st.text_input(
-        "Business Twin question",
-        placeholder="e.g. What changed most, what should management investigate, and why?",
-        key="business_twin_question",
-    )
-    if st.button("✦ Explain this Business Twin", use_container_width=True, type="primary") and prompt.strip():
-        answer = di_reply(prompt, user, df, allow_online=True, language=st.session_state.get("di_language", "English — Nigeria"))
-        log_di_action(user, "business_twin", prompt, answer)
-        st.markdown(f"<div class='di-answer-panel'><div class='answer-label'>DI EXPLANATION</div><div>{_escape_html(answer).replace(chr(10), '<br>')}</div></div>", unsafe_allow_html=True)
-
-
-def render_action_center(user):
-    df = st.session_state.processed_df
-    st.markdown(
-        """<div class="action-center-banner">
-          <span>DI ACTION ENGINE</span>
-          <h2>Give DI a business outcome — not a menu to navigate.</h2>
-          <p>DI can use the same core reasoning, data analysis, memory and research capabilities available from the main Dacre workspace.</p>
-        </div>""",
-        unsafe_allow_html=True,
-    )
-    q = st.text_area(
-        "What should DI do?",
-        placeholder="Analyze this dataset, investigate a business issue, draft an email, explain a formula, prepare an executive brief, research a current topic...",
-        height=130,
-        key="action_center_request",
-    )
-    c1, c2, c3, c4 = st.columns(4)
-    quick = [
-        ("Analyze", "Analyze the active dataset and tell me the most important findings."),
-        ("Executive brief", "Create a concise executive brief from the active dataset with priorities."),
-        ("Risk check", "Identify the most important data-quality and business risks visible in the active dataset."),
-        ("Opportunity", "Find measurable opportunity signals in the active dataset and explain what to investigate."),
-    ]
-    for col, (label, prompt) in zip([c1, c2, c3, c4], quick):
-        with col:
-            if st.button(label, use_container_width=True):
-                q = prompt
-    if st.button("Run DI Action", use_container_width=True, type="primary") and q.strip():
-        answer = di_reply(q.strip(), user, df, allow_online=True, language=st.session_state.get("di_language", "English — Nigeria"))
-        log_di_action(user, "action_center", q.strip(), answer)
-        st.session_state.last_action_center_result = answer
-        st.session_state.last_speech = answer
-    if st.session_state.get("last_action_center_result"):
-        st.markdown(
-            f"""<div class="di-answer-panel"><div class="answer-label">DI COMPLETED ACTION</div>
-            <div>{_escape_html(st.session_state.last_action_center_result).replace(chr(10), '<br>')}</div></div>""",
-            unsafe_allow_html=True,
-        )
-    recent = get_recent_di_actions(user)
-    if not recent.empty:
-        st.markdown("### Your DI action history")
-        st.dataframe(safe_dataframe_for_streamlit(recent), use_container_width=True, hide_index=True)
-
-
-def render_decision_ledger(user):
-    st.markdown(
-        """<div class="decision-banner"><span>INSTITUTIONAL MEMORY</span><h2>Decisions should become company knowledge.</h2>
-        <p>Record the decision, the reason, the expected result and later the actual result. This lets DI learn from the organization's history.</p></div>""",
-        unsafe_allow_html=True,
-    )
-    with st.form("decision_ledger_form", clear_on_submit=True):
-        a, b = st.columns(2)
-        with a:
-            title = st.text_input("Decision title", placeholder="e.g. Change supplier for Product A")
-            context = st.text_area("Context / evidence", height=90)
-            decision = st.text_area("Decision made", height=90)
-        with b:
-            expected = st.text_area("Expected outcome", height=90)
-            review = st.date_input("Review date", value=datetime.now().date())
-        save = st.form_submit_button("Save decision to Dacre Memory", use_container_width=True, type="primary")
-    if save and title.strip() and decision.strip():
-        create_decision(user["company"], user["username"], title.strip(), context.strip(), decision.strip(), expected.strip(), str(review))
-        log_activity(user["username"], user["company"], f"Saved decision: {title[:120]}")
-        st.success("Decision saved. DI can now use the record as organizational history.")
-    con = db()
-    decisions = pd.read_sql_query(
-        "SELECT title,context,decision,expected_outcome,review_date,status,outcome,created_at,updated_at FROM decision_ledger WHERE company_name=? ORDER BY id DESC",
-        con, params=(user["company"],),
-    )
-    con.close()
-    if not decisions.empty:
-        st.dataframe(safe_dataframe_for_streamlit(decisions), use_container_width=True, hide_index=True)
-
-
-def render_opportunity_page(user):
-    df = st.session_state.processed_df
-    st.markdown(
-        """<div class="opportunity-banner"><span>OPPORTUNITY RADAR</span><h2>Find upside before it becomes obvious.</h2>
-        <p>Dacre scans numeric trends in the active dataset and turns measurable changes into investigation prompts.</p></div>""",
-        unsafe_allow_html=True,
-    )
-    opportunities = opportunity_radar(df, user["company"], user["username"])
-    if not opportunities:
-        st.info("Load a dataset with enough numeric observations to generate measurable opportunity signals.")
-        return
-    for item in opportunities:
-        st.markdown(
-            f"""<div class="opportunity-card"><div class="opp-title">{_escape_html(item['title'])}</div>
-            <div class="opp-impact">{_escape_html(item['impact'])}</div>
-            <p>{_escape_html(item['evidence'])}</p><b>Suggested investigation</b><p>{_escape_html(item['action'])}</p></div>""",
-            unsafe_allow_html=True,
-        )
-        if st.button(f"Ask DI to investigate · {item['title']}", key=f"opp_{hash(item['title'])}", use_container_width=True):
-            prompt = f"Investigate this opportunity signal: {item['title']}. Evidence: {item['evidence']}. Suggested action: {item['action']}"
-            answer = di_reply(prompt, user, df, allow_online=True, language=st.session_state.get("di_language", "English — Nigeria"))
-            log_di_action(user, "opportunity", prompt, answer)
-            st.markdown(f"<div class='di-answer-panel'><div class='answer-label'>DI INVESTIGATION</div><div>{_escape_html(answer).replace(chr(10), '<br>')}</div></div>", unsafe_allow_html=True)
 
 
 def landing_page():
@@ -2761,7 +2459,7 @@ st.markdown("""
 .di-transcript{padding:18px 22px;background:#0d223c;border-top:1px solid rgba(120,170,210,.25);min-height:92px}.di-transcript-label{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#8fd7ff!important;font-weight:900}.di-transcript-text{font-size:1rem;line-height:1.55;margin-top:4px;color:#edf6ff!important}
 .di-quick-card{height:100%;background:linear-gradient(145deg,#112b47,#153654);border:1px solid rgba(120,170,210,.24);border-radius:18px;padding:18px;transition:.2s ease;box-shadow:0 10px 30px rgba(0,0,0,.18)}.di-quick-card:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(239,139,58,.16);border-color:rgba(255,181,107,.55)}
 .di-metric{background:linear-gradient(145deg,#112b47,#153654);border:1px solid rgba(120,170,210,.24);border-radius:16px;padding:16px 18px;box-shadow:0 8px 25px rgba(0,0,0,.16)}.di-metric .v{font-size:1.55rem;font-weight:900;color:#f5fbff!important}.di-metric .l{font-size:.78rem;color:#b8c8d8!important;margin-top:2px}
-.master-office-hero{background:linear-gradient(120deg,#102944 0%,#245487 55%,#60452f 100%);border:2px solid #eaa86d;border-left:8px solid #ffb56b;border-radius:24px;padding:28px 32px;box-shadow:0 18px 55px rgba(0,0,0,.28);margin-bottom:18px}.master-office-hero .title{font-size:3rem;font-weight:950;letter-spacing:-.045em;color:#f5fbff!important}.master-office-hero .sub{font-size:1.05rem;font-weight:750;color:#dbe9f5!important;margin-top:4px}.master-office-hero .authority{display:inline-block;margin-top:15px;padding:8px 13px;border-radius:999px;background:#533c2c;border:1px solid #ffb56b;color:#ffe5cc!important;font-weight:900}.master-only-badge{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:999px;background:#533c2c;border:1px solid #ffb56b;color:#ffe5cc!important;font-weight:900;font-size:.75rem;letter-spacing:.06em}
+.master-office-hero{background:linear-gradient(120deg,#102944 0%,#245487 55%,#60452f 100%);border:2px solid #eaa86d;border-left:8px solid #ffb56b;border-radius:24px;padding:28px 32px;box-shadow:0 18px 55px rgba(0,0,0,.28);margin-bottom:18px}.master-office-hero .title{font-size:2rem;font-weight:950;letter-spacing:-.045em;color:#f5fbff!important}.master-office-hero .sub{font-size:.92rem;font-weight:750;color:#dbe9f5!important;margin-top:4px}.master-office-hero .authority{display:inline-block;margin-top:15px;padding:8px 13px;border-radius:999px;background:#533c2c;border:1px solid #ffb56b;color:#ffe5cc!important;font-weight:900}.master-only-badge{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:999px;background:#533c2c;border:1px solid #ffb56b;color:#ffe5cc!important;font-weight:900;font-size:.75rem;letter-spacing:.06em}
 .voice-panel{background:linear-gradient(135deg,#112b47,#173b5d 70%,#3d3028);border:1px solid rgba(120,170,210,.25);border-radius:20px;padding:16px 18px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
 .chat-card{padding:16px 18px;border-radius:18px;border:1px solid rgba(120,170,210,.24);background:#112b47;margin:8px 0}.chat-card.di{border-left:5px solid var(--dacre-orange);background:linear-gradient(135deg,#153654,#193d5f)}.chat-card.user{border-left:5px solid var(--dacre-indigo);background:#102944}
 [data-testid="stDataFrame"]{border:1px solid rgba(120,170,210,.28);border-radius:14px;overflow:hidden;box-shadow:0 8px 25px rgba(0,0,0,.18)}
@@ -2802,32 +2500,6 @@ div[style*="#ffffff"],div[style*="#fffaf4"],div[style*="#eaf7ff"]{background:#17
 .dacre-user-title,.master-office-hero .title,.di-stage-copy h2{color:#fff!important}
 .dacre-user-sub,.master-office-hero .sub,.di-stage-copy p{color:#d3e5f4!important}
 </style>""",unsafe_allow_html=True)
-
-# DA-CRE FUTURE INNER-WORKSPACE DESIGN SYSTEM
-st.markdown("""
-<style>
-/* Remove the large empty Streamlit header band while preserving controls. */
-[data-testid="stHeader"]{background:rgba(0,0,0,0)!important;border-bottom:0!important}
-[data-testid="stToolbar"]{right:1rem!important}
-.stAppViewContainer .main .block-container{padding-top:1.25rem!important;max-width:1500px!important}
-[data-testid="stSidebar"]{width:290px!important;min-width:290px!important}
-[data-testid="stSidebar"] > div:first-child{padding-top:1rem!important}
-[data-testid="stSidebar"] .stRadio > label{display:none!important}
-[data-testid="stSidebar"] [role="radiogroup"]{gap:7px!important}
-[data-testid="stSidebar"] [role="radio"]{min-height:43px!important;padding:0 13px!important;border-radius:13px!important;border:1px solid rgba(120,180,230,.13)!important;background:rgba(255,255,255,.035)!important;transition:.18s ease!important}
-[data-testid="stSidebar"] [role="radio"]:hover{background:rgba(70,170,230,.14)!important;border-color:rgba(100,210,255,.42)!important;transform:translateX(2px)}
-[data-testid="stSidebar"] [role="radio"][aria-checked="true"]{background:linear-gradient(90deg,rgba(52,142,220,.28),rgba(108,75,220,.25))!important;border-color:#59c8ff!important;box-shadow:0 7px 20px rgba(0,0,0,.18)!important}
-[data-testid="stSidebar"] [role="radio"] p{font-weight:800!important;font-size:.86rem!important;letter-spacing:.01em!important}
-[data-testid="stSidebar"] img{border-radius:16px!important}
-.dacre-page-chrome{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:17px 20px;margin:0 0 18px;border-radius:20px;border:1px solid rgba(105,196,246,.35);background:linear-gradient(105deg,rgba(9,30,53,.96),rgba(18,57,88,.88));box-shadow:0 18px 48px rgba(0,0,0,.18);position:relative;overflow:hidden}
-.dacre-page-chrome:after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:linear-gradient(90deg,#48d8ff,#7e6aff,#f0a34a,#48d8ff);background-size:300% 100%;animation:dacreFlow 8s linear infinite}
-.page-chrome-left{display:flex;align-items:center;gap:14px;min-width:0}.page-icon{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(135deg,#4b50e8,#1caee1);font-size:1.25rem;font-weight:950;box-shadow:0 8px 24px rgba(31,155,230,.28)}
-.page-kicker{font-size:.68rem;letter-spacing:.15em;text-transform:uppercase;color:#84ddff!important;font-weight:900}.page-title{font-size:1.45rem;font-weight:950;color:#fff!important;line-height:1.1}.page-subtitle{font-size:.84rem;color:#bdd8eb!important;margin-top:4px;max-width:900px}.page-chrome-right{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.chrome-pill{padding:7px 10px;border-radius:999px;background:rgba(45,210,142,.13);border:1px solid rgba(75,230,160,.4);color:#8ff0bf!important;font-size:.7rem;font-weight:900}.chrome-pill.soft{background:rgba(255,255,255,.05);border-color:rgba(160,200,230,.2);color:#c6d9ea!important}
-.business-twin-banner,.action-center-banner,.decision-banner,.opportunity-banner{padding:25px 28px;border-radius:24px;margin-bottom:18px;border:1px solid rgba(90,190,245,.34);background:linear-gradient(135deg,#0d2e4d,#193f68 60%,#34255d);box-shadow:0 18px 45px rgba(0,0,0,.2)}
-.business-twin-banner{display:flex;justify-content:space-between;align-items:center;gap:20px}.business-twin-banner h2,.action-center-banner h2,.decision-banner h2,.opportunity-banner h2{margin:.25rem 0;color:#fff!important;font-size:1.8rem}.business-twin-banner p,.action-center-banner p,.decision-banner p,.opportunity-banner p{color:#c7deed!important;margin:0;line-height:1.55}.twin-label,.action-center-banner span,.decision-banner span,.opportunity-banner span{font-size:.7rem;letter-spacing:.16em;color:#75ddff!important;font-weight:950}.twin-score{width:105px;height:105px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle,#245b8a,#101b39);border:2px solid #65d8ff;box-shadow:0 0 35px rgba(74,203,255,.18)}.twin-score b{font-size:2rem;color:#fff}.twin-score span{font-size:.75rem;color:#a8c9dd}.twin-score small{font-size:.55rem;color:#73dfff;margin-top:2px}.twin-metric{padding:16px;border-radius:17px;background:linear-gradient(145deg,#123a5e,#164b78);border:1px solid rgba(110,196,238,.27);display:flex;flex-direction:column;min-height:82px}.twin-metric b{font-size:1.45rem;color:#fff}.twin-metric span{font-size:.75rem;color:#b9d7e8;margin-top:3px}.insight-row,.opportunity-row{padding:13px 15px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid rgba(120,190,225,.2);margin:8px 0;display:flex;flex-direction:column;gap:4px}.insight-row b,.opportunity-row b{color:#fff}.insight-row span,.opportunity-row span,.opportunity-row small{color:#b9d5e7}.opportunity-card{padding:19px;border-radius:18px;background:linear-gradient(145deg,#133b60,#183f70);border:1px solid rgba(117,204,244,.27);margin:10px 0;box-shadow:0 12px 32px rgba(0,0,0,.16)}.opp-title{font-size:1.05rem;font-weight:900;color:#fff}.opp-impact{display:inline-block;margin:7px 0;padding:5px 9px;border-radius:999px;background:rgba(47,218,139,.12);border:1px solid rgba(47,218,139,.32);color:#83efb6!important;font-weight:900;font-size:.75rem}.opportunity-card p{color:#c4dceb!important;line-height:1.5}.di-answer-panel{padding:20px 22px;border-radius:18px;background:linear-gradient(135deg,#102f4e,#1b4c76);border:1px solid #54c9f4;box-shadow:0 15px 38px rgba(0,0,0,.18);color:#f4fbff!important;line-height:1.7;margin:14px 0}.answer-label{font-size:.67rem;letter-spacing:.16em;color:#78ddff!important;font-weight:950;margin-bottom:8px}.master-page-chrome{background:linear-gradient(105deg,#0c0b23,#1b1746 60%,#21174d)!important;border-color:#6259dc!important}.master-page-chrome .page-icon{background:linear-gradient(135deg,#7057e8,#2e8fe1)!important}
-@media(max-width:900px){.dacre-page-chrome{align-items:flex-start;flex-direction:column}.page-chrome-right{justify-content:flex-start}.business-twin-banner{flex-direction:column;align-items:flex-start}.twin-score{width:88px;height:88px}.dacre-page-chrome .page-subtitle{max-width:95%}}
-</style>
-""",unsafe_allow_html=True)
 
 user=st.session_state.user
 
@@ -2872,12 +2544,8 @@ with st.sidebar:
         "DI Home",
         "DI Calls",
         "DI Workforce",
-        "DI Action Center",
         "DI Memory Box",
         "Business Command Center",
-        "Business Twin",
-        "Decision Ledger",
-        "Opportunity Radar",
         "Workspace & Data",
         "Formula Lab",
         "Charts",
@@ -2900,10 +2568,6 @@ with st.sidebar:
     # Nobody is automatically dropped into the CEO Office.
     default_page=navigation[0]
     selected_page=st.radio("Navigation",navigation,index=navigation.index(default_page) if default_page in navigation else 0)
-
-# Universal inner-page interface. Every Dacre workspace gets the same premium chrome,
-# while the master account receives a separate founder visual identity.
-render_page_chrome(selected_page, user)
 
 # =============================================================================
 # DI HOME / CONTINUOUS BUSINESS CONVERSATION
@@ -3112,18 +2776,6 @@ elif selected_page=="DI Workforce":
                 st.session_state[f"di_task_result_{a['di_name']}"]=answer
             if st.session_state.get(f"di_task_result_{a['di_name']}"):
                 di_voice_player(st.session_state[f"di_task_result_{a['di_name']}"])
-
-elif selected_page=="DI Action Center":
-    render_action_center(user)
-
-elif selected_page=="Business Twin":
-    render_business_twin(st.session_state.processed_df, user)
-
-elif selected_page=="Decision Ledger":
-    render_decision_ledger(user)
-
-elif selected_page=="Opportunity Radar":
-    render_opportunity_page(user)
 
 elif selected_page=="Chibobec Service" and user.get('role')=='master':
     st.markdown("""<div class='master-office-hero'><div class='master-badge'>MASTER ONLY</div><div class='title'>Chibobec Service · Customer Intelligence</div><div class='sub'>System-wide customer record for the protected Chibobec workspace. This view is available only to the Overall Administrator.</div></div>""",unsafe_allow_html=True)
@@ -3431,10 +3083,10 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
     counts=admin_metric_counts()
     st.markdown("""
     <div class="master-office-hero">
-      <span class="master-only-badge">🔐 MASTER ONLY · SYSTEM-WIDE ACCESS</span>
-      <div class="title">CEO Office</div>
-      <div class="sub">DACRE Analysis executive command centre · Overall Administration · DI Workforce</div>
-      <div class="authority">David Emenike · Overall Administrator · DACRE MASTER</div>
+      <span class="master-only-badge">♛ MASTER COMMAND</span>
+      <div class="title">DA-CRE Global Control</div>
+      <div class="sub">Platform intelligence · DI workforce · organizations · customer oversight</div>
+      <div class="authority">David Emenike · Creator & Master</div>
     </div>
     """,unsafe_allow_html=True)
 
@@ -3697,1828 +3349,3 @@ if st.session_state.last_speech:
     speech=st.session_state.last_speech
     st.session_state.last_speech=None
     di_voice_player(speech, DI_LANGUAGE_PROFILES.get(st.session_state.get("di_language","English — Nigeria"),{}).get("code","en-NG"))
-[08:49:29] 🐙 Cloning into '/mount/src/da-cre-analysis'...
-
-[08:49:29] 🐙 Cloned repository!
-
-[08:49:29] 🐙 Pulling code changes from Github...
-
-[08:49:29] 📦 Processing dependencies...
-
-
-──────────────────────────────────────── uv ───────────────────────────────────────────
-
-
-Using uv pip install.
-
-Using Python 3.14.7 environment at /home/adminuser/venv
-
-Resolved 48 packages in 509ms
-
-Prepared 48 packages in 2.70s
-
-Installed 48 packages in 279ms
-
- + altair==6.2.2
-
- + anyio==4.14.2
-
- + attrs==26.1.0
-
- + audioop-lts==0.2.2
-
- + blinker==1.9.0
-
- + certifi==2026.7.22
-
- + charset-normalizer==3.4.9[2026-08-12 08:49:33.266439] 
-
- + click==8.4.2
-
- + et-xmlfile==2.0.0
-
- + h11==0.16.0[2026-08-12 08:49:33.266639] 
-
- + httptools==0.8.0
-
- + idna==3.18
-
- + itsdangerous==2.2.0
-
- + jinja2==3.1.6
-
- + jsonschema==4.26.0
-
- + jsonschema-specifications[2026-08-12 08:49:33.268350] ==2025.9.1
-
- + lxml==6.1.1
-
- + markupsafe==3.0.3
-
- + narwhals==2.24.0
-
- + numpy==2.5.2
-
- + openpyxl==[2026-08-12 08:49:33.268619] 3.1.5
-
- + packaging==26.3
-
- + pandas==3.0.5
-
- + pillow==12.3.0
-
- [2026-08-12 08:49:33.268818] + plotly==6.9.0
-
- + protobuf==7.35.1
-
- + pyarrow==24.0.0[2026-08-12 08:49:33.269006] 
-
- + pydeck==0.9.3
-
- + python-dateutil==2.9.0.post0
-
- + python-multipart==0.0.32[2026-08-12 08:49:33.269177] 
-
- + python-pptx==1.0.2
-
- + referencing==0.37.0
-
- + requests==[2026-08-12 08:49:33.269363] 2.34.2
-
- + rpds-py==2026.6.3
-
- + six==1.17.0
-
- + speechrecognition==3.17.0[2026-08-12 08:49:33.269515] 
-
- + standard-aifc==3.13.0
-
- + standard-chunk==3.13.0
-
- + starlette==[2026-08-12 08:49:33.270487] 1.3.1
-
- + streamlit==1.61.1
-
- + tenacity==9.1.4
-
- + toml==0.10.2[2026-08-12 08:49:33.270674] 
-
- + typing-extensions==4.16.0
-
- + urllib3==2.7.0
-
- + uvicorn==0.52.1[2026-08-12 08:49:33.271446] 
-
- + watchdog==6.0.0
-
- + websockets==16.1.1
-
- + xlsxwriter==3.2.9
-
-Checking if Streamlit is installed
-
-Found Streamlit version 1.61.1 in the environment
-
-Installing rich for an improved exception logging
-
-Using uv pip install.
-
-Using Python 3.14.7 environment at /home/adminuser/venv
-
-Resolved 4 packages in 218ms
-
-Prepared 4 packages in 198ms
-
-Installed 4 packages in 17ms
-
- + markdown-it-py==[2026-08-12 08:49:39.626784] 4.2.0
-
- + mdurl==0.1.2
-
- + pygments==2.20.0
-
- + rich==15.0.0
-
-
-────────────────────────────────────────────────────────────────────────────────────────
-
-
-[08:49:40] 🐍 Python dependencies were installed from /mount/src/da-cre-analysis/requirements.txt using uv.
-
-Check if streamlit is installed
-
-Streamlit is already installed
-
-[08:49:41] 📦 Processed dependencies!
-
-2026-08-12 08:49:44.255 Uvicorn server started on :::8501
-
-
-
-
-2026-08-12 08:50:46.523 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 08:50:51.320 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 10:14:02.320 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 10:14:11.482 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 10:15:46.488 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 10:15:47.375 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 10:16:24.736 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 10:16:24.831 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 10:16:24.845 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 10:16:24.853 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 10:16:24.859 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 10:16:24.861 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 10:16:24.899 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 10:16:24.916 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 10:16:24.923 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 11:38:45.387 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 11:38:54.924 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-[11:44:57] 🐙 Pulling code changes from Github...
-
-[11:44:57] 📦 Processing dependencies...
-
-[11:44:57] 📦 Processed dependencies!
-
-[11:44:58] 🔄 Updated app!
-
-2026-08-12 11:45:01.807 Script compilation error
-
-Traceback (most recent call last):
-
-  File "/home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptrunner/script_runner.py", line 668, in _run_script
-
-    code = self._script_cache.get_bytecode(script_path)
-
-  File "/home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptrunner/script_cache.py", line 72, in get_bytecode
-
-    filebody = magic.add_magic(filebody, script_path)
-
-  File "/home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptrunner/magic.py", line 45, in add_magic
-
-    tree = ast.parse(code, script_path, "exec")
-
-  File "/usr/local/lib/python3.14/ast.py", line 46, in parse
-
-    return compile(source, filename, mode, flags,
-
-                   _feature_version=feature_version, optimize=optimize)
-
-  File "/mount/src/da-cre-analysis/app.py", line 1
-
-    mport hashlib
-
-    ^^^^^
-
-SyntaxError: invalid syntax. Did you mean 'import'?
-
-2026-08-12 11:45:01.823 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
-
-2026-08-12 11:45:16.036 Script compilation error
-
-Traceback (most recent call last):
-
-  File "/home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptrunner/script_runner.py", line 668, in _run_script
-
-    code = self._script_cache.get_bytecode(script_path)
-
-  File "/home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptrunner/script_cache.py", line 72, in get_bytecode
-
-    filebody = magic.add_magic(filebody, script_path)
-
-  File "/home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptrunner/magic.py", line 45, in add_magic
-
-    tree = ast.parse(code, script_path, "exec")
-
-  File "/usr/local/lib/python3.14/ast.py", line 46, in parse
-
-    return compile(source, filename, mode, flags,
-
-                   _feature_version=feature_version, optimize=optimize)
-
-  File "/mount/src/da-cre-analysis/app.py", line 1
-
-    mport hashlib
-
-    ^^^^^
-
-SyntaxError: invalid syntax. Did you mean 'import'?
-
-2026-08-12 11:45:16.041 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
-
-2026-08-12 11:45:51.011 Script compilation error
-
-Traceback (most recent call last):
-
-  File "/home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptrunner/script_runner.py", line 668, in _run_script
-
-    code = self._script_cache.get_bytecode(script_path)
-
-  File "/home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptrunner/script_cache.py", line 72, in get_bytecode
-
-    filebody = magic.add_magic(filebody, script_path)
-
-  File "/home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptrunner/magic.py", line 45, in add_magic
-
-    tree = ast.parse(code, script_path, "exec")
-
-  File "/usr/local/lib/python3.14/ast.py", line 46, in parse
-
-    return compile(source, filename, mode, flags,
-
-                   _feature_version=feature_version, optimize=optimize)
-
-  File "/mount/src/da-cre-analysis/app.py", line 1
-
-    mport hashlib
-
-    ^^^^^
-
-SyntaxError: invalid syntax. Did you mean 'import'?
-
-2026-08-12 11:45:51.015 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
-
-[12:31:29] 🐙 Pulling code changes from Github...
-
-[12:31:30] 📦 Processing dependencies...
-
-[12:31:30] 📦 Processed dependencies!
-
-2026-08-12 12:31:31.421 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 12:31:31.423 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-[12:31:31] 🔄 Updated app!
-
-2026-08-12 12:31:34.350 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 12:31:34.353 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 12:31:59.282 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 12:31:59.285 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 12:53:26.808 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 12:53:26.810 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-[13:22:06] 🐙 Pulling code changes from Github...
-
-[13:22:07] 📦 Processing dependencies...
-
-[13:22:07] 📦 Processed dependencies!
-
-[13:22:08] 🔄 Updated app!
-
-2026-08-12 13:22:11.045 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 13:22:11.049 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 13:22:13.043 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 13:22:13.047 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 13:22:22.124 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 13:22:22.127 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-[13:22:54] 🐙 Pulling code changes from Github...
-
-[13:22:55] 📦 Processing dependencies...
-
-[13:22:55] 📦 Processed dependencies!
-
-2026-08-12 13:22:56.206 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-[13:22:56] 🔄 Updated app!
-
-2026-08-12 13:23:22.408 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 13:23:42.818 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:05:58.812 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-[14:31:16] 🐙 Pulling code changes from Github...
-
-[14:31:16] 📦 Processing dependencies...
-
-[14:31:16] 📦 Processed dependencies!
-
-[14:31:18] 🔄 Updated app!
-
-2026-08-12 14:31:18.769 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:31:47.487 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:31:51.945 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:31:55.742 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:32:50.673 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:38:42.789 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:38:42.835 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 14:38:42.840 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 14:39:34.618 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:39:34.663 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 14:39:35.442 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:39:35.486 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 14:39:35.491 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 14:40:14.320 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:40:14.366 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 14:40:15.227 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:40:15.274 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 14:40:15.280 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 14:43:35.193 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:43:35.240 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 14:43:36.197 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:43:36.248 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 14:43:36.254 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 14:44:54.854 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:44:54.924 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:44:54.930 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:44:54.932 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:44:54.935 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:44:54.937 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:44:54.939 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:44:54.943 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:44:54.945 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:44:54.948 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:44:54.950 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:44:54.951 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:44:54.953 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:49:22.384 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:49:22.438 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:49:43.601 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:49:44.435 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 14:49:44.501 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 15:05:01.313 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:05:23.685 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:05:23.742 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:06:54.209 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:06:54.274 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:07:47.823 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:07:47.878 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 15:07:47.886 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-[15:09:43] 🐙 Pulling code changes from Github...
-
-[15:09:43] 📦 Processing dependencies...
-
-
-──────────────────────────────────────── uv ───────────────────────────────────────────
-
-
-Using uv pip install.
-
-Using Python 3.14.7 environment at /home/adminuser/venv
-
-Resolved 59 packages in 449ms
-
-Prepared 12 packages in 86ms
-
-Uninstalled 1 package in 0.93ms
-
-Installed 12 packages in 23ms
-
- + aiohappyeyeballs==[2026-08-12 15:09:44.636480] 2.7.1
-
- + aiohttp==3.14.3
-
- + aiosignal==1.4.0
-
- - charset-normalizer==3.4.9
-
- + charset-normalizer==3.5.0
-
- + frozenlist==1.8.0
-
- + livekit-api==1.2.0
-
- + livekit-protocol[2026-08-12 15:09:44.636648] ==1.1.22
-
- + multidict==6.7.1
-
- + propcache==0.5.2
-
- + pyjwt==2.13.0
-
- + types-protobuf==7.34.1.20260518
-
- [2026-08-12 15:09:44.636795] + yarl==1.24.5
-
-Checking if Streamlit is installed
-
-Found Streamlit version 1.61.1 in the environment
-
-Installing rich for an improved exception logging
-
-Using uv pip install.
-
-Using Python 3.14.7 environment at /home/adminuser/venv
-
-Audited 1 package in 2ms
-
-
-────────────────────────────────────────────────────────────────────────────────────────
-
-
-[15:09:48] 🐍 Python dependencies were installed from /mount/src/da-cre-analysis/requirements.txt using uv.
-
-[15:09:48] 📦 Processed dependencies!
-
-  Stopping...
-
-2026-08-12 15:09:50.866 Uvicorn server started on :::8501
-
-
-
-
-[15:09:51] 🔄 Updated app!
-
-2026-08-12 15:09:55.831 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:09:57.610 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:09:59.025 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:10:13.040 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:10:34.391 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:10:34.445 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 15:10:34.451 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 15:10:56.521 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:10:56.615 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:11:08.152 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:11:08.221 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:11:09.146 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:11:09.221 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 15:12:32.121 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:12:32.193 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:12:41.063 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:12:41.148 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 15:12:44.364 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:12:44.423 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 15:12:50.648 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:13:54.139 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:14:16.470 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:14:16.556 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 15:14:50.834 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:14:50.879 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 15:14:54.786 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:14:54.859 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 15:20:32.992 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:20:41.818 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-[15:26:37] 🐙 Pulling code changes from Github...
-
-[15:26:37] 📦 Processing dependencies...
-
-[15:26:37] 📦 Processed dependencies!
-
-[15:26:39] 🔄 Updated app!
-
-2026-08-12 15:26:39.525 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:26:39.575 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 15:26:41.899 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:26:45.744 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:28:09.141 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:28:09.199 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 15:28:10.134 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:28:10.184 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 15:28:10.189 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 15:28:20.865 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:28:20.917 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 15:28:21.733 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:28:21.793 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 15:28:21.800 Please replace `st.components.v1.html` with `st.iframe`.
-
-
-`st.components.v1.html` will be removed after 2026-06-01.
-
-2026-08-12 15:28:31.021 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:29:12.277 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-────────────────────── Traceback (most recent call last) ───────────────────────
-
-  /home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptru  
-
-  nner/exec_code.py:136 in exec_func_with_error_handling                        
-
-                                                                                
-
-  /home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptru  
-
-  nner/script_runner.py:816 in code_to_exec                                     
-
-                                                                                
-
-  /mount/src/da-cre-analysis/app.py:2491 in <module>                            
-
-                                                                                
-
-    2488 │   │   k4.metric("Duplicate Rows",f"{int(df.duplicated().sum()):,}")  
-
-    2489 │   │   st.markdown("### DI Executive Brief")                          
-
-    2490 │   │   st.write(build_executive_brief(df,user["company"]))            
-
-  ❱ 2491 │   │   st.markdown("### Signals requiring attention")                 
-
-    2492 │   │   signals=business_signals(df)                                   
-
-    2493 │   │   if not signals:                                                
-
-    2494 │   │   │   st.success("No strong automated warning signals were dete  
-
-                                                                                
-
-  /mount/src/da-cre-analysis/app.py:1901 in make_call_room                      
-
-                                                                                
-
-    1898 │   con = db()                                                         
-
-    1899 │   rows = con.execute("SELECT * FROM di_agents ORDER BY id DESC").fe  
-
-    1900 │   con.close()                                                        
-
-  ❱ 1901 │   return rows                                                        
-
-    1902                                                                        
-
-    1903                                                                        
-
-    1904 def create_di_agent(name, specialty, status="Available", assigned_com  
-
-────────────────────────────────────────────────────────────────────────────────
-
-OperationalError: table call_rooms has no column named room_name
-
-[15:32:49] 🐙 Pulling code changes from Github...
-
-[15:32:49] 📦 Processing dependencies...
-
-[15:32:49] 📦 Processed dependencies!
-
-2026-08-12 15:32:50.978 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-[15:32:51] 🔄 Updated app!
-
-2026-08-12 15:33:13.758 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-────────────────────── Traceback (most recent call last) ───────────────────────
-
-  /home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptru  
-
-  nner/exec_code.py:136 in exec_func_with_error_handling                        
-
-                                                                                
-
-  /home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptru  
-
-  nner/script_runner.py:816 in code_to_exec                                     
-
-                                                                                
-
-  /mount/src/da-cre-analysis/app.py:2570 in <module>                            
-
-                                                                                
-
-    2567 │   st.caption("DI also uses your active workspace and can use public  
-
-    2568                                                                        
-
-    2569 elif selected_page=="Business Command Center":                         
-
-  ❱ 2570 │   st.header("Business Command Center")                               
-
-    2571 │   df=st.session_state.processed_df                                   
-
-    2572 │   if df is None:                                                     
-
-    2573 │   │   st.info("Upload a dataset from Workspace & Data first. Then D  
-
-                                                                                
-
-  /mount/src/da-cre-analysis/app.py:1980 in make_call_room                      
-
-                                                                                
-
-    1977 │   # never displayed on the public landing page.                      
-
-    1978 │   gate_requested = str(st.query_params.get("master_gate", "")) == "  
-
-    1979 │                                                                      
-
-  ❱ 1980 │   # No public CEO building/card is rendered here. Master administra  
-
-    1981 │   # intentionally discreet and is protected by the existing master   
-
-    1982 │                                                                      
-
-    1983 │   # ---------------------------------------------------------------  
-
-────────────────────────────────────────────────────────────────────────────────
-
-IntegrityError: NOT NULL constraint failed: call_rooms.room_code
-
-────────────────────── Traceback (most recent call last) ───────────────────────
-
-  /home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptru  
-
-  nner/exec_code.py:136 in exec_func_with_error_handling                        
-
-                                                                                
-
-  /home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptru  
-
-  nner/script_runner.py:816 in code_to_exec                                     
-
-                                                                                
-
-  /mount/src/da-cre-analysis/app.py:508 in <module>                             
-
-                                                                                
-
-     505 │   │   con.close()                                                    
-
-     506                                                                        
-
-     507                                                                        
-
-  ❱  508 ensure_runtime_schema()                                                
-
-     509                                                                        
-
-     510                                                                        
-
-     511 def ensure_master():                                                   
-
-                                                                                
-
-  /mount/src/da-cre-analysis/app.py:499 in ensure_runtime_schema                
-
-                                                                                
-
-     496 │   │                                                                  
-
-     497 │   │   # Backfill safe defaults for rows created by older builds.     
-
-     498 │   │   if con.execute("SELECT 1 FROM sqlite_master WHERE type='table  
-
-  ❱  499 │   │   │   con.execute("UPDATE call_rooms SET mode='team' WHERE mode  
-
-     500 │   │   if con.execute("SELECT 1 FROM sqlite_master WHERE type='table  
-
-     501 │   │   │   con.execute("UPDATE decision_ledger SET status='Open' WHE  
-
-     502                                                                        
-
-────────────────────────────────────────────────────────────────────────────────
-
-OperationalError: database is locked
-
-[15:45:51] 🐙 Pulling code changes from Github...
-
-[15:45:52] 📦 Processing dependencies...
-
-[15:45:52] 📦 Processed dependencies!
-
-[15:45:53] 🔄 Updated app!
-
-2026-08-12 15:45:54.604 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:45:55.849 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-2026-08-12 15:45:58.895 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-[15:49:15] 🐙 Pulling code changes from Github...
-
-[15:49:15] 📦 Processing dependencies...
-
-
-──────────────────────────────────────── uv ───────────────────────────────────────────
-
-
-Using uv pip install.
-
-Using Python 3.14.7 environment at /home/adminuser/venv
-
-  × No solution found when resolving dependencies:
-
-  ╰─▶ Because sstreamlit was not found in the package registry and you
-
-      require sstreamlit>=1.45,<2, we can conclude that your requirements
-
-      are unsatisfiable.
-
-Checking if Streamlit is installed
-
-Found Streamlit version 1.61.1 in the environment
-
-Installing rich for an improved exception logging
-
-Using uv pip install.
-
-Using Python 3.14.7 environment at /home/adminuser/venv
-
-Audited 1 package in 1ms
-
-
-────────────────────────────────────────────────────────────────────────────────────────
-
-
-
-──────────────────────────────────────── pip ───────────────────────────────────────────
-
-
-Using standard pip install.
-
-ERROR: Could not find a version that satisfies the requirement sstreamlit<2,>=1.45 (from versions: none)
-
-ERROR: No matching distribution found for sstreamlit<2,>=1.45
-
-
-[notice] A new release of pip is available: 24.0 -> 26.2.1
-
-[notice] To update, run: pip install --upgrade pip
-
-Checking if Streamlit is installed
-
-Found Streamlit version 1.61.1 in the environment
-
-Installing rich for an improved exception logging
-
-Using standard pip install.
-
-Collecting rich>=10.14.0
-
-  Downloading rich-15.0.0-py3-none-any.whl.metadata (18 kB)
-
-Collecting markdown-it-py>=2.2.0 (from rich>=10.14.0)
-
-  Downloading markdown_it_py-4.2.0-py3-none-any.whl.metadata (7.4 kB)
-
-Collecting pygments<3.0.0,>=2.13.0 (from rich>=10.14.0)
-
-  Downloading pygments-2.20.0-py3-none-any.whl.metadata (2.5 kB)
-
-Collecting mdurl~=0.1 (from markdown-it-py>=2.2.0->rich>=10.14.0)
-
-  Downloading mdurl-0.1.2-py3-none-any.whl.metadata (1.6 kB)
-
-Downloading rich-15.0.0-py3-none-any.whl (310 kB)
-
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 310.7/310.7 kB 14.7 MB/s eta 0:00:00[2026-08-12 15:49:24.006713] 
-
-Downloading markdown_it_py-4.2.0-py3-none-any.whl (91 kB)
-
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 91.7/91.7 kB 357.3 MB/s eta 0:00:00[2026-08-12 15:49:24.018629] 
-
-Downloading pygments-2.20.0-py3-none-any.whl (1.2 MB)
-
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 74.9 MB/s eta 0:00:00[2026-08-12 15:49:24.047425] 
-
-Downloading mdurl-0.1.2-py3-none-any.whl (10.0 kB)
-
-Installing collected packages: pygments, mdurl, markdown-it-py, rich
-
-  Attempting uninstall: pygments
-
-    Found existing installation: Pygments 2.20.0
-
-    Uninstalling Pygments-2.20.0:
-
-      Successfully uninstalled Pygments-2.20.0
-
-  Attempting uninstall: mdurl
-
-    Found existing installation: mdurl 0.1.2
-
-    Uninstalling mdurl-0.1.2:
-
-      Successfully uninstalled mdurl-0.1.2
-
-  Attempting uninstall: markdown-it-py
-
-    Found existing installation: markdown-it-py 4.2.0
-
-    Uninstalling markdown-it-py-4.2.0:
-
-      Successfully uninstalled markdown-it-py-4.2.0
-
-  Attempting uninstall: rich
-
-    Found existing installation: rich 15.0.0
-
-    Uninstalling rich-15.0.0:
-
-      Successfully uninstalled rich-15.0.0
-
-Successfully installed markdown-it-py-4.2.0 mdurl-0.1.2 pygments-2.20.0 rich-15.0.0
-
-
-[notice] A new release of pip is available: 24.0 -> 26.2.1
-
-[notice] To update, run: pip install --upgrade pip
-
-
-────────────────────────────────────────────────────────────────────────────────────────
-
-
-[15:49:27] ❗️ installer returned a non-zero exit code
-
-[15:55:33] 🐙 Pulling code changes from Github...
-
-[15:55:34] 📦 Processing dependencies...
-
-
-──────────────────────────────────────── uv ───────────────────────────────────────────
-
-
-Using uv pip install.
-
-Using Python 3.14.7 environment at /home/adminuser/venv
-
-  × No solution found when resolving dependencies:
-
-  ╰─▶ Because sstreamlit was not found in the package registry and you
-
-      require sstreamlit>=1.45,<2, we can conclude that your requirements
-
-      are unsatisfiable.
-
-Checking if Streamlit is installed
-
-Found Streamlit version 1.61.1 in the environment
-
-Installing rich for an improved exception logging
-
-Using uv pip install.
-
-Using Python 3.14.7 environment at /home/adminuser/venv
-
-Audited 1 package in 1ms
-
-
-────────────────────────────────────────────────────────────────────────────────────────
-
-
-
-──────────────────────────────────────── pip ───────────────────────────────────────────
-
-
-Using standard pip install.
-
-ERROR: Could not find a version that satisfies the requirement sstreamlit<2,>=1.45 (from versions: none)
-
-ERROR: No matching distribution found for sstreamlit<2,>=1.45
-
-
-[notice] A new release of pip is available: 24.0 -> 26.2.1
-
-[notice] To update, run: pip install --upgrade pip
-
-Checking if Streamlit is installed
-
-Found Streamlit version 1.61.1 in the environment
-
-Installing rich for an improved exception logging
-
-Using standard pip install.
-
-Collecting rich>=10.14.0
-
-  Downloading rich-15.0.0-py3-none-any.whl.metadata (18 kB)
-
-Collecting markdown-it-py>=2.2.0 (from rich>=10.14.0)
-
-  Downloading markdown_it_py-4.2.0-py3-none-any.whl.metadata (7.4 kB)
-
-Collecting pygments<3.0.0,>=2.13.0 (from rich>=10.14.0)
-
-  Downloading pygments-2.20.0-py3-none-any.whl.metadata (2.5 kB)
-
-Collecting mdurl~=0.1 (from markdown-it-py>=2.2.0->rich>=10.14.0)
-
-  Downloading mdurl-0.1.2-py3-none-any.whl.metadata (1.6 kB)
-
-Downloading rich-15.0.0-py3-none-any.whl (310 kB)
-
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 310.7/310.7 kB 15.1 MB/s eta 0:00:00[2026-08-12 15:55:42.418175] 
-
-Downloading markdown_it_py-4.2.0-py3-none-any.whl (91 kB)
-
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 91.7/91.7 kB 472.9 MB/s eta 0:00:00[2026-08-12 15:55:42.431250] 
-
-Downloading pygments-2.20.0-py3-none-any.whl (1.2 MB)
-
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 89.4 MB/s eta 0:00:00[2026-08-12 15:55:42.457153] 
-
-Downloading mdurl-0.1.2-py3-none-any.whl (10.0 kB)
-
-Installing collected packages: pygments, mdurl, markdown-it-py, rich
-
-  Attempting uninstall: pygments
-
-    Found existing installation: Pygments 2.20.0
-
-    Uninstalling Pygments-2.20.0:
-
-      Successfully uninstalled Pygments-2.20.0
-
-  Attempting uninstall: mdurl
-
-    Found existing installation: mdurl 0.1.2
-
-    Uninstalling mdurl-0.1.2:
-
-      Successfully uninstalled mdurl-0.1.2
-
-  Attempting uninstall: markdown-it-py
-
-    Found existing installation: markdown-it-py 4.2.0
-
-    Uninstalling markdown-it-py-4.2.0:
-
-      Successfully uninstalled markdown-it-py-4.2.0
-
-  Attempting uninstall: rich
-
-    Found existing installation: rich 15.0.0
-
-    Uninstalling rich-15.0.0:
-
-      Successfully uninstalled rich-15.0.0
-
-Successfully installed markdown-it-py-4.2.0 mdurl-0.1.2 pygments-2.20.0 rich-15.0.0
-
-
-[notice] A new release of pip is available: 24.0 -> 26.2.1
-
-[notice] To update, run: pip install --upgrade pip
-
-
-────────────────────────────────────────────────────────────────────────────────────────
-
-
-[15:55:45] ❗️ installer returned a non-zero exit code
-
-[15:57:28] 🐙 Pulling code changes from Github...
-
-[15:57:29] 📦 Processing dependencies...
-
-
-──────────────────────────────────────── uv ───────────────────────────────────────────
-
-
-Using uv pip install.
-
-Using Python 3.14.7 environment at /home/adminuser/venv
-
-Resolved 39 packages in 280ms
-
-2026-08-12 15:57:38.413 Please replace `use_container_width` with `width`.
-
-
-`use_container_width` will be removed after 2025-12-31.
-
-
-For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
-
-[15:57:43] ❗️ The service has encountered an error while checking the health of the Streamlit app: Get "http://localhost:8501/healthz": EOF
-
-/app/scripts/run-streamlit.sh: line 9:   804 Killed                  sudo -E -u appuser /home/adminuser/venv/bin/streamlit "$@"
-
-main
-dacrelabs/da-cre-analysis/main/app.py
-
-
