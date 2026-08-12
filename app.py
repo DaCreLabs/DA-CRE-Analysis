@@ -429,6 +429,85 @@ def ensure_di_agent_columns():
 ensure_di_agent_columns()
 
 
+def ensure_runtime_schema():
+    """Upgrade databases created by older DACRE builds in-place.
+
+    CREATE TABLE IF NOT EXISTS does not change an existing SQLite table.
+    The call system was added after some deployed databases already existed,
+    so those databases can have call_rooms/call_participants without the new
+    columns.  This migration is intentionally idempotent and runs on every
+    startup.
+    """
+    con = db()
+    try:
+        migrations = {
+            "call_rooms": {
+                "company_name": "TEXT",
+                "room_name": "TEXT",
+                "title": "TEXT",
+                "host_username": "TEXT",
+                "mode": "TEXT DEFAULT 'team'",
+                "created_at": "TEXT",
+                "ended_at": "TEXT",
+            },
+            "call_participants": {
+                "room_name": "TEXT",
+                "company_name": "TEXT",
+                "participant_type": "TEXT",
+                "participant_id": "TEXT",
+                "display_name": "TEXT",
+                "joined_at": "TEXT",
+                "left_at": "TEXT",
+            },
+            "decision_ledger": {
+                "company_name": "TEXT",
+                "username": "TEXT",
+                "title": "TEXT",
+                "context": "TEXT",
+                "decision": "TEXT",
+                "expected_outcome": "TEXT",
+                "review_date": "TEXT",
+                "status": "TEXT DEFAULT 'Open'",
+                "outcome": "TEXT",
+                "created_at": "TEXT",
+                "updated_at": "TEXT",
+            },
+            "opportunity_radar": {
+                "company_name": "TEXT",
+                "username": "TEXT",
+                "title": "TEXT",
+                "impact": "TEXT",
+                "evidence": "TEXT",
+                "action": "TEXT",
+                "created_at": "TEXT",
+            },
+        }
+
+        for table, columns in migrations.items():
+            table_exists = con.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
+            ).fetchone()
+            if not table_exists:
+                continue
+            existing = {row[1] for row in con.execute(f"PRAGMA table_info({table})").fetchall()}
+            for column, dtype in columns.items():
+                if column not in existing:
+                    con.execute(f"ALTER TABLE {table} ADD COLUMN {column} {dtype}")
+
+        # Backfill safe defaults for rows created by older builds.
+        if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='call_rooms'").fetchone():
+            con.execute("UPDATE call_rooms SET mode='team' WHERE mode IS NULL OR mode=''" )
+        if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='decision_ledger'").fetchone():
+            con.execute("UPDATE decision_ledger SET status='Open' WHERE status IS NULL OR status=''" )
+
+        con.commit()
+    finally:
+        con.close()
+
+
+ensure_runtime_schema()
+
+
 def ensure_master():
     if not MASTER_PASSKEY:
         # Do not create a usable master account until the deployment secret is configured.
