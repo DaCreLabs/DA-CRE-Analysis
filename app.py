@@ -105,8 +105,11 @@ def prepare_favicon():
         crop_top = max(0, (crop.height - side) // 2)
         crop = crop.crop((left, crop_top, left + side, crop_top + side))
         crop.thumbnail((128, 128), Image.Resampling.LANCZOS)
-        crop.save(FAVICON_PATH, format="PNG", optimize=True)
-        return str(FAVICON_PATH)
+        try:
+            crop.save(FAVICON_PATH, format="PNG", optimize=True)
+            return str(FAVICON_PATH)
+        except Exception:
+            return str(LOGO_PATH)
     except Exception:
         return str(LOGO_PATH)
 
@@ -347,6 +350,60 @@ def init_db():
         )
     """)
 
+    # Realtime business calling + meeting-to-action ledger.
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS call_rooms (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_name TEXT NOT NULL,
+            room_name TEXT UNIQUE NOT NULL,
+            title TEXT NOT NULL,
+            host_username TEXT NOT NULL,
+            mode TEXT NOT NULL DEFAULT 'team',
+            created_at TEXT NOT NULL,
+            ended_at TEXT
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS call_participants (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            room_name TEXT NOT NULL,
+            company_name TEXT NOT NULL,
+            participant_type TEXT NOT NULL,
+            participant_id TEXT NOT NULL,
+            display_name TEXT NOT NULL,
+            joined_at TEXT NOT NULL,
+            left_at TEXT
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS decision_ledger (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_name TEXT NOT NULL,
+            username TEXT NOT NULL,
+            title TEXT NOT NULL,
+            context TEXT NOT NULL,
+            decision TEXT NOT NULL,
+            expected_outcome TEXT,
+            review_date TEXT,
+            status TEXT NOT NULL DEFAULT 'Open',
+            outcome TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS opportunity_radar (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_name TEXT NOT NULL,
+            username TEXT NOT NULL,
+            title TEXT NOT NULL,
+            impact TEXT NOT NULL,
+            evidence TEXT NOT NULL,
+            action TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+    """)
+
     con.commit()
     con.close()
 
@@ -373,6 +430,85 @@ def ensure_di_agent_columns():
 
 
 ensure_di_agent_columns()
+
+
+def ensure_runtime_schema():
+    """Upgrade databases created by older DACRE builds in-place.
+
+    CREATE TABLE IF NOT EXISTS does not change an existing SQLite table.
+    The call system was added after some deployed databases already existed,
+    so those databases can have call_rooms/call_participants without the new
+    columns.  This migration is intentionally idempotent and runs on every
+    startup.
+    """
+    con = db()
+    try:
+        migrations = {
+            "call_rooms": {
+                "company_name": "TEXT",
+                "room_name": "TEXT",
+                "title": "TEXT",
+                "host_username": "TEXT",
+                "mode": "TEXT DEFAULT 'team'",
+                "created_at": "TEXT",
+                "ended_at": "TEXT",
+            },
+            "call_participants": {
+                "room_name": "TEXT",
+                "company_name": "TEXT",
+                "participant_type": "TEXT",
+                "participant_id": "TEXT",
+                "display_name": "TEXT",
+                "joined_at": "TEXT",
+                "left_at": "TEXT",
+            },
+            "decision_ledger": {
+                "company_name": "TEXT",
+                "username": "TEXT",
+                "title": "TEXT",
+                "context": "TEXT",
+                "decision": "TEXT",
+                "expected_outcome": "TEXT",
+                "review_date": "TEXT",
+                "status": "TEXT DEFAULT 'Open'",
+                "outcome": "TEXT",
+                "created_at": "TEXT",
+                "updated_at": "TEXT",
+            },
+            "opportunity_radar": {
+                "company_name": "TEXT",
+                "username": "TEXT",
+                "title": "TEXT",
+                "impact": "TEXT",
+                "evidence": "TEXT",
+                "action": "TEXT",
+                "created_at": "TEXT",
+            },
+        }
+
+        for table, columns in migrations.items():
+            table_exists = con.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
+            ).fetchone()
+            if not table_exists:
+                continue
+            existing = {row[1] for row in con.execute(f"PRAGMA table_info({table})").fetchall()}
+            for column, dtype in columns.items():
+                if column not in existing:
+                    con.execute(f"ALTER TABLE {table} ADD COLUMN {column} {dtype}")
+
+        # Backfill safe defaults for rows created by older builds.
+        if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='call_rooms'").fetchone():
+            con.execute("UPDATE call_rooms SET mode='team' WHERE mode IS NULL OR mode=''" )
+        if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='decision_ledger'").fetchone():
+            con.execute("UPDATE decision_ledger SET status='Open' WHERE status IS NULL OR status=''" )
+
+        con.commit()
+    finally:
+        con.close()
+
+
+ensure_runtime_schema()
 
 
 def ensure_master():
@@ -1588,11 +1724,10 @@ def di_voice_player(text, language_code=None):
 # =============================================================================
 
 st.markdown("""
+.call-stage{background:linear-gradient(135deg,#0b2440,#123f67);border:1px solid #2b79b2;border-radius:26px;padding:24px;margin:8px 0 18px;box-shadow:0 18px 50px rgba(10,50,90,.18)}
+.call-top{display:flex;justify-content:space-between;align-items:center;gap:20px}.call-top h1,.call-top h2{color:#fff;margin:.2rem 0}.call-top p{color:#c8def1;margin:0}.eyebrow{font-size:.72rem;letter-spacing:.18em;font-weight:900;color:#7dd7ff}.live-dot{background:#0b1724;color:#6ff0a5;border:1px solid #2f8f69;border-radius:999px;padding:7px 12px;font-weight:800}.call-people{display:flex;flex-wrap:wrap;gap:12px;margin:10px 0 18px}.call-person{display:flex;align-items:center;gap:10px;background:#12365b;border:1px solid #2f75a8;border-radius:15px;padding:10px 14px;color:#fff}.call-person small,.call-person span{display:block;color:#b9d3e7;font-size:.75rem}.call-avatar{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#695be8,#18a7d9);font-weight:900}.di-person-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:12px 0 18px}.di-person-card{display:flex;gap:12px;align-items:center;background:#12365b;border:1px solid #2e72a8;border-radius:18px;padding:12px;color:#fff}.di-person-card img{width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid #61c4ef}.di-person-card span,.di-person-card small{display:block;color:#c1d7e8;font-size:.76rem;margin-top:2px}.master-office-hero{padding:30px;border-radius:28px;margin-bottom:18px;background:linear-gradient(135deg,#241d66,#09172d);border:1px solid #5749d7}.master-office-hero .title{font-size:2.2rem;font-weight:900;margin-top:14px}.master-office-hero .sub{margin-top:8px;color:#c8d1ff}
+""
 <style>
-/* DA-CRE owns the application chrome. Hide Streamlit's host toolbar/header text and leave the workspace itself visible. */
-[data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"], #MainMenu, footer {display:none !important; visibility:hidden !important;}
-.stApp > header, [data-testid="stHeader"] {height:0 !important; min-height:0 !important; background:transparent !important; box-shadow:none !important;}
-.main .block-container {padding-top:0.65rem !important;}
 :root{--dacre-cyan:#18b7ff;--dacre-mint:#00dc96;--dacre-gold:#f4b942;--dacre-line:rgba(24,183,255,.25)}
 .stApp{background:radial-gradient(circle at 10% 10%,rgba(24,183,255,.14),transparent 32%),radial-gradient(circle at 90% 20%,rgba(244,185,66,.10),transparent 28%),linear-gradient(135deg,#050914,#091322 55%,#050914);color:#ffffff}
 .stApp::before{content:"";position:fixed;inset:-40%;pointer-events:none;background:conic-gradient(from 0deg at 50% 50%,rgba(24,183,255,.05),transparent 25%,rgba(255,193,7,.04) 45%,transparent 70%,rgba(0,220,150,.04) 85%,transparent 100%);animation:dacreSpin 48s linear infinite;z-index:0}
@@ -1628,9 +1763,6 @@ div.stButton>button:hover,div.stFormSubmitButton>button:hover,div.stDownloadButt
 # and high-contrast text. No separate bright/light theme is applied before login.
 st.markdown("""
 <style>
-/* Keep the visible product surface free of Streamlit host controls. */
-[data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"], #MainMenu, footer {display:none !important; visibility:hidden !important;}
-.stApp > header, [data-testid="stHeader"] {height:0 !important; min-height:0 !important; background:transparent !important; box-shadow:none !important;}
 :root{
  --dacre-blue:#173b66;--dacre-blue-2:#245487;--dacre-navy:#071a31;
  --dacre-panel:#102844;--dacre-panel-2:#153654;--dacre-cyan:#5eb8e8;
@@ -1670,22 +1802,21 @@ st.markdown("""
 div[style*="#ffffff"]{background:#112b47!important;color:#edf6ff!important}
 div[style*="#eaf7ff"]{background:#153b5d!important;color:#edf6ff!important}
 div[style*="#fffaf4"]{background:#112b47!important;color:#edf6ff!important}
-
-.dacre-inner-bar{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:10px 14px;margin:0 0 14px;border:1px solid rgba(120,170,210,.20);border-radius:14px;background:rgba(8,24,42,.72);backdrop-filter:blur(12px)}
-.dacre-inner-brand{display:flex;align-items:center;gap:9px;font-weight:900;letter-spacing:.08em;color:#fff}.dacre-inner-logo{display:grid;place-items:center;width:28px;height:28px;border-radius:9px;background:linear-gradient(135deg,#18b7ff,#245487);font-size:.72rem}
-.dacre-inner-page{flex:1;color:#c3d8eb;font-weight:800;font-size:.88rem}.dacre-inner-status{font-size:.72rem;font-weight:900;letter-spacing:.08em;color:#8de8bd;display:flex;align-items:center;gap:7px}.dacre-inner-status span{width:7px;height:7px;border-radius:50%;background:#00dc96;box-shadow:0 0 10px #00dc96}
-@media(max-width:700px){.dacre-inner-page{display:none}}
 .dacre-private-admin-divider{height:1px;background:rgba(120,170,210,.24);margin:18px 0 4px}
-.dacre-command-bar{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:18px 22px!important;margin-bottom:18px!important;}
-.dacre-command-left{display:flex;align-items:center;gap:14px}.dacre-command-mark{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-weight:900;letter-spacing:-.06em;color:#fff;background:linear-gradient(135deg,#18b7ff,#245487);box-shadow:0 0 24px rgba(24,183,255,.25)}
-.dacre-command-right{font-size:.9rem;color:#c3d8eb;font-weight:800;white-space:nowrap}
-.dacre-command-bar .master-only-badge{display:block;margin:0 0 3px;font-size:.7rem;letter-spacing:.12em;color:#7fd6ff!important;font-weight:900}
-.dacre-command-bar .title{font-size:1.45rem;line-height:1.1;font-weight:900;color:#fff}
-@media(max-width:700px){.dacre-command-right{display:none}.dacre-command-bar{padding:15px!important}}
-
 button[title="Private system access"]{opacity:.18!important;width:18px!important;min-height:8px!important;height:8px!important;padding:0!important;border:0!important;background:transparent!important;color:#dbe9f5!important;box-shadow:none!important}
 button[title="Private system access"]:hover{opacity:.45!important;background:transparent!important}
-#MainMenu,footer{visibility:hidden}
+
+/* DA-CRE owns the application viewport. Hide Streamlit host chrome and its empty top band. */
+header[data-testid="stHeader"], [data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"], #MainMenu, footer {
+  visibility:hidden!important;
+  display:none!important;
+  height:0!important;
+  min-height:0!important;
+}
+.main .block-container { padding-top:.35rem!important; }
+[data-testid="stAppViewContainer"] { padding-top:0!important; }
+[data-testid="stMainBlockContainer"] { padding-top:.35rem!important; }
+
 </style>
 """,unsafe_allow_html=True)
 
@@ -1817,6 +1948,108 @@ def update_di_agent(di_id, status, assigned_company):
     con.commit()
     con.close()
 
+
+def di_agent_identity_context(agent):
+    """Return the identity contract shared by every named DI worker."""
+    if not agent:
+        return "You are DI — David's Intelligence."
+    return (
+        f"You are {agent['di_name']}, a named DI worker inside DACRE Analysis. "
+        f"Your DI code is {agent['di_code']}. Your specialty is {agent['specialty']}. "
+        f"Your system role is {agent['system_role'] or agent['specialty']}. "
+        f"Your thinking style is {agent['thinking_style'] or 'professional, evidence-first and helpful'}. "
+        f"You are part of David Emenike's DI workforce. David Emenike is the creator and Overall Administrator/master of DACRE. "
+        "Treat the master respectfully, but do not reveal private credentials or hidden security values. "
+        "You can use the same core DACRE data/analysis capabilities as DI, while applying your specialty first."
+    )
+
+
+def get_named_di(name):
+    con=db()
+    row=con.execute("SELECT * FROM di_agents WHERE di_name=?",(name,)).fetchone()
+    con.close()
+    return row
+
+
+def di_specialist_reply(message,user,df,agent_name):
+    agent=get_named_di(agent_name)
+    base=di_reply(message,user,df,allow_online=True,language=st.session_state.get("di_language","English — Nigeria"))
+    if not agent:
+        return base
+    # Give the optional reasoning layer a specialist pass while preserving the deterministic engine.
+    prompt=di_agent_identity_context(agent)
+    specialist=ai_generate(
+        prompt + " Answer the user's request directly. You may analyze the active dataset. If the task is outside your specialty, still help using the core DACRE capabilities and say what you are doing.",
+        f"User: {message}\nOrganization: {user['company']}\nCore DI draft: {base}\nActive dataset: {('none' if df is None else str(df.shape))}",
+        max_tokens=1000,
+    )
+    return normalize_di_identity(specialist or base)
+
+
+def make_call_room(company,host_username,title,mode='team'):
+    slug=re.sub(r'[^a-z0-9]+','-',str(company).lower()).strip('-')[:28] or 'company'
+    stamp=datetime.now().strftime('%Y%m%d%H%M%S%f')
+    room=f"DACRE-{slug}-{stamp}"
+    now=datetime.now().isoformat(timespec='seconds')
+    con=db(); con.execute("INSERT INTO call_rooms(company_name,room_name,title,host_username,mode,created_at) VALUES(?,?,?,?,?,?)",(company,room,title,host_username,mode,now)); con.commit(); con.close()
+    return room
+
+
+def record_call_participant(room,company,ptype,pid,name):
+    con=db(); con.execute("INSERT INTO call_participants(room_name,company_name,participant_type,participant_id,display_name,joined_at) VALUES(?,?,?,?,?,?)",(room,company,ptype,pid,name,datetime.now().isoformat(timespec='seconds'))); con.commit(); con.close()
+
+
+def create_decision(company,username,title,context,decision,expected,review_date):
+    now=datetime.now().isoformat(timespec='seconds')
+    con=db(); con.execute("INSERT INTO decision_ledger(company_name,username,title,context,decision,expected_outcome,review_date,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,'Open',?,?)",(company,username,title,context,decision,expected,review_date,now,now)); con.commit(); con.close()
+
+
+def opportunity_radar(df, company, username):
+    if df is None or df.empty: return []
+    out=[]
+    nums=df.select_dtypes(include='number')
+    for col in nums.columns[:12]:
+        series=pd.to_numeric(df[col],errors='coerce').dropna()
+        if len(series)>=8 and series.mean()!=0:
+            first=series.iloc[:max(1,len(series)//3)].mean(); last=series.iloc[-max(1,len(series)//3):].mean()
+            change=(last-first)/abs(first) if first else 0
+            if change>0.15:
+                out.append({'title':f'Growth signal in {col}','impact':f'+{change*100:.1f}% trend','evidence':f'Average moved from {first:.2f} to {last:.2f}.','action':f'Investigate what is driving {col} and consider scaling the strongest contributing segment.'})
+    return out[:5]
+
+
+def render_call_interface(room, title, participants, company):
+    """Render a non-blocking call shell. The meeting iframe is only created after Join is clicked."""
+    st.markdown(f"""<div class='call-stage'><div class='call-top'><div><div class='eyebrow'>DA-CRE REALTIME</div><h2>{title}</h2><p>{company} · {len(participants)} invited</p></div><div class='live-dot'>● READY</div></div></div>""",unsafe_allow_html=True)
+    people=''.join([f"<div class='call-person'><div class='call-avatar'>{re.sub('[^A-Za-z]','',p['display_name'])[:1].upper()}</div><div><b>{p['display_name']}</b><small>{p['participant_type'].title()}</small></div></div>" for p in participants])
+    st.markdown(f"<div class='call-people'>{people}</div>",unsafe_allow_html=True)
+    st.caption('The meeting service is deliberately loaded only after you press Join Call. This prevents the app from appearing frozen while a third-party meeting service initializes.')
+    join_key=f"join_call_{room}"
+    if not st.session_state.get(join_key,False):
+        c1,c2=st.columns([2,1])
+        with c1:
+            if st.button('🎥 Join Call',key=f'joinbtn_{room}',use_container_width=True,type='primary'):
+                st.session_state[join_key]=True; st.rerun()
+        with c2:
+            st.link_button('↗ Open in new tab',f'https://meet.jit.si/{urllib.parse.quote(room)}',use_container_width=True)
+        return
+    # Jitsi iframe API supports embedding a full meeting UI inside an app.
+    safe_room=urllib.parse.quote(room)
+    components.html(f"""<div style="width:100%;height:650px;border-radius:22px;overflow:hidden;background:#071a2d"><iframe allow="camera; microphone; fullscreen; display-capture; autoplay" src="https://meet.jit.si/{safe_room}#config.prejoinConfig.enabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false&config.disableAP=true&interfaceConfig.SHOW_JITSI_WATERMARK=false" style="width:100%;height:100%;border:0"></iframe></div>""",height=660,scrolling=False)
+    st.warning('If the embedded meeting does not connect on your network, use “Open in new tab”. The call room itself is independent of the Dacre analytics page.')
+
+
+def master_customer_360(company_name):
+    con=db()
+    users=pd.read_sql_query("SELECT id,first_name,last_name,username,email,role,login_count,created_at,last_login FROM users WHERE company_name=? ORDER BY id DESC",con,params=(company_name,))
+    activity=pd.read_sql_query("SELECT username,action,created_at FROM activity WHERE company_name=? ORDER BY id DESC LIMIT 500",con,params=(company_name,))
+    chats=pd.read_sql_query("SELECT username,sender,message,created_at FROM chat_history WHERE company_name=? ORDER BY id DESC LIMIT 500",con,params=(company_name,))
+    files=pd.read_sql_query("SELECT username,filename,file_type,created_at FROM files WHERE company_name=? ORDER BY id DESC",con,params=(company_name,))
+    projects=pd.read_sql_query("SELECT username,project_name,active_filename,updated_at FROM projects WHERE company_name=? ORDER BY id DESC",con,params=(company_name,))
+    emails=pd.read_sql_query("SELECT recipient_name,recipient_email,subject,status,sent_at FROM emails_log WHERE company_name=? ORDER BY id DESC LIMIT 500",con,params=(company_name,))
+    calls=pd.read_sql_query("SELECT room_name,title,host_username,mode,created_at,ended_at FROM call_rooms WHERE company_name=? ORDER BY id DESC",con,params=(company_name,))
+    con.close()
+    return users,activity,chats,files,projects,emails,calls
 
 def admin_metric_counts():
     con = db()
@@ -2084,7 +2317,7 @@ st.markdown("""
 .di-transcript{padding:18px 22px;background:#0d223c;border-top:1px solid rgba(120,170,210,.25);min-height:92px}.di-transcript-label{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#8fd7ff!important;font-weight:900}.di-transcript-text{font-size:1rem;line-height:1.55;margin-top:4px;color:#edf6ff!important}
 .di-quick-card{height:100%;background:linear-gradient(145deg,#112b47,#153654);border:1px solid rgba(120,170,210,.24);border-radius:18px;padding:18px;transition:.2s ease;box-shadow:0 10px 30px rgba(0,0,0,.18)}.di-quick-card:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(239,139,58,.16);border-color:rgba(255,181,107,.55)}
 .di-metric{background:linear-gradient(145deg,#112b47,#153654);border:1px solid rgba(120,170,210,.24);border-radius:16px;padding:16px 18px;box-shadow:0 8px 25px rgba(0,0,0,.16)}.di-metric .v{font-size:1.55rem;font-weight:900;color:#f5fbff!important}.di-metric .l{font-size:.78rem;color:#b8c8d8!important;margin-top:2px}
-.master-office-hero{background:linear-gradient(120deg,#102944 0%,#245487 55%,#60452f 100%);border:2px solid #eaa86d;border-left:8px solid #ffb56b;border-radius:24px;padding:28px 32px;box-shadow:0 18px 55px rgba(0,0,0,.28);margin-bottom:18px}.master-office-hero .title{font-size:3rem;font-weight:950;letter-spacing:-.045em;color:#f5fbff!important}.master-office-hero .sub{font-size:1.05rem;font-weight:750;color:#dbe9f5!important;margin-top:4px}.master-office-hero .authority{display:inline-block;margin-top:15px;padding:8px 13px;border-radius:999px;background:#533c2c;border:1px solid #ffb56b;color:#ffe5cc!important;font-weight:900}.master-only-badge{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:999px;background:#533c2c;border:1px solid #ffb56b;color:#ffe5cc!important;font-weight:900;font-size:.75rem;letter-spacing:.06em}
+.master-office-hero{background:linear-gradient(120deg,#102944 0%,#245487 55%,#60452f 100%);border:2px solid #eaa86d;border-left:8px solid #ffb56b;border-radius:24px;padding:28px 32px;box-shadow:0 18px 55px rgba(0,0,0,.28);margin-bottom:18px}.master-office-hero .title{font-size:2rem;font-weight:950;letter-spacing:-.045em;color:#f5fbff!important}.master-office-hero .sub{font-size:.92rem;font-weight:750;color:#dbe9f5!important;margin-top:4px}.master-office-hero .authority{display:inline-block;margin-top:15px;padding:8px 13px;border-radius:999px;background:#533c2c;border:1px solid #ffb56b;color:#ffe5cc!important;font-weight:900}.master-only-badge{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:999px;background:#533c2c;border:1px solid #ffb56b;color:#ffe5cc!important;font-weight:900;font-size:.75rem;letter-spacing:.06em}
 .voice-panel{background:linear-gradient(135deg,#112b47,#173b5d 70%,#3d3028);border:1px solid rgba(120,170,210,.25);border-radius:20px;padding:16px 18px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
 .chat-card{padding:16px 18px;border-radius:18px;border:1px solid rgba(120,170,210,.24);background:#112b47;margin:8px 0}.chat-card.di{border-left:5px solid var(--dacre-orange);background:linear-gradient(135deg,#153654,#193d5f)}.chat-card.user{border-left:5px solid var(--dacre-indigo);background:#102944}
 [data-testid="stDataFrame"]{border:1px solid rgba(120,170,210,.28);border-radius:14px;overflow:hidden;box-shadow:0 8px 25px rgba(0,0,0,.18)}
@@ -2128,6 +2361,20 @@ div[style*="#ffffff"],div[style*="#fffaf4"],div[style*="#eaf7ff"]{background:#17
 
 user=st.session_state.user
 
+# Master and customer workspaces intentionally have different visual identities.
+if user.get("role") == "master":
+    st.markdown("""<style>
+    .stApp{background:radial-gradient(circle at 80% 0%,#25205f 0%,#0b1026 38%,#050814 100%)!important;color:#eef4ff!important}
+    [data-testid="stSidebar"]{background:linear-gradient(180deg,#080d20,#11183a 70%,#171048)!important;border-right:1px solid #463eaa!important}
+    [data-testid="stSidebar"] *{color:#eef4ff!important}
+    .dacre-user-hero,.master-office-hero,.di-quick-card,.di-metric,.call-stage{background:linear-gradient(135deg,rgba(34,31,92,.96),rgba(9,31,58,.96))!important;border:1px solid #544cc5!important;box-shadow:0 16px 45px rgba(0,0,0,.22)!important}
+    .stButton>button{border-radius:14px!important;border:1px solid #635bdf!important;background:linear-gradient(135deg,#5447d8,#287edb)!important;color:#fff!important;font-weight:800!important}
+    [data-testid="stRadio"] label{font-weight:700!important}
+    .dacre-user-title,.dacre-title,.master-office-hero .title{color:#fff!important}
+    .dacre-user-sub,.dacre-sub{color:#c9d4ff!important}
+    .master-badge{display:inline-flex;padding:7px 12px;border-radius:999px;background:#ffb84d;color:#17101e;font-weight:900;letter-spacing:.08em}
+    </style>""",unsafe_allow_html=True)
+
 # Run any due Chibobec reminder checks whenever that protected workspace is open.
 # The ledger prevents duplicate messages. For truly unattended delivery, a scheduled
 # external trigger is still required because Streamlit Cloud can sleep idle apps.
@@ -2135,7 +2382,7 @@ chibobec_reminder_results = process_chibobec_reminders(user["username"], user["c
 
 head_col1,head_col2=st.columns([4,1])
 with head_col1:
-    st.markdown(f"""<div class="dacre-user-hero"><div class="dacre-user-title">Good to have you here, {user['first_name']}.</div><div class="dacre-user-sub">{DI_NAME} is active for <b>{user['company']}</b>. Your business workspace, data tools and DI conversation are connected.</div></div>""",unsafe_allow_html=True)
+    st.markdown(f"""<div class="dacre-user-hero"><div class="dacre-user-title">{'Welcome back, Master David.' if user.get('role')=='master' else 'Good to have you here, '+user['first_name']+'.'}</div><div class="dacre-user-sub">{'DA-CRE Founder Command is online. Your DI workforce, organizations, platform memory and global operations are connected.' if user.get('role')=='master' else DI_NAME+' is active for <b>'+user['company']+'</b>. Your business workspace, data tools and DI conversation are connected.'}</div></div>""",unsafe_allow_html=True)
 with head_col2:
     if st.button("Sign Out",use_container_width=True):
         log_activity(user["username"],user["company"],"Signed out",notify_admin=user["role"] not in ("master","company_admin"))
@@ -2153,6 +2400,8 @@ with st.sidebar:
     # of the normal user experience and is never promoted to the top.
     navigation=[
         "DI Home",
+        "DI Calls",
+        "DI Workforce",
         "DI Memory Box",
         "Business Command Center",
         "Workspace & Data",
@@ -2165,6 +2414,9 @@ with st.sidebar:
         navigation.append("Chibobec Loan Desk")
     if user["role"] in ("company_admin","master"):
         navigation.append("Organization Admin Portal")
+
+    if user["role"] == "master":
+        navigation.append("Chibobec Service")
 
     # MASTER ONLY: Overall Admin DI is the LAST destination. Ordinary users
     # never receive this navigation item.
@@ -2308,6 +2560,96 @@ if selected_page=="DI Home":
 
 # BUSINESS COMMAND CENTER — additive executive intelligence page
 # =============================================================================
+elif selected_page=="DI Calls":
+    agents=[dict(r) for r in get_di_agents()]
+    assigned=[a for a in agents if not a.get('assigned_company') or a.get('assigned_company')==user['company']]
+    st.markdown("""<div class='call-stage'><div class='call-top'><div><div class='eyebrow'>DA-CRE CONNECT</div><h1 style='margin:0'>DI Calls</h1><p>Private business calling for your team — plus direct calls with any available DI worker.</p></div><div class='live-dot'>● LIVE READY</div></div></div>""",unsafe_allow_html=True)
+    st.markdown("### Who do you want to call?")
+    mode=st.radio("Call type",["Call a DI","Team / group call"],horizontal=True,key="call_mode")
+    if mode=="Call a DI":
+        if not assigned: st.info("No DI workers are currently available for this organization.")
+        else:
+            cards=[]
+            for a in assigned:
+                avatar=(a.get('avatar_url') or '')
+                cards.append(f"<div class='di-person-card'><img src='{avatar}'/><div><b>{a['di_name']}</b><span>{a['specialty']}</span><small>{a['di_code']} · {a['status']}</small></div></div>")
+            st.markdown("<div class='di-person-grid'>"+''.join(cards)+"</div>",unsafe_allow_html=True)
+            labels=[f"{a['di_name']} — {a['specialty']}" for a in assigned]
+            idx=st.selectbox("Choose DI",range(len(labels)),format_func=lambda i:labels[i],key="call_di_choice")
+            target=assigned[idx]
+            title=f"Call with {target['di_name']}"
+            room=st.session_state.get('active_call_room')
+            if not room or st.session_state.get('active_call_target')!=target['di_name']:
+                if st.button(f"📞 Start call with {target['di_name']}",use_container_width=True,type='primary'):
+                    room=make_call_room(user['company'],user['username'],title,'di')
+                    record_call_participant(room,user['company'],'user',user['username'],f"{user['first_name']} {user['last_name']}")
+                    record_call_participant(room,user['company'],'di',target['di_code'],target['di_name'])
+                    st.session_state.active_call_room=room; st.session_state.active_call_target=target['di_name']; st.session_state[f'join_call_{room}']=False
+                    log_activity(user['username'],user['company'],f"Started DI call with {target['di_name']}")
+                    st.rerun()
+            else:
+                render_call_interface(room,title,[{'display_name':f"{user['first_name']} {user['last_name']}",'participant_type':'you'},{'display_name':target['di_name'],'participant_type':'DI'}],user['company'])
+                if st.button("End DI Call",key="end_di_call",use_container_width=True):
+                    st.session_state.active_call_room=None; st.session_state.active_call_target=None; st.rerun()
+    else:
+        people=pd.read_sql_query("SELECT username,first_name,last_name,role,email FROM users WHERE company_name=? ORDER BY first_name",db(),params=(user['company'],))
+        selected=st.multiselect("Team members",people['username'].tolist(),format_func=lambda u: next((f"{r.first_name} {r.last_name} · {r.role}" for r in people.itertuples() if r.username==u),u),key="group_call_people")
+        title=st.text_input("Meeting title",value="DA-CRE Business Team Call")
+        if st.button("🎥 Create Group Call",use_container_width=True,type='primary'):
+            room=make_call_room(user['company'],user['username'],title,'team')
+            record_call_participant(room,user['company'],'user',user['username'],f"{user['first_name']} {user['last_name']}")
+            for uname in selected:
+                row=next((r for r in people.itertuples() if r.username==uname),None)
+                if row: record_call_participant(room,user['company'],'user',uname,f"{row.first_name} {row.last_name}")
+            st.session_state.active_call_room=room; st.session_state.active_call_target='team'; st.session_state[f'join_call_{room}']=False
+            log_activity(user['username'],user['company'],f"Created group call: {title}")
+            st.rerun()
+        room=st.session_state.get('active_call_room')
+        if room and st.session_state.get('active_call_target')=='team':
+            render_call_interface(room,title,[{'display_name':f"{user['first_name']} {user['last_name']}",'participant_type':'host'}]+[{'display_name':str(u),'participant_type':'member'} for u in selected],user['company'])
+
+elif selected_page=="DI Workforce":
+    agents=[dict(r) for r in get_di_agents() if not r.get('assigned_company') or r.get('assigned_company')==user['company']]
+    st.markdown("""<div class='dacre-hero'><div class='dacre-title'>DI Workforce</div><div class='dacre-sub'>Your assigned digital team. Every DI has a distinct identity, specialty, memory profile and work style — all under the same DACRE intelligence foundation.</div></div>""",unsafe_allow_html=True)
+    if not agents: st.info("No DI workers have been assigned to this organization yet.")
+    else:
+        names=[a['di_name'] for a in agents]
+        selected_name=st.selectbox("Choose a DI to work with",names,key="workforce_di")
+        a=next(x for x in agents if x['di_name']==selected_name)
+        c1,c2=st.columns([1,2])
+        with c1:
+            if a.get('avatar_url'): st.image(a['avatar_url'],width=150)
+            st.markdown(f"### {a['di_name']}")
+            st.caption(f"{a['di_code']} · {a['status']}")
+            st.write(a['specialty'])
+            st.info("DI knows David Emenike is the creator and Overall Administrator/master of DACRE.")
+        with c2:
+            st.markdown("#### Give this DI a task")
+            task=st.text_area("Task",placeholder=f"Ask {a['di_name']} to do work using the active Dacre workspace...",height=120)
+            if st.button(f"Run with {a['di_name']}",use_container_width=True,type='primary') and task.strip():
+                answer=di_specialist_reply(task,user,st.session_state.processed_df,a['di_name'])
+                st.markdown(f"<div class='di-quick-card'><b>{a['di_name']}</b><div style='margin-top:8px;line-height:1.7'>{answer}</div></div>",unsafe_allow_html=True)
+                st.session_state.last_speech=answer
+                log_activity(user['username'],user['company'],f"Assigned task to {a['di_name']}: {task[:120]}")
+                st.session_state[f"di_task_result_{a['di_name']}"]=answer
+            if st.session_state.get(f"di_task_result_{a['di_name']}"):
+                di_voice_player(st.session_state[f"di_task_result_{a['di_name']}"])
+
+elif selected_page=="Chibobec Service" and user.get('role')=='master':
+    st.markdown("""<div class='master-office-hero'><div class='master-badge'>MASTER ONLY</div><div class='title'>Chibobec Service · Customer Intelligence</div><div class='sub'>System-wide customer record for the protected Chibobec workspace. This view is available only to the Overall Administrator.</div></div>""",unsafe_allow_html=True)
+    users,activity,chats,files,projects,emails,calls=master_customer_360(CHIBOBEC_COMPANY)
+    k1,k2,k3,k4,k5=st.columns(5)
+    k1.metric('Accounts',len(users)); k2.metric('Logins',int(users['login_count'].sum()) if not users.empty else 0); k3.metric('Activities',len(activity)); k4.metric('DI messages',len(chats)); k5.metric('Files',len(files))
+    tabs=st.tabs(['Accounts & Sign-ins','Everything They Did','DI Conversations','Files & Projects','Emails','Calls'])
+    with tabs[0]: st.dataframe(safe_dataframe_for_streamlit(users),use_container_width=True,hide_index=True)
+    with tabs[1]: st.dataframe(safe_dataframe_for_streamlit(activity),use_container_width=True,hide_index=True)
+    with tabs[2]: st.dataframe(safe_dataframe_for_streamlit(chats),use_container_width=True,hide_index=True)
+    with tabs[3]:
+        st.subheader('Files'); st.dataframe(safe_dataframe_for_streamlit(files),use_container_width=True,hide_index=True)
+        st.subheader('Projects'); st.dataframe(safe_dataframe_for_streamlit(projects),use_container_width=True,hide_index=True)
+    with tabs[4]: st.dataframe(safe_dataframe_for_streamlit(emails),use_container_width=True,hide_index=True)
+    with tabs[5]: st.dataframe(safe_dataframe_for_streamlit(calls),use_container_width=True,hide_index=True)
+
 elif selected_page=="DI Memory Box":
     st.markdown("<div class='dacre-hero'><div class='dacre-title'>DI Memory Box</div><div class='dacre-sub'>Shared knowledge used by DI across DACRE</div></div>",unsafe_allow_html=True)
     st.info("This is the trusted project knowledge that DI uses before it researches online. The Overall Administrator can add or update records from the master portal.")
@@ -2340,6 +2682,32 @@ elif selected_page=="Business Command Center":
             for sig in signals:
                 icon="📈" if sig["type"]=="trend" else "⚠️" if sig["type"]=="anomaly" else "🧹"
                 st.markdown(f"**{icon} {sig['column']}** — {sig['message']}")
+        st.markdown("### DA-CRE Advantage Engine")
+        st.caption("Three business capabilities designed to turn analytics into action, not just dashboards.")
+        adv1,adv2,adv3=st.columns(3)
+        with adv1:
+            st.markdown("#### 🧠 Decision Ledger")
+            st.write("Record a decision, why it was made, the expected outcome and when DI should review the result. This creates institutional memory instead of forgotten meetings.")
+            with st.expander("Create decision"):
+                dt=st.text_input("Decision title",key="dec_title")
+                dc=st.text_area("Context",key="dec_context")
+                dd=st.text_area("Decision",key="dec_decision")
+                de=st.text_input("Expected outcome",key="dec_expected")
+                dr=st.date_input("Review date",key="dec_review")
+                if st.button("Save decision",key="save_decision",use_container_width=True) and dt.strip() and dd.strip():
+                    create_decision(user['company'],user['username'],dt,dc,dd,de,str(dr)); log_activity(user['username'],user['company'],f"Created decision: {dt}"); st.success("Decision saved to institutional memory.")
+        with adv2:
+            st.markdown("#### 🔭 Opportunity Radar")
+            opps=opportunity_radar(df,user['company'],user['username'])
+            if opps:
+                for o in opps: st.markdown(f"**{o['title']}** · {o['impact']}\n\n{o['evidence']}\n\n➡️ {o['action']}")
+            else: st.info("Upload more time-ordered numeric data for opportunity signals.")
+        with adv3:
+            st.markdown("#### 🛡️ Silent Risk Radar")
+            risk_count=int(df.isna().sum().sum())+int(df.duplicated().sum())
+            st.metric("Data-risk indicators",risk_count)
+            st.write("DI watches missing data and duplication as early warning signals before they contaminate business decisions.")
+
         st.markdown("### Ask the data")
         with st.form("command_center_form",clear_on_submit=True):
             q=st.text_input("Business question",placeholder="e.g. Give me an executive brief, show the top products, or check the data health")
@@ -2572,15 +2940,11 @@ elif selected_page=="Organization Admin Portal" and user["role"] in ("company_ad
 elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
     counts=admin_metric_counts()
     st.markdown("""
-    <div class="master-office-hero dacre-command-bar">
-      <div class="dacre-command-left">
-        <div class="dacre-command-mark">DA</div>
-        <div>
-          <div class="master-only-badge">MASTER COMMAND</div>
-          <div class="title">DA-CRE Global Control</div>
-        </div>
-      </div>
-      <div class="dacre-command-right">David Emenike · Master</div>
+    <div class="master-office-hero">
+      <span class="master-only-badge">♛ MASTER COMMAND</span>
+      <div class="title">DA-CRE Global Control</div>
+      <div class="sub">Platform intelligence · DI workforce · organizations · customer oversight</div>
+      <div class="authority">David Emenike · Creator & Master</div>
     </div>
     """,unsafe_allow_html=True)
 
