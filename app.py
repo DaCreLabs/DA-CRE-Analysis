@@ -53,7 +53,11 @@ LOGO_CANDIDATES = [
 ]
 LOGO_PATH = next((BASE_DIR / x for x in LOGO_CANDIDATES if (BASE_DIR / x).exists()), BASE_DIR / LOGO_CANDIDATES[0])
 FAVICON_PATH = BASE_DIR / ".dacre_favicon.png"
-DB_PATH = BASE_DIR / "dacre_platform.db"
+# Streamlit Cloud can restart containers and older deployments may carry a database
+# created by a previous DACRE build. Keep the normal project-local DB path, but allow
+# an explicit writable path when the deployment provides one.
+DB_PATH = Path(os.getenv("DACRE_DB_PATH", str(BASE_DIR / "dacre_platform.db"))).expanduser()
+
 
 # Streamlit Community Cloud does not guarantee persistence for local files.
 def cloud_persistence_configured():
@@ -408,7 +412,118 @@ def init_db():
     con.close()
 
 
-init_db()
+def ensure_all_runtime_columns():
+    """Make older DACRE SQLite databases compatible with this build.
+
+    SQLite's CREATE TABLE IF NOT EXISTS does not upgrade an existing table.
+    The previous build only migrated a few newer tables, so a database created by
+    an older version could crash the app during startup when a newly-added column
+    was queried. This migration is idempotent and only adds missing columns.
+    """
+    schemas = {
+        "companies": {
+            "name":"TEXT", "owner_username":"TEXT", "admin_password_hash":"TEXT", "created_at":"TEXT",
+        },
+        "users": {
+            "first_name":"TEXT", "last_name":"TEXT", "username":"TEXT", "company_name":"TEXT",
+            "email":"TEXT", "email_password":"TEXT", "password_hash":"TEXT", "passkey_hash":"TEXT",
+            "role":"TEXT DEFAULT 'user'", "login_count":"INTEGER DEFAULT 0", "created_at":"TEXT", "last_login":"TEXT",
+        },
+        "files": {
+            "username":"TEXT", "company_name":"TEXT", "filename":"TEXT", "file_type":"TEXT",
+            "file_json":"TEXT", "created_at":"TEXT",
+        },
+        "projects": {
+            "username":"TEXT", "company_name":"TEXT", "project_name":"TEXT", "active_filename":"TEXT",
+            "raw_json":"TEXT", "processed_json":"TEXT", "formula_logs":"TEXT", "chart_config":"TEXT", "updated_at":"TEXT",
+        },
+        "activity": {"username":"TEXT", "company_name":"TEXT", "action":"TEXT", "created_at":"TEXT"},
+        "emails_log": {
+            "recipient_email":"TEXT", "recipient_name":"TEXT", "company_name":"TEXT", "subject":"TEXT",
+            "body":"TEXT", "sender_email":"TEXT", "status":"TEXT", "sent_at":"TEXT",
+        },
+        "notifications": {
+            "company_name":"TEXT", "target_username":"TEXT", "event_type":"TEXT", "message":"TEXT",
+            "is_read":"INTEGER DEFAULT 0", "created_at":"TEXT",
+        },
+        "chat_history": {
+            "username":"TEXT", "company_name":"TEXT", "sender":"TEXT", "message":"TEXT", "created_at":"TEXT",
+        },
+        "loan_clients": {
+            "username":"TEXT", "company_name":"TEXT", "client_name":"TEXT", "whatsapp_number":"TEXT",
+            "loan_amount":"REAL DEFAULT 0", "lent_date":"TEXT", "due_date":"TEXT",
+            "reminder_2_sent":"INTEGER DEFAULT 0", "due_sent":"INTEGER DEFAULT 0",
+            "reminder_2_message_id":"TEXT", "due_message_id":"TEXT",
+            "last_whatsapp_status":"TEXT", "last_whatsapp_error":"TEXT",
+            "created_at":"TEXT", "updated_at":"TEXT",
+        },
+        "whatsapp_delivery_log": {
+            "loan_id":"INTEGER", "company_name":"TEXT", "client_name":"TEXT", "whatsapp_number":"TEXT",
+            "reminder_type":"TEXT", "template_name":"TEXT", "message_id":"TEXT", "status":"TEXT",
+            "response":"TEXT", "created_at":"TEXT",
+        },
+        "di_memory": {
+            "category":"TEXT DEFAULT 'GENERAL'", "title":"TEXT DEFAULT ''", "content":"TEXT DEFAULT ''",
+            "priority":"INTEGER DEFAULT 500", "active":"INTEGER DEFAULT 1", "created_by":"TEXT DEFAULT ''",
+            "created_at":"TEXT DEFAULT ''", "updated_at":"TEXT DEFAULT ''",
+        },
+        "di_agents": {
+            "di_name":"TEXT", "di_code":"TEXT", "specialty":"TEXT", "status":"TEXT DEFAULT 'Available'",
+            "assigned_company":"TEXT", "system_role":"TEXT", "avatar_url":"TEXT", "voice_profile":"TEXT",
+            "thinking_style":"TEXT", "created_by":"TEXT", "created_at":"TEXT", "last_active":"TEXT",
+        },
+        "call_rooms": {
+            "company_name":"TEXT", "room_name":"TEXT", "title":"TEXT", "host_username":"TEXT",
+            "mode":"TEXT DEFAULT 'team'", "created_at":"TEXT", "ended_at":"TEXT",
+        },
+        "call_participants": {
+            "room_name":"TEXT", "company_name":"TEXT", "participant_type":"TEXT", "participant_id":"TEXT",
+            "display_name":"TEXT", "joined_at":"TEXT", "left_at":"TEXT",
+        },
+        "decision_ledger": {
+            "company_name":"TEXT", "username":"TEXT", "title":"TEXT", "context":"TEXT", "decision":"TEXT",
+            "expected_outcome":"TEXT", "review_date":"TEXT", "status":"TEXT DEFAULT 'Open'", "outcome":"TEXT",
+            "created_at":"TEXT", "updated_at":"TEXT",
+        },
+        "opportunity_radar": {
+            "company_name":"TEXT", "username":"TEXT", "title":"TEXT", "impact":"TEXT", "evidence":"TEXT",
+            "action":"TEXT", "created_at":"TEXT",
+        },
+    }
+    con=db()
+    try:
+        for table, columns in schemas.items():
+            exists=con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",(table,)).fetchone()
+            if not exists:
+                continue
+            existing={row[1] for row in con.execute(f"PRAGMA table_info({table})").fetchall()}
+            for column, declaration in columns.items():
+                if column not in existing:
+                    con.execute(f"ALTER TABLE {table} ADD COLUMN {column} {declaration}")
+        # Safe defaults for older rows.
+        for table, column, value in [
+            ("users","role","user"),("users","login_count","0"),("notifications","is_read","0"),
+            ("loan_clients","loan_amount","0"),("loan_clients","reminder_2_sent","0"),("loan_clients","due_sent","0"),
+            ("di_memory","priority","500"),("di_memory","active","1"),("call_rooms","mode","team"),
+            ("decision_ledger","status","Open"),
+        ]:
+            if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",(table,)).fetchone():
+                con.execute(f"UPDATE {table} SET {column}=? WHERE {column} IS NULL",(value,))
+        con.commit()
+    finally:
+        con.close()
+
+
+# Boot the database in a guarded sequence. If a deployment has an incompatible
+# legacy database, show the actual startup error instead of Streamlit's generic
+# "Oh no." page.
+try:
+    init_db()
+    ensure_all_runtime_columns()
+except Exception as _boot_db_error:
+    st.error("DACRE could not initialize its local database.")
+    st.exception(_boot_db_error)
+    st.stop()
 
 
 def ensure_di_agent_columns():
@@ -698,6 +813,10 @@ def seed_di_memory():
     """Seed the shared DI Memory Box without overwriting user-created memory."""
     con=db(); now=datetime.now().isoformat(timespec="seconds")
     con.execute("PRAGMA journal_mode=WAL")
+    existing_count = con.execute("SELECT COUNT(*) FROM di_memory").fetchone()[0]
+    if existing_count >= 4000:
+        con.close()
+        return
     # Ensure the current schema can accept the seed records even when upgrading
     # an older DACRE SQLite database.
     cols={r[1] for r in con.execute("PRAGMA table_info(di_memory)").fetchall()}
@@ -1908,8 +2027,13 @@ def seed_named_di_workforce():
         con.close()
 
 
-ensure_di_agent_columns()
-seed_named_di_workforce()
+try:
+    ensure_di_agent_columns()
+    seed_named_di_workforce()
+except Exception as _workforce_boot_error:
+    # Keep DACRE usable even if an old workforce row/database needs attention.
+    # The admin page can still be opened and the exact exception is available in logs.
+    pass
 
 def get_di_agents():
     con = db()
