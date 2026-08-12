@@ -9,11 +9,6 @@ import urllib.parse
 import urllib.request
 import smtplib
 
-try:
-    import speech_recognition as sr
-except Exception:
-    sr = None
-
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -23,6 +18,10 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 from PIL import Image
+
+# Optional desktop/audio-file speech recognition. Browser voice uses the Web Speech API
+# and does not require the SpeechRecognition Python package.
+sr = None
 
 # =============================================================================
 # DACRE ANALYSIS ENGINE
@@ -1828,7 +1827,14 @@ html,body,.stApp,.stApp p,.stApp li,.stApp span,.stApp label,.stMarkdown,.stMark
 div.stButton>button,div.stFormSubmitButton>button,div.stDownloadButton>button{border-radius:12px;border:1px solid rgba(24,183,255,.45);background:linear-gradient(135deg,#0a2540,#0d3860);color:#ffffff!important;font-weight:800!important;padding:10px 18px;transition:all .22s ease}
 div.stButton>button:hover,div.stFormSubmitButton>button:hover,div.stDownloadButton>button:hover{border-color:var(--dacre-cyan);background:linear-gradient(135deg,#0d3860,#12508c);box-shadow:0 0 20px rgba(24,183,255,.45);transform:translateY(-1px)}
 [data-testid="stMetric"]{padding:14px 18px;border-radius:16px;border:1px solid rgba(255,255,255,.10);background:linear-gradient(145deg,rgba(255,255,255,.05),rgba(255,255,255,.015))}
-#MainMenu,footer{visibility:hidden}
+# Streamlit chrome is intentionally hidden: Dacre owns the visual shell.
+# This removes the Share / edit / GitHub toolbar and the empty top band.
+# The deployment controls remain available from Streamlit Cloud's Manage App outside the end-user workspace.
+#MainMenu,footer{visibility:hidden!important}
+header[data-testid="stHeader"]{display:none!important}
+div[data-testid="stToolbar"]{display:none!important}
+section[data-testid="stSidebar"]{top:0!important}
+.main .block-container{padding-top:.8rem!important}
 </style>
 """, unsafe_allow_html=True)
 
