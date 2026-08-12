@@ -408,6 +408,166 @@ def init_db():
 init_db()
 
 
+def _table_columns(con, table_name):
+    """Return existing SQLite columns without assuming a particular historical schema."""
+    try:
+        return {row["name"] for row in con.execute(f"PRAGMA table_info({table_name})").fetchall()}
+    except Exception:
+        return set()
+
+
+def _ensure_columns(con, table_name, columns):
+    """Idempotent SQLite migration helper for old Dacre deployments."""
+    exists = con.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=? LIMIT 1",
+        (table_name,),
+    ).fetchone()
+    if not exists:
+        return
+    current = _table_columns(con, table_name)
+    for name, dtype in columns.items():
+        if name not in current:
+            con.execute(f"ALTER TABLE {table_name} ADD COLUMN {name} {dtype}")
+
+
+def ensure_runtime_schema():
+    """
+    Upgrade every older Dacre SQLite database in-place.
+
+    Important: CREATE TABLE IF NOT EXISTS does NOT change an existing table.
+    Older Dacre builds used several different call-room schemas, so this
+    migration deliberately accepts those historical versions and adds the
+    columns the current UI needs. It is safe to run on every Streamlit rerun.
+    """
+    con = db()
+    try:
+        # Current calling schema.
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS call_rooms (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_name TEXT,
+                room_name TEXT,
+                title TEXT,
+                host_username TEXT,
+                mode TEXT DEFAULT 'team',
+                created_at TEXT,
+                ended_at TEXT
+            )
+        """)
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS call_participants (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                room_name TEXT,
+                company_name TEXT,
+                participant_type TEXT,
+                participant_id TEXT,
+                display_name TEXT,
+                joined_at TEXT,
+                left_at TEXT
+            )
+        """)
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS decision_ledger (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_name TEXT,
+                username TEXT,
+                title TEXT,
+                context TEXT,
+                decision TEXT,
+                expected_outcome TEXT,
+                review_date TEXT,
+                status TEXT DEFAULT 'Open',
+                outcome TEXT,
+                created_at TEXT,
+                updated_at TEXT
+            )
+        """)
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS opportunity_radar (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_name TEXT,
+                username TEXT,
+                title TEXT,
+                impact TEXT,
+                evidence TEXT,
+                action TEXT,
+                created_at TEXT
+            )
+        """)
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS di_action_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_name TEXT,
+                username TEXT,
+                agent_name TEXT,
+                action_type TEXT,
+                request TEXT,
+                result TEXT,
+                created_at TEXT
+            )
+        """)
+
+        _ensure_columns(con, "call_rooms", {
+            "company_name": "TEXT",
+            "room_name": "TEXT",
+            "title": "TEXT",
+            "host_username": "TEXT",
+            "mode": "TEXT",
+            "created_at": "TEXT",
+            "ended_at": "TEXT",
+        })
+        _ensure_columns(con, "call_participants", {
+            "room_name": "TEXT",
+            "company_name": "TEXT",
+            "participant_type": "TEXT",
+            "participant_id": "TEXT",
+            "display_name": "TEXT",
+            "joined_at": "TEXT",
+            "left_at": "TEXT",
+        })
+
+        # Historical V7/future builds used room_code/created_by/provider/status.
+        # Preserve those records and map them into the current vocabulary.
+        cols = _table_columns(con, "call_rooms")
+        if "room_name" in cols and "room_code" in cols:
+            con.execute("UPDATE call_rooms SET room_name=COALESCE(NULLIF(room_name,''), room_code) WHERE room_name IS NULL OR room_name=''")
+        if "host_username" in cols and "created_by" in cols:
+            con.execute("UPDATE call_rooms SET host_username=COALESCE(NULLIF(host_username,''), created_by) WHERE host_username IS NULL OR host_username=''")
+        if "mode" in cols:
+            con.execute("UPDATE call_rooms SET mode='team' WHERE mode IS NULL OR mode=''")
+        if "created_at" in cols and "created" in cols:
+            con.execute("UPDATE call_rooms SET created_at=COALESCE(NULLIF(created_at,''), created) WHERE created_at IS NULL OR created_at=''")
+
+        # Safe defaults for newly-added columns.
+        cols = _table_columns(con, "call_participants")
+        if "participant_type" in cols:
+            con.execute("UPDATE call_participants SET participant_type='user' WHERE participant_type IS NULL OR participant_type=''")
+        if "joined_at" in cols:
+            con.execute("UPDATE call_participants SET joined_at=? WHERE joined_at IS NULL OR joined_at=''",
+                         (datetime.now().isoformat(timespec="seconds"),))
+
+        _ensure_columns(con, "decision_ledger", {
+            "company_name": "TEXT", "username": "TEXT", "title": "TEXT",
+            "context": "TEXT", "decision": "TEXT", "expected_outcome": "TEXT",
+            "review_date": "TEXT", "status": "TEXT", "outcome": "TEXT",
+            "created_at": "TEXT", "updated_at": "TEXT",
+        })
+        if "status" in _table_columns(con, "decision_ledger"):
+            con.execute("UPDATE decision_ledger SET status='Open' WHERE status IS NULL OR status=''")
+
+        _ensure_columns(con, "opportunity_radar", {
+            "company_name": "TEXT", "username": "TEXT", "title": "TEXT",
+            "impact": "TEXT", "evidence": "TEXT", "action": "TEXT", "created_at": "TEXT",
+        })
+
+        con.commit()
+    finally:
+        con.close()
+
+
+ensure_runtime_schema()
+
+
 def ensure_di_agent_columns():
     """Safely upgrade older DACRE databases without duplicate-column errors."""
     con = db()
@@ -427,85 +587,6 @@ def ensure_di_agent_columns():
 
 
 ensure_di_agent_columns()
-
-
-def ensure_runtime_schema():
-    """Upgrade databases created by older DACRE builds in-place.
-
-    CREATE TABLE IF NOT EXISTS does not change an existing SQLite table.
-    The call system was added after some deployed databases already existed,
-    so those databases can have call_rooms/call_participants without the new
-    columns.  This migration is intentionally idempotent and runs on every
-    startup.
-    """
-    con = db()
-    try:
-        migrations = {
-            "call_rooms": {
-                "company_name": "TEXT",
-                "room_name": "TEXT",
-                "title": "TEXT",
-                "host_username": "TEXT",
-                "mode": "TEXT DEFAULT 'team'",
-                "created_at": "TEXT",
-                "ended_at": "TEXT",
-            },
-            "call_participants": {
-                "room_name": "TEXT",
-                "company_name": "TEXT",
-                "participant_type": "TEXT",
-                "participant_id": "TEXT",
-                "display_name": "TEXT",
-                "joined_at": "TEXT",
-                "left_at": "TEXT",
-            },
-            "decision_ledger": {
-                "company_name": "TEXT",
-                "username": "TEXT",
-                "title": "TEXT",
-                "context": "TEXT",
-                "decision": "TEXT",
-                "expected_outcome": "TEXT",
-                "review_date": "TEXT",
-                "status": "TEXT DEFAULT 'Open'",
-                "outcome": "TEXT",
-                "created_at": "TEXT",
-                "updated_at": "TEXT",
-            },
-            "opportunity_radar": {
-                "company_name": "TEXT",
-                "username": "TEXT",
-                "title": "TEXT",
-                "impact": "TEXT",
-                "evidence": "TEXT",
-                "action": "TEXT",
-                "created_at": "TEXT",
-            },
-        }
-
-        for table, columns in migrations.items():
-            table_exists = con.execute(
-                "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
-            ).fetchone()
-            if not table_exists:
-                continue
-            existing = {row[1] for row in con.execute(f"PRAGMA table_info({table})").fetchall()}
-            for column, dtype in columns.items():
-                if column not in existing:
-                    con.execute(f"ALTER TABLE {table} ADD COLUMN {column} {dtype}")
-
-        # Backfill safe defaults for rows created by older builds.
-        if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='call_rooms'").fetchone():
-            con.execute("UPDATE call_rooms SET mode='team' WHERE mode IS NULL OR mode=''" )
-        if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='decision_ledger'").fetchone():
-            con.execute("UPDATE decision_ledger SET status='Open' WHERE status IS NULL OR status=''" )
-
-        con.commit()
-    finally:
-        con.close()
-
-
-ensure_runtime_schema()
 
 
 def ensure_master():
@@ -1973,12 +2054,36 @@ def di_specialist_reply(message,user,df,agent_name):
 
 
 def make_call_room(company,host_username,title,mode='team'):
+    """Create a call room while remaining compatible with every historical Dacre call schema."""
     slug=re.sub(r'[^a-z0-9]+','-',str(company).lower()).strip('-')[:28] or 'company'
     stamp=datetime.now().strftime('%Y%m%d%H%M%S%f')
     room=f"DACRE-{slug}-{stamp}"
     now=datetime.now().isoformat(timespec='seconds')
-    con=db(); con.execute("INSERT INTO call_rooms(company_name,room_name,title,host_username,mode,created_at) VALUES(?,?,?,?,?,?)",(company,room,title,host_username,mode,now)); con.commit(); con.close()
-    return room
+    con=db()
+    try:
+        columns={row["name"] for row in con.execute("PRAGMA table_info(call_rooms)").fetchall()}
+        values={
+            "company_name": company,
+            "room_name": room,
+            "room_code": room,          # legacy V7/future-build schema
+            "title": title,
+            "host_username": host_username,
+            "created_by": host_username, # legacy V7/future-build schema
+            "mode": mode,
+            "provider": "jitsi",
+            "status": "active",
+            "created_at": now,
+        }
+        # Only send columns that actually exist. This avoids both missing-column
+        # failures and NOT NULL failures on older deployed databases.
+        fields=[name for name in values if name in columns]
+        placeholders=",".join(["?"]*len(fields))
+        sql=f"INSERT INTO call_rooms({','.join(fields)}) VALUES({placeholders})"
+        con.execute(sql, tuple(values[name] for name in fields))
+        con.commit()
+        return room
+    finally:
+        con.close()
 
 
 def record_call_participant(room,company,ptype,pid,name):
@@ -2049,6 +2154,248 @@ def admin_metric_counts():
     }
     con.close()
     return counts
+
+
+def _escape_html(value):
+    return (str(value or "")
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;"))
+
+
+PAGE_META = {
+    "DI Home": ("◉", "DI Command", "Talk, investigate, analyze and move work forward with David's Intelligence."),
+    "DI Calls": ("◉", "DI Connect", "Business calls, DI calls and team rooms with a meeting-ready workspace."),
+    "DI Workforce": ("◉", "DI Workforce", "Your specialized digital workforce — each DI has its own identity, specialty and work style."),
+    "DI Action Center": ("✦", "DI Action Center", "Give DI a goal and let it turn the request into analysis, recommendations and next actions."),
+    "DI Memory Box": ("◈", "DI Memory", "The trusted institutional memory layer shared by the Dacre intelligence workforce."),
+    "Business Command Center": ("◆", "Business Command", "Executive signals, business health and the most important changes in your active data."),
+    "Business Twin": ("◇", "Business Twin", "A living snapshot of how your business is performing, changing and where attention is needed."),
+    "Decision Ledger": ("◌", "Decision Ledger", "Record decisions, expected outcomes and results so the organization learns from its own history."),
+    "Opportunity Radar": ("✧", "Opportunity Radar", "Surface measurable growth signals and turn them into actionable business opportunities."),
+    "Workspace & Data": ("▦", "Workspace & Data", "Bring data into Dacre and turn raw information into useful business knowledge."),
+    "Formula Lab": ("ƒ", "Formula Lab", "Practical spreadsheet-style formulas and transformations."),
+    "Charts": ("◫", "Charts", "Turn data into clear visual stories and business dashboards."),
+    "File Vault": ("▤", "File Vault", "Keep company files, working datasets and project artifacts organized."),
+    "Export Center": ("⇩", "Export Center", "Package analysis outputs for the people who need them."),
+    "Organization Admin Portal": ("⚙", "Organization Admin", "Manage people, roles, notifications and company activity."),
+    "Chibobec Service": ("◆", "Chibobec Intelligence", "Master-only customer intelligence and protected service oversight."),
+    "Chibobec Loan Desk": ("₦", "Chibobec Loan Desk", "Loan records, reminders and client servicing."),
+    "Overall Admin DI Portal": ("♛", "Founder Command", "Master-level platform intelligence, workforce, customers, memory and system controls."),
+}
+
+
+def render_page_chrome(page_name, user):
+    icon, title, subtitle = PAGE_META.get(page_name, ("•", page_name, "Dacre business intelligence workspace."))
+    master = user.get("role") == "master"
+    mode_label = "FOUNDER COMMAND" if master else str(user.get("company", "BUSINESS WORKSPACE")).upper()
+    st.markdown(
+        f"""
+        <div class="dacre-page-chrome {'master-page-chrome' if master else ''}">
+          <div class="page-chrome-left">
+            <div class="page-icon">{icon}</div>
+            <div>
+              <div class="page-kicker">{_escape_html(mode_label)} · DA-CRE</div>
+              <div class="page-title">{_escape_html(title)}</div>
+              <div class="page-subtitle">{_escape_html(subtitle)}</div>
+            </div>
+          </div>
+          <div class="page-chrome-right">
+            <span class="chrome-pill">● DI ONLINE</span>
+            <span class="chrome-pill soft">{datetime.now().strftime("%d %b %Y · %H:%M")}</span>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def log_di_action(user, action_type, request, result, agent_name="DI"):
+    con = db()
+    con.execute(
+        """INSERT INTO di_action_log(company_name,username,agent_name,action_type,request,result,created_at)
+           VALUES(?,?,?,?,?,?,?)""",
+        (user["company"], user["username"], agent_name, action_type, request, result,
+         datetime.now().isoformat(timespec="seconds")),
+    )
+    con.commit()
+    con.close()
+
+
+def get_recent_di_actions(user, limit=20):
+    con = db()
+    df = pd.read_sql_query(
+        """SELECT agent_name,action_type,request,result,created_at
+           FROM di_action_log
+           WHERE company_name=? AND username=?
+           ORDER BY id DESC LIMIT ?""",
+        con, params=(user["company"], user["username"], int(limit)),
+    )
+    con.close()
+    return df
+
+
+def render_business_twin(df, user):
+    if df is None or df.empty:
+        st.info("Load a dataset in Workspace & Data and the Business Twin will build itself from real data.")
+        return
+    health = business_health(df)
+    signals = business_signals(df)
+    opportunities = opportunity_radar(df, user["company"], user["username"])
+    missing = int(df.isna().sum().sum())
+    duplicates = int(df.duplicated().sum())
+    numeric = len(df.select_dtypes(include="number").columns)
+
+    st.markdown(
+        f"""<div class="business-twin-banner">
+          <div><span class="twin-label">LIVE BUSINESS TWIN</span>
+          <h2>{_escape_html(user['company'])}</h2>
+          <p>This snapshot is generated from the active workspace only. Dacre does not invent company numbers.</p></div>
+          <div class="twin-score"><b>{health['score']}</b><span>/100</span><small>DATA HEALTH</small></div>
+        </div>""",
+        unsafe_allow_html=True,
+    )
+    k = st.columns(5)
+    for col, label, value in zip(
+        k,
+        ["Rows", "Columns", "Numeric fields", "Missing cells", "Duplicates"],
+        [f"{len(df):,}", f"{len(df.columns):,}", f"{numeric:,}", f"{missing:,}", f"{duplicates:,}"],
+    ):
+        with col:
+            st.markdown(f"<div class='twin-metric'><b>{value}</b><span>{label}</span></div>", unsafe_allow_html=True)
+
+    left, right = st.columns([1.15, 1])
+    with left:
+        st.markdown("### What deserves attention")
+        if signals:
+            for item in signals[:6]:
+                st.markdown(
+                    f"<div class='insight-row'><b>{_escape_html(item.get('title'))}</b><span>{_escape_html(item.get('detail'))}</span></div>",
+                    unsafe_allow_html=True,
+                )
+        else:
+            st.success("No major deterministic data-quality/business signals were detected in the current dataset.")
+    with right:
+        st.markdown("### Opportunity signals")
+        if opportunities:
+            for item in opportunities:
+                st.markdown(
+                    f"<div class='opportunity-row'><b>{_escape_html(item['title'])}</b><span>{_escape_html(item['impact'])}</span><small>{_escape_html(item['action'])}</small></div>",
+                    unsafe_allow_html=True,
+                )
+        else:
+            st.info("No measurable opportunity signal has crossed the current detection threshold.")
+
+    st.markdown("### Ask DI to explain the twin")
+    prompt = st.text_input(
+        "Business Twin question",
+        placeholder="e.g. What changed most, what should management investigate, and why?",
+        key="business_twin_question",
+    )
+    if st.button("✦ Explain this Business Twin", use_container_width=True, type="primary") and prompt.strip():
+        answer = di_reply(prompt, user, df, allow_online=True, language=st.session_state.get("di_language", "English — Nigeria"))
+        log_di_action(user, "business_twin", prompt, answer)
+        st.markdown(f"<div class='di-answer-panel'><div class='answer-label'>DI EXPLANATION</div><div>{_escape_html(answer).replace(chr(10), '<br>')}</div></div>", unsafe_allow_html=True)
+
+
+def render_action_center(user):
+    df = st.session_state.processed_df
+    st.markdown(
+        """<div class="action-center-banner">
+          <span>DI ACTION ENGINE</span>
+          <h2>Give DI a business outcome — not a menu to navigate.</h2>
+          <p>DI can use the same core reasoning, data analysis, memory and research capabilities available from the main Dacre workspace.</p>
+        </div>""",
+        unsafe_allow_html=True,
+    )
+    q = st.text_area(
+        "What should DI do?",
+        placeholder="Analyze this dataset, investigate a business issue, draft an email, explain a formula, prepare an executive brief, research a current topic...",
+        height=130,
+        key="action_center_request",
+    )
+    c1, c2, c3, c4 = st.columns(4)
+    quick = [
+        ("Analyze", "Analyze the active dataset and tell me the most important findings."),
+        ("Executive brief", "Create a concise executive brief from the active dataset with priorities."),
+        ("Risk check", "Identify the most important data-quality and business risks visible in the active dataset."),
+        ("Opportunity", "Find measurable opportunity signals in the active dataset and explain what to investigate."),
+    ]
+    for col, (label, prompt) in zip([c1, c2, c3, c4], quick):
+        with col:
+            if st.button(label, use_container_width=True):
+                q = prompt
+    if st.button("Run DI Action", use_container_width=True, type="primary") and q.strip():
+        answer = di_reply(q.strip(), user, df, allow_online=True, language=st.session_state.get("di_language", "English — Nigeria"))
+        log_di_action(user, "action_center", q.strip(), answer)
+        st.session_state.last_action_center_result = answer
+        st.session_state.last_speech = answer
+    if st.session_state.get("last_action_center_result"):
+        st.markdown(
+            f"""<div class="di-answer-panel"><div class="answer-label">DI COMPLETED ACTION</div>
+            <div>{_escape_html(st.session_state.last_action_center_result).replace(chr(10), '<br>')}</div></div>""",
+            unsafe_allow_html=True,
+        )
+    recent = get_recent_di_actions(user)
+    if not recent.empty:
+        st.markdown("### Your DI action history")
+        st.dataframe(safe_dataframe_for_streamlit(recent), use_container_width=True, hide_index=True)
+
+
+def render_decision_ledger(user):
+    st.markdown(
+        """<div class="decision-banner"><span>INSTITUTIONAL MEMORY</span><h2>Decisions should become company knowledge.</h2>
+        <p>Record the decision, the reason, the expected result and later the actual result. This lets DI learn from the organization's history.</p></div>""",
+        unsafe_allow_html=True,
+    )
+    with st.form("decision_ledger_form", clear_on_submit=True):
+        a, b = st.columns(2)
+        with a:
+            title = st.text_input("Decision title", placeholder="e.g. Change supplier for Product A")
+            context = st.text_area("Context / evidence", height=90)
+            decision = st.text_area("Decision made", height=90)
+        with b:
+            expected = st.text_area("Expected outcome", height=90)
+            review = st.date_input("Review date", value=datetime.now().date())
+        save = st.form_submit_button("Save decision to Dacre Memory", use_container_width=True, type="primary")
+    if save and title.strip() and decision.strip():
+        create_decision(user["company"], user["username"], title.strip(), context.strip(), decision.strip(), expected.strip(), str(review))
+        log_activity(user["username"], user["company"], f"Saved decision: {title[:120]}")
+        st.success("Decision saved. DI can now use the record as organizational history.")
+    con = db()
+    decisions = pd.read_sql_query(
+        "SELECT title,context,decision,expected_outcome,review_date,status,outcome,created_at,updated_at FROM decision_ledger WHERE company_name=? ORDER BY id DESC",
+        con, params=(user["company"],),
+    )
+    con.close()
+    if not decisions.empty:
+        st.dataframe(safe_dataframe_for_streamlit(decisions), use_container_width=True, hide_index=True)
+
+
+def render_opportunity_page(user):
+    df = st.session_state.processed_df
+    st.markdown(
+        """<div class="opportunity-banner"><span>OPPORTUNITY RADAR</span><h2>Find upside before it becomes obvious.</h2>
+        <p>Dacre scans numeric trends in the active dataset and turns measurable changes into investigation prompts.</p></div>""",
+        unsafe_allow_html=True,
+    )
+    opportunities = opportunity_radar(df, user["company"], user["username"])
+    if not opportunities:
+        st.info("Load a dataset with enough numeric observations to generate measurable opportunity signals.")
+        return
+    for item in opportunities:
+        st.markdown(
+            f"""<div class="opportunity-card"><div class="opp-title">{_escape_html(item['title'])}</div>
+            <div class="opp-impact">{_escape_html(item['impact'])}</div>
+            <p>{_escape_html(item['evidence'])}</p><b>Suggested investigation</b><p>{_escape_html(item['action'])}</p></div>""",
+            unsafe_allow_html=True,
+        )
+        if st.button(f"Ask DI to investigate · {item['title']}", key=f"opp_{hash(item['title'])}", use_container_width=True):
+            prompt = f"Investigate this opportunity signal: {item['title']}. Evidence: {item['evidence']}. Suggested action: {item['action']}"
+            answer = di_reply(prompt, user, df, allow_online=True, language=st.session_state.get("di_language", "English — Nigeria"))
+            log_di_action(user, "opportunity", prompt, answer)
+            st.markdown(f"<div class='di-answer-panel'><div class='answer-label'>DI INVESTIGATION</div><div>{_escape_html(answer).replace(chr(10), '<br>')}</div></div>", unsafe_allow_html=True)
 
 
 def landing_page():
@@ -2345,6 +2692,32 @@ div[style*="#ffffff"],div[style*="#fffaf4"],div[style*="#eaf7ff"]{background:#17
 .dacre-user-sub,.master-office-hero .sub,.di-stage-copy p{color:#d3e5f4!important}
 </style>""",unsafe_allow_html=True)
 
+# DA-CRE FUTURE INNER-WORKSPACE DESIGN SYSTEM
+st.markdown("""
+<style>
+/* Remove the large empty Streamlit header band while preserving controls. */
+[data-testid="stHeader"]{background:rgba(0,0,0,0)!important;border-bottom:0!important}
+[data-testid="stToolbar"]{right:1rem!important}
+.stAppViewContainer .main .block-container{padding-top:1.25rem!important;max-width:1500px!important}
+[data-testid="stSidebar"]{width:290px!important;min-width:290px!important}
+[data-testid="stSidebar"] > div:first-child{padding-top:1rem!important}
+[data-testid="stSidebar"] .stRadio > label{display:none!important}
+[data-testid="stSidebar"] [role="radiogroup"]{gap:7px!important}
+[data-testid="stSidebar"] [role="radio"]{min-height:43px!important;padding:0 13px!important;border-radius:13px!important;border:1px solid rgba(120,180,230,.13)!important;background:rgba(255,255,255,.035)!important;transition:.18s ease!important}
+[data-testid="stSidebar"] [role="radio"]:hover{background:rgba(70,170,230,.14)!important;border-color:rgba(100,210,255,.42)!important;transform:translateX(2px)}
+[data-testid="stSidebar"] [role="radio"][aria-checked="true"]{background:linear-gradient(90deg,rgba(52,142,220,.28),rgba(108,75,220,.25))!important;border-color:#59c8ff!important;box-shadow:0 7px 20px rgba(0,0,0,.18)!important}
+[data-testid="stSidebar"] [role="radio"] p{font-weight:800!important;font-size:.86rem!important;letter-spacing:.01em!important}
+[data-testid="stSidebar"] img{border-radius:16px!important}
+.dacre-page-chrome{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:17px 20px;margin:0 0 18px;border-radius:20px;border:1px solid rgba(105,196,246,.35);background:linear-gradient(105deg,rgba(9,30,53,.96),rgba(18,57,88,.88));box-shadow:0 18px 48px rgba(0,0,0,.18);position:relative;overflow:hidden}
+.dacre-page-chrome:after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:linear-gradient(90deg,#48d8ff,#7e6aff,#f0a34a,#48d8ff);background-size:300% 100%;animation:dacreFlow 8s linear infinite}
+.page-chrome-left{display:flex;align-items:center;gap:14px;min-width:0}.page-icon{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(135deg,#4b50e8,#1caee1);font-size:1.25rem;font-weight:950;box-shadow:0 8px 24px rgba(31,155,230,.28)}
+.page-kicker{font-size:.68rem;letter-spacing:.15em;text-transform:uppercase;color:#84ddff!important;font-weight:900}.page-title{font-size:1.45rem;font-weight:950;color:#fff!important;line-height:1.1}.page-subtitle{font-size:.84rem;color:#bdd8eb!important;margin-top:4px;max-width:900px}.page-chrome-right{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.chrome-pill{padding:7px 10px;border-radius:999px;background:rgba(45,210,142,.13);border:1px solid rgba(75,230,160,.4);color:#8ff0bf!important;font-size:.7rem;font-weight:900}.chrome-pill.soft{background:rgba(255,255,255,.05);border-color:rgba(160,200,230,.2);color:#c6d9ea!important}
+.business-twin-banner,.action-center-banner,.decision-banner,.opportunity-banner{padding:25px 28px;border-radius:24px;margin-bottom:18px;border:1px solid rgba(90,190,245,.34);background:linear-gradient(135deg,#0d2e4d,#193f68 60%,#34255d);box-shadow:0 18px 45px rgba(0,0,0,.2)}
+.business-twin-banner{display:flex;justify-content:space-between;align-items:center;gap:20px}.business-twin-banner h2,.action-center-banner h2,.decision-banner h2,.opportunity-banner h2{margin:.25rem 0;color:#fff!important;font-size:1.8rem}.business-twin-banner p,.action-center-banner p,.decision-banner p,.opportunity-banner p{color:#c7deed!important;margin:0;line-height:1.55}.twin-label,.action-center-banner span,.decision-banner span,.opportunity-banner span{font-size:.7rem;letter-spacing:.16em;color:#75ddff!important;font-weight:950}.twin-score{width:105px;height:105px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle,#245b8a,#101b39);border:2px solid #65d8ff;box-shadow:0 0 35px rgba(74,203,255,.18)}.twin-score b{font-size:2rem;color:#fff}.twin-score span{font-size:.75rem;color:#a8c9dd}.twin-score small{font-size:.55rem;color:#73dfff;margin-top:2px}.twin-metric{padding:16px;border-radius:17px;background:linear-gradient(145deg,#123a5e,#164b78);border:1px solid rgba(110,196,238,.27);display:flex;flex-direction:column;min-height:82px}.twin-metric b{font-size:1.45rem;color:#fff}.twin-metric span{font-size:.75rem;color:#b9d7e8;margin-top:3px}.insight-row,.opportunity-row{padding:13px 15px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid rgba(120,190,225,.2);margin:8px 0;display:flex;flex-direction:column;gap:4px}.insight-row b,.opportunity-row b{color:#fff}.insight-row span,.opportunity-row span,.opportunity-row small{color:#b9d5e7}.opportunity-card{padding:19px;border-radius:18px;background:linear-gradient(145deg,#133b60,#183f70);border:1px solid rgba(117,204,244,.27);margin:10px 0;box-shadow:0 12px 32px rgba(0,0,0,.16)}.opp-title{font-size:1.05rem;font-weight:900;color:#fff}.opp-impact{display:inline-block;margin:7px 0;padding:5px 9px;border-radius:999px;background:rgba(47,218,139,.12);border:1px solid rgba(47,218,139,.32);color:#83efb6!important;font-weight:900;font-size:.75rem}.opportunity-card p{color:#c4dceb!important;line-height:1.5}.di-answer-panel{padding:20px 22px;border-radius:18px;background:linear-gradient(135deg,#102f4e,#1b4c76);border:1px solid #54c9f4;box-shadow:0 15px 38px rgba(0,0,0,.18);color:#f4fbff!important;line-height:1.7;margin:14px 0}.answer-label{font-size:.67rem;letter-spacing:.16em;color:#78ddff!important;font-weight:950;margin-bottom:8px}.master-page-chrome{background:linear-gradient(105deg,#0c0b23,#1b1746 60%,#21174d)!important;border-color:#6259dc!important}.master-page-chrome .page-icon{background:linear-gradient(135deg,#7057e8,#2e8fe1)!important}
+@media(max-width:900px){.dacre-page-chrome{align-items:flex-start;flex-direction:column}.page-chrome-right{justify-content:flex-start}.business-twin-banner{flex-direction:column;align-items:flex-start}.twin-score{width:88px;height:88px}.dacre-page-chrome .page-subtitle{max-width:95%}}
+</style>
+""",unsafe_allow_html=True)
+
 user=st.session_state.user
 
 # Master and customer workspaces intentionally have different visual identities.
@@ -2388,8 +2761,12 @@ with st.sidebar:
         "DI Home",
         "DI Calls",
         "DI Workforce",
+        "DI Action Center",
         "DI Memory Box",
         "Business Command Center",
+        "Business Twin",
+        "Decision Ledger",
+        "Opportunity Radar",
         "Workspace & Data",
         "Formula Lab",
         "Charts",
@@ -2412,6 +2789,10 @@ with st.sidebar:
     # Nobody is automatically dropped into the CEO Office.
     default_page=navigation[0]
     selected_page=st.radio("Navigation",navigation,index=navigation.index(default_page) if default_page in navigation else 0)
+
+# Universal inner-page interface. Every Dacre workspace gets the same premium chrome,
+# while the master account receives a separate founder visual identity.
+render_page_chrome(selected_page, user)
 
 # =============================================================================
 # DI HOME / CONTINUOUS BUSINESS CONVERSATION
@@ -2620,6 +3001,18 @@ elif selected_page=="DI Workforce":
                 st.session_state[f"di_task_result_{a['di_name']}"]=answer
             if st.session_state.get(f"di_task_result_{a['di_name']}"):
                 di_voice_player(st.session_state[f"di_task_result_{a['di_name']}"])
+
+elif selected_page=="DI Action Center":
+    render_action_center(user)
+
+elif selected_page=="Business Twin":
+    render_business_twin(st.session_state.processed_df, user)
+
+elif selected_page=="Decision Ledger":
+    render_decision_ledger(user)
+
+elif selected_page=="Opportunity Radar":
+    render_opportunity_page(user)
 
 elif selected_page=="Chibobec Service" and user.get('role')=='master':
     st.markdown("""<div class='master-office-hero'><div class='master-badge'>MASTER ONLY</div><div class='title'>Chibobec Service · Customer Intelligence</div><div class='sub'>System-wide customer record for the protected Chibobec workspace. This view is available only to the Overall Administrator.</div></div>""",unsafe_allow_html=True)
