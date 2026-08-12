@@ -1,4 +1,7 @@
-streamlit>=1.48,<2
-pandas>=2.2,<3
-openpyxl>=3.1,<4
-Pillow>=10,<12
+streamlit==1.60.0
+pandas>=2.2,<3.0
+Pillow>=11.0,<13.0
+openpyxl>=3.1,<4.0
+xlrd>=2.0,<3.0
+SpeechRecognition==3.17.0
+livekit-api==1.2.0
