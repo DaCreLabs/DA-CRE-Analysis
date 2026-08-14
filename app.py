@@ -780,8 +780,25 @@ def seed_named_di_workforce():
         con.close()
 
 
-ensure_di_agent_columns()
-seed_named_di_workforce()
+def ensure_di_agent_columns():
+    """Backfill di_agents columns on databases created by older DACRE builds."""
+    con = db()
+    try:
+        _ensure_columns(con, "di_agents", {
+            "specialty": "TEXT NOT NULL DEFAULT ''",
+            "status": "TEXT NOT NULL DEFAULT 'Available'",
+            "assigned_company": "TEXT",
+            "system_role": "TEXT",
+            "avatar_url": "TEXT",
+            "voice_profile": "TEXT",
+            "thinking_style": "TEXT",
+            "created_by": "TEXT NOT NULL DEFAULT ''",
+            "created_at": "TEXT NOT NULL DEFAULT ''",
+            "last_active": "TEXT",
+        })
+        con.commit()
+    finally:
+        con.close()seed_named_di_workforce()
 
 def get_di_agents():
     con = db()
