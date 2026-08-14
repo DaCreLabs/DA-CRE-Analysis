@@ -1,3 +1,4 @@
+
 import hashlib
 import hmac
 import io
@@ -2576,6 +2577,43 @@ def landing_page():
     with b:
         if st.button("I already have an account",use_container_width=True): st.session_state.landing_mode="login"; st.rerun()
 
+
+# =============================================================================
+# STREAMLIT SESSION STATE BOOTSTRAP
+# =============================================================================
+# Streamlit does not create arbitrary session_state attributes automatically.
+# Initialise every persistent workspace key before the landing page or app
+# pages access it. This prevents first-run AttributeError exceptions.
+_SESSION_DEFAULTS = {
+    "user": None,
+    "master_route": False,
+    "landing_mode": "home",
+    "master_captcha_required": False,
+    "master_captcha_passed": False,
+    "master_second_attempt": False,
+    "chat_history": [],
+    "raw_df": None,
+    "processed_df": None,
+    "active_filename": "",
+    "formula_logs": [],
+    "chart_config": None,
+    "di_language": "English — Nigeria",
+    "di_voice_enabled": True,
+    "active_call_room": None,
+    "active_call_target": None,
+    "last_action_center_result": None,
+    "last_speech": None,
+}
+for _key, _default in _SESSION_DEFAULTS.items():
+    if _key not in st.session_state:
+        # Copy mutable defaults so reruns do not accidentally share state.
+        if isinstance(_default, list):
+            st.session_state[_key] = list(_default)
+        elif isinstance(_default, dict):
+            st.session_state[_key] = dict(_default)
+        else:
+            st.session_state[_key] = _default
+del _SESSION_DEFAULTS, _key, _default
 
 if st.session_state.user is None:
     landing_page()
