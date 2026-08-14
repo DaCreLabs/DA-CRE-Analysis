@@ -2578,37 +2578,44 @@ def _landing_auth_panel():
     if mode not in ("login", "signup"):
         return
 
-    st.markdown("""
-    
-/* NOTE: Streamlit Cloud owner/admin controls such as "Manage app" are rendered by the hosting platform outside the app DOM and are not controllable by application CSS/HTML. */
-<style>
-      .auth-anchor { scroll-margin-top: 20px; }
-      .auth-shell {
-        max-width: 980px; margin: 18px auto 42px; padding: 1px;
-        border-radius: 24px;
-        background: linear-gradient(135deg, rgba(91,73,255,.75), rgba(37,211,238,.55), rgba(255,255,255,.08));
-        box-shadow: 0 28px 90px rgba(0,0,0,.38);
-      }
-      .auth-inner {
-        border-radius: 23px; background: #0b1020; padding: 30px;
-        border: 1px solid rgba(255,255,255,.08);
-      }
-      .auth-title { color:#f7f9ff; font-size:28px; font-weight:800; letter-spacing:-.03em; }
-      .auth-sub { color:#9ba9c2; margin-top:6px; margin-bottom:20px; }
-      .auth-badge {
-        display:inline-flex; align-items:center; gap:8px; padding:6px 10px;
-        border-radius:999px; border:1px solid rgba(126,115,255,.3);
-        background:rgba(92,76,255,.10); color:#bfc5ff; font-size:12px; font-weight:700;
-      }
-    </style>
-    <div id="dacre-auth" class="auth-anchor auth-shell">
-      <div class="auth-inner">
-        <div class="auth-badge">✦ DACRE secure workspace access</div>
-        <div class="auth-title">Your DACRE workspace starts here.</div>
-        <div class="auth-sub">Sign in to your existing workspace or create your organization account without leaving the DACRE landing page.</div>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("""<style>
+.auth-anchor { scroll-margin-top: 20px; }
+.auth-shell {
+  max-width: 980px;
+  margin: 18px auto 42px;
+  padding: 1px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, rgba(91,73,255,.75), rgba(37,211,238,.55), rgba(255,255,255,.08));
+  box-shadow: 0 28px 90px rgba(0,0,0,.38);
+}
+.auth-inner {
+  border-radius: 23px;
+  background: #0b1020;
+  padding: 30px;
+  border: 1px solid rgba(255,255,255,.08);
+}
+.auth-title { color:#f7f9ff; font-size:28px; font-weight:800; letter-spacing:-.03em; }
+.auth-sub { color:#9ba9c2; margin-top:6px; margin-bottom:20px; }
+.auth-badge {
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid rgba(126,115,255,.3);
+  background:rgba(92,76,255,.10);
+  color:#bfc5ff;
+  font-size:12px;
+  font-weight:700;
+}
+</style>
+<div id="dacre-auth" class="auth-anchor auth-shell">
+  <div class="auth-inner">
+    <div class="auth-badge">✦ DACRE secure workspace access</div>
+    <div class="auth-title">Your DACRE workspace starts here.</div>
+    <div class="auth-sub">Sign in to your existing workspace or create your organization account without leaving the DACRE landing page.</div>
+  </div>
+</div>""", unsafe_allow_html=True)
 
     c1, c2, c3 = st.columns([1, 2.2, 1])
     with c2:
@@ -2734,6 +2741,25 @@ def _landing_auth_panel():
         if st.button("← Continue browsing DACRE", key="landing_auth_back", use_container_width=True):
             st.session_state.landing_mode = "home"
             st.rerun()
+
+        # Discreet private CEO Office launcher — shown at the bottom of the
+        # public authentication area. Clicking the DACRE mark opens the
+        # server-side master passkey gate; the passkey itself is never shown.
+        st.markdown("""
+        <style>
+          .ceo-launcher-wrap{margin:28px auto 4px;text-align:center;opacity:.86}
+          .ceo-launcher-wrap a{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:14px;
+            border:1px solid rgba(112,132,255,.24);background:linear-gradient(145deg,rgba(28,41,74,.95),rgba(7,13,28,.95));
+            box-shadow:0 12px 34px rgba(0,0,0,.28),0 0 18px rgba(74,110,255,.10);transition:.2s ease;text-decoration:none}
+          .ceo-launcher-wrap a:hover{transform:translateY(-2px);border-color:rgba(105,145,255,.6);box-shadow:0 16px 40px rgba(0,0,0,.34),0 0 24px rgba(74,110,255,.22)}
+          .ceo-launcher-wrap img{width:28px;height:28px;object-fit:contain;border-radius:8px}
+          .ceo-launcher-caption{margin-top:7px;color:#70809b;font-size:9px;letter-spacing:.12em;text-transform:uppercase;font-weight:800}
+        </style>
+        <div class="ceo-launcher-wrap">
+          <a href="?master_gate=1" title="Private CEO Office">__CEO_LOGO__</a>
+          <div class="ceo-launcher-caption">Private CEO Office</div>
+        </div>
+        """.replace("__CEO_LOGO__", f'<img src="{_dacre_logo_data_uri()}" alt="DACRE" />'), unsafe_allow_html=True)
 
 
 def landing_page():
@@ -3907,7 +3933,7 @@ elif selected_page=="Chibobec Loan Desk" and is_chibobec_company(user.get("compa
             st.success("Meta WhatsApp Cloud API credentials are loaded. DACRE will only mark a reminder as sent after Meta returns a message ID.")
         else:
             st.error("Meta WhatsApp Cloud API is NOT configured yet. No message will be falsely reported as sent.")
-        st.write("Add these secrets to Streamlit Cloud → Manage app → Settings → Secrets:")
+        st.write("Add the required Meta WhatsApp secrets to your deployment secrets settings:")
         meta_secrets = """DACRE_WHATSAPP_TOKEN = "YOUR_META_ACCESS_TOKEN"
 DACRE_WHATSAPP_PHONE_NUMBER_ID = "YOUR_META_PHONE_NUMBER_ID"
 DACRE_WHATSAPP_API_VERSION = "v23.0"
