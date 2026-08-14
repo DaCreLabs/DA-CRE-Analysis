@@ -2579,7 +2579,9 @@ def _landing_auth_panel():
         return
 
     st.markdown("""
-    <style>
+    
+/* NOTE: Streamlit Cloud owner/admin controls such as "Manage app" are rendered by the hosting platform outside the app DOM and are not controllable by application CSS/HTML. */
+<style>
       .auth-anchor { scroll-margin-top: 20px; }
       .auth-shell {
         max-width: 980px; margin: 18px auto 42px; padding: 1px;
@@ -2735,6 +2737,7 @@ def _landing_auth_panel():
 
 
 def landing_page():
+    """Public DACRE landing experience with connected navigation and real auth."""
     # -------------------------------------------------------------------------
     # PRIVATE MASTER GATE
     # -------------------------------------------------------------------------
@@ -2776,7 +2779,7 @@ def landing_page():
                         st.session_state.master_second_attempt = True
                         st.rerun()
 
-                if st.button("Return to DACRE", use_container_width=True):
+                if st.button("Return to DACRE", use_container_width=True, key="master_return_1"):
                     st.session_state.master_captcha_required = False
                     st.session_state.master_captcha_passed = False
                     st.session_state.master_second_attempt = False
@@ -2795,23 +2798,16 @@ def landing_page():
 
             g1, g2 = st.columns(2)
             with g1:
-                if st.button("Open Overall Admin DI", use_container_width=True, type="primary"):
+                if st.button("Open Overall Admin DI", use_container_width=True, type="primary", key="master_open"):
                     if master_passkey_gate(master_pk):
                         st.session_state.user = master_user_record()
                         st.session_state.master_route = True
                         st.session_state.master_captcha_required = False
                         st.session_state.master_captcha_passed = False
                         st.session_state.master_second_attempt = False
-                        st.session_state.last_speech = (
-                            "Welcome, Master David. The Overall Admin DI Office is online."
-                        )
+                        st.session_state.last_speech = "Welcome, Master David. The Overall Admin DI Office is online."
                         st.query_params.clear()
-                        log_activity(
-                            MASTER_USERNAME,
-                            "DACRE MASTER",
-                            "Opened Overall CEO Office",
-                            notify_admin=False,
-                        )
+                        log_activity(MASTER_USERNAME, "DACRE MASTER", "Opened Overall CEO Office", notify_admin=False)
                         st.rerun()
                     else:
                         if second_attempt:
@@ -2827,7 +2823,7 @@ def landing_page():
                             st.session_state.master_second_attempt = False
                             st.rerun()
             with g2:
-                if st.button("Return to DACRE", use_container_width=True):
+                if st.button("Return to DACRE", use_container_width=True, key="master_return_2"):
                     st.session_state.master_captcha_required = False
                     st.session_state.master_captcha_passed = False
                     st.session_state.master_second_attempt = False
@@ -2836,18 +2832,11 @@ def landing_page():
         return
 
     logo_uri = _dacre_logo_data_uri()
-    if logo_uri:
-        logo = f'<img src="{logo_uri}" alt="DACRE" class="brand-logo"/>'
-        hero_logo = f'<img src="{logo_uri}" alt="DACRE" class="hero-logo"/>'
-    else:
-        logo = '<span class="brand-fallback">D</span>'
-        hero_logo = '<span class="hero-logo-fallback">D</span>'
+    logo = f'<img src="{logo_uri}" alt="DACRE" class="brand-logo"/>' if logo_uri else '<span class="brand-fallback">D</span>'
 
     # -------------------------------------------------------------------------
-    # FULL DACRE PUBLIC LANDING PAGE
-    # The Bolt page is used as the visual/content reference, but the public
-    # experience is rendered natively inside Streamlit so its auth buttons can
-    # connect directly to DACRE's real account system.
+    # Landing stylesheet.  All page navigation controls are real Streamlit
+    # buttons, so every visible nav item is responsive and actually clickable.
     # -------------------------------------------------------------------------
     st.markdown("""
     <style>
@@ -2858,210 +2847,335 @@ def landing_page():
         radial-gradient(circle at 18% 48%, rgba(0,205,255,.08), transparent 26%),
         #050817 !important;
       }
-      .block-container { max-width: 1440px !important; padding: 0 28px 50px !important; }
-      .dacre-landing {
-        color:#f6f8ff; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-        overflow:hidden;
-      }
-      .dacre-nav {
-        min-height:76px; display:flex; align-items:center; justify-content:space-between; gap:20px;
-        padding:12px 18px; border:1px solid rgba(150,164,205,.16); border-radius:18px;
-        background:rgba(8,13,30,.82); backdrop-filter:blur(18px);
-        box-shadow:0 18px 60px rgba(0,0,0,.24); position:sticky; top:10px; z-index:10;
-      }
+      .block-container { max-width: 1440px !important; padding: 0 22px 50px !important; }
+      .dacre-landing { color:#f6f8ff; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; overflow:hidden; }
+      .dacre-nav { min-height:76px; display:flex; align-items:center; justify-content:space-between; gap:18px; padding:12px 16px;
+        border:1px solid rgba(150,164,205,.16); border-radius:18px; background:rgba(8,13,30,.82); backdrop-filter:blur(18px);
+        box-shadow:0 18px 60px rgba(0,0,0,.24); position:sticky; top:10px; z-index:10; }
       .dacre-brand { display:flex; align-items:center; gap:12px; min-width:210px; }
       .brand-logo { width:43px; height:43px; object-fit:contain; border-radius:12px; filter:drop-shadow(0 0 16px rgba(84,92,255,.35)); }
-      .brand-fallback,.hero-logo-fallback {
-        display:grid; place-items:center; background:linear-gradient(135deg,#754cff,#3d8dff 55%,#18c8df);
-        color:#fff; font-weight:900; border-radius:12px;
-      }
-      .brand-fallback { width:43px;height:43px;font-size:21px; }
+      .brand-fallback { display:grid; place-items:center; width:43px;height:43px; font-size:21px; background:linear-gradient(135deg,#754cff,#3d8dff 55%,#18c8df); color:#fff; font-weight:900; border-radius:12px; }
       .dacre-brand-name { font-size:17px;font-weight:850;letter-spacing:-.02em; }
-      .dacre-brand-sub { color:#8996b2;font-size:10px;margin-top:2px; }
-      .dacre-nav-links { display:flex; gap:28px; color:#aeb9d0;font-size:13px; }
-      .dacre-nav-links span { transition:.2s; }
-      .dacre-nav-links span:hover { color:#fff; }
-      .dacre-hero { min-height:650px; display:grid; grid-template-columns:1.03fr .97fr; gap:30px; align-items:center; padding:75px 30px 55px; }
-      .hero-eyebrow { display:inline-flex; padding:8px 13px; border:1px solid rgba(144,132,255,.28); background:rgba(93,73,255,.08);
-        border-radius:999px;color:#d2d0ff;font-size:12px;font-weight:650; }
-      .hero-title { font-size:clamp(48px,6.5vw,82px); line-height:.96; letter-spacing:-.065em; font-weight:850; margin:22px 0 20px; max-width:700px; }
+      .dacre-brand-sub { color:#9cacca;font-size:10px;margin-top:2px; }
+      .system-ready { display:inline-flex;align-items:center;gap:7px;color:#a7b8d3;font-size:10px;font-weight:800;letter-spacing:.05em;white-space:nowrap; }
+      .ready-dot { width:8px;height:8px;border-radius:50%;background:#54e2ae;box-shadow:0 0 14px rgba(84,226,174,.9); }
+      .hero { min-height:640px; display:grid; grid-template-columns:1fr 1fr; gap:34px; align-items:center; padding:68px 28px 42px; }
+      .hero-eyebrow { display:inline-flex; padding:8px 13px; border:1px solid rgba(144,132,255,.28); background:rgba(93,73,255,.08); border-radius:999px;color:#d8d7ff;font-size:12px;font-weight:700; }
+      .hero-title { font-size:clamp(46px,6.4vw,82px); line-height:.96; letter-spacing:-.065em; font-weight:850; margin:22px 0 20px; max-width:700px; }
       .gradient-text { background:linear-gradient(90deg,#a4b4ff 0%,#8d77ff 38%,#28d5e8 72%,#f5dc59 100%); -webkit-background-clip:text;background-clip:text;color:transparent; }
-      .hero-copy { max-width:610px; color:#99a7c2;font-size:17px;line-height:1.7; }
-      .hero-proof { display:flex; gap:24px; flex-wrap:wrap; margin-top:34px; color:#c2cbe0;font-size:12px; }
+      .hero-copy { max-width:610px; color:#a9b7cf;font-size:17px;line-height:1.7; }
+      .hero-proof { display:flex; gap:22px; flex-wrap:wrap; margin-top:34px; color:#c7d0e2;font-size:12px; }
       .proof-dot { color:#5fe2ae; }
-      .hero-visual { position:relative; min-height:490px; display:flex; align-items:center; justify-content:center; }
-      .orb { position:absolute; width:360px;height:360px;border-radius:50%; background:radial-gradient(circle,#5f5aff38 0%,#2f6cff16 35%,transparent 70%); filter:blur(4px); }
-      .dash-card { position:relative;width:min(570px,100%);border:1px solid rgba(137,157,202,.2);border-radius:25px;background:linear-gradient(145deg,rgba(24,34,58,.9),rgba(8,14,31,.86));padding:20px;box-shadow:0 35px 90px rgba(0,0,0,.4);transform:rotate(-1deg); }
-      .dash-top { display:flex;justify-content:space-between;color:#8997b3;font-size:11px;margin-bottom:18px; }
-      .dash-metric { font-size:28px;font-weight:800;letter-spacing:-.04em; }
-      .metric-up { color:#52dca9;font-size:11px;margin-left:8px; }
-      .bars { height:190px;display:flex;align-items:flex-end;gap:8px;padding:18px 4px;border-radius:17px;background:rgba(100,122,161,.09); }
-      .bar { flex:1;border-radius:7px 7px 2px 2px;background:linear-gradient(180deg,#2cd1df,#5554d8);box-shadow:0 0 22px rgba(57,125,245,.15); }
-      .mini-grid { display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px; }
-      .mini { padding:13px;border:1px solid rgba(144,159,197,.12);border-radius:14px;background:rgba(255,255,255,.025); }
-      .mini-label { color:#8593ae;font-size:10px; }
-      .mini-value { margin-top:4px;font-size:18px;font-weight:750; }
-      .section { padding:78px 30px; }
-      .section-head { max-width:720px;margin-bottom:35px; }
-      .section-kicker { color:#6f7cff;text-transform:uppercase;letter-spacing:.16em;font-size:10px;font-weight:800; }
-      .section-title { font-size:clamp(30px,4vw,48px);line-height:1.04;letter-spacing:-.045em;font-weight:820;margin:10px 0; }
-      .section-copy { color:#8f9db8;line-height:1.7; }
-      .feature-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:16px; }
-      .feature { min-height:190px;padding:24px;border-radius:20px;border:1px solid rgba(144,159,197,.13);background:linear-gradient(145deg,rgba(20,28,49,.86),rgba(8,13,28,.72)); }
-      .feature-icon { width:38px;height:38px;display:grid;place-items:center;border-radius:11px;background:rgba(100,85,255,.14);color:#8f82ff;font-weight:800; }
-      .feature h3 { margin:18px 0 8px;font-size:16px; }
-      .feature p { color:#8795b0;font-size:13px;line-height:1.65;margin:0; }
-      .intel-grid { display:grid;grid-template-columns:1fr 1fr;gap:18px; }
-      .intel-panel { padding:28px;border-radius:22px;border:1px solid rgba(144,159,197,.13);background:rgba(15,22,40,.72); }
-      .intel-panel h3 { margin:0 0 9px;font-size:20px; }
-      .intel-panel p { color:#8d9ab4;line-height:1.7;font-size:13px; }
-      .workflow { display:grid;grid-template-columns:repeat(4,1fr);gap:12px; }
-      .step { padding:20px;border-radius:18px;background:#0b1122;border:1px solid rgba(144,159,197,.12); }
-      .step-num { color:#7786ff;font-family:monospace;font-size:12px; }
-      .step h4 { margin:18px 0 7px; }
-      .step p { color:#8795b0;font-size:12px;line-height:1.6; }
-      .cta { padding:60px 30px;margin:20px 0 60px;border-radius:28px;border:1px solid rgba(121,111,255,.24);
-        background:radial-gradient(circle at 50% 0%,rgba(83,75,255,.25),transparent 45%),linear-gradient(145deg,#111a32,#080d1d);text-align:center; }
-      .cta h2 { font-size:clamp(32px,4vw,54px);letter-spacing:-.05em;margin:0 auto 12px;max-width:750px; }
-      .cta p { max-width:620px;margin:0 auto;color:#8f9db8;line-height:1.7; }
-      .footer { display:flex;justify-content:space-between;gap:20px;padding:30px;color:#687692;border-top:1px solid rgba(144,159,197,.1);font-size:11px; }
-      @media(max-width:900px){
-        .dacre-nav-links{display:none}.dacre-hero{grid-template-columns:1fr;padding-top:45px}.hero-visual{min-height:400px}
-        .feature-grid{grid-template-columns:1fr 1fr}.intel-grid{grid-template-columns:1fr}.workflow{grid-template-columns:1fr 1fr}
-      }
-      @media(max-width:600px){
-        .block-container{padding:0 12px 30px !important}.dacre-hero,.section,.cta{padding-left:12px;padding-right:12px}
-        .feature-grid,.workflow{grid-template-columns:1fr}.hero-title{font-size:50px}.dash-card{padding:14px}.footer{flex-direction:column}
-      }
+      .page-hero { padding:70px 28px 28px; }
+      .page-title { font-size:clamp(42px,6vw,72px); line-height:1; letter-spacing:-.06em; font-weight:850; margin:14px 0 16px; }
+      .page-copy { max-width:790px; color:#a9b7cf; font-size:17px; line-height:1.75; }
+      .section { padding:70px 28px; }
+      .section-head { max-width:820px;margin-bottom:32px; }
+      .section-kicker { color:#7b89ff;text-transform:uppercase;letter-spacing:.16em;font-size:10px;font-weight:900; }
+      .section-title { font-size:38px;line-height:1.05;letter-spacing:-.045em;font-weight:820;margin-top:10px; }
+      .section-copy { color:#9aa9c2;line-height:1.75;font-size:15px;margin-top:10px; }
+      .grid-3 { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px; }
+      .grid-2 { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px; }
+      .feature-card { padding:23px;min-height:180px;border:1px solid rgba(124,148,205,.15);border-radius:22px;background:linear-gradient(150deg,rgba(28,42,72,.78),rgba(7,13,28,.78)); box-shadow:0 18px 40px rgba(0,0,0,.16); }
+      .feature-icon { width:40px;height:40px;border-radius:13px;display:grid;place-items:center;background:rgba(70,127,255,.12);color:#79cfff;font-weight:900;margin-bottom:16px; }
+      .feature-card h3 { margin:0;font-size:20px;letter-spacing:-.025em; }
+      .feature-card p { color:#9dacc4;line-height:1.65;margin:8px 0 0;font-size:14px; }
+      .pill-row { display:flex; gap:9px; flex-wrap:wrap; margin-top:20px; }
+      .pill { padding:8px 11px; border-radius:999px; border:1px solid rgba(110,155,255,.2); background:rgba(65,108,255,.08); color:#bcd5ff; font-size:11px; font-weight:700; }
+      .workflow { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px; }
+      .step { padding:20px;border-radius:20px;border:1px solid rgba(124,148,205,.13);background:rgba(255,255,255,.025); }
+      .step-num { color:#6f88ff;font-size:10px;font-weight:900;letter-spacing:.14em; }
+      .step h4 { margin:8px 0 7px;font-size:18px; }
+      .step p { color:#99a7c0;font-size:13px;line-height:1.6;margin:0; }
+      .callout { padding:28px;border-radius:24px;border:1px solid rgba(105,143,255,.18);background:linear-gradient(135deg,rgba(54,76,155,.22),rgba(15,31,56,.64)); }
+      .callout h3 { margin:0 0 8px;font-size:24px; }
+      .callout p { margin:0;color:#aab8ce;line-height:1.7; }
+      .metric-row { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:20px; }
+      .metric { padding:18px;border-radius:18px;border:1px solid rgba(118,145,206,.14);background:rgba(255,255,255,.025); }
+      .metric small { color:#8898b4;font-size:10px;text-transform:uppercase;letter-spacing:.12em; }
+      .metric strong { display:block;margin-top:5px;font-size:26px; }
+      .cta { margin:20px 28px 30px;padding:42px 28px;border-radius:28px;border:1px solid rgba(113,151,255,.2);background:radial-gradient(circle at 20% 20%,rgba(90,75,255,.18),transparent 35%),linear-gradient(135deg,rgba(17,28,55,.96),rgba(7,13,28,.98));text-align:center; }
+      .cta h2 { font-size:clamp(30px,4vw,52px);letter-spacing:-.05em;margin:10px 0; }
+      .cta p { max-width:680px;margin:0 auto 18px;color:#9eacc3;line-height:1.7; }
+      .footer { display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:26px 28px;color:#7787a4;font-size:11px; }
+      .hero-visual-host { min-height:500px; }
+      .auth-shell { max-width:980px; margin:28px auto 42px; padding:1px;border-radius:24px;background:linear-gradient(135deg,rgba(91,73,255,.75),rgba(37,211,238,.55),rgba(255,255,255,.08));box-shadow:0 28px 90px rgba(0,0,0,.38); }
+      .auth-inner { border-radius:23px;background:#0b1020;padding:30px;border:1px solid rgba(255,255,255,.08); }
+      .auth-title { color:#f7f9ff;font-size:28px;font-weight:800;letter-spacing:-.03em; }
+      .auth-sub { color:#9ba9c2;margin-top:6px;margin-bottom:20px; }
+      .auth-badge { display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid rgba(126,115,255,.3);background:rgba(92,76,255,.10);color:#bfc5ff;font-size:12px;font-weight:700; }
+      @media(max-width:980px){ .hero{grid-template-columns:1fr;padding-top:48px}.grid-3,.grid-2{grid-template-columns:1fr 1fr}.workflow{grid-template-columns:1fr 1fr}.metric-row{grid-template-columns:1fr 1fr}.hero-visual-host{min-height:430px} }
+      @media(max-width:680px){ .block-container{padding:0 12px 40px !important}.dacre-nav{position:static;padding:12px}.dacre-brand{min-width:auto}.system-ready{display:none}.hero{padding:42px 10px 25px;min-height:auto}.hero-title{font-size:48px}.section,.page-hero{padding:48px 10px 20px}.grid-3,.grid-2,.workflow,.metric-row{grid-template-columns:1fr}.section-title{font-size:31px}.hero-visual-host{min-height:360px}.cta{margin:18px 10px 25px;padding:34px 20px}.footer{padding:22px 10px} }
     </style>
     """, unsafe_allow_html=True)
 
+    # -------------------------------------------------------------------------
+    # Connected landing navigation — every item is a real button, not inert HTML.
+    # -------------------------------------------------------------------------
+    current_section = st.session_state.get("landing_section", "home")
+    mode = st.session_state.get("landing_mode", "home")
+
     st.markdown(f"""
-    <div class="dacre-landing">
-      <nav class="dacre-nav">
-        <div class="dacre-brand">
-          {logo}
-          <div><div class="dacre-brand-name">DACRE</div><div class="dacre-brand-sub">Powered by DI Intelligence</div></div>
-        </div>
-        <div class="dacre-nav-links">
-          <span>Features</span><span>Intelligence</span><span>Workforce</span><span>Analytics</span><span>Security</span>
-        </div>
-        <div style="color:#71809d;font-size:11px;">● SYSTEM READY</div>
-      </nav>
-
-      <section class="dacre-hero">
-        <div>
-          <div class="hero-eyebrow">✦ Experience Next-Gen Business Intelligence</div>
-          <h1 class="hero-title">Transform Raw Data<br/>into <span class="gradient-text">Heavenly Insights.</span></h1>
-          <p class="hero-copy">DACRE turns scattered business data into clear intelligence, powerful analytics and practical decisions — with DI Intelligence built into the workspace.</p>
-          <div class="hero-proof">
-            <span><span class="proof-dot">●</span> Real-time analytics</span>
-            <span><span class="proof-dot">●</span> AI-assisted intelligence</span>
-            <span><span class="proof-dot">●</span> Secure workspaces</span>
-          </div>
-        </div>
-
-        <div class="hero-visual">
-          <div class="orb"></div>
-          <div class="dash-card">
-            <div class="dash-top"><span>DACRE / ANALYTICS</span><span>LIVE</span></div>
-            <div style="color:#8390aa;font-size:11px;">Revenue Growth</div>
-            <div class="dash-metric">$2.4M <span class="metric-up">↗ 18.2%</span></div>
-            <div class="bars">
-              <div class="bar" style="height:38%"></div><div class="bar" style="height:55%"></div>
-              <div class="bar" style="height:44%"></div><div class="bar" style="height:68%"></div>
-              <div class="bar" style="height:59%"></div><div class="bar" style="height:78%"></div>
-              <div class="bar" style="height:66%"></div><div class="bar" style="height:88%"></div>
-              <div class="bar" style="height:76%"></div><div class="bar" style="height:92%"></div>
-            </div>
-            <div class="mini-grid">
-              <div class="mini"><div class="mini-label">Data Points</div><div class="mini-value">4.2M</div></div>
-              <div class="mini"><div class="mini-label">System Health</div><div class="mini-value">99.98%</div></div>
-            </div>
-          </div>
-        </div>
-      </section>
+    <div class="dacre-nav">
+      <div class="dacre-brand">{logo}<div><div class="dacre-brand-name">DACRE</div><div class="dacre-brand-sub">Powered by DI — David's Intelligence</div></div></div>
+      <div class="system-ready"><span class="ready-dot"></span> DI ONLINE · DAVID'S INTELLIGENCE</div>
     </div>
     """, unsafe_allow_html=True)
 
-    # Real Streamlit controls sit directly inside the landing page.
-    b1, b2, b3 = st.columns([1, 1.2, 1])
-    with b1:
-        if st.button("Explore DACRE", key="landing_explore", use_container_width=True):
-            st.session_state.landing_explore = True
-    with b2:
-        if st.button("Get Started Free", key="landing_get_started", use_container_width=True, type="primary"):
-            st.session_state.landing_mode = "signup"
-            st.rerun()
-    with b3:
-        if st.button("Log In", key="landing_log_in", use_container_width=True):
+    nav_items = [("Features", "features"), ("Intelligence", "intelligence"), ("Workforce", "workforce"), ("Analytics", "analytics"), ("Security", "security")]
+    nav_cols = st.columns([1.0,1.0,1.0,1.0,1.0,0.85,0.85])
+    for i, (label, target) in enumerate(nav_items):
+        with nav_cols[i]:
+            if st.button(label, key=f"landing_nav_{target}", use_container_width=True):
+                st.session_state.landing_section = target
+                st.session_state.landing_mode = "home"
+                st.rerun()
+    with nav_cols[5]:
+        if st.button("Log In", key="landing_nav_login", use_container_width=True):
             st.session_state.landing_mode = "login"
+            st.session_state.landing_section = "home"
+            st.rerun()
+    with nav_cols[6]:
+        if st.button("Get Started", key="landing_nav_signup", use_container_width=True, type="primary"):
+            st.session_state.landing_mode = "signup"
+            st.session_state.landing_section = "home"
             st.rerun()
 
-    if st.session_state.get("landing_explore", False):
+    # Style actual Streamlit navigation buttons to look like the supplied UI.
+    st.markdown("""
+    <style>
+      div[data-testid="stButton"] > button { border-radius:12px !important; min-height:42px !important; border:1px solid rgba(124,150,213,.15) !important; background:rgba(13,21,42,.72) !important; color:#cad5e8 !important; font-weight:700 !important; transition:.18s ease !important; }
+      div[data-testid="stButton"] > button:hover { border-color:rgba(73,148,255,.55) !important; color:#ffffff !important; box-shadow:0 0 24px rgba(48,126,255,.12) !important; transform:translateY(-1px); }
+      div[data-testid="stButton"] > button[kind="primary"] { background:linear-gradient(100deg,#7558ff,#4b8cff 52%,#18bfe1) !important; border:none !important; color:#fff !important; box-shadow:0 10px 30px rgba(69,115,255,.22) !important; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # -------------------------------------------------------------------------
+    # Dedicated auth pages
+    # -------------------------------------------------------------------------
+    if mode in ("login", "signup"):
+        title = "Sign in to DACRE" if mode == "login" else "Create your DACRE account"
+        subtitle = "Open your real DACRE workspace." if mode == "login" else "Start your own connected business intelligence workspace."
+        action_word = "Sign In" if mode == "login" else "Create Account"
+        st.markdown(f"""
+        <div class="page-hero">
+          <div class="section-kicker">DACRE ACCOUNT</div>
+          <div class="page-title">{title}</div>
+          <div class="page-copy">{subtitle} Powered by DI — David's Intelligence.</div>
+        </div>
+        <div class="callout" style="margin:10px 28px 0;">
+          <h3>{action_word}</h3>
+          <p>This is the real DACRE authentication flow, connected to the application database. You are not leaving the DACRE experience.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        _landing_auth_panel()
+        if st.button("← Back to DACRE Landing Page", key="auth_page_back", use_container_width=True):
+            st.session_state.landing_mode = "home"
+            st.session_state.landing_section = "home"
+            st.rerun()
+        return
+
+    # -------------------------------------------------------------------------
+    # Dedicated information pages
+    # -------------------------------------------------------------------------
+    if current_section == "features":
         st.markdown("""
-        <div class="section" id="features">
-          <div class="section-head"><div class="section-kicker">The DACRE platform</div>
-          <div class="section-title">One intelligence layer for the work that matters.</div>
-          <div class="section-copy">From raw files to executive decisions, DACRE brings analysis, automation and DI Intelligence into one connected business workspace.</div></div>
-          <div class="feature-grid">
-            <div class="feature"><div class="feature-icon">↗</div><h3>Analytics Engine</h3><p>Clean, analyse and visualise structured business data with practical tools for real-world decisions.</p></div>
-            <div class="feature"><div class="feature-icon">DI</div><h3>DI Intelligence</h3><p>Ask questions, investigate problems, explain results and work with your data through the built-in intelligence layer.</p></div>
-            <div class="feature"><div class="feature-icon">▣</div><h3>Workspace & Data</h3><p>Bring CSV, Excel, TSV and JSON data into a focused workspace where analysis can happen immediately.</p></div>
-            <div class="feature"><div class="feature-icon">◎</div><h3>Formula Lab</h3><p>Use familiar spreadsheet-style calculations and data-cleaning operations without leaving DACRE.</p></div>
-            <div class="feature"><div class="feature-icon">▤</div><h3>Charts & Insights</h3><p>Turn processed information into business-ready charts, summaries and executive insights.</p></div>
-            <div class="feature"><div class="feature-icon">◇</div><h3>Secure Administration</h3><p>Organization workspaces, activity visibility and protected master administration keep the platform organized.</p></div>
-          </div>
+        <div class="page-hero">
+          <div class="section-kicker">DACRE FEATURES</div>
+          <div class="page-title">Everything needed to move from raw data to useful work.</div>
+          <div class="page-copy">DACRE combines a data workspace, cleaning tools, formulas, charts, files, exports, business intelligence and DI into one connected environment.</div>
         </div>
-
         <div class="section">
-          <div class="intel-grid">
-            <div class="intel-panel"><div class="section-kicker">Intelligence</div><h3>From data to decisions.</h3><p>DACRE is designed around a simple flow: bring information in, understand it, find the important signals and turn those signals into actions.</p></div>
-            <div class="intel-panel"><div class="section-kicker">Built for teams</div><h3>A workspace that grows with your organization.</h3><p>Each organization gets its own working environment while administration and security controls keep access structured.</p></div>
-          </div>
-        </div>
-
-        <div class="section">
-          <div class="section-head"><div class="section-kicker">Workflow</div><div class="section-title">Four steps from raw information to insight.</div></div>
-          <div class="workflow">
-            <div class="step"><div class="step-num">01 / INGEST</div><h4>Bring data in</h4><p>Upload supported datasets and establish your working context.</p></div>
-            <div class="step"><div class="step-num">02 / CLEAN</div><h4>Make it usable</h4><p>Inspect, clean and structure information before analysis.</p></div>
-            <div class="step"><div class="step-num">03 / ANALYSE</div><h4>Find the signal</h4><p>Use formulas, charts and DI Intelligence to understand the data.</p></div>
-            <div class="step"><div class="step-num">04 / DECIDE</div><h4>Act with clarity</h4><p>Turn insights into business actions, reports and decisions.</p></div>
+          <div class="grid-3">
+            <div class="feature-card"><div class="feature-icon">▦</div><h3>Workspace & Data</h3><p>Import CSV, Excel, TSV and JSON datasets into a persistent working environment.</p></div>
+            <div class="feature-card"><div class="feature-icon">ƒ</div><h3>Formula Lab</h3><p>Apply practical spreadsheet-style transformations and calculations without leaving your analysis workflow.</p></div>
+            <div class="feature-card"><div class="feature-icon">◫</div><h3>Charts & Dashboards</h3><p>Turn processed information into visual stories that make business patterns easier to understand.</p></div>
+            <div class="feature-card"><div class="feature-icon">▤</div><h3>File Vault</h3><p>Keep working files and datasets organized inside the organization workspace.</p></div>
+            <div class="feature-card"><div class="feature-icon">⇩</div><h3>Export Center</h3><p>Package analysis outputs for reporting, sharing and business use.</p></div>
+            <div class="feature-card"><div class="feature-icon">✦</div><h3>DI Action Center</h3><p>Give DI a business objective and let it turn the request into analysis, recommendations and next actions.</p></div>
           </div>
         </div>
         """, unsafe_allow_html=True)
 
+    elif current_section == "intelligence":
+        st.markdown("""
+        <div class="page-hero">
+          <div class="section-kicker">DI — DAVID'S INTELLIGENCE</div>
+          <div class="page-title">Intelligence that works with your business context.</div>
+          <div class="page-copy">DI is the built-in intelligence layer inside DACRE Analysis. It can explain results, investigate data, help with business questions and work alongside the active workspace.</div>
+        </div>
+        <div class="section">
+          <div class="grid-2">
+            <div class="callout"><h3>Ask questions naturally</h3><p>Move from dashboards to conversation. Ask DI to explain a number, investigate a pattern, draft a brief or recommend what to investigate next.</p></div>
+            <div class="callout"><h3>Work from real context</h3><p>DI can use the current organization, active dataset, institutional memory and available research context instead of treating every request as an isolated question.</p></div>
+            <div class="callout"><h3>Named DI workforce</h3><p>DACRE supports specialized DI workers with distinct identities, specialties and working styles — all under the same DACRE intelligence foundation.</p></div>
+            <div class="callout"><h3>Voice-ready experience</h3><p>The DACRE interface supports browser-based DI voice interaction so users can communicate naturally where their browser supports speech features.</p></div>
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    elif current_section == "workforce":
+        st.markdown("""
+        <div class="page-hero">
+          <div class="section-kicker">DI WORKFORCE</div>
+          <div class="page-title">Specialized digital workers, coordinated inside DACRE.</div>
+          <div class="page-copy">Each DI worker can have a defined specialty and work style, giving organizations a clearer way to organize intelligence tasks across research, analytics, communication, administration and support.</div>
+        </div>
+        <div class="section">
+          <div class="grid-3">
+            <div class="feature-card"><div class="feature-icon">EM</div><h3>Emiel</h3><p>Email & Messaging — organized communication workflows and business messaging support.</p></div>
+            <div class="feature-card"><div class="feature-icon">OL</div><h3>Oliver</h3><p>Data Analysis — metrics, trends, patterns and evidence-first analytical work.</p></div>
+            <div class="feature-card"><div class="feature-icon">SO</div><h3>Sophie</h3><p>Research & Intelligence — investigative research and source-conscious summaries.</p></div>
+            <div class="feature-card"><div class="feature-icon">DA</div><h3>Daniel</h3><p>Data Entry & Processing — clean, consistent and accurate repetitive data operations.</p></div>
+            <div class="feature-card"><div class="feature-icon">GR</div><h3>Grace</h3><p>Business Intelligence — KPIs, dashboards, executive insights and recommendations.</p></div>
+            <div class="feature-card"><div class="feature-icon">JA</div><h3>James</h3><p>Security & Administration — access controls, audit trails and platform operations.</p></div>
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    elif current_section == "analytics":
+        st.markdown("""
+        <div class="page-hero">
+          <div class="section-kicker">ANALYTICS</div>
+          <div class="page-title">See what changed, what matters and what to do next.</div>
+          <div class="page-copy">DACRE translates active business data into clear metrics, health signals, charts and executive-level views that help users move from observation to action.</div>
+        </div>
+        <div class="section">
+          <div class="metric-row">
+            <div class="metric"><small>Data health</small><strong>97 / 100</strong></div>
+            <div class="metric"><small>Live records</small><strong>4.2M+</strong></div>
+            <div class="metric"><small>Insight layer</small><strong>DI</strong></div>
+            <div class="metric"><small>Workspace</small><strong>LIVE</strong></div>
+          </div>
+          <div class="grid-2" style="margin-top:18px;">
+            <div class="callout"><h3>Business Command Center</h3><p>Review data health, executive briefs, trends, anomalies and questions against the active workspace.</p></div>
+            <div class="callout"><h3>Business Twin</h3><p>Build a living snapshot of the current dataset with health scoring, attention signals and measurable opportunities.</p></div>
+            <div class="callout"><h3>Decision Ledger</h3><p>Record decisions, context, expected outcomes and later results so organizational history becomes structured knowledge.</p></div>
+            <div class="callout"><h3>Opportunity Radar</h3><p>Surface measurable growth signals from numeric trends and turn them into investigation prompts.</p></div>
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    elif current_section == "security":
+        st.markdown("""
+        <div class="page-hero">
+          <div class="section-kicker">SECURITY</div>
+          <div class="page-title">Protected business workspaces with structured access.</div>
+          <div class="page-copy">DACRE separates organization workspaces, account roles, activity records and protected master administration so business information can be handled within a clear access model.</div>
+        </div>
+        <div class="section">
+          <div class="grid-2">
+            <div class="feature-card"><div class="feature-icon">✓</div><h3>Organization boundaries</h3><p>Users work inside their organization context, while administrative views are scoped according to role.</p></div>
+            <div class="feature-card"><div class="feature-icon">⌁</div><h3>Activity visibility</h3><p>DACRE records important account and workspace activity so organizations can inspect what happened.</p></div>
+            <div class="feature-card"><div class="feature-icon">♛</div><h3>Protected master access</h3><p>Overall platform controls are separated from normal organization administration behind an additional protected gate.</p></div>
+            <div class="feature-card"><div class="feature-icon">DI</div><h3>Private intelligence context</h3><p>DI's internal context and application security values are not exposed as ordinary public landing-page content.</p></div>
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    else:
+        # ---------------------------------------------------------------------
+        # Main landing page
+        # ---------------------------------------------------------------------
+        st.markdown(f"""
+        <div class="hero">
+          <div>
+            <div class="hero-eyebrow">✦ Experience Next-Gen Business Intelligence</div>
+            <div class="hero-title">Transform Raw Data<br/>into <span class="gradient-text">Heavenly Insights.</span></div>
+            <p class="hero-copy">DACRE turns scattered business data into clear intelligence, powerful analytics and practical decisions — with DI, David's Intelligence, built into the workspace.</p>
+            <div class="hero-proof">
+              <span><span class="proof-dot">●</span> Real-time analytics</span>
+              <span><span class="proof-dot">●</span> DI-powered intelligence</span>
+              <span><span class="proof-dot">●</span> Secure workspaces</span>
+            </div>
+          </div>
+          <div class="hero-visual-host"></div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        hero_dashboard_html = """
+        <style>
+          *{box-sizing:border-box}html,body{margin:0;padding:0;background:transparent;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#f7fbff;overflow:hidden}
+          .visual{position:relative;width:100%;min-height:470px;display:flex;align-items:center;justify-content:center;padding:14px}
+          .orb{position:absolute;width:330px;height:330px;border-radius:50%;background:radial-gradient(circle,#6d63ff55 0%,#2789ff20 34%,transparent 70%);filter:blur(4px);animation:pulse 4s ease-in-out infinite}
+          .card{position:relative;width:min(560px,94%);border:1px solid rgba(116,160,234,.28);border-radius:26px;background:linear-gradient(145deg,rgba(24,38,67,.97),rgba(6,14,30,.97));padding:22px;box-shadow:0 28px 80px rgba(0,0,0,.5),0 0 40px rgba(54,120,255,.12)}
+          .top{display:flex;justify-content:space-between;align-items:center;color:#b9c8e2;font-size:11px;letter-spacing:.08em;margin-bottom:16px}.live{display:inline-flex;align-items:center;gap:6px;color:#6ef0ba;font-weight:800}.dot{width:7px;height:7px;border-radius:50%;background:#5ce7ad;box-shadow:0 0 12px #5ce7ad}.label{color:#c2d3ea;font-size:12px;margin-bottom:4px}.metric{font-size:31px;font-weight:900;letter-spacing:-.04em}.up{color:#4fe5b3;font-size:12px;margin-left:8px;font-weight:800}
+          .bars{height:200px;display:flex;align-items:flex-end;gap:8px;padding:18px 8px;border-radius:18px;background:rgba(91,122,170,.10);border:1px solid rgba(113,152,207,.12);margin-top:16px}.bar{flex:1;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,#38e4f3 0%,#2a95ff 48%,#544ff0 100%);box-shadow:0 0 24px rgba(47,146,255,.22);min-width:8px;transition:height .4s ease}.mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.mini{padding:14px;border:1px solid rgba(121,155,203,.16);border-radius:15px;background:rgba(255,255,255,.035)}.mini-label{color:#9fb0c9;font-size:10px}.mini-value{margin-top:4px;font-size:19px;font-weight:850}.mini-accent{color:#55e5b5}.badge{position:absolute;right:20px;top:18px;padding:6px 9px;border-radius:999px;background:rgba(55,128,255,.13);border:1px solid rgba(73,153,255,.28);color:#9ed2ff;font-size:9px;font-weight:800}@keyframes pulse{50%{transform:scale(1.06);opacity:.9}}
+          @media(max-width:700px){.visual{min-height:360px}.card{padding:16px}.bars{height:145px;gap:5px}.metric{font-size:25px}.top{font-size:9px}}
+        </style>
+        <div class="visual"><div class="orb"></div><div class="card"><div class="badge">LIVE DI INSIGHT</div><div class="top"><span>DACRE / ANALYTICS</span><span class="live"><span class="dot"></span>DI ONLINE</span></div><div class="label">Revenue Growth</div><div class="metric">$2.4M <span class="up">↗ 18.2%</span></div><div class="bars"><div class="bar" style="height:38%"></div><div class="bar" style="height:55%"></div><div class="bar" style="height:44%"></div><div class="bar" style="height:68%"></div><div class="bar" style="height:59%"></div><div class="bar" style="height:78%"></div><div class="bar" style="height:66%"></div><div class="bar" style="height:88%"></div><div class="bar" style="height:76%"></div><div class="bar" style="height:92%"></div></div><div class="mini-grid"><div class="mini"><div class="mini-label">Data Points</div><div class="mini-value">4.2M</div></div><div class="mini"><div class="mini-label">System Health</div><div class="mini-value mini-accent">99.98%</div></div></div></div></div>
+        """
+        components.html(hero_dashboard_html, height=500, scrolling=False)
+
+        b1, b2, b3 = st.columns([1, 1.2, 1])
+        with b1:
+            if st.button("Explore DACRE", key="landing_explore", use_container_width=True):
+                # Per the requested UX, Explore opens account creation.
+                st.session_state.landing_mode = "signup"
+                st.rerun()
+        with b2:
+            if st.button("Get Started Free", key="landing_get_started", use_container_width=True, type="primary"):
+                st.session_state.landing_mode = "signup"
+                st.rerun()
+        with b3:
+            if st.button("Log In", key="landing_log_in", use_container_width=True):
+                st.session_state.landing_mode = "login"
+                st.rerun()
+
+        st.markdown("""
+        <div class="section">
+          <div class="section-head"><div class="section-kicker">THE DACRE PLATFORM</div><div class="section-title">One intelligence layer for the work that matters.</div><div class="section-copy">Explore the five core aspects of DACRE — each one is a real page connected to this application.</div></div>
+          <div class="grid-3">
+            <div class="feature-card"><div class="feature-icon">↗</div><h3>Features</h3><p>Explore the workspace, formulas, charts, files, exports and DI action tools that make DACRE useful day to day.</p></div>
+            <div class="feature-card"><div class="feature-icon">DI</div><h3>Intelligence</h3><p>Understand how DI — David's Intelligence — works with your business context and active data.</p></div>
+            <div class="feature-card"><div class="feature-icon">◈</div><h3>Workforce</h3><p>Meet the specialized DI workers and see how their distinct specialties fit into one intelligence foundation.</p></div>
+            <div class="feature-card"><div class="feature-icon">◫</div><h3>Analytics</h3><p>See how DACRE turns data into health scores, business signals, decisions and opportunity insights.</p></div>
+            <div class="feature-card"><div class="feature-icon">✓</div><h3>Security</h3><p>Learn how organization boundaries, activity visibility and protected administration support business use.</p></div>
+            <div class="feature-card"><div class="feature-icon">→</div><h3>Ready to begin?</h3><p>Create your DACRE account and enter your own workspace with real authentication and persistent organization context.</p></div>
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Direct page buttons, also responsive.
+        page_cols = st.columns(5)
+        for col, label, target in zip(page_cols, ["Features","Intelligence","Workforce","Analytics","Security"], ["features","intelligence","workforce","analytics","security"]):
+            with col:
+                if st.button(label, key=f"landing_card_{target}", use_container_width=True):
+                    st.session_state.landing_section = target
+                    st.rerun()
+
+        st.markdown("""
+        <div class="cta"><div class="section-kicker">START YOUR WORKSPACE</div><h2>Create your DACRE account.</h2><p>Move from scattered information to a connected business intelligence workspace powered by DI — David's Intelligence.</p></div>
+        """, unsafe_allow_html=True)
+        cta1, cta2 = st.columns([1, 1])
+        with cta1:
+            if st.button("Create Your DACRE Account", key="landing_bottom_signup", use_container_width=True, type="primary"):
+                st.session_state.landing_mode = "signup"
+                st.rerun()
+        with cta2:
+            if st.button("Already have an account? Sign In", key="landing_bottom_login", use_container_width=True):
+                st.session_state.landing_mode = "login"
+                st.rerun()
+
     st.markdown("""
-    <div class="cta">
-      <div class="section-kicker">Start your workspace</div>
-      <h2>Build a smarter way to understand your business.</h2>
-      <p>Create your DACRE account and move from scattered information to a connected intelligence workspace.</p>
-    </div>
+    <div class="footer"><span>© DACRE Analysis · Business & Data Intelligence</span><span>Powered by DI — David's Intelligence</span></div>
     """, unsafe_allow_html=True)
 
-    cta1, cta2, cta3 = st.columns([1, 1.2, 1])
-    with cta1:
-        st.empty()
-    with cta2:
-        if st.button("Create Your DACRE Account", key="landing_bottom_signup", use_container_width=True, type="primary"):
-            st.session_state.landing_mode = "signup"
-            st.rerun()
-    with cta3:
-        if st.button("Already have an account? Sign In", key="landing_bottom_login", use_container_width=True):
-            st.session_state.landing_mode = "login"
-            st.rerun()
-
-    _landing_auth_panel()
-
-    st.markdown("""
-    <div class="dacre-landing">
-      <div class="footer">
-        <span>© DACRE Analysis · Business & Data Intelligence</span>
-        <span>Powered by DI — David's Intelligence</span>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
+    # Section pages have a shared pair of conversion buttons and a back action.
+    if current_section != "home":
+        c1, c2, c3 = st.columns([1, 1, 1])
+        with c1:
+            if st.button("← Back to Landing", key="section_back", use_container_width=True):
+                st.session_state.landing_section = "home"
+                st.rerun()
+        with c2:
+            if st.button("Create Your DACRE Account", key="section_signup", use_container_width=True, type="primary"):
+                st.session_state.landing_mode = "signup"
+                st.rerun()
+        with c3:
+            if st.button("Sign In", key="section_login", use_container_width=True):
+                st.session_state.landing_mode = "login"
+                st.rerun()
 
 # =============================================================================
 # STREAMLIT SESSION STATE BOOTSTRAP
@@ -3073,6 +3187,7 @@ _SESSION_DEFAULTS = {
     "user": None,
     "master_route": False,
     "landing_mode": "home",
+    "landing_section": "home",
     "master_captcha_required": False,
     "master_captcha_passed": False,
     "master_second_attempt": False,
