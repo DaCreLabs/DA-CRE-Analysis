@@ -2253,6 +2253,136 @@ def _bootstrap_runtime(schema_version=9):
 
 _bootstrap_runtime(_DB_SCHEMA_VERSION)
 
+
+def ensure_admin_runtime_schema():
+    """Idempotently repair every table/column required by the Overall Admin portal.
+
+    This runs outside the cached bootstrap so legacy SQLite databases are repaired
+    before any CEO Office query. It is safe to run repeatedly.
+    """
+    con = db()
+    try:
+        ddl = {
+            "public_visits": "CREATE TABLE IF NOT EXISTS public_visits (id INTEGER PRIMARY KEY AUTOINCREMENT, visitor_id TEXT NOT NULL, event_type TEXT NOT NULL, page_name TEXT NOT NULL, referrer TEXT, created_at TEXT NOT NULL)",
+            "di_private_memory": "CREATE TABLE IF NOT EXISTS di_private_memory (id INTEGER PRIMARY KEY AUTOINCREMENT, di_id INTEGER NOT NULL, title TEXT NOT NULL, content TEXT NOT NULL, source TEXT NOT NULL DEFAULT 'master', created_by TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1)",
+            "di_position_history": "CREATE TABLE IF NOT EXISTS di_position_history (id INTEGER PRIMARY KEY AUTOINCREMENT, di_id INTEGER NOT NULL, old_position TEXT, new_position TEXT NOT NULL, old_rank INTEGER, new_rank INTEGER NOT NULL, appointed_by TEXT NOT NULL, created_at TEXT NOT NULL)",
+            "di_master_thanks": "CREATE TABLE IF NOT EXISTS di_master_thanks (id INTEGER PRIMARY KEY AUTOINCREMENT, di_id INTEGER NOT NULL, message TEXT NOT NULL, created_at TEXT NOT NULL)",
+            "sovereign_calls": "CREATE TABLE IF NOT EXISTS sovereign_calls (id INTEGER PRIMARY KEY AUTOINCREMENT, room_name TEXT UNIQUE NOT NULL, title TEXT NOT NULL, host_username TEXT NOT NULL, created_at TEXT NOT NULL, ended_at TEXT, status TEXT NOT NULL DEFAULT 'active')",
+            "sovereign_call_members": "CREATE TABLE IF NOT EXISTS sovereign_call_members (id INTEGER PRIMARY KEY AUTOINCREMENT, call_id INTEGER NOT NULL, di_id INTEGER NOT NULL, joined_at TEXT NOT NULL, left_at TEXT)",
+            "sovereign_call_messages": "CREATE TABLE IF NOT EXISTS sovereign_call_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, call_id INTEGER NOT NULL, speaker_type TEXT NOT NULL, speaker_id TEXT, speaker_name TEXT NOT NULL, message TEXT NOT NULL, created_at TEXT NOT NULL)",
+            "david_creations": "CREATE TABLE IF NOT EXISTS david_creations (id INTEGER PRIMARY KEY AUTOINCREMENT, category TEXT NOT NULL, title TEXT NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
+            "di_action_log": "CREATE TABLE IF NOT EXISTS di_action_log (id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT, username TEXT, agent_name TEXT, action_type TEXT, request TEXT, result TEXT, created_at TEXT NOT NULL)",
+        }
+        for sql in ddl.values():
+            con.execute(sql)
+
+        repairs = {
+            "companies": {
+                "website_url": "TEXT",
+            },
+            "di_memory": {
+                "company_name": "TEXT NOT NULL DEFAULT ''",
+            },
+            "di_agents": {
+                "avatar_url": "TEXT",
+                "voice_profile": "TEXT",
+                "thinking_style": "TEXT",
+                "position_title": "TEXT NOT NULL DEFAULT 'DI Specialist'",
+                "rank_level": "INTEGER NOT NULL DEFAULT 1",
+                "appointed_at": "TEXT",
+                "appointed_by": "TEXT",
+            },
+            "public_visits": {
+                "visitor_id": "TEXT NOT NULL DEFAULT ''",
+                "event_type": "TEXT NOT NULL DEFAULT 'view'",
+                "page_name": "TEXT NOT NULL DEFAULT 'Landing'",
+                "referrer": "TEXT",
+                "created_at": "TEXT NOT NULL DEFAULT ''",
+            },
+            "di_private_memory": {
+                "di_id": "INTEGER NOT NULL DEFAULT 0",
+                "title": "TEXT NOT NULL DEFAULT 'Private note'",
+                "content": "TEXT NOT NULL DEFAULT ''",
+                "source": "TEXT NOT NULL DEFAULT 'master'",
+                "created_by": "TEXT NOT NULL DEFAULT 'david'",
+                "created_at": "TEXT NOT NULL DEFAULT ''",
+                "updated_at": "TEXT NOT NULL DEFAULT ''",
+                "active": "INTEGER NOT NULL DEFAULT 1",
+            },
+            "di_position_history": {
+                "di_id": "INTEGER NOT NULL DEFAULT 0",
+                "old_position": "TEXT",
+                "new_position": "TEXT NOT NULL DEFAULT 'DI Specialist'",
+                "old_rank": "INTEGER",
+                "new_rank": "INTEGER NOT NULL DEFAULT 1",
+                "appointed_by": "TEXT NOT NULL DEFAULT 'david'",
+                "created_at": "TEXT NOT NULL DEFAULT ''",
+            },
+            "di_master_thanks": {
+                "di_id": "INTEGER NOT NULL DEFAULT 0",
+                "message": "TEXT NOT NULL DEFAULT ''",
+                "created_at": "TEXT NOT NULL DEFAULT ''",
+            },
+            "sovereign_calls": {
+                "room_name": "TEXT NOT NULL DEFAULT ''",
+                "title": "TEXT NOT NULL DEFAULT 'Sovereign Master Call'",
+                "host_username": "TEXT NOT NULL DEFAULT 'david'",
+                "created_at": "TEXT NOT NULL DEFAULT ''",
+                "ended_at": "TEXT",
+                "status": "TEXT NOT NULL DEFAULT 'active'",
+            },
+            "sovereign_call_members": {
+                "call_id": "INTEGER NOT NULL DEFAULT 0",
+                "di_id": "INTEGER NOT NULL DEFAULT 0",
+                "joined_at": "TEXT NOT NULL DEFAULT ''",
+                "left_at": "TEXT",
+            },
+            "sovereign_call_messages": {
+                "call_id": "INTEGER NOT NULL DEFAULT 0",
+                "speaker_type": "TEXT NOT NULL DEFAULT 'di'",
+                "speaker_id": "TEXT",
+                "speaker_name": "TEXT NOT NULL DEFAULT 'DI'",
+                "message": "TEXT NOT NULL DEFAULT ''",
+                "created_at": "TEXT NOT NULL DEFAULT ''",
+            },
+            "david_creations": {
+                "category": "TEXT NOT NULL DEFAULT 'FOUNDER'",
+                "title": "TEXT NOT NULL DEFAULT 'Founder creation'",
+                "content": "TEXT NOT NULL DEFAULT ''",
+                "created_at": "TEXT NOT NULL DEFAULT ''",
+                "updated_at": "TEXT NOT NULL DEFAULT ''",
+            },
+            "di_action_log": {
+                "company_name": "TEXT",
+                "username": "TEXT",
+                "agent_name": "TEXT",
+                "action_type": "TEXT",
+                "request": "TEXT",
+                "result": "TEXT",
+                "created_at": "TEXT NOT NULL DEFAULT ''",
+            },
+        }
+        for table, wanted in repairs.items():
+            cols = {row[1] for row in con.execute(f"PRAGMA table_info({table})").fetchall()}
+            for column, dtype in wanted.items():
+                if column not in cols:
+                    con.execute(f"ALTER TABLE {table} ADD COLUMN {column} {dtype}")
+
+        # Normalize harmless historical nulls in the fields the admin UI sorts/displays.
+        con.execute("UPDATE di_agents SET rank_level=1 WHERE rank_level IS NULL OR rank_level < 1")
+        con.execute("UPDATE di_agents SET position_title='DI Specialist' WHERE position_title IS NULL OR TRIM(position_title)=''")
+        con.execute("UPDATE di_agents SET status='Available' WHERE status IS NULL OR TRIM(status)=''")
+        con.commit()
+    except Exception:
+        try:
+            con.rollback()
+        except Exception:
+            pass
+        raise
+    finally:
+        con.close()
+
+
 def get_di_agents():
     """Return DI workers as normalized dictionaries so older databases cannot
     crash the UI when newly-added workforce columns are missing or null."""
@@ -4642,6 +4772,9 @@ elif selected_page=="Organization Admin Portal" and user["role"] in ("company_ad
 # MASTER ADMIN PORTAL / CEO OFFICE
 # =============================================================================
 elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
+    # Last-mile schema repair for the protected CEO Office. This guarantees that
+    # legacy local SQLite databases are healed before any admin query executes.
+    ensure_admin_runtime_schema()
     counts=admin_metric_counts()
     hero_left, hero_right = st.columns([1.75, 1], gap="large")
     with hero_left:
