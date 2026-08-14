@@ -60,16 +60,16 @@ DAVID_CREATIONS_PASSKEY = os.getenv("DACRE_DAVID_CREATIONS_PASSKEY", "Mychildren
 
 DI_AVATAR_LIBRARY = {
     "male": [
-        "https://randomuser.me/api/portraits/men/32.jpg",
-        "https://randomuser.me/api/portraits/men/44.jpg",
-        "https://randomuser.me/api/portraits/men/52.jpg",
-        "https://randomuser.me/api/portraits/men/61.jpg",
-        "https://randomuser.me/api/portraits/men/75.jpg",
+        "https://randomuser.me/api/portraits/men/70.jpg",
+        "https://randomuser.me/api/portraits/men/41.jpg",
+        "https://randomuser.me/api/portraits/men/46.jpg",
+        "https://randomuser.me/api/portraits/men/64.jpg",
+        "https://randomuser.me/api/portraits/men/68.jpg",
     ],
     "female": [
+        "https://randomuser.me/api/portraits/women/49.jpg",
         "https://randomuser.me/api/portraits/women/44.jpg",
-        "https://randomuser.me/api/portraits/women/48.jpg",
-        "https://randomuser.me/api/portraits/women/65.jpg",
+        "https://randomuser.me/api/portraits/women/68.jpg",
         "https://randomuser.me/api/portraits/women/72.jpg",
         "https://randomuser.me/api/portraits/women/79.jpg",
     ],
@@ -2087,46 +2087,42 @@ def transcribe_audio(audio_value):
     except Exception as exc:
         return None, f"Voice transcription could not be completed: {type(exc).__name__}."
 
-def speak(text, language_code=None):
-    """Speak DI's reply in Chrome/ChromeOS using the browser's speech engine.
-    The iframe explicitly asks for autoplay and waits for the voice list, which
-    fixes the common "DI answered in text but stayed silent" problem.
-    """
-    if not text or not st.session_state.get("di_voice_enabled", True):
+def speak(text, language_code=None, voice_profile=None):
+    """Speak DI responses by default; browser voice remains optional via Text/Voice mode."""
+    if not text or st.session_state.get("di_response_mode", "voice") != "voice":
         return
-    language_code = language_code or DI_LANGUAGE_PROFILES.get(
-        st.session_state.get("di_language", "English — Nigeria"), {}
-    ).get("code", "en-NG")
-    safe_text = json.dumps(str(text))
-    safe_lang = json.dumps(language_code)
+    language_code = language_code or DI_LANGUAGE_PROFILES.get(st.session_state.get("di_language", "English — Nigeria"), {}).get("code", "en-NG")
+    profile=(voice_profile or "").strip().lower()
+    hints={
+        "male": r"male|man|daniel|david|alex|george|james|oliver|microsoft.*male|google.*male",
+        "female": r"female|woman|samantha|aria|ava|victoria|zira|microsoft.*female|google.*female",
+    }
+    hint=hints.get(profile, profile if profile else hints["male"])
+    safe_text=json.dumps(str(text)); safe_lang=json.dumps(language_code); safe_hint=json.dumps(hint)
+    pitch = 0.78 if profile == "female" else 0.62
     components.html(f"""
     <script>
     (() => {{
-      const text={safe_text};
-      const lang={safe_lang};
+      const text={safe_text}, lang={safe_lang}, hint={safe_hint};
       if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) return;
       const run=()=>{{
         try {{
           window.speechSynthesis.cancel();
-          const u=new SpeechSynthesisUtterance(text);
-          u.lang=lang;
-          u.rate=0.92;
-          u.pitch=0.82;
-          u.volume=1.0;
+          const u=new SpeechSynthesisUtterance(text); u.lang=lang; u.rate=0.91; u.pitch={pitch}; u.volume=1;
           const voices=window.speechSynthesis.getVoices();
           const base=lang.toLowerCase().split('-')[0];
-          const same=voices.filter(v => (v.lang||'').toLowerCase().startsWith(base));
-          const preferred=same.find(v => (v.lang||'').toLowerCase() === lang.toLowerCase()) || same.find(v => /male|daniel|david|alex|george|james|oliver|google|microsoft/i.test(v.name)) || same[0] || voices[0];
+          const same=voices.filter(v=>(v.lang||'').toLowerCase().startsWith(base));
+          const rx=new RegExp(hint,'i');
+          const preferred=same.find(v=>rx.test((v.name||'')+' '+(v.lang||''))) || same.find(v=>(v.lang||'').toLowerCase()===lang.toLowerCase()) || same[0] || voices[0];
           if(preferred) u.voice=preferred;
           window.speechSynthesis.speak(u);
-        }} catch(e) {{ console.warn('DACRE voice error', e); }}
+        }} catch(e) {{ console.warn('DACRE voice error',e); }}
       }};
-      if(window.speechSynthesis.getVoices().length) run();
-      else window.speechSynthesis.onvoiceschanged=run;
-      setTimeout(run, 250);
+      if(window.speechSynthesis.getVoices().length) run(); else window.speechSynthesis.onvoiceschanged=run;
+      setTimeout(run,250);
     }})();
     </script>
-    """, height=1, scrolling=False)
+    """,height=1,scrolling=False)
 
 def master_user_record():
     con = db()
@@ -2177,6 +2173,27 @@ def chibobec_login_monitor():
         return users
     finally:
         con.close()
+
+def render_di_video_call_stage(agent_rows, title, user_label):
+    """Premium video-call shell. The face and mouth animate while the realtime call is active."""
+    cards=[]
+    for row in agent_rows:
+        a=dict(row)
+        name=str(a.get("di_name") or "DI")
+        avatar=str(a.get("avatar_url") or "")
+        position=str(a.get("position_title") or a.get("specialty") or "DI Specialist")
+        cards.append(f"""<div class='di-video-person is-speaking'>
+          <div class='di-video-face-wrap'><div class='di-video-ring'></div><img class='di-video-face' src='{_escape_html(avatar)}' alt='{_escape_html(name)}'><span class='di-video-mouth'></span></div>
+          <div class='di-video-name'>{_escape_html(name)}</div><div class='di-video-role'>{_escape_html(position)}</div><div class='di-video-status'>● Speaking</div>
+        </div>""")
+    human=f"""<div class='di-video-person'>
+      <div class='di-video-face-wrap'><div class='di-video-ring'></div><div class='di-video-human'>{_escape_html((user_label or 'You')[:1].upper())}</div></div>
+      <div class='di-video-name'>{_escape_html(user_label)}</div><div class='di-video-role'>You</div><div class='di-video-status'>● Connected</div>
+    </div>"""
+    st.markdown(f"""<section class='di-video-call'>
+      <div class='di-video-call-head'><div><div class='eyebrow'>DACRE VIDEO CALL</div><h2>{_escape_html(title)}</h2><p>Full-face DI presence with animated speaking state.</p></div><strong>● LIVE</strong></div>
+      <div class='di-video-grid'>{human}{''.join(cards)}</div>
+    </section>""",unsafe_allow_html=True)
 
 def di_voice_player(text, language_code=None):
     """Render a visible DI voice control. Auto-speak is attempted; the button
@@ -3963,6 +3980,7 @@ _SESSION_DEFAULTS = {
     "chart_config": None,
     "di_language": "English — Nigeria",
     "di_voice_enabled": True,
+    "di_response_mode": "voice",
     "active_call_room": None,
     "sovereign_call_id": None,
     "sovereign_call_room": None,
@@ -4039,6 +4057,9 @@ st.markdown("""
 .master-office-hero{background:linear-gradient(120deg,#102944 0%,#245487 55%,#60452f 100%);border:2px solid #eaa86d;border-left:8px solid #ffb56b;border-radius:24px;padding:28px 32px;box-shadow:0 18px 55px rgba(0,0,0,.28);margin-bottom:18px}.master-office-hero .title{font-size:3rem;font-weight:950;letter-spacing:-.045em;color:#f5fbff!important}.master-office-hero .sub{font-size:1.05rem;font-weight:750;color:#dbe9f5!important;margin-top:4px}.master-office-hero .authority{display:inline-block;margin-top:15px;padding:8px 13px;border-radius:999px;background:#533c2c;border:1px solid #ffb56b;color:#ffe5cc!important;font-weight:900}.master-only-badge{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:999px;background:#533c2c;border:1px solid #ffb56b;color:#ffe5cc!important;font-weight:900;font-size:.75rem;letter-spacing:.06em}
 .ceo-portrait-frame{background:linear-gradient(145deg,#132d4f,#0a1830);border:1px solid rgba(112,190,255,.38);border-radius:24px;padding:10px;box-shadow:0 18px 55px rgba(0,0,0,.30);height:100%;display:flex;align-items:center;justify-content:center}.ceo-portrait-frame img{border-radius:18px;object-fit:cover;object-position:center center;max-height:340px;width:100%;box-shadow:0 12px 34px rgba(0,0,0,.25)}.ceo-portrait-caption{text-align:center;color:#a9c5df;font-size:.78rem;font-weight:750;margin-top:8px}.ceo-office-row{display:flex;align-items:stretch;gap:18px;margin-bottom:18px}.ceo-office-copy{flex:1;min-width:0}.ceo-office-photo{width:34%;min-width:280px}.
 .voice-panel{background:linear-gradient(135deg,#112b47,#173b5d 70%,#3d3028);border:1px solid rgba(120,170,210,.25);border-radius:20px;padding:16px 18px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.di-video-call{background:linear-gradient(145deg,#071a32,#0c2a4b);border:1px solid rgba(110,202,255,.28);border-radius:26px;padding:22px;margin:18px 0;box-shadow:0 24px 70px rgba(0,35,80,.26)}
+.di-video-call-head{display:flex;justify-content:space-between;gap:18px;align-items:center;margin-bottom:18px}.di-video-call-head h2{color:#f5fbff!important;margin:.2rem 0}.di-video-call-head p{color:#a9c9de!important;margin:0}.di-video-call-head strong{color:#81f5bc;letter-spacing:.12em;font-size:.78rem}.di-video-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}.di-video-person{background:rgba(11,33,55,.8);border:1px solid rgba(132,210,255,.18);border-radius:20px;padding:14px;text-align:center}.di-video-face-wrap{position:relative;width:170px;height:170px;margin:0 auto 12px;border-radius:50%}.di-video-face,.di-video-human{width:170px;height:170px;border-radius:50%;object-fit:cover;border:3px solid rgba(111,213,255,.62);position:relative;z-index:2}.di-video-human{display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#2d79d0,#7951d9);color:#fff;font-weight:900;font-size:4rem}.di-video-ring{position:absolute;inset:-8px;border-radius:50%;border:3px solid rgba(86,202,255,.28);z-index:0}.di-video-person.is-speaking .di-video-face-wrap{animation:diFacePulse 1.05s ease-in-out infinite}.di-video-person.is-speaking .di-video-ring{animation:diRingPulse 1.05s ease-in-out infinite}.di-video-mouth{position:absolute;z-index:4;left:50%;bottom:33px;transform:translateX(-50%);width:22px;height:6px;background:#07121e;border-radius:50%;opacity:.18}.di-video-person.is-speaking .di-video-mouth{animation:diMouth 220ms ease-in-out infinite alternate;opacity:.75}.di-video-name{color:#f3fbff;font-size:1.04rem;font-weight:900}.di-video-role{color:#a8c7db;font-size:.78rem;margin-top:3px}.di-video-status{color:#83f3bd;font-size:.74rem;margin-top:9px;font-weight:800}@keyframes diFacePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}@keyframes diRingPulse{0%,100%{transform:scale(1);opacity:.55}50%{transform:scale(1.06);opacity:1}}@keyframes diMouth{from{width:16px;height:5px}to{width:29px;height:11px}}
+
 .chat-card{padding:16px 18px;border-radius:18px;border:1px solid rgba(120,170,210,.24);background:#112b47;margin:8px 0}.chat-card.di{border-left:5px solid var(--dacre-orange);background:linear-gradient(135deg,#153654,#193d5f)}.chat-card.user{border-left:5px solid var(--dacre-indigo);background:#102944}
 [data-testid="stDataFrame"]{border:1px solid rgba(120,170,210,.28);border-radius:14px;overflow:hidden;box-shadow:0 8px 25px rgba(0,0,0,.18)}
 [data-testid="stDataFrame"] *{color:#17324d!important}
@@ -4213,38 +4234,123 @@ render_page_chrome(selected_page, user)
 # =============================================================================
 
 def di_voice_bridge(language_code="en-NG"):
-    """Browser voice bridge. Speech is captured by Chrome and sent back to the
-    Streamlit app through a query parameter. The app then runs the same DI
-    engine used by text chat and speaks the response with browser speech synthesis.
+    """Eight-second browser voice capture for DI Home.
+
+    A user presses the microphone button, speaks naturally for up to eight seconds,
+    and the browser sends the combined transcript back to Streamlit automatically.
+    No audio file is uploaded to the server.
     """
-    components.html("""
+    lang_json = json.dumps(language_code)
+    components.html(f"""
+    <div id="dacre-voice-box" style="font-family:Inter,system-ui,sans-serif;display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:2px 0;">
+      <button id="dacre-voice-btn" type="button" style="
+        border:1px solid #79c6f2;background:#eaf7ff;color:#0b5d8f;border-radius:12px;
+        padding:10px 15px;font-weight:800;cursor:pointer;font-size:14px;box-shadow:0 4px 14px rgba(0,103,170,.10);">
+        🎙️ Speak to DI
+      </button>
+      <div id="dacre-voice-status" style="font-size:13px;color:#49677f;font-weight:700;min-width:210px;">
+        Click the microphone, then speak for up to 8 seconds.
+      </div>
+    </div>
     <script>
-    (() => {
+    (() => {{
+      const btn = document.getElementById('dacre-voice-btn');
+      const status = document.getElementById('dacre-voice-status');
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRecognition) return;
-      if (window.__dacreVoiceStarted) return;
-      window.__dacreVoiceStarted = true;
-      const rec = new SpeechRecognition();
-      rec.lang = __LANG__;
-      rec.continuous = true;
-      rec.interimResults = false;
-      rec.maxAlternatives = 1;
-      rec.onresult = (event) => {
-        const result = event.results[event.results.length - 1];
-        if (!result || !result[0]) return;
-        const text = result[0].transcript.trim();
-        if (!text) return;
+      const lang = {lang_json};
+      let timer = null;
+      let remaining = 8;
+      let active = false;
+      let collected = [];
+      let rec = null;
+
+      function setStatus(text) {{
+        if (status) status.textContent = text;
+      }}
+
+      function finishCapture() {{
+        if (!active) return;
+        active = false;
+        if (timer) {{ clearInterval(timer); timer = null; }}
+        try {{ if (rec) rec.stop(); }} catch (e) {{}}
+        const text = collected.join(' ').replace(/\\s+/g, ' ').trim();
+        btn.disabled = false;
+        btn.textContent = '🎙️ Speak to DI';
+        if (!text) {{
+          setStatus('I could not hear a clear question. Click the microphone and try again.');
+          return;
+        }}
+        setStatus('Sending your 8-second question to DI…');
         const url = new URL(window.parent.location.href);
         url.searchParams.set('di_voice', text);
-         url.searchParams.set('di_voice_lang', __LANG__);
+        url.searchParams.set('di_voice_lang', lang);
         window.parent.location.href = url.toString();
-      };
-      rec.onerror = () => { setTimeout(() => { try { rec.start(); } catch(e) {} }, 900); };
-      rec.onend = () => { setTimeout(() => { try { rec.start(); } catch(e) {} }, 700); };
-      try { rec.start(); } catch(e) {}
-    })();
+      }}
+
+      if (!SpeechRecognition) {{
+        btn.disabled = true;
+        btn.style.opacity = '0.55';
+        setStatus('Voice input is not available in this browser. You can still type to DI.');
+        return;
+      }}
+
+      btn.addEventListener('click', () => {{
+        if (active) return;
+        active = true;
+        collected = [];
+        remaining = 8;
+        btn.disabled = true;
+        btn.textContent = '⏺ Listening…';
+        setStatus('Listening… 8 seconds remaining');
+
+        rec = new SpeechRecognition();
+        rec.lang = lang;
+        rec.continuous = true;
+        rec.interimResults = true;
+        rec.maxAlternatives = 1;
+
+        rec.onresult = (event) => {{
+          const parts = [];
+          for (let i = event.resultIndex; i < event.results.length; i++) {{
+            const item = event.results[i];
+            if (item && item[0] && item[0].transcript) parts.push(item[0].transcript.trim());
+          }}
+          if (parts.length) collected.push(parts.join(' '));
+        }};
+
+        rec.onerror = () => {{
+          if (!active) return;
+          setStatus('Voice capture hit a browser microphone issue. Finishing what was heard…');
+          setTimeout(finishCapture, 120);
+        }};
+        rec.onend = () => {{
+          if (active) {{
+            // Chrome may end recognition early; restart quietly until the 8-second window ends.
+            try {{ rec.start(); }} catch (e) {{}}
+          }}
+        }};
+
+        try {{ rec.start(); }} catch (e) {{
+          active = false;
+          btn.disabled = false;
+          btn.textContent = '🎙️ Speak to DI';
+          setStatus('Microphone could not be started. Please allow microphone access and try again.');
+          return;
+        }}
+
+        timer = setInterval(() => {{
+          remaining -= 1;
+          if (remaining <= 0) {{
+            finishCapture();
+          }} else {{
+            setStatus(`Listening… ${{remaining}} second${{remaining === 1 ? '' : 's'}} remaining`);
+          }}
+        }}, 1000);
+      }});
+    }})();
     </script>
-    """.replace("__LANG__", json.dumps(language_code)),height=0)
+    """, height=48)
+
 
 # Process a voice turn before rendering the page. This gives DI a real
 # server-side answer instead of pretending the browser itself is the brain.
@@ -4261,6 +4367,7 @@ if voice_turn:
         con.execute("INSERT INTO chat_history(username,company_name,sender,message,created_at) VALUES(?,?,?,?,?)",(user["username"],user["company"],user["first_name"],spoken,now))
         con.execute("INSERT INTO chat_history(username,company_name,sender,message,created_at) VALUES(?,?,?,?,?)",(user["username"],user["company"],"DI",reply,now)); con.commit(); con.close()
         st.session_state.last_speech=reply
+        if st.session_state.get("di_response_mode","voice")=="voice": speak(reply, voice_lang_code)
         st.rerun()
 
 
@@ -4353,14 +4460,19 @@ elif selected_page=="DI Home":
 
     # Natural voice + multilingual control. Speech recognition and speech synthesis
     # run in the browser, so no audio file has to be uploaded to the server.
-    vc1,vc2,vc3=st.columns([1.45,1,1])
+    vc1,vc2,vc3,vc4=st.columns([1.25,1,1,1])
     with vc1:
         selected_language=st.selectbox("DI language",list(DI_LANGUAGE_PROFILES.keys()),index=list(DI_LANGUAGE_PROFILES.keys()).index(st.session_state.di_language),key="di_language_select")
         st.session_state.di_language=selected_language
     with vc2:
-        st.session_state.di_voice_enabled=st.toggle("Voice replies",value=st.session_state.di_voice_enabled,key="di_voice_toggle")
+        mode=st.radio("DI response",["🔊 Voice","📝 Text"],index=0 if st.session_state.get("di_response_mode","voice")=="voice" else 1,key="di_response_mode_ui",horizontal=True)
+        st.session_state.di_response_mode="voice" if mode.startswith("🔊") else "text"
+        st.session_state.di_voice_enabled=(st.session_state.di_response_mode=="voice")
     with vc3:
-        st.markdown("<div class='voice-panel'><b>🎙️ Natural conversation</b><br><span style='font-size:.84rem;color:#49677f!important'>Speak to DI and DI can answer aloud. Chrome/OS voices determine the exact accent and timbre.</span></div>",unsafe_allow_html=True)
+        if st.button("🧹 Clear previous messages",use_container_width=True,key="clear_di_chat"):
+            st.session_state.chat_history=[]; st.session_state.last_speech=""; st.rerun()
+    with vc4:
+        st.markdown("<div class='voice-panel'><b>🎙️ 8-second voice</b><br><span style='font-size:.84rem;color:#49677f!important'>Voice is default. Switch to Text whenever you prefer.</span></div>",unsafe_allow_html=True)
     if st.session_state.di_voice_enabled:
         di_voice_bridge(DI_LANGUAGE_PROFILES[st.session_state.di_language]["code"])
 
@@ -4399,6 +4511,7 @@ elif selected_page=="DI Home":
         con.execute("INSERT INTO chat_history(username,company_name,sender,message,created_at) VALUES(?,?,?,?,?)",(user["username"],user["company"],user["first_name"],chat_text.strip(),now))
         con.execute("INSERT INTO chat_history(username,company_name,sender,message,created_at) VALUES(?,?,?,?,?)",(user["username"],user["company"],"DI",reply,now)); con.commit(); con.close()
         st.session_state.last_speech=reply
+        if st.session_state.get("di_response_mode","voice")=="voice": speak(reply, DI_LANGUAGE_PROFILES[st.session_state.di_language]["code"])
         st.rerun()
 
     st.caption("Voice mode uses your browser microphone and speech synthesis. If your browser does not expose continuous speech recognition, the text conversation remains available.")
@@ -4433,6 +4546,7 @@ elif selected_page=="DI Calls":
                 log_activity(user['username'],user['company'],f"Started realtime DI call with {target['di_name']}",notify_admin=False)
                 st.rerun()
         else:
+            render_di_video_call_stage([target], title=f"Live call with {target['di_name']}", user_label=f"{user['first_name']} {user['last_name']}")
             render_livekit_call(live_room,user,[target],mode='company_di',title=f"Live call with {target['di_name']}")
             if st.button("End realtime DI call",use_container_width=True,key='end_live_di_call'):
                 st.session_state.livekit_active_room=None
@@ -4944,6 +5058,7 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
                         st.rerun()
             else:
                 live_agents=st.session_state.get("sovereign_live_agents",selected)
+                render_di_video_call_stage(live_agents, title="Sovereign Master Call", user_label=MASTER_FULL_NAME)
                 render_livekit_call(active,user,live_agents,mode="sovereign",title="Sovereign Master Call",question=question)
                 st.markdown("### Live council controls")
                 col_a,col_b=st.columns(2)
