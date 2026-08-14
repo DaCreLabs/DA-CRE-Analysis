@@ -58,6 +58,139 @@ FAVICON_PATH = BASE_DIR / ".dacre_favicon.png"
 DB_PATH = BASE_DIR / "dacre_platform.db"
 
 # Streamlit Community Cloud does not guarantee persistence for local files.
+DI_MEMORY_SEED = [
+    ("IDENTITY", "DI identity", "My name is DI — David's Intelligence. I am the built-in intelligence assistant inside DACRE Analysis.", 2000),
+    ("IDENTITY", "Creator and master", "DACRE Analysis and DI were created by David Emenike. David is the Overall Administrator and master of the platform.", 2000),
+    ("IDENTITY", "David Emenike", "David Emenike is the creator and master administrator of DACRE Analysis. If asked who created DACRE, answer David Emenike.", 2000),
+    ("PLATFORM", "What DACRE is", "DACRE Analysis is a business and data-intelligence workspace combining data ingestion, cleaning, analysis, formulas, charts, file storage, exports, administration and DI intelligence.", 1900),
+    ("PLATFORM", "Supported data", "DACRE is designed to work with CSV, Excel/XLSX, TSV and JSON datasets and to inspect, clean, analyse, visualise and export data.", 1850),
+    ("PLATFORM", "Formula Lab", "DACRE Formula Lab supports practical operations including SUM, AVERAGE, COUNT, COUNTA, MAX, MIN, CONCATENATE, UPPER, LOWER and TRIM.", 1800),
+    ("PLATFORM", "File Vault", "The File Vault is intended to store user/company files inside the DACRE workspace so important working files can remain organized and accessible.", 1800),
+    ("PLATFORM", "Chart Builder", "DACRE can create business visualisations such as bar, line and area charts from analysed data, with room for future chart expansion.", 1750),
+    ("PLATFORM", "Export Center", "The Export Center is designed to let users export processed results, including CSV and Excel outputs.", 1750),
+    ("PLATFORM", "Workspace and Data", "Workspace & Data is the working area for uploading/opening datasets, inspecting data and carrying out analysis and cleaning tasks.", 1750),
+    ("PLATFORM", "DI Home", "DI Home is the continuous conversation area where users can ask DI business, data, technical and general questions.", 1750),
+    ("PLATFORM", "DI Question Board", "Every question sent to DI should be recorded in the DI Question Board so DACRE maintains a reliable trail of questions and answers.", 1900),
+    ("PLATFORM", "Organization Admin Portal", "Organization Admin Portal provides organization-level administration for the company workspace, including users and company activity.", 1800),
+    ("SECURITY", "Overall Admin DI", "Overall Admin DI is the master-only system-wide command centre. It is separate from ordinary company administration.", 2000),
+    ("SECURITY", "Master visibility", "Only the master Overall Administrator should be able to view the system-wide DI Memory Box and master administration controls.", 2000),
+    ("SECURITY", "Permanent deletion", "The Overall Administrator can permanently delete non-master accounts from People & Accounts after explicit confirmation. The operation is irreversible.", 2000),
+    ("SECURITY", "Master protection", "The master account must be protected from permanent account deletion through normal account controls.", 2000),
+    ("SECURITY", "Credential protection", "DACRE must never reveal the master passkey, password hashes, API keys, tokens or other private credentials in DI answers or ordinary screens.", 2000),
+    ("ACCOUNT", "Signup and access", "A user who completes the required signup information should be able to access DACRE. Duplicate usernames or emails should be prevented.", 1900),
+    ("CLIENT", "Chibobec Loan Service", "Chibobec Loan Service is a protected client workspace in DACRE Analysis. When an authenticated account signs up using a company name containing the word chibobec, DACRE recognises the organization as Chibobec Loan Service and opens the client's dedicated workspace.", 1950),
+    ("CLIENT", "Chibobec welcome", "The Chibobec client is Mr Chibuike Chukwunere. When an authenticated Chibobec account is created, DI welcomes the client respectfully and states that the team was asked to treat the client with immense care.", 1950),
+    ("CLIENT", "Chibobec loan desk", "Chibobec Loan Desk stores the client name, WhatsApp number, loan amount, date the loan was given and repayment due date. It tracks 2-day and due-date reminder delivery status.", 1950),
+    ("CLIENT", "Loan reminders", "DI prepares a friendly WhatsApp reminder exactly 2 days before a recorded loan due date and a repayment reminder on the due date. Delivery requires an authenticated WhatsApp provider integration and the system records successful delivery to prevent duplicates.", 1950),
+    ("ACCOUNT", "Company separation", "Each organization has its own workspace. Normal company users should not receive system-wide visibility into other organizations.", 1900),
+    ("ACCOUNT", "Company admin", "The first account creating a new organization becomes that organization's company admin. Later users are normal users unless an admin grants admin access.", 1850),
+    ("DI", "Memory Box purpose", "The DI Memory Box is the persistent trusted knowledge source for DI. It stores durable DACRE facts, creator identity, operating rules, product capabilities and approved knowledge.", 2000),
+    ("DI", "Shared DI memory", "All DI workers can use active DI Memory Box records as shared context, so platform facts do not have to be manually re-taught to every DI worker.", 2000),
+    ("DI", "Memory retrieval", "DI should retrieve the most relevant Memory Box records for a question rather than blindly sending every memory record to the reasoning layer.", 1950),
+    ("DI", "Online research", "When internal memory is insufficient and current public information is needed, DI can attempt a public web lookup and use reliable retrieved sources.", 1900),
+    ("DI", "Direct answers", "DI should answer directly whenever reliable knowledge is available. It should not repeatedly use a generic 'not enough reliable information' response when a useful answer is possible.", 2000),
+    ("DI", "Ordinary factual questions", "DI should answer ordinary factual questions when it knows the answer or can verify it. Example: a dog is an animal because dogs are mammals in the animal kingdom.", 1700),
+    ("DI", "Unknown text", "If a message looks like meaningless or random text such as fghjk, DI should say it appears unclear and ask the user to restate it rather than inventing a meaning.", 1600),
+    ("DI", "Tech partner", "David uses a ChatGPT-based technical partner to help build, debug, improve, design and extend DACRE. DI should not falsely claim to be that separate conversation, but it can provide technical help itself.", 1800),
+    ("UX", "Visual direction", "The preferred DACRE design is a polished light-blue business console with indigo, violet, cyan and deep-navy accents, strong text visibility, premium cards and no large white or pink surfaces.", 1800),
+    ("UX", "Business-ready design", "DACRE should feel premium, technically polished, responsive, future-facing and suitable for serious business users.", 1750),
+    ("PROJECT", "Product vision", "David wants DACRE to grow into a future-facing business intelligence platform that collects data, cleans and analyses it, creates charts and exports, stores business work, answers questions and supports organizations.", 1900),
+    ("PROJECT", "Long-term DI vision", "The desired DI experience is a capable business and technical partner that can answer questions, explain data, help with formulas, analyse workspaces, research current information and assist with practical business tasks.", 1900),
+    ("PROJECT", "Fast experience", "The preferred DI experience is fast: use internal knowledge first, use public research only when needed, and return the useful result rather than exposing internal routing or implementation details.", 1800),
+]
+
+PROJECT_HISTORY = [
+    ("PROJECT_HISTORY", "Early DACRE concept", "The original DACRE idea was to create an app that could collect data from websites and links, perform data entry, and provide built-in capabilities inspired by SQL, Google Sheets, Excel, Power BI and Python data science workflows.", 1500),
+    ("PROJECT_HISTORY", "Get Data vision", "The Get Data concept includes obtaining data from websites, uploaded XLSX/CSV/PDF files and platform links, with the longer-term goal of turning collected information into usable spreadsheet-style outputs.", 1500),
+    ("PROJECT_HISTORY", "Data entry vision", "DACRE is intended to reduce repetitive data-entry work by helping users collect, structure, clean and analyse information in one workspace.", 1500),
+    ("PROJECT_HISTORY", "Vendor data workflow", "A practical data workflow behind the project involved maintaining vendor product price lists with fields such as product price, part number, warranty, stock status and stock quantity.", 1300),
+    ("PROJECT_HISTORY", "Product-list structure", "A representative product data structure used during development included Brand, Category, Price, Name, CPU Name, CPU Details, Storage Capacity, Storage Type, RAM, Screen, Screen Feature, Graphics Chips, Keyboard Feature, Operating System, Part Number, Camera, Warranty, Features, Other Features, Stock Status and Stock Qty.", 1300),
+    ("PROJECT_HISTORY", "Data matching principle", "When updating structured product lists, data must be mapped to the correct headers and must not be mismatched across products or columns.", 1500),
+    ("PROJECT_HISTORY", "Spreadsheet learning direction", "The project development included learning and applying spreadsheet skills such as filtering, sorting, data cleaning, Pivot Tables, VLOOKUP and CONCATENATE.", 1200),
+    ("PROJECT_HISTORY", "Pivot Table goal", "Pivot Tables are useful in DACRE-style analysis for summarising dimensions such as brand or category and measures such as price, quantity or sales.", 1200),
+    ("PROJECT_HISTORY", "Data cleaning goal", "Data cleaning in DACRE should help users remove empty rows or columns, duplicate records and other quality issues before analysis.", 1400),
+    ("PROJECT_HISTORY", "Formula learning goal", "DACRE's Formula Lab is intended to make practical spreadsheet-style calculations accessible without requiring every user to write code.", 1300),
+]
+
+BUSINESS_DOMAINS = {
+    "BUSINESS": [
+        "business model", "value proposition", "customer segment", "revenue model", "cost structure", "gross margin", "operating margin", "break-even point", "unit economics", "competitive advantage", "market size", "service quality", "business process", "standard operating procedure", "key performance indicator", "business objective", "strategic goal", "operating plan", "business risk", "business continuity", "vendor management", "procurement", "inventory management", "order management", "customer lifecycle", "retention", "churn", "customer lifetime value", "acquisition cost", "profitability", "cash flow", "working capital", "forecasting", "budgeting", "scenario planning", "capacity planning", "resource allocation", "productivity", "efficiency", "effectiveness"
+    ],
+    "DATA": [
+        "dataset", "row", "column", "record", "field", "data type", "numeric data", "categorical data", "date data", "missing value", "duplicate row", "outlier", "null value", "data validation", "data consistency", "data completeness", "data accuracy", "data uniqueness", "data quality", "data lineage", "data dictionary", "metadata", "schema", "primary key", "foreign key", "dimension", "measure", "fact table", "lookup table", "aggregation", "filtering", "sorting", "grouping", "join", "merge", "pivot table", "sampling", "population", "distribution", "correlation"
+    ],
+    "ANALYTICS": [
+        "descriptive analytics", "diagnostic analytics", "predictive analytics", "prescriptive analytics", "trend analysis", "variance analysis", "cohort analysis", "segmentation", "benchmarking", "root cause analysis", "funnel analysis", "time series", "moving average", "growth rate", "conversion rate", "retention rate", "churn rate", "average order value", "return on investment", "return on ad spend", "forecast accuracy", "confidence interval", "hypothesis", "statistical significance", "mean", "median", "mode", "standard deviation", "percentile", "quartile", "minimum", "maximum", "range", "weighted average", "ratio", "percentage change", "index", "trend", "seasonality", "anomaly"
+    ],
+    "FINANCE": [
+        "revenue", "sales revenue", "cost of goods sold", "gross profit", "operating expense", "net profit", "EBITDA", "cash flow", "accounts receivable", "accounts payable", "invoice", "payment terms", "credit period", "working capital", "current asset", "current liability", "balance sheet", "income statement", "cash flow statement", "budget", "actual spend", "budget variance", "financial forecast", "profit margin", "gross margin", "net margin", "contribution margin", "fixed cost", "variable cost", "sunk cost", "capital expenditure", "operating expenditure", "depreciation", "amortisation", "tax", "interest expense", "discount", "pricing", "unit cost", "break-even analysis"
+    ],
+    "SALES": [
+        "lead", "prospect", "opportunity", "sales pipeline", "sales stage", "conversion", "win rate", "close rate", "sales quota", "sales target", "sales forecast", "average deal size", "sales cycle", "customer acquisition", "upsell", "cross-sell", "renewal", "territory", "account owner", "sales activity", "contact rate", "response rate", "proposal", "quotation", "purchase order", "deal value", "pipeline coverage", "forecast category", "lost deal", "win reason", "loss reason", "customer need", "discovery", "qualification", "negotiation", "objection handling", "account management", "key account", "sales productivity", "sales dashboard"
+    ],
+    "MARKETING": [
+        "marketing campaign", "impression", "reach", "engagement", "click-through rate", "conversion rate", "cost per click", "cost per lead", "cost per acquisition", "return on ad spend", "marketing qualified lead", "brand awareness", "content marketing", "email marketing", "social media marketing", "search marketing", "landing page", "call to action", "audience", "persona", "customer journey", "attribution", "campaign budget", "campaign objective", "creative asset", "A/B test", "organic traffic", "paid traffic", "referral traffic", "website session", "bounce rate", "lead source", "channel mix", "marketing funnel", "retargeting", "keyword", "search intent", "content calendar", "marketing dashboard", "marketing ROI"
+    ],
+    "OPERATIONS": [
+        "process mapping", "workflow", "cycle time", "lead time", "throughput", "capacity", "utilisation", "bottleneck", "service level", "turnaround time", "queue", "backlog", "order fulfilment", "inventory turnover", "stockout", "reorder point", "safety stock", "supplier lead time", "purchase order", "receiving", "quality control", "quality assurance", "standard work", "continuous improvement", "root cause", "corrective action", "preventive action", "operational KPI", "shift planning", "staffing", "scheduling", "resource plan", "maintenance", "downtime", "uptime", "incident", "escalation", "handover", "operations dashboard", "process efficiency"
+    ],
+    "CUSTOMER": [
+        "customer satisfaction", "customer experience", "customer support", "support ticket", "first response time", "resolution time", "first contact resolution", "service level agreement", "customer complaint", "customer feedback", "customer effort score", "net promoter score", "customer retention", "customer churn", "customer lifetime value", "customer onboarding", "customer success", "knowledge base", "support queue", "ticket priority", "ticket status", "escalation", "service recovery", "response template", "customer segment", "customer profile", "customer history", "case management", "contact centre", "support channel", "email support", "chat support", "self-service", "help article", "feedback loop", "voice of customer", "customer health score", "renewal risk", "customer dashboard", "service analytics"
+    ],
+    "HR": [
+        "headcount", "employee turnover", "attrition", "recruitment", "candidate pipeline", "time to hire", "cost per hire", "onboarding", "training", "performance review", "performance goal", "employee productivity", "attendance", "absence rate", "overtime", "workforce planning", "capacity", "skills inventory", "succession planning", "compensation", "benefits", "payroll", "employee engagement", "retention", "job satisfaction", "team structure", "manager span", "role clarity", "learning plan", "development plan", "competency", "job description", "interview scorecard", "candidate source", "offer acceptance", "probation", "employee record", "HR dashboard", "people analytics", "workforce KPI"
+    ],
+    "PRODUCT": [
+        "product strategy", "product roadmap", "feature", "user story", "acceptance criteria", "product requirement", "product metric", "activation", "retention", "feature adoption", "usage frequency", "product-market fit", "customer need", "user persona", "user journey", "product backlog", "prioritisation", "MVP", "release", "version", "bug", "severity", "usability", "accessibility", "user interface", "user experience", "design system", "component", "prototype", "experiment", "A/B test", "feedback", "product analytics", "release notes", "changelog", "product risk", "technical debt", "roadmap dependency", "product dashboard", "product health"
+    ],
+    "PROJECT": [
+        "project scope", "project objective", "deliverable", "milestone", "task", "dependency", "critical path", "project schedule", "resource plan", "budget", "risk register", "issue log", "change request", "stakeholder", "project sponsor", "project manager", "status report", "project KPI", "work breakdown structure", "requirements", "acceptance criteria", "deadline", "baseline", "variance", "progress", "capacity", "workload", "priority", "owner", "handover", "retrospective", "lessons learned", "project closure", "scope creep", "change control", "communication plan", "project dashboard", "delivery risk", "project health"
+    ],
+    "CYBERSECURITY": [
+        "authentication", "authorization", "least privilege", "access control", "password policy", "multi-factor authentication", "session security", "audit log", "security incident", "vulnerability", "patch management", "backup", "recovery", "encryption", "data protection", "privacy", "secret management", "API key", "token", "phishing", "malware", "ransomware", "social engineering", "security monitoring", "incident response", "business continuity", "disaster recovery", "network security", "application security", "secure coding", "input validation", "database security", "role-based access", "account lockout", "credential rotation", "security review", "threat model", "security control", "security dashboard", "security awareness"
+    ],
+    "BI": [
+        "business intelligence", "dashboard", "KPI", "data source", "data model", "semantic layer", "dimension", "measure", "drill-down", "filter", "slicer", "report", "scorecard", "executive dashboard", "operational dashboard", "analytical dashboard", "data refresh", "data pipeline", "ETL", "ELT", "data warehouse", "data mart", "lakehouse", "business metric", "metric definition", "report governance", "self-service analytics", "ad hoc analysis", "data storytelling", "insight", "recommendation", "alert", "threshold", "benchmark", "target", "actual", "variance", "trend", "BI adoption", "analytics governance"
+    ],
+    "AI": [
+        "artificial intelligence", "machine learning", "language model", "prompt", "context", "retrieval", "knowledge base", "grounding", "hallucination", "evaluation", "accuracy", "latency", "automation", "classification", "prediction", "summarisation", "information extraction", "recommendation", "agent", "tool use", "workflow automation", "human review", "AI governance", "model monitoring", "data privacy", "responsible AI", "confidence", "fallback", "error handling", "knowledge retrieval", "semantic search", "keyword search", "ranking", "relevance", "feedback", "AI product metric", "AI cost", "AI response time", "AI quality", "AI reliability"
+    ],
+    "EXCEL_SHEETS": [
+        "spreadsheet", "worksheet", "cell", "range", "formula", "function", "filter", "sort", "freeze panes", "conditional formatting", "data validation", "pivot table", "lookup", "VLOOKUP", "XLOOKUP", "INDEX MATCH", "CONCATENATE", "TEXTJOIN", "SUM", "AVERAGE", "COUNT", "COUNTA", "MAX", "MIN", "IF", "IFERROR", "TRIM", "UPPER", "LOWER", "LEFT", "RIGHT", "MID", "date formatting", "number formatting", "currency formatting", "chart", "named range", "duplicate removal", "split text", "fill down", "copy paste", "sheet protection"
+    ],
+}
+
+TEMPLATES = [
+    ("definition", "What {term} means", "{term} is a business/data concept used to describe, measure or manage a specific part of an organisation's work. In DACRE, DI can explain the concept, relate it to a dataset and suggest practical ways to use it."),
+    ("purpose", "Why {term} matters", "{term} matters because it can help a business understand performance, make decisions, reduce uncertainty or improve an operational process. The exact value depends on the organisation and its objectives."),
+    ("measurement", "How to measure {term}", "A practical way to work with {term} is to define its unit, source data, calculation method, reporting period and target. DACRE can help structure the underlying data and calculate or visualise the resulting measure."),
+    ("analysis", "How to analyse {term}", "To analyse {term}, define the business question first, identify the relevant fields, clean the data, segment meaningful groups, compare periods or targets and communicate the result with a clear conclusion."),
+    ("data", "Data needed for {term}", "Useful data for {term} depends on context, but commonly includes a date or period, an entity or category, a numeric value, a status and an appropriate identifier. Data quality should be checked before conclusions are drawn."),
+    ("KPI", "KPI example for {term}", "A useful KPI related to {term} should be specific, measurable, time-bound and connected to a business objective. A good KPI normally has a definition, owner, source, target and reporting frequency."),
+    ("dashboard", "Dashboard view for {term}", "A dashboard for {term} can show the headline KPI, current value, target, variance, trend over time and the main categories or drivers. DACRE charts can support this style of analysis."),
+    ("quality", "Data quality for {term}", "Before analysing {term}, check completeness, accuracy, consistency, uniqueness, validity and timeliness. Duplicate records, missing fields and inconsistent categories can distort the result."),
+    ("risk", "Risk associated with {term}", "A common risk when using {term} is making a decision from incomplete, biased, outdated or incorrectly interpreted data. The mitigation is to validate the source, definition, calculation and assumptions."),
+    ("action", "Business action for {term}", "After analysing {term}, the next step should be a concrete action with an owner, deadline and success measure. Insight is most valuable when it leads to a measurable business decision."),
+    ("example", "Example use of {term}", "For example, a business could place {term} in a monthly analysis, compare the current period with the previous period and target, identify the largest driver of change and assign an action to the responsible team."),
+    ("common mistake", "Common mistake with {term}", "A common mistake with {term} is using a vague definition or mixing incompatible periods, categories or units. Clear definitions and consistent data preparation reduce this problem."),
+    ("best practice", "Best practice for {term}", "A strong practice for {term} is to document the definition, source, owner, calculation, reporting frequency and intended decision. This makes analysis repeatable and easier to audit."),
+]
+
+DI_MEMORY_SEED = DI_MEMORY_SEED[:4000]
+
+CHIBOBEC_COMPANY = "chibobec loan service"
+
+CHIBOBEC_OWNER_NAME = "Mr Chibuike Chukwunere"
+
+SUPPORTED_EXTENSIONS = ["csv", "xlsx", "xls", "tsv", "json"]
+
+SHEET_FORMULAS = ["SUM","AVERAGE","COUNT","COUNTA","MAX","MIN","CONCATENATE","UPPER","LOWER","TRIM"]
+
+APP_KNOWLEDGE = """
+DACRE Analysis is a business and data analysis workspace. Users can upload CSV, Excel, TSV and JSON files; clean datasets; remove empty rows/columns and duplicates; inspect rows and columns; run formulas such as SUM, AVERAGE, COUNT, COUNTA, MAX, MIN, CONCATENATE, UPPER, LOWER and TRIM; build bar, line and area charts; save workspace state; use a File Vault; and export processed data as CSV or Excel.
+DI means David's Intelligence. DI is the assistant inside DACRE Analysis. Each organization has its own workspace. The first person who creates a new organization becomes that organization's company admin. Later users joining an existing organization are regular users unless an admin grants them admin rights. Company admins can inspect users, account creation, sign-ins, file activity and changes for their organization. The master account can see system-wide activity.
+""".strip()
+
 def cloud_persistence_configured():
     try:
         return bool(st.secrets.get("DACRE_DATABASE_URL", "") or st.secrets.get("DATABASE_URL", "") or st.secrets.get("SUPABASE_DB_URL", ""))
@@ -738,6 +871,1058 @@ def ensure_runtime_schema():
                     continue
             raise
 
+def ensure_di_agent_columns():
+    """Safely upgrade older DACRE databases without duplicate-column errors."""
+    con = db()
+    try:
+        existing = {row["name"] for row in con.execute("PRAGMA table_info(di_agents)").fetchall()}
+        additions = {
+            "avatar_url": "TEXT",
+            "voice_profile": "TEXT",
+            "thinking_style": "TEXT",
+        }
+        for column, dtype in additions.items():
+            if column not in existing:
+                con.execute(f"ALTER TABLE di_agents ADD COLUMN {column} {dtype}")
+        con.commit()
+    finally:
+        con.close()
+
+def ensure_master():
+    if not MASTER_PASSKEY:
+        # Do not create a usable master account until the deployment secret is configured.
+        return
+    con = db()
+    cur = con.cursor()
+    cur.execute("SELECT id FROM users WHERE username = ?", (MASTER_USERNAME,))
+    if not cur.fetchone():
+        now = datetime.now().isoformat(timespec="seconds")
+        cur.execute("""
+            INSERT INTO users
+            (first_name, last_name, username, company_name, email, email_password,
+             password_hash, passkey_hash, role, login_count, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            "David", "Emenike", MASTER_USERNAME, "DACRE MASTER", "master@dacre.local", "",
+            MASTER_PASSKEY_HASH, MASTER_PASSKEY_HASH, "master", 0, now,
+        ))
+        con.commit()
+    con.close()
+
+def seed_di_memory():
+    """Seed the shared DI Memory Box without overwriting user-created memory."""
+    con=db(); now=datetime.now().isoformat(timespec="seconds")
+    con.execute("PRAGMA journal_mode=WAL")
+    # Ensure the current schema can accept the seed records even when upgrading
+    # an older DACRE SQLite database.
+    cols={r[1] for r in con.execute("PRAGMA table_info(di_memory)").fetchall()}
+    migrations={
+        "category":"TEXT DEFAULT 'GENERAL'", "title":"TEXT DEFAULT ''", "content":"TEXT DEFAULT ''",
+        "priority":"INTEGER DEFAULT 500", "active":"INTEGER DEFAULT 1", "created_by":"TEXT DEFAULT ''",
+        "created_at":"TEXT DEFAULT ''", "updated_at":"TEXT DEFAULT ''"
+    }
+    for name,decl in migrations.items():
+        if name not in cols:
+            con.execute(f"ALTER TABLE di_memory ADD COLUMN {name} {decl}")
+    con.commit()
+    rows=[(c,t,x,p,MASTER_USERNAME,now,now) for c,t,x,p in DI_MEMORY_SEED]
+    con.executemany("INSERT INTO di_memory(category,title,content,priority,created_by,created_at,updated_at) SELECT ?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM di_memory WHERE title=? )", [r+(r[1],) for r in rows])
+    con.commit(); con.close()
+
+def get_di_memory(limit=80, query=""):
+    """Retrieve the most relevant active memories for the current question."""
+    con=db()
+    rows=con.execute("SELECT id,category,title,content,priority,active,created_at,updated_at FROM di_memory WHERE active=1 ORDER BY priority DESC,id ASC").fetchall()
+    con.close()
+    if not query:
+        return [dict(r) for r in rows[:int(limit)]]
+    words=set(re.findall(r"[a-z0-9]{3,}", query.lower()))
+    scored=[]
+    for r in rows:
+        text=f"{r['category']} {r['title']} {r['content']}".lower()
+        hits=sum(1 for w in words if w in text)
+        exact=2 if r['title'].lower() in query.lower() else 0
+        score=(hits*25)+exact+int(r['priority'] or 0)/1000
+        if hits:
+            scored.append((score,dict(r)))
+    scored.sort(key=lambda x:x[0], reverse=True)
+    return [r for _,r in scored[:int(limit)]]
+
+def di_memory_context(limit=80, query=""):
+    rows=get_di_memory(limit, query=query)
+    if not rows:
+        return "DI Memory Box has no matching records for this question."
+    return "\n".join([f"[{r['category']}] {r['title']}: {r['content']}" for r in rows])
+
+def memory_box_direct_answer(text):
+    """Give a deterministic direct answer when a trusted memory record matches."""
+    matches=get_di_memory(limit=5, query=text)
+    if not matches:
+        return None
+    low=text.lower().strip()
+    # Identity questions should return the exact identity record immediately.
+    if any(k in low for k in ["your name", "who are you", "what should i call you"]):
+        return "My name is DI — David's Intelligence."
+    if "who created" in low or "who made" in low or "creator" in low:
+        return "DACRE Analysis and DI were created by David Emenike."
+    if "david emenike" in low and any(k in low for k in ["know", "who", "creator"]):
+        return "Yes. David Emenike is the creator and Overall Administrator of DACRE Analysis."
+    # Return a high-confidence factual memory only when several question words
+    # overlap the matched title/content; otherwise let the normal reasoning/web path handle it.
+    qwords=set(re.findall(r"[a-z0-9]{3,}", low))
+    best=matches[0]
+    mtext=f"{best['title']} {best['content']}".lower()
+    hits=sum(1 for w in qwords if w in mtext)
+    if hits>=2 and best['category'] in {"IDENTITY","PLATFORM","PROJECT","PROJECT_HISTORY","SECURITY","DI","UX","ACCOUNT","BASIC","EXCEL_SHEETS","DATA","ANALYTICS","BUSINESS","BI"}:
+        return best['content']
+    return None
+
+def permanently_delete_accounts(user_ids):
+    """Permanently remove non-master accounts and their workspace records."""
+    ids=[]
+    for value in user_ids:
+        try: ids.append(int(value))
+        except Exception: pass
+    ids=list(dict.fromkeys(ids))
+    if not ids:
+        return 0, []
+    con=db(); placeholders=','.join('?' for _ in ids)
+    rows=con.execute(f"SELECT id,username,first_name,last_name,company_name,email,role FROM users WHERE id IN ({placeholders})",ids).fetchall()
+    safe=[r for r in rows if r['role']!='master' and r['username']!=MASTER_USERNAME]
+    if not safe:
+        con.close(); return 0, []
+    safe_ids=[r['id'] for r in safe]
+    ph=','.join('?' for _ in safe_ids)
+    # Remove all user-owned records first. Companies are removed only when no users remain.
+    for table,col in [("files","username"),("projects","username"),("activity","username"),("chat_history","username")]:
+        con.execute(f"DELETE FROM {table} WHERE {col} IN (SELECT username FROM users WHERE id IN ({ph}))",safe_ids)
+    con.execute(f"DELETE FROM notifications WHERE target_username IN (SELECT username FROM users WHERE id IN ({ph}))",safe_ids)
+    con.execute(f"DELETE FROM emails_log WHERE recipient_email IN (SELECT email FROM users WHERE id IN ({ph}))",safe_ids)
+    con.execute(f"DELETE FROM users WHERE id IN ({ph}) AND role!='master' AND username!=?",safe_ids+[MASTER_USERNAME])
+    deleted=len(safe)
+    # Clean orphaned organizations and their DI assignments.
+    companies=con.execute("SELECT name FROM companies WHERE name NOT IN (SELECT DISTINCT company_name FROM users) AND name!='DACRE MASTER'").fetchall()
+    for c in companies:
+        con.execute("DELETE FROM companies WHERE name=?",(c['name'],))
+        con.execute("UPDATE di_agents SET assigned_company=NULL WHERE assigned_company=?",(c['name'],))
+    con.commit(); con.close()
+    return deleted, [dict(r) for r in safe]
+
+def maybe_upgrade_password_hash(con, username, supplied_value, stored_hash, column="passkey_hash"):
+    """Upgrade a legacy SHA-256 credential after a successful login."""
+    ok, legacy = verify_password(supplied_value, stored_hash)
+    if ok and legacy:
+        con.execute(f"UPDATE users SET {column}=? WHERE username=?", (hash_password(supplied_value), username))
+        con.commit()
+    return ok
+
+def log_activity(username, company, action, notify_admin=True):
+    now = datetime.now().isoformat(timespec="seconds")
+    con = db()
+    con.execute(
+        "INSERT INTO activity(username, company_name, action, created_at) VALUES (?, ?, ?, ?)",
+        (username, company, action, now),
+    )
+    if notify_admin and company and company.upper() != "DACRE MASTER":
+        con.execute(
+            "INSERT INTO notifications(company_name, target_username, event_type, message, created_at) VALUES (?, ?, ?, ?, ?)",
+            (company, None, "activity", f"{username}: {action}", now),
+        )
+    con.commit()
+    con.close()
+
+def notify_company_admin(company, message, event_type="system"):
+    con = db()
+    now = datetime.now().isoformat(timespec="seconds")
+    con.execute(
+        "INSERT INTO notifications(company_name, target_username, event_type, message, created_at) VALUES (?, ?, ?, ?, ?)",
+        (company, None, event_type, message, now),
+    )
+    con.commit()
+    con.close()
+
+def send_di_welcome_email(first_name, last_name, company_name, email, email_password=""):
+    full_name = f"{first_name} {last_name}".strip()
+    subject = f"Welcome to DACRE Analysis — DI is now active for {company_name}!"
+    body = (
+        f"Hello {first_name},\n\n"
+        "Welcome to DACRE Analysis. I am DI (David's Intelligence), your business and data intelligence copilot.\n\n"
+        f"Your workspace for {company_name} is now active. You can upload datasets, clean and analyse them, build charts, "
+        "export results and chat naturally with DI about your workspace.\n\n"
+        "Please keep your DACRE Account Passkey private and do not share it with anyone. "
+        "If you did not create this account, please contact the DACRE administrator.\n\n"
+        "Warm regards,\nDI — David's Intelligence\nDACRE Analysis Platform"
+    )
+
+    # Streamlit Cloud secrets are not guaranteed to appear in os.environ, so
+    # read mail configuration from st.secrets first and environment variables second.
+    def mail_secret(name, default=""):
+        try:
+            value = st.secrets.get(name, "")
+        except Exception:
+            value = ""
+        return str(value or os.getenv(name, default) or default).strip()
+
+    # Multi-provider mail source: try Gmail, Outlook/Microsoft 365, Proton,
+    # then the legacy single SMTP configuration. Stop after the first success.
+    providers = [
+        ("Gmail", "DACRE_GMAIL_SMTP_HOST", "DACRE_GMAIL_SMTP_PORT", "DACRE_GMAIL_SMTP_USER", "DACRE_GMAIL_SMTP_PASSWORD", "DACRE_GMAIL_SMTP_FROM"),
+        ("Outlook", "DACRE_OUTLOOK_SMTP_HOST", "DACRE_OUTLOOK_SMTP_PORT", "DACRE_OUTLOOK_SMTP_USER", "DACRE_OUTLOOK_SMTP_PASSWORD", "DACRE_OUTLOOK_SMTP_FROM"),
+        ("Proton", "DACRE_PROTON_SMTP_HOST", "DACRE_PROTON_SMTP_PORT", "DACRE_PROTON_SMTP_USER", "DACRE_PROTON_SMTP_PASSWORD", "DACRE_PROTON_SMTP_FROM"),
+        ("Legacy SMTP", "DACRE_SMTP_HOST", "DACRE_SMTP_PORT", "DACRE_SMTP_USER", "DACRE_SMTP_PASSWORD", "DACRE_SMTP_FROM"),
+    ]
+    statuses=[]
+    status="NOT SENT — no mail provider is configured"
+    sent_provider=""
+    for provider, host_key, port_key, user_key, pass_key, from_key in providers:
+        smtp_host=mail_secret(host_key)
+        smtp_port=int(mail_secret(port_key, "587"))
+        smtp_user=mail_secret(user_key)
+        smtp_pass=mail_secret(pass_key)
+        sender=mail_secret(from_key, smtp_user or "")
+        if not (smtp_host and smtp_user and smtp_pass):
+            continue
+        try:
+            msg=MIMEMultipart()
+            msg["From"]=sender or smtp_user
+            msg["To"]=email
+            msg["Subject"]=subject
+            msg.attach(MIMEText(body, "plain", "utf-8"))
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as server:
+                server.starttls()
+                server.login(smtp_user, smtp_pass)
+                server.sendmail(sender or smtp_user, [email], msg.as_string())
+            status=f"Sent via {provider} SMTP"
+            sent_provider=provider
+            break
+        except Exception as exc:
+            statuses.append(f"{provider}: {type(exc).__name__}")
+    if not sent_provider and statuses:
+        status="NOT SENT — configured mail providers failed (" + "; ".join(statuses) + ")"
+
+    con = db()
+    con.execute("""
+        INSERT INTO emails_log
+        (recipient_email, recipient_name, company_name, subject, body, sender_email, status, sent_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        email, full_name, company_name, subject, body, sender, status,
+        datetime.now().isoformat(timespec="seconds"),
+    ))
+    con.commit()
+    con.close()
+    return status
+
+def authenticate(company_name, full_name, passkey, email=""):
+    company_clean = (company_name or "").strip().lower()
+    full_name_clean = (full_name or "").strip().lower()
+    email_clean = (email or "").strip().lower()
+    passkey_clean = (passkey or "").strip()
+
+    if not passkey_clean:
+        return None, "Please enter your Account Passkey."
+    if not company_clean and not email_clean:
+        return None, "Please enter your Company / Organization Name or Email Address."
+
+    con = db()
+    try:
+        if (company_clean == "dacre master" or full_name_clean == "david emenike" or email_clean == "master@dacre.local") and master_passkey_gate(passkey_clean):
+            row = con.execute("SELECT first_name,last_name,username,company_name,email,role FROM users WHERE username=?", (MASTER_USERNAME,)).fetchone()
+            if row:
+                now = datetime.now().isoformat(timespec="seconds")
+                con.execute("UPDATE users SET login_count=login_count+1,last_login=? WHERE username=?", (now, MASTER_USERNAME))
+                con.commit()
+                result = dict(row)
+                log_activity(MASTER_USERNAME, result.get("company_name", "DACRE MASTER"), "Signed in", notify_admin=False)
+                return result, None
+
+        if email_clean:
+            rows = con.execute("SELECT first_name,last_name,username,company_name,email,passkey_hash,role FROM users WHERE lower(email)=?", (email_clean,)).fetchall()
+        else:
+            rows = con.execute("SELECT first_name,last_name,username,company_name,email,passkey_hash,role FROM users WHERE lower(company_name)=?", (company_clean,)).fetchall()
+
+        valid_rows = []
+        for candidate_row in rows:
+            if maybe_upgrade_password_hash(con, candidate_row["username"], passkey_clean, candidate_row["passkey_hash"]):
+                valid_rows.append(candidate_row)
+        rows = valid_rows
+
+        if not rows:
+            if email_clean:
+                exists = con.execute("SELECT 1 FROM users WHERE lower(email)=? LIMIT 1", (email_clean,)).fetchone()
+            else:
+                exists = con.execute("SELECT 1 FROM users WHERE lower(company_name)=? LIMIT 1", (company_clean,)).fetchone()
+            if exists:
+                return None, "This account has already been created, but the passkey does not match. Please check your passkey and try again."
+            return None, "This account has not been created. Please go to the Sign Up page and create your account to access DACRE Analysis."
+
+        matched = None
+        for r in rows:
+            candidate = f"{r['first_name']} {r['last_name']}".strip().lower()
+            if not full_name_clean or candidate == full_name_clean:
+                matched = r
+                break
+        if matched is None:
+            return None, "The account exists, but the Full Name does not match the account. Please enter the name used during Sign Up."
+
+        now = datetime.now().isoformat(timespec="seconds")
+        con.execute("UPDATE users SET login_count=login_count+1,last_login=? WHERE username=?", (now, matched["username"]))
+        con.commit()
+        result = {"first_name":matched["first_name"],"last_name":matched["last_name"],"username":matched["username"],"company":matched["company_name"],"email":matched["email"],"role":matched["role"]}
+    finally:
+        con.close()
+
+    log_activity(result["username"], result["company"], "Signed in", notify_admin=result["role"] != "master")
+    return result, None
+
+def create_account(first, last, company, email, email_password, passkey):
+    company_clean = canonical_company_name(company)
+    email_clean = email.strip().lower()
+    passkey_clean = passkey.strip()
+    if not company_clean or not email_clean or not passkey_clean:
+        return False, "Please fill in Company Name, Email Address, and Account Passkey.", None
+
+    if "@" not in email_clean or "." not in email_clean.split("@")[-1]:
+        return False, "Please enter a valid email address.", None
+
+    email_prefix = email_clean.split("@")[0].replace(".", " ").replace("_", " ").title()
+    first_clean = first.strip() if first and first.strip() else (email_prefix.split()[0] if email_prefix else "User")
+    last_clean = last.strip() if last and last.strip() else (" ".join(email_prefix.split()[1:]) if len(email_prefix.split()) > 1 else "Member")
+    username_clean = email_clean
+
+    if username_clean == MASTER_USERNAME:
+        return False, "That username/email is reserved for the Master account.", None
+
+    con = db()
+    try:
+        now = datetime.now().isoformat(timespec="seconds")
+        cur = con.cursor()
+
+        # Friendly duplicate-account protection. The same email/username cannot
+        # be registered twice, even if the user changes the other signup fields.
+        existing_account = cur.execute(
+            "SELECT first_name, last_name, company_name FROM users WHERE lower(email)=lower(?) OR lower(username)=lower(?) LIMIT 1",
+            (email_clean, username_clean),
+        ).fetchone()
+        if existing_account:
+            return False, (
+                "This account has already been added. The email address you entered is already registered "
+                f"for {existing_account['company_name']}. Please use the Sign In page to access your account."
+            ), None
+
+        company_row = cur.execute("SELECT name FROM companies WHERE lower(name)=lower(?)", (company_clean,)).fetchone()
+
+        if company_row:
+            # Existing company: creator becomes a normal user unless an admin explicitly grants admin rights.
+            role = "user"
+        else:
+            cur.execute("INSERT INTO companies(name,owner_username,admin_password_hash,created_at) VALUES (?,?,?,?)",
+                        (company_clean, username_clean, hash_password(passkey_clean), now))
+            role = "company_admin"
+
+        cur.execute("""
+            INSERT INTO users
+            (first_name,last_name,username,company_name,email,email_password,password_hash,passkey_hash,role,login_count,created_at,last_login)
+            VALUES (?,?,?,?,?,?,?,?,?,1,?,?)
+        """, (
+            first_clean, last_clean, username_clean, company_clean, email_clean, email_password.strip(),
+            hash_password(passkey_clean), hash_password(passkey_clean), role, now, now,
+        ))
+        con.commit()
+
+        mail_status = send_di_welcome_email(first_clean, last_clean, company_clean, email_clean, email_password.strip())
+        log_activity(username_clean, company_clean, "Created account & signed in", notify_admin=(role == "user"))
+        if role == "company_admin":
+            notify_company_admin(company_clean, f"New organization created by {first_clean} {last_clean}. You are the organization admin.", "new_company")
+
+        return True, f"Account created successfully! DI email status: {mail_status}", {
+            "first_name": first_clean, "last_name": last_clean, "username": username_clean,
+            "company": company_clean, "email": email_clean, "role": role,
+        }
+    except sqlite3.IntegrityError:
+        return False, "An account with this email address is already registered.", None
+    finally:
+        con.close()
+
+def is_chibobec_company(company_name):
+    return "chibobec" in str(company_name or "").strip().lower()
+
+def canonical_company_name(company_name):
+    # Recognise the requested Chibobec company keyword without granting
+    # identity access by name alone; the normal email/passkey authentication
+    # still applies to every account.
+    return CHIBOBEC_COMPANY if is_chibobec_company(company_name) else str(company_name or "").strip()
+
+def normalize_whatsapp_number(number):
+    raw = re.sub(r"[^0-9+]", "", str(number or "").strip())
+    if raw.startswith("00"):
+        raw = "+" + raw[2:]
+    if raw.startswith("0"):
+        # Nigeria is the expected first market for this client. Users can still
+        # enter an international number beginning with +.
+        raw = "+234" + raw[1:]
+    if raw and not raw.startswith("+"):
+        raw = "+" + raw
+    return raw
+
+def _dacre_secret(name, default=""):
+    """Read a Streamlit secret first, then an environment variable."""
+    try:
+        value = st.secrets.get(name, "")
+    except Exception:
+        value = ""
+    return str(value or os.getenv(name, default) or default).strip()
+
+def _meta_whatsapp_config():
+    return {
+        "token": _dacre_secret("DACRE_WHATSAPP_TOKEN"),
+        "phone_id": _dacre_secret("DACRE_WHATSAPP_PHONE_NUMBER_ID"),
+        "version": _dacre_secret("DACRE_WHATSAPP_API_VERSION", "v23.0"),
+        "reminder_2_template": _dacre_secret("DACRE_WHATSAPP_2DAY_TEMPLATE", "dacre_loan_due_2days"),
+        "due_template": _dacre_secret("DACRE_WHATSAPP_DUE_TEMPLATE", "dacre_loan_due_today"),
+        "language": _dacre_secret("DACRE_WHATSAPP_TEMPLATE_LANGUAGE", "en_US"),
+    }
+
+def _meta_phone(phone):
+    return re.sub(r"[^0-9]", "", normalize_whatsapp_number(phone))
+
+def _log_whatsapp_delivery(loan_id, company, client_name, phone, reminder_type, template_name, message_id, status, response):
+    con = db()
+    con.execute(
+        """INSERT INTO whatsapp_delivery_log
+        (loan_id,company_name,client_name,whatsapp_number,reminder_type,template_name,message_id,status,response,created_at)
+        VALUES(?,?,?,?,?,?,?,?,?,?)""",
+        (loan_id, company, client_name, phone, reminder_type, template_name, message_id,
+         status, str(response)[:4000], datetime.now().isoformat(timespec="seconds")),
+    )
+    con.commit()
+    con.close()
+
+def send_whatsapp_template(to_number, template_name, parameters):
+    """Send an approved Meta WhatsApp Cloud API template."""
+    cfg = _meta_whatsapp_config()
+    if not cfg["token"] or not cfg["phone_id"]:
+        return False, "Meta WhatsApp Cloud API is not configured. Add DACRE_WHATSAPP_TOKEN and DACRE_WHATSAPP_PHONE_NUMBER_ID to Streamlit Secrets."
+    to = _meta_phone(to_number)
+    if len(to) < 8:
+        return False, "Invalid WhatsApp number. Use an international number such as +2348012345678."
+    endpoint = f"https://graph.facebook.com/{cfg['version']}/{cfg['phone_id']}/messages"
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": to,
+        "type": "template",
+        "template": {
+            "name": template_name,
+            "language": {"code": cfg["language"]},
+            "components": [{"type": "body", "parameters": [{"type": "text", "text": str(v)} for v in parameters]}],
+        },
+    }
+    request = urllib.request.Request(
+        endpoint,
+        data=json.dumps(payload).encode("utf-8"),
+        method="POST",
+        headers={"Authorization": f"Bearer {cfg['token']}", "Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            raw = response.read().decode("utf-8")
+            data = json.loads(raw or "{}")
+            message_id = (data.get("messages") or [{}])[0].get("id")
+            if 200 <= response.status < 300 and message_id:
+                return True, message_id
+            return False, f"Meta returned HTTP {response.status}: {raw[:1000]}"
+    except urllib.error.HTTPError as exc:
+        try:
+            detail = exc.read().decode("utf-8")
+        except Exception:
+            detail = str(exc)
+        return False, f"Meta WhatsApp API rejected the message (HTTP {exc.code}): {detail[:1200]}"
+    except Exception as exc:
+        return False, f"WhatsApp send failed: {type(exc).__name__}: {exc}"
+
+def send_whatsapp_message(to_number, body):
+    return False, "Use an approved Meta WhatsApp template for business-initiated reminders."
+
+def add_loan_client(username, company, client_name, whatsapp_number, loan_amount, lent_date, due_date):
+    client_name = str(client_name or "").strip()
+    phone = normalize_whatsapp_number(whatsapp_number)
+    if not client_name or not phone:
+        return False, "Client name and WhatsApp number are required."
+    if due_date < lent_date:
+        return False, "The due date cannot be earlier than the lending date."
+    now = datetime.now().isoformat(timespec="seconds")
+    con = db()
+    try:
+        con.execute("""INSERT INTO loan_clients
+            (username,company_name,client_name,whatsapp_number,loan_amount,lent_date,due_date,created_at,updated_at)
+            VALUES(?,?,?,?,?,?,?,?,?)""",
+            (username, company, client_name, phone, float(loan_amount or 0), str(lent_date), str(due_date), now, now))
+        con.commit()
+        return True, "Loan client saved."
+    except Exception as exc:
+        return False, str(exc)
+    finally:
+        con.close()
+
+def delete_loan_client(loan_id, username):
+    con = db()
+    con.execute("DELETE FROM loan_clients WHERE id=? AND username=?", (int(loan_id), username))
+    con.commit(); con.close()
+
+def process_chibobec_reminders(username, company):
+    """Send due-date reminders through the real Meta WhatsApp Cloud API."""
+    if not is_chibobec_company(company):
+        return []
+    cfg = _meta_whatsapp_config()
+    today = datetime.now().date()
+    con = db()
+    rows = con.execute("SELECT * FROM loan_clients WHERE username=? AND company_name=? ORDER BY due_date", (username, company)).fetchall()
+    results = []
+    for row in rows:
+        try:
+            due = datetime.strptime(row["due_date"], "%Y-%m-%d").date()
+        except Exception:
+            continue
+        days_left = (due - today).days
+        if days_left == 2 and not row["reminder_2_sent"]:
+            reminder_type, template_name, sent_column, message_column = "2-day reminder", cfg["reminder_2_template"], "reminder_2_sent", "reminder_2_message_id"
+        elif days_left == 0 and not row["due_sent"]:
+            reminder_type, template_name, sent_column, message_column = "due-date reminder", cfg["due_template"], "due_sent", "due_message_id"
+        else:
+            continue
+        parameters = [row["client_name"], f"₦{float(row['loan_amount']):,.2f}", due.strftime("%d %B %Y")]
+        ok, status = send_whatsapp_template(row["whatsapp_number"], template_name, parameters)
+        now = datetime.now().isoformat(timespec="seconds")
+        if ok:
+            con.execute(f"UPDATE loan_clients SET {sent_column}=1,{message_column}=?,last_whatsapp_status=?,last_whatsapp_error=NULL,updated_at=? WHERE id=?", (status, "sent", now, row["id"]))
+            _log_whatsapp_delivery(row["id"], company, row["client_name"], row["whatsapp_number"], reminder_type, template_name, status, "sent", "Meta accepted the message.")
+        else:
+            con.execute("UPDATE loan_clients SET last_whatsapp_status=?,last_whatsapp_error=?,updated_at=? WHERE id=?", ("failed", status, now, row["id"]))
+            _log_whatsapp_delivery(row["id"], company, row["client_name"], row["whatsapp_number"], reminder_type, template_name, None, "failed", status)
+        results.append((row["client_name"], reminder_type, ok, status))
+    con.commit()
+    con.close()
+    return results
+
+def load_dataframe(uploaded_file):
+    extension = uploaded_file.name.rsplit(".", 1)[-1].lower()
+    if extension == "csv":
+        return pd.read_csv(uploaded_file)
+    if extension == "tsv":
+        return pd.read_csv(uploaded_file, sep="\t")
+    if extension in ("xlsx", "xls"):
+        return pd.read_excel(uploaded_file)
+    if extension == "json":
+        return pd.read_json(uploaded_file)
+    raise ValueError(f"Unsupported file type: .{extension}")
+
+def clean_dataframe(df):
+    out = df.copy()
+    out.columns = [re.sub(r"\s+", " ", str(c).strip()) if str(c).strip() else f"Column_{i+1}" for i,c in enumerate(out.columns)]
+    out = out.dropna(axis=0, how="all").dropna(axis=1, how="all")
+    for column in out.columns:
+        if out[column].dtype == "object":
+            series = out[column].astype(str).replace({"nan": ""}).str.strip()
+            numeric_candidate = series.str.replace(r"[\$€£₦,%]", "", regex=True).str.replace(",", "", regex=False)
+            numeric = pd.to_numeric(numeric_candidate, errors="coerce")
+            if numeric.notna().mean() >= 0.80 and series.ne("").any():
+                out[column] = numeric
+            else:
+                out[column] = series
+    return out.drop_duplicates().reset_index(drop=True)
+
+def dataframe_to_json(df):
+    return "" if df is None else df.to_json(orient="split", date_format="iso")
+
+def dataframe_from_json(value):
+    if not value:
+        return None
+    try:
+        return pd.read_json(io.StringIO(value), orient="split")
+    except Exception:
+        return None
+
+def safe_dataframe_for_streamlit(df):
+    """Prevent pyarrow duplicate-column failures when Streamlit renders a dataframe."""
+    if df is None:
+        return df
+    out=df.copy()
+    seen={}
+    cols=[]
+    for col in out.columns:
+        base=str(col)
+        n=seen.get(base,0)
+        seen[base]=n+1
+        cols.append(base if n==0 else f"{base}_{n+1}")
+    out.columns=cols
+    return out
+
+def save_file(user, uploaded_file, df):
+    con = db()
+    con.execute("INSERT INTO files(username,company_name,filename,file_type,file_json,created_at) VALUES(?,?,?,?,?,?)",
+                (user["username"], user["company"], uploaded_file.name, uploaded_file.name.rsplit(".",1)[-1].lower(), dataframe_to_json(df), datetime.now().isoformat(timespec="seconds")))
+    con.commit(); con.close()
+    log_activity(user["username"], user["company"], f"Saved file: {uploaded_file.name}")
+
+def get_files(user):
+    con = db(); rows = con.execute("SELECT filename,file_type,created_at,file_json FROM files WHERE company_name=? ORDER BY id DESC", (user["company"],)).fetchall(); con.close(); return rows
+
+def save_project(user, raw_df, processed_df, filename, logs, chart_config=None):
+    con = db()
+    existing = con.execute("SELECT id FROM projects WHERE username=? AND company_name=?", (user["username"], user["company"])).fetchone()
+    payload = (user["username"], user["company"], "Main Workspace", filename or "", dataframe_to_json(raw_df), dataframe_to_json(processed_df), json.dumps(logs), json.dumps(chart_config or {}), datetime.now().isoformat(timespec="seconds"))
+    if existing:
+        con.execute("""UPDATE projects SET project_name=?,active_filename=?,raw_json=?,processed_json=?,formula_logs=?,chart_config=?,updated_at=? WHERE id=?""", (*payload[2:], existing["id"]))
+    else:
+        con.execute("""INSERT INTO projects(username,company_name,project_name,active_filename,raw_json,processed_json,formula_logs,chart_config,updated_at) VALUES(?,?,?,?,?,?,?,?,?)""", payload)
+    con.commit(); con.close()
+
+def restore_project(user):
+    con = db(); row = con.execute("SELECT active_filename,raw_json,processed_json,formula_logs,chart_config FROM projects WHERE username=? AND company_name=? ORDER BY id DESC LIMIT 1", (user["username"],user["company"])).fetchone(); con.close()
+    if not row: return None
+    try: logs = json.loads(row["formula_logs"]) if row["formula_logs"] else []
+    except Exception: logs = []
+    try: chart = json.loads(row["chart_config"]) if row["chart_config"] else {}
+    except Exception: chart = {}
+    return {"filename":row["active_filename"],"raw":dataframe_from_json(row["raw_json"]),"processed":dataframe_from_json(row["processed_json"]),"logs":logs,"chart":chart}
+
+def make_excel(processed_df, chart_df=None):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        processed_df.to_excel(writer, sheet_name="Processed Data", index=False)
+        if chart_df is not None:
+            chart_df.to_excel(writer, sheet_name="Dynamic Chart", index=False)
+    output.seek(0); return output.getvalue()
+
+def apply_formula(df, formula, options):
+    formula = formula.upper()
+    if formula == "SUM": return pd.to_numeric(df[options["column"]], errors="coerce").sum()
+    if formula == "AVERAGE": return pd.to_numeric(df[options["column"]], errors="coerce").mean()
+    if formula == "COUNT": return int(pd.to_numeric(df[options["column"]], errors="coerce").count())
+    if formula == "COUNTA": return int(df[options["column"]].notna().sum())
+    if formula == "MAX": return pd.to_numeric(df[options["column"]], errors="coerce").max()
+    if formula == "MIN": return pd.to_numeric(df[options["column"]], errors="coerce").min()
+    if formula == "CONCATENATE":
+        result = df[options["first"]].astype(str) + options.get("separator", " ") + df[options["second"]].astype(str)
+        return "column", options["new_column"], result
+    if formula in ("UPPER","LOWER","TRIM"):
+        series = df[options["column"]].astype(str)
+        result = series.str.upper() if formula == "UPPER" else series.str.lower() if formula == "LOWER" else series.str.strip()
+        return "column", options["column"], result
+    return None
+
+def _numeric_columns(df):
+    return df.select_dtypes(include="number").columns.tolist() if df is not None else []
+
+def business_health(df):
+    if df is None or df.empty:
+        return {"score": 0, "rows": 0, "columns": 0, "missing_pct": 100.0, "duplicate_pct": 0.0, "numeric": 0}
+    total_cells = max(1, df.shape[0] * df.shape[1])
+    missing_pct = float(df.isna().sum().sum() / total_cells * 100)
+    duplicate_pct = float(df.duplicated().mean() * 100)
+    numeric = len(_numeric_columns(df))
+    score = max(0, min(100, round(100 - missing_pct * 0.65 - duplicate_pct * 0.45 + min(numeric, 10) * 0.8)))
+    return {"score": score, "rows": len(df), "columns": len(df.columns), "missing_pct": missing_pct, "duplicate_pct": duplicate_pct, "numeric": numeric}
+
+def business_signals(df):
+    """Return explainable, dataset-derived signals without pretending to know hidden business facts."""
+    if df is None or df.empty:
+        return []
+    signals = []
+    nums = _numeric_columns(df)
+    for col in nums[:20]:
+        s = pd.to_numeric(df[col], errors="coerce").dropna()
+        if len(s) < 4:
+            continue
+        mean = float(s.mean())
+        std = float(s.std()) if len(s) > 1 else 0.0
+        if std > 0:
+            high = int((s > mean + 3 * std).sum())
+            low = int((s < mean - 3 * std).sum())
+            if high or low:
+                signals.append({"type":"anomaly","column":str(col),"message":f"{col} contains {high + low} unusually distant value(s) from its average."})
+        if len(s) >= 8:
+            first = float(s.head(max(1, len(s)//5)).mean())
+            last = float(s.tail(max(1, len(s)//5)).mean())
+            if first != 0:
+                change = (last - first) / abs(first) * 100
+                if abs(change) >= 10:
+                    direction = "up" if change > 0 else "down"
+                    signals.append({"type":"trend","column":str(col),"message":f"{col} trends {direction} by about {abs(change):.1f}% between the early and recent portions of the dataset."})
+    missing = df.isna().sum().sort_values(ascending=False)
+    for col, count in missing[missing > 0].head(5).items():
+        signals.append({"type":"quality","column":str(col),"message":f"{col} has {int(count):,} missing value(s)."})
+    return signals[:12]
+
+def build_executive_brief(df, company):
+    if df is None or df.empty:
+        return "There is no active dataset to brief yet. Upload your business data and I will prepare an executive review."
+    health = business_health(df)
+    signals = business_signals(df)
+    nums = _numeric_columns(df)
+    lines = [f"Executive brief for {company}.", f"The active dataset contains {len(df):,} rows across {len(df.columns):,} columns. Data health is {health['score']}/100, with {health['missing_pct']:.1f}% missing cells and {health['duplicate_pct']:.1f}% duplicate rows."]
+    if nums:
+        for col in nums[:5]:
+            s = pd.to_numeric(df[col], errors="coerce").dropna()
+            if not s.empty:
+                lines.append(f"{col}: total {s.sum():,.2f}; average {s.mean():,.2f}; minimum {s.min():,.2f}; maximum {s.max():,.2f}.")
+    if signals:
+        lines.append("Key signals: " + " ".join(x["message"] for x in signals[:5]))
+    else:
+        lines.append("I did not detect a strong trend or anomaly from the available numeric fields, so I would review the business context before making a recommendation.")
+    return " ".join(lines)
+
+def ask_data_question(question, df):
+    """Lightweight natural-language data actions available without an external AI key."""
+    if df is None:
+        return "Upload a dataset first. Then ask me questions such as 'show the top products by sales', 'what is missing?', or 'give me an executive brief'."
+    q = question.lower()
+    nums = _numeric_columns(df)
+    if any(k in q for k in ["executive brief", "business brief", "management summary", "ceo summary"]):
+        return build_executive_brief(df, st.session_state.user["company"] if st.session_state.get("user") else "your organization")
+    if "health" in q or "quality score" in q or "data quality" in q:
+        h=business_health(df); return f"Data health is {h['score']}/100. Missing cells: {h['missing_pct']:.1f}%. Duplicate rows: {h['duplicate_pct']:.1f}%. Numeric columns: {h['numeric']}."
+    if ("top" in q or "highest" in q or "largest" in q) and nums:
+        target = next((c for c in nums if str(c).lower() in q), nums[0])
+        view=df[[target]].copy().sort_values(target, ascending=False).head(10)
+        return f"Top 10 records by {target}: " + "; ".join(f"{i+1}. {v:,.2f}" for i,v in enumerate(view[target].tolist()))
+    if ("total" in q or "sum" in q or "revenue" in q or "sales" in q) and nums:
+        target = next((c for c in nums if str(c).lower() in q), nums[0])
+        return f"The total for {target} is {pd.to_numeric(df[target], errors='coerce').sum():,.2f}."
+    return None
+
+def online_lookup(query, max_results=5):
+    """Small dependency-free DuckDuckGo HTML lookup. It is optional and fails safely."""
+    try:
+        url = "https://html.duckduckgo.com/html/?q=" + urllib.parse.quote_plus(query)
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 DACRE-DI/1.0"})
+        with urllib.request.urlopen(req, timeout=8) as response:
+            html = response.read().decode("utf-8", errors="ignore")
+        items = re.findall(r'<a rel="nofollow" class="result__a" href="([^"]+)"[^>]*>(.*?)</a>', html, flags=re.I|re.S)
+        results = []
+        for href, title in items[:max_results]:
+            clean_title = re.sub(r"<.*?>", "", title).strip()
+            clean_href = urllib.parse.unquote(href)
+            results.append((clean_title, clean_href))
+        return results
+    except Exception:
+        return []
+
+def build_di_context(user, df):
+    context = [
+        APP_KNOWLEDGE,
+        "DI MEMORY BOX (persistent source of truth):\n" + di_memory_context(query=getattr(st.session_state, "di_memory_query", "")),
+        f"Current organization: {user['company']}. Current user: {user['first_name']} {user['last_name']}. Role: {user['role']}.",
+    ]
+    if df is not None:
+        context.append(f"Active dataset has {len(df):,} rows and {len(df.columns):,} columns.")
+        context.append("Columns: " + ", ".join(map(str, df.columns)))
+    return "\n".join(context)
+
+def ai_generate(system_prompt, user_prompt, max_tokens=900):
+    """Optional production reasoning layer. Configure DACRE_AI_API_KEY in the
+    deployment environment. Without it, DACRE still uses its deterministic
+    local engine and public-web lookup rather than pretending an AI call worked.
+    """
+    api_key=os.getenv("DACRE_AI_API_KEY","").strip()
+    if not api_key:
+        return None
+    model=os.getenv("DACRE_AI_MODEL","gpt-4o-mini").strip()
+    payload={
+        "model":model,
+        "messages":[
+            {"role":"system","content":system_prompt},
+            {"role":"user","content":user_prompt},
+        ],
+        "temperature":0.2,
+        "max_tokens":max_tokens,
+    }
+    try:
+        req=urllib.request.Request(
+            "https://api.openai.com/v1/chat/completions",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Authorization":f"Bearer {api_key}","Content-Type":"application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req,timeout=35) as response:
+            data=json.loads(response.read().decode("utf-8"))
+        return data["choices"][0]["message"]["content"].strip()
+    except Exception:
+        return None
+
+def normalize_di_identity(text):
+    """Keep DI's displayed first-person identity consistent."""
+    if not text:
+        return text
+    text=re.sub(r"\bI\s+am\s+D([\.,!?])", r"I am DI\1", text, flags=re.IGNORECASE)
+    text=re.sub(r"\bI\x27m\s+D([\.,!?])", r"I am DI\1", text, flags=re.IGNORECASE)
+    return text
+
+def di_reply(message, user, df, allow_online=True, language="English — Nigeria"):
+    text=message.strip()
+    low=text.lower()
+    if not text:
+        return "I am ready. Tell me the business result you want to achieve."
+
+    name="Master David" if user["role"]=="master" else user["first_name"]
+    greetings=["hello","hi","good morning","good afternoon","good evening","good day"]
+    if any(p in low for p in greetings) and len(low.split())<=6:
+        return f"Good day {name}. DI is online. What would you like us to work on first?"
+
+    # Identity and platform answers are resolved from the DI Memory Box first.
+    if any(k in low for k in ["your name","what is your name","who are you","what's your name"]):
+        return "My name is DI — David's Intelligence. I am the intelligence assistant inside DACRE Analysis, created by David Emenike."
+    if any(k in low for k in ["who created you","who made you","who created dacre","who made dacre"]):
+        return "DACRE Analysis and DI were created by David Emenike. David Emenike is the master/Overall Administrator of the platform."
+    if "david emenike" in low and any(k in low for k in ["do you know","who is","is he","creator"]):
+        return "Yes. David Emenike is the creator and master administrator of DACRE Analysis."
+    if "dog" in low and "animal" in low:
+        return "Yes. A dog is an animal; more specifically, dogs are mammals in the animal kingdom."
+    if any(k in low for k in ["delete account","remove account","permanently delete","delete a user"]):
+        if user["role"]=="master":
+            return "As the Overall Administrator, open Overall Admin DI → People & Accounts. Select the account(s) you want to remove, review the deletion summary, confirm the permanent deletion, and click the permanent-delete action. The master account is protected and cannot be deleted there."
+        return "For account removal, contact your company administrator or the Overall Administrator. The permanent account-deletion control is intentionally restricted to the master administration layer."
+    if any(k in low for k in ["what can you do","what can di do","what do you know"]):
+        return "I can work with DACRE's Memory Box, inspect and clean data, calculate business metrics, identify missing values and duplicates, build charts, explain results, help with workspace/account questions, keep a question trail, and research public online information when my internal knowledge is not enough."
+    if "memory box" in low or "di mb" in low:
+        return "The DI Memory Box (DI MB) is my persistent knowledge base. I use it first for DACRE identity, platform rules, account administration, security, DI behavior and other trusted project information. The Overall Administrator can maintain it from the master portal."
+    if any(k in low for k in ["tech partner","ask david","chatgpt partner"]):
+        return "David's tech partner is the ChatGPT assistant David uses to build and improve DACRE. I can use the project information stored in my DI Memory Box, but I cannot directly invoke that separate ChatGPT conversation. For deeper code, architecture or UI/UX work, David can ask his tech partner directly in the main ChatGPT project."
+
+    # Deterministic workspace intelligence remains available even without an API.
+    if "what can" in low and "dacre" in low:
+        return "DACRE is a business and data analysis workspace with data cleaning, formulas, charts, File Vault, exports, organization administration and DI intelligence."
+    data_answer = ask_data_question(text, df)
+    if data_answer:
+        return data_answer
+    if "how many rows" in low or "row count" in low:
+        return "There is no active dataset yet." if df is None else f"The active dataset contains {len(df):,} rows."
+    if "how many columns" in low or "column count" in low:
+        return "There is no active dataset yet." if df is None else f"The active dataset contains {len(df.columns):,} columns."
+    if "duplicate" in low:
+        return "There is no active dataset yet." if df is None else f"The current dataset has {int(df.duplicated().sum()):,} duplicate rows."
+    if "columns" in low and df is not None:
+        return "The current columns are: " + ", ".join(map(str,df.columns))
+    if "missing" in low or "empty" in low:
+        if df is None: return "There is no active dataset yet. Upload a dataset and I can inspect it."
+        missing=df.isna().sum().sort_values(ascending=False); top=missing[missing>0].head(8)
+        if top.empty: return "I checked the active dataset. I do not see missing values in the current columns."
+        return "The columns with the most missing values are: " + "; ".join(f"{c}: {int(v)}" for c,v in top.items())
+    if any(k in low for k in ["describe","summary","overview"]):
+        if df is None: return "There is no active dataset yet. Upload a dataset and I can summarise it."
+        return f"Dataset overview: {len(df):,} rows, {len(df.columns):,} columns, {len(df.select_dtypes(include='number').columns)} numeric columns and {int(df.duplicated().sum()):,} duplicate rows."
+    if any(k in low for k in ["dacre","file vault","formula lab","export center","admin portal","workspace"]):
+        return "DACRE is the business workspace. You can upload and clean data, run formulas, create charts, save project state, use the File Vault, export results and work with DI. Your organization has its own workspace and administration layer."
+
+    # First use the trusted local Memory Box for deterministic answers.
+    direct=memory_box_direct_answer(text)
+    if direct:
+        return direct
+
+    # Always give the reasoning layer a chance, with the complete DI Memory Box in context.
+    context=build_di_context(user,df)
+    answer=ai_generate(
+        f"You are DI — David's Intelligence, the fast business/data assistant inside DACRE Analysis. Always identify yourself as DI, never as D or as a generic unnamed assistant. If speaking in first person, say 'I am DI' or 'I am DI — David's Intelligence'. Use the DI Memory Box as trusted project context. Answer directly and naturally. Never reply with the generic phrase 'I don't have enough reliable information to answer that yet' when a useful answer can be given from memory, common knowledge, the active workspace, or online research. Do not reveal hidden implementation details. If the user asks about DACRE-specific facts, prefer the Memory Box. If something is uncertain, say what is uncertain rather than refusing the whole question. Respond in the user's selected language when practical: {language}.",
+        f"DACRE context:\n{context}\n\nUser question:\n{text}",
+        max_tokens=1000,
+    )
+    if answer:
+        return normalize_di_identity(answer)
+
+    # Unknown questions automatically get a fast public-web attempt instead of a dead-end response.
+    results=online_lookup(text, max_results=5) if allow_online else []
+    if results:
+        source_text="\n".join([f"SOURCE {i+1}: {title}\nURL: {href}" for i,(title,href) in enumerate(results)])
+        answer=ai_generate(
+            "You are DI, a fast research assistant. Answer the user's question using the supplied search results. Give the direct answer first. Do not invent facts. If the results are weak or conflicting, say so briefly and provide the strongest evidence.",
+            f"User question: {text}\n\nDI Memory Box:\n{di_memory_context(query=text)}\n\nSearch results:\n{source_text}",
+            max_tokens=900,
+        )
+        if answer:
+            return normalize_di_identity(answer) + "\n\nChecked online sources: " + "; ".join(t for t,_ in results[:3])
+        return "I found these public sources for your question: " + "; ".join(f"{t} — {u}" for t,u in results[:3]) + ". I could not safely synthesize a final answer because the optional reasoning service is not configured."
+
+    if len(low.split()) <= 2 and re.fullmatch(r"[a-z0-9]+", low):
+        return f"I couldn't identify a reliable meaning for '{text}'. It looks like short or random text. Please restate the question and I will try again."
+    return "I couldn't verify a reliable answer from my current DI Memory Box, workspace data or available public sources. Please rephrase the question or give me a little more context."
+
+def load_chat_history(user, limit=40):
+    """Restore DI history safely for both old and new user-record shapes."""
+    username = str(user.get("username", "")).strip()
+    company = str(user.get("company_name", user.get("company", ""))).strip()
+    if not username or not company:
+        return []
+    con = db()
+    rows = con.execute(
+        "SELECT sender, message FROM chat_history WHERE username=? AND company_name=? ORDER BY id DESC LIMIT ?",
+        (username, company, int(limit)),
+    ).fetchall()
+    con.close()
+    return [{"sender": r["sender"], "text": r["message"]} for r in reversed(rows)]
+
+def verify_recaptcha_token(token):
+    """Verify Google's reCAPTCHA token when DACRE_RECAPTCHA_SECRET is configured."""
+    secret = os.getenv("DACRE_RECAPTCHA_SECRET", "").strip()
+    if not secret or not token:
+        return False
+    try:
+        payload = urllib.parse.urlencode({"secret": secret, "response": token}).encode()
+        req = urllib.request.Request(
+            "https://www.google.com/recaptcha/api/siteverify",
+            data=payload,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=8) as response:
+            data = json.loads(response.read().decode("utf-8"))
+        return bool(data.get("success"))
+    except Exception:
+        return False
+
+def transcribe_audio(audio_value):
+    """Transcribe a browser recording when SpeechRecognition is installed."""
+    if sr is None:
+        return None, "Voice transcription package is not installed. Add SpeechRecognition to requirements.txt."
+    try:
+        recognizer = sr.Recognizer()
+        raw = audio_value.getvalue()
+        with sr.AudioFile(io.BytesIO(raw)) as source:
+            audio = recognizer.record(source)
+        text = recognizer.recognize_google(audio, language="en-NG")
+        return text, None
+    except sr.UnknownValueError:
+        return None, "DI could not clearly understand that recording. Please speak a little slower and try again."
+    except sr.RequestError:
+        return None, "Voice transcription service is temporarily unavailable. You can still use text chat."
+    except Exception as exc:
+        return None, f"Voice transcription could not be completed: {type(exc).__name__}."
+
+def speak(text, language_code=None):
+    """Speak DI's reply in Chrome/ChromeOS using the browser's speech engine.
+    The iframe explicitly asks for autoplay and waits for the voice list, which
+    fixes the common "DI answered in text but stayed silent" problem.
+    """
+    if not text or not st.session_state.get("di_voice_enabled", True):
+        return
+    language_code = language_code or DI_LANGUAGE_PROFILES.get(
+        st.session_state.get("di_language", "English — Nigeria"), {}
+    ).get("code", "en-NG")
+    safe_text = json.dumps(str(text))
+    safe_lang = json.dumps(language_code)
+    components.html(f"""
+    <script>
+    (() => {{
+      const text={safe_text};
+      const lang={safe_lang};
+      if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) return;
+      const run=()=>{{
+        try {{
+          window.speechSynthesis.cancel();
+          const u=new SpeechSynthesisUtterance(text);
+          u.lang=lang;
+          u.rate=0.92;
+          u.pitch=0.82;
+          u.volume=1.0;
+          const voices=window.speechSynthesis.getVoices();
+          const base=lang.toLowerCase().split('-')[0];
+          const same=voices.filter(v => (v.lang||'').toLowerCase().startsWith(base));
+          const preferred=same.find(v => (v.lang||'').toLowerCase() === lang.toLowerCase()) || same.find(v => /male|daniel|david|alex|george|james|oliver|google|microsoft/i.test(v.name)) || same[0] || voices[0];
+          if(preferred) u.voice=preferred;
+          window.speechSynthesis.speak(u);
+        }} catch(e) {{ console.warn('DACRE voice error', e); }}
+      }};
+      if(window.speechSynthesis.getVoices().length) run();
+      else window.speechSynthesis.onvoiceschanged=run;
+      setTimeout(run, 250);
+    }})();
+    </script>
+    """, height=1, scrolling=False)
+
+def master_user_record():
+    con = db()
+    row = con.execute(
+        "SELECT first_name,last_name,username,company_name,email,role FROM users WHERE username=?",
+        (MASTER_USERNAME,),
+    ).fetchone()
+    con.close()
+    if row:
+        data = dict(row)
+        # The application workspace consistently uses `company`. Keep the
+        # database field `company_name` too so older code remains compatible.
+        data["company"] = data.get("company_name", "DACRE MASTER")
+        return data
+    return {
+        "first_name": "David", "last_name": "Emenike", "username": MASTER_USERNAME,
+        "company_name": "DACRE MASTER", "company": "DACRE MASTER",
+        "email": "master@dacre.local", "role": "master"
+    }
+
+def master_passkey_gate(passkey):
+    candidate = (passkey or "").strip()
+    if not candidate:
+        return False
+    expected_hash = hash_password(MASTER_PASSKEY) if MASTER_PASSKEY else MASTER_PASSKEY_HASH
+    ok, _ = verify_password(candidate, expected_hash)
+    return bool(ok)
+
+def chibobec_login_monitor():
+    """Return every Chibobec account plus its real login activity.
+    This is intentionally based on the users table, not on the current session,
+    so the CEO Office can see accounts that have logged in previously.
+    """
+    con = db()
+    try:
+        users = pd.read_sql_query(
+            """SELECT id, first_name, last_name, username, company_name, email, role,
+                      login_count, created_at, last_login
+               FROM users
+               WHERE lower(company_name) LIKE '%chibobec%'
+               ORDER BY CASE WHEN last_login IS NULL THEN 1 ELSE 0 END, last_login DESC, id DESC""",
+            con,
+        )
+        if users.empty:
+            return users
+        users["login_status"] = users["last_login"].apply(lambda x: "Logged in" if pd.notna(x) and str(x).strip() else "Never logged in")
+        users["company_access"] = users["company_name"].apply(lambda x: "Chibobec workspace" if is_chibobec_company(x) else "Company workspace")
+        return users
+    finally:
+        con.close()
+
+def di_voice_player(text, language_code=None):
+    """Render a visible DI voice control. Auto-speak is attempted; the button
+    is the reliable fallback when the browser blocks autoplay after reruns."""
+    if not text:
+        return
+    language_code = language_code or DI_LANGUAGE_PROFILES.get(st.session_state.get("di_language", "English — Nigeria"), {}).get("code", "en-NG")
+    safe_text=json.dumps(str(text))
+    safe_lang=json.dumps(language_code)
+    components.html(f"""
+    <div style="font-family:Inter,Segoe UI,sans-serif;background:#174f86;border:1px solid #6bb8ee;border-radius:14px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
+      <button id="dacre-speak-btn" style="background:#f28c28;color:white;border:0;border-radius:10px;padding:9px 15px;font-weight:800;cursor:pointer;">🔊 Speak DI</button>
+      <span style="color:#eaf6ff;font-weight:700;font-size:13px;">DI voice ready · {language_code}</span>
+    </div>
+    <script>
+    (() => {{
+      const text={safe_text}, lang={safe_lang};
+      const chooseVoice=()=>{{
+        const voices=window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+        const base=lang.toLowerCase().split('-')[0];
+        const same=voices.filter(v=>(v.lang||'').toLowerCase().startsWith(base));
+        const male=/male|man|daniel|david|alex|george|thomas|james|oliver|google uk english male|microsoft.*male/i;
+        return same.find(v=>male.test((v.name||'')+' '+(v.lang||''))) || same.find(v=>(v.lang||'').toLowerCase()===lang.toLowerCase()) || same[0] || voices[0];
+      }};
+      const say=()=>{{
+        if(!('speechSynthesis' in window)) return;
+        const u=new SpeechSynthesisUtterance(text); u.lang=lang; u.rate=.91; u.pitch=.60; u.volume=1;
+        const v=chooseVoice(); if(v) u.voice=v;
+        window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+      }};
+      document.getElementById('dacre-speak-btn').onclick=say;
+      if(window.speechSynthesis) setTimeout(say,250);
+    }})();
+    </script>
+    """, height=62)
+
 ensure_runtime_schema()
 
 
@@ -780,24 +1965,16 @@ def seed_named_di_workforce():
         con.close()
 
 
-def ensure_di_agent_columns():
-    """Backfill di_agents columns on databases created by older DACRE builds."""
-    con = db()
-    try:
-        _ensure_columns(con, "di_agents", {
-            "specialty": "TEXT NOT NULL DEFAULT ''",
-            "status": "TEXT NOT NULL DEFAULT 'Available'",
-            "assigned_company": "TEXT",
-            "system_role": "TEXT",
-            "avatar_url": "TEXT",
-            "voice_profile": "TEXT",
-            "thinking_style": "TEXT",
-        con.close()
-seed_named_di_workforce()def get_di_agents():
+ensure_di_agent_columns()
+seed_named_di_workforce()
+
+def get_di_agents():
     con = db()
     rows = con.execute("SELECT * FROM di_agents ORDER BY id DESC").fetchall()
     con.close()
     return rows
+
+
 def create_di_agent(name, specialty, status="Available", assigned_company="", system_role=""):
     name = (name or "").strip()
     specialty = (specialty or "").strip()
@@ -2387,62 +3564,3 @@ if st.session_state.last_speech:
     speech=st.session_state.last_speech
     st.session_state.last_speech=None
     di_voice_player(speech, DI_LANGUAGE_PROFILES.get(st.session_state.get("di_language","English — Nigeria"),{}).get("code","en-NG"))
-def inject_dacre_theme():
-    st.markdown("""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
-
-    :root{
-        --navy-900:#070b16; --navy-800:#0b1120; --navy-700:#111a2e;
-        --line:#1e2a45; --blue:#3b82f6; --blue-glow:rgba(59,130,246,.45);
-        --text:#e8eefc; --muted:#8aا0c2; --muted:#8aa0c2;
-        --green:#22c55e; --red:#ef4444; --amber:#f59e0b;
-    }
-    .stApp{ background:
-        radial-gradient(1200px 600px at 80% -10%, rgba(59,130,246,.10), transparent 60%),
-        var(--navy-900); color:var(--text);
-        font-family:'Inter',sans-serif;
-    }
-    #MainMenu, header, footer{visibility:hidden;}
-    .block-container{padding-top:1.5rem; max-width:1400px;}
-
-    .dacre-hero{
-        display:flex; align-items:center; justify-content:space-between;
-        padding:18px 24px; margin-bottom:22px; border-radius:16px;
-        background:linear-gradient(180deg, var(--navy-800), var(--navy-700));
-        border:1px solid var(--line);
-        box-shadow:0 0 0 1px rgba(59,130,246,.08), 0 10px 40px rgba(0,0,0,.4);
-    }
-    .dacre-hero h1{font-size:22px; font-weight:700; margin:0; letter-spacing:.3px;}
-    .dacre-hero span.badge{
-        font-size:12px; color:var(--blue); border:1px solid var(--blue-glow);
-        padding:4px 12px; border-radius:999px; background:rgba(59,130,246,.08);
-    }
-
-    .kpi{
-        border-radius:16px; padding:18px 20px; height:100%;
-        background:linear-gradient(180deg, var(--navy-800), var(--navy-700));
-        border:1px solid var(--line);
-        transition:transform .2s, box-shadow .2s;
-    }
-    .kpi:hover{transform:translateY(-3px); box-shadow:0 0 24px var(--blue-glow); border-color:var(--blue-glow);}
-    .kpi .label{color:var(--muted); font-size:13px; font-weight:500; text-transform:uppercase; letter-spacing:.6px;}
-    .kpi .value{font-size:30px; font-weight:700; margin:6px 0 2px;}
-    .kpi .delta-up{color:var(--green); font-size:13px; font-weight:600;}
-    .kpi .delta-down{color:var(--red); font-size:13px; font-weight:600;}
-
-    .panel{
-        border-radius:16px; padding:20px;
-        background:linear-gradient(180deg, var(--navy-800), var(--navy-700));
-        border:1px solid var(--line);
-    }
-    .panel h3{font-size:15px; font-weight:600; margin:0 0 14px; color:var(--text);}
-
-    .status-pill{padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600; font-family:'JetBrains Mono',monospace;}
-    .s-ok{background:rgba(34,197,94,.12); color:var(--green);}
-    .s-warn{background:rgba(245,158,11,.12); color:var(--amber);}
-    .s-err{background:rgba(239,68,68,.12); color:var(--red);}
-
-    [data-testid="stDataFrame"]{border:1px solid var(--line); border-radius:12px;}
-    </style>
-    """, unsafe_allow_html=True)
