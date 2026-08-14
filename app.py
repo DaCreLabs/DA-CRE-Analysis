@@ -10,7 +10,10 @@ import urllib.request
 import smtplib
 import threading
 import time
+import uuid
 from contextlib import contextmanager
+from html.parser import HTMLParser
+from urllib.parse import urlparse
 
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
@@ -403,6 +406,41 @@ def init_db():
         )
     """)
 
+    # Customer website onboarding + public visitor telemetry.
+    try:
+        cur.execute("ALTER TABLE companies ADD COLUMN website_url TEXT")
+    except sqlite3.OperationalError:
+        pass
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS company_website_profile (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_name TEXT UNIQUE NOT NULL,
+            website_url TEXT NOT NULL,
+            page_title TEXT,
+            description TEXT,
+            headings TEXT,
+            summary TEXT,
+            theme_primary TEXT,
+            theme_accent TEXT,
+            theme_background TEXT,
+            theme_text TEXT,
+            fetched_at TEXT NOT NULL,
+            fetch_status TEXT NOT NULL DEFAULT 'pending'
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS public_visits (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            visitor_id TEXT NOT NULL,
+            event_type TEXT NOT NULL,
+            page_name TEXT NOT NULL,
+            referrer TEXT,
+            created_at TEXT NOT NULL
+        )
+    """)
+
     cur.execute("""
         CREATE TABLE IF NOT EXISTS emails_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -495,6 +533,7 @@ def init_db():
     cur.execute("""
         CREATE TABLE IF NOT EXISTS di_memory (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_name TEXT NOT NULL DEFAULT '',
             category TEXT NOT NULL,
             title TEXT NOT NULL,
             content TEXT NOT NULL,
@@ -582,7 +621,6 @@ def init_db():
     con.close()
 
 
-init_db()
 
 
 def _table_exists(con, table_name):
@@ -920,7 +958,7 @@ def seed_di_memory():
     # an older DACRE SQLite database.
     cols={r[1] for r in con.execute("PRAGMA table_info(di_memory)").fetchall()}
     migrations={
-        "category":"TEXT DEFAULT 'GENERAL'", "title":"TEXT DEFAULT ''", "content":"TEXT DEFAULT ''",
+        "company_name":"TEXT DEFAULT ''", "category":"TEXT DEFAULT 'GENERAL'", "title":"TEXT DEFAULT ''", "content":"TEXT DEFAULT ''",
         "priority":"INTEGER DEFAULT 500", "active":"INTEGER DEFAULT 1", "created_by":"TEXT DEFAULT ''",
         "created_at":"TEXT DEFAULT ''", "updated_at":"TEXT DEFAULT ''"
     }
@@ -928,21 +966,32 @@ def seed_di_memory():
         if name not in cols:
             con.execute(f"ALTER TABLE di_memory ADD COLUMN {name} {decl}")
     con.commit()
-    rows=[(c,t,x,p,MASTER_USERNAME,now,now) for c,t,x,p in DI_MEMORY_SEED]
-    con.executemany("INSERT INTO di_memory(category,title,content,priority,created_by,created_at,updated_at) SELECT ?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM di_memory WHERE title=? )", [r+(r[1],) for r in rows])
+    rows=[("",c,t,x,p,MASTER_USERNAME,now,now) for c,t,x,p in DI_MEMORY_SEED]
+    con.executemany("INSERT INTO di_memory(company_name,category,title,content,priority,created_by,created_at,updated_at) SELECT ?,?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM di_memory WHERE company_name=? AND title=? )", [r+(r[0],r[2]) for r in rows])
     con.commit(); con.close()
 
-def get_di_memory(limit=80, query=""):
-    """Retrieve the most relevant active memories for the current question."""
+def get_di_memory(limit=80, query="", company_name=None):
+    """Retrieve global DACRE memory plus organization-specific memory."""
+    if company_name is None:
+        try:
+            company_name=(st.session_state.get("user") or {}).get("company")
+        except Exception:
+            company_name=None
     con=db()
-    rows=con.execute("SELECT id,category,title,content,priority,active,created_at,updated_at FROM di_memory WHERE active=1 ORDER BY priority DESC,id ASC").fetchall()
+    if company_name:
+        rows=con.execute(
+            "SELECT id,company_name,category,title,content,priority,active,created_at,updated_at FROM di_memory WHERE active=1 AND (company_name='' OR lower(company_name)=lower(?)) ORDER BY priority DESC,id ASC",
+            (company_name,)
+        ).fetchall()
+    else:
+        rows=con.execute("SELECT id,company_name,category,title,content,priority,active,created_at,updated_at FROM di_memory WHERE active=1 ORDER BY priority DESC,id ASC").fetchall()
     con.close()
     if not query:
         return [dict(r) for r in rows[:int(limit)]]
     words=set(re.findall(r"[a-z0-9]{3,}", query.lower()))
     scored=[]
     for r in rows:
-        text=f"{r['category']} {r['title']} {r['content']}".lower()
+        text=f"{r['company_name']} {r['category']} {r['title']} {r['content']}".lower()
         hits=sum(1 for w in words if w in text)
         exact=2 if r['title'].lower() in query.lower() else 0
         score=(hits*25)+exact+int(r['priority'] or 0)/1000
@@ -1116,6 +1165,128 @@ def send_di_welcome_email(first_name, last_name, company_name, email, email_pass
     con.close()
     return status
 
+class _WebsiteExtractor(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.title=[]; self.description=""; self.headings=[]; self.paragraphs=[]
+        self._active=None; self._buf=[]
+    def handle_starttag(self, tag, attrs):
+        attrs=dict(attrs)
+        if tag=="title": self._active="title"; self._buf=[]
+        elif tag in ("h1","h2","h3"): self._active=tag; self._buf=[]
+        elif tag=="p": self._active="p"; self._buf=[]
+        elif tag=="meta" and str(attrs.get("name","")).lower()=="description":
+            self.description=str(attrs.get("content","")).strip()[:700]
+    def handle_data(self, data):
+        if self._active is not None:
+            self._buf.append(data)
+    def handle_endtag(self, tag):
+        if self._active is None: return
+        text=re.sub(r"\s+"," "," ".join(self._buf)).strip()
+        if text:
+            if self._active=="title": self.title.append(text[:300])
+            elif self._active in ("h1","h2","h3") and text not in self.headings: self.headings.append(text[:180])
+            elif self._active=="p" and len(text)>35 and text not in self.paragraphs: self.paragraphs.append(text[:450])
+        self._active=None; self._buf=[]
+
+def _normalize_website_url(value):
+    raw=str(value or "").strip()
+    if not raw: return ""
+    if not re.match(r"^https?://", raw, re.I): raw="https://"+raw
+    parsed=urlparse(raw)
+    if parsed.scheme not in ("http","https") or not parsed.netloc: return ""
+    return raw[:500]
+
+def _fetch_website_profile(url, timeout=1.8):
+    url=_normalize_website_url(url)
+    if not url: return None
+    req=urllib.request.Request(url, headers={"User-Agent":"DACRE-DI/1.0 Website Intelligence"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            final_url=resp.geturl() or url
+            raw=resp.read(260_000)
+            charset=resp.headers.get_content_charset() or "utf-8"
+            html=raw.decode(charset, errors="ignore")
+        parser=_WebsiteExtractor(); parser.feed(html)
+        title=(parser.title[0] if parser.title else "").strip()
+        summary=parser.description.strip() or (parser.paragraphs[0] if parser.paragraphs else "")
+        headings=list(parser.headings[:10])
+        colors=[]
+        for c in re.findall(r"#[0-9a-fA-F]{6}", html):
+            c=c.lower()
+            if c not in colors: colors.append(c)
+            if len(colors)>=8: break
+        content_summary=" | ".join(headings[:6])
+        if summary: content_summary=(summary[:700] + (" | "+content_summary if content_summary else ""))[:1400]
+        return {"website_url":final_url[:500],"page_title":title[:300],"description":parser.description[:700],"headings":json.dumps(headings),"summary":content_summary,"theme_primary":colors[0] if colors else "#4b82f5","theme_accent":colors[1] if len(colors)>1 else "#62c8f5","theme_background":colors[2] if len(colors)>2 else "#0b1020","theme_text":"#f4f7ff"}
+    except Exception:
+        return None
+
+def ensure_company_di(company_name):
+    company_name=str(company_name or "").strip()
+    if not company_name or company_name.upper()=="DACRE MASTER": return None
+    con=db(); now=datetime.now().isoformat(timespec="seconds")
+    try:
+        row=con.execute("SELECT di_name FROM di_agents WHERE assigned_company=? ORDER BY id ASC LIMIT 1",(company_name,)).fetchone()
+        if row: return row["di_name"]
+        base="DI — "+re.sub(r"[^A-Za-z0-9 ]+","",company_name).strip()[:34]
+        if not base.strip(): base="DI — Business Intelligence"
+        name=base; n=2
+        while con.execute("SELECT 1 FROM di_agents WHERE di_name=?",(name,)).fetchone(): name=f"{base[:28]} {n}"; n+=1
+        code="DI-ORG-"+re.sub(r"[^A-Z0-9]+","-",company_name.upper()).strip("-")[:26]
+        while con.execute("SELECT 1 FROM di_agents WHERE di_code=?",(code,)).fetchone(): code += "-ORG"
+        con.execute("INSERT INTO di_agents(di_name,di_code,specialty,status,assigned_company,system_role,avatar_url,voice_profile,thinking_style,created_by,created_at,last_active) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",(name,code,"Company Intelligence","Assigned",company_name,"Know the customer's business, website context and workspace data; answer with evidence first.","","en-NG","Practical, business-aware, evidence-first and company-specific.",MASTER_USERNAME,now,now))
+        con.commit(); return name
+    finally: con.close()
+
+def _store_website_memory(company_name, profile, di_name):
+    now=datetime.now().isoformat(timespec="seconds")
+    items=[
+        ("WEBSITE","Official company website",f"Official website supplied at signup: {profile.get('website_url','')}"),
+        ("WEBSITE","Website title",profile.get("page_title") or f"Website for {company_name}"),
+        ("WEBSITE","Website summary",profile.get("summary") or profile.get("description") or "No readable summary was available from the public homepage."),
+        ("WEBSITE","Website headings",profile.get("headings") or "[]"),
+        ("DI","Organization DI",f"Dedicated organization DI: {di_name}. Use this company's website context and workspace data when answering."),
+    ]
+    con=db()
+    try:
+        for cat,title,content in items:
+            con.execute("INSERT INTO di_memory(company_name,category,title,content,priority,active,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)",(company_name,cat,title,content,850,1,now,now))
+        con.execute("""INSERT INTO company_website_profile(company_name,website_url,page_title,description,headings,summary,theme_primary,theme_accent,theme_background,theme_text,fetched_at,fetch_status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
+        ON CONFLICT(company_name) DO UPDATE SET website_url=excluded.website_url,page_title=excluded.page_title,description=excluded.description,headings=excluded.headings,summary=excluded.summary,theme_primary=excluded.theme_primary,theme_accent=excluded.theme_accent,theme_background=excluded.theme_background,theme_text=excluded.theme_text,fetched_at=excluded.fetched_at,fetch_status=excluded.fetch_status""",(company_name,profile.get("website_url",""),profile.get("page_title",""),profile.get("description",""),profile.get("headings","[]"),profile.get("summary",""),profile.get("theme_primary","#4b82f5"),profile.get("theme_accent","#62c8f5"),profile.get("theme_background","#0b1020"),profile.get("theme_text","#f4f7ff"),now,"ready"))
+        con.commit()
+    finally: con.close()
+
+def _website_onboarding_worker(company_name, website_url, di_name):
+    profile=_fetch_website_profile(website_url, timeout=1.8)
+    if profile is None:
+        return
+    _store_website_memory(company_name, profile, di_name)
+    try:
+        con=db(); con.execute("UPDATE companies SET website_url=? WHERE name=?",(profile.get("website_url",website_url),company_name)); con.commit(); con.close()
+    except Exception:
+        pass
+
+def start_website_onboarding(company_name, website_url, di_name):
+    url=_normalize_website_url(website_url)
+    if not url: return
+    threading.Thread(target=_website_onboarding_worker,args=(company_name,url,di_name),daemon=True).start()
+
+def record_public_visit(event_type="landing_view", page_name="Landing"):
+    if event_type=="landing_view" and st.session_state.get("public_visit_logged"): return
+    visitor_id=st.session_state.get("visitor_id") or uuid.uuid4().hex
+    st.session_state.visitor_id=visitor_id
+    con=db(); con.execute("INSERT INTO public_visits(visitor_id,event_type,page_name,referrer,created_at) VALUES(?,?,?,?,?)",(visitor_id,event_type,page_name,"",datetime.now().isoformat(timespec="seconds"))); con.commit(); con.close()
+    if event_type=="landing_view": st.session_state.public_visit_logged=True
+
+def apply_company_website_theme(user):
+    company=str((user or {}).get("company","")).strip()
+    if not company or (user or {}).get("role")=="master": return
+    con=db(); row=con.execute("SELECT theme_primary,theme_accent,theme_background,theme_text FROM company_website_profile WHERE lower(company_name)=lower(?) ORDER BY id DESC LIMIT 1",(company,)).fetchone(); con.close()
+    if not row: return
+    p=row["theme_primary"] or "#4b82f5"; a=row["theme_accent"] or "#62c8f5"; b=row["theme_background"] or "#0b1020"
+    st.markdown(f"<style>:root{{--dacre-primary:{p};--dacre-primary2:{a};}} .stApp{{background:radial-gradient(circle at 85% 0%,{p}22,transparent 30%),linear-gradient(145deg,{b} 0%,#101729 55%,#0e1628 100%)!important}} .dacre-user-hero,.di-quick-card,.di-metric,.dacre-panel{{border-color:{p}55!important}} .stButton>button,.stFormSubmitButton>button{{background:linear-gradient(135deg,{p},{a})!important}}</style>",unsafe_allow_html=True)
+
 def authenticate(company_name, full_name, passkey, email=""):
     company_clean = (company_name or "").strip().lower()
     full_name_clean = (full_name or "").strip().lower()
@@ -1178,10 +1349,14 @@ def authenticate(company_name, full_name, passkey, email=""):
     log_activity(result["username"], result["company"], "Signed in", notify_admin=result["role"] != "master")
     return result, None
 
-def create_account(first, last, company, email, email_password, passkey):
+def create_account(first, last, company, email, email_password, passkey, website_url=""):
     company_clean = canonical_company_name(company)
     email_clean = email.strip().lower()
     passkey_clean = passkey.strip()
+    website_raw = str(website_url or "").strip()
+    normalized_website = _normalize_website_url(website_raw)
+    if website_raw and not normalized_website:
+        return False, "Please enter a valid company website URL, for example https://www.example.com.", None
     if not company_clean or not email_clean or not passkey_clean:
         return False, "Please fill in Company Name, Email Address, and Account Passkey.", None
 
@@ -1233,12 +1408,17 @@ def create_account(first, last, company, email, email_password, passkey):
         ))
         con.commit()
 
-        mail_status = send_di_welcome_email(first_clean, last_clean, company_clean, email_clean, email_password.strip())
+        di_name=ensure_company_di(company_clean)
+        clean_url=normalized_website
+        if clean_url:
+            con.execute("UPDATE companies SET website_url=? WHERE lower(name)=lower(?)",(clean_url,company_clean)); con.commit()
+            start_website_onboarding(company_clean,clean_url,di_name or ("DI — "+company_clean[:32]))
+        threading.Thread(target=send_di_welcome_email,args=(first_clean,last_clean,company_clean,email_clean,email_password.strip()),daemon=True).start()
         log_activity(username_clean, company_clean, "Created account & signed in", notify_admin=(role == "user"))
         if role == "company_admin":
             notify_company_admin(company_clean, f"New organization created by {first_clean} {last_clean}. You are the organization admin.", "new_company")
 
-        return True, f"Account created successfully! DI email status: {mail_status}", {
+        return True, "Account created successfully. DI is preparing your company intelligence in the background.", {
             "first_name": first_clean, "last_name": last_clean, "username": username_clean,
             "company": company_clean, "email": email_clean, "role": role,
         }
@@ -1926,8 +2106,6 @@ def di_voice_player(text, language_code=None):
     </script>
     """, height=62)
 
-ensure_runtime_schema()
-
 
 def seed_named_di_workforce():
     """Create/update the named English DI workforce."""
@@ -1968,8 +2146,19 @@ def seed_named_di_workforce():
         con.close()
 
 
-ensure_di_agent_columns()
-seed_named_di_workforce()
+
+@st.cache_resource(show_spinner=False)
+def _bootstrap_runtime(schema_version=9):
+    """Run database/schema/bootstrap once per process per schema version."""
+    init_db()
+    ensure_runtime_schema()
+    ensure_di_agent_columns()
+    ensure_master()
+    seed_di_memory()
+    seed_named_di_workforce()
+    return True
+
+_bootstrap_runtime(_DB_SCHEMA_VERSION)
 
 def get_di_agents():
     con = db()
@@ -2128,9 +2317,9 @@ def admin_metric_counts():
     counts = {
         "users": con.execute("SELECT COUNT(*) FROM users WHERE role!='master'").fetchone()[0],
         "companies": con.execute("SELECT COUNT(*) FROM companies").fetchone()[0],
-        "activities": con.execute("SELECT COUNT(*) FROM activity").fetchone()[0],
-        "messages": con.execute("SELECT COUNT(*) FROM chat_history").fetchone()[0],
-        "files": con.execute("SELECT COUNT(*) FROM files").fetchone()[0],
+        "activities": con.execute("SELECT COUNT(*) FROM activity WHERE lower(username) != lower(?)", (MASTER_USERNAME,)).fetchone()[0] + con.execute("SELECT COUNT(*) FROM public_visits").fetchone()[0],
+        "messages": con.execute("SELECT COUNT(*) FROM chat_history WHERE lower(username) != lower(?)", (MASTER_USERNAME,)).fetchone()[0],
+        "files": con.execute("SELECT COUNT(*) FROM files WHERE lower(username) != lower(?)", (MASTER_USERNAME,)).fetchone()[0],
         "agents": con.execute("SELECT COUNT(*) FROM di_agents").fetchone()[0],
     }
     con.close()
@@ -2707,6 +2896,12 @@ def _landing_auth_panel():
                     placeholder="Create a secure passkey for your DACRE account",
                     key="landing_signup_passkey",
                 )
+                s_website = st.text_input(
+                    "Do you have a website? Please put your company official URL to get the best performance from DI — David's Intelligence.",
+                    placeholder="https://www.yourcompany.com",
+                    key="landing_signup_website",
+                )
+                st.caption("Your official site helps DI prepare company context and adapt the workspace appearance. Website onboarding runs in the background so signup stays fast.")
                 signup_submit = st.form_submit_button(
                     "Create My DACRE Account",
                     use_container_width=True,
@@ -2715,7 +2910,7 @@ def _landing_auth_panel():
 
             if signup_submit:
                 success, msg, created = create_account(
-                    s_first, s_last, s_company, s_email, s_email_pass, s_passkey
+                    s_first, s_last, s_company, s_email, s_email_pass, s_passkey, s_website
                 )
                 if success:
                     st.session_state.user = created
@@ -2764,6 +2959,7 @@ def _landing_auth_panel():
 
 def landing_page():
     """Public DACRE landing experience with connected navigation and real auth."""
+    record_public_visit("landing_view", "Landing")
     # -------------------------------------------------------------------------
     # PRIVATE MASTER GATE
     # -------------------------------------------------------------------------
@@ -3230,6 +3426,8 @@ _SESSION_DEFAULTS = {
     "last_action_center_result": None,
     "last_speech": None,
     "dacre_boot_complete": False,
+    "visitor_id": None,
+    "public_visit_logged": False,
 }
 for _key, _default in _SESSION_DEFAULTS.items():
     if _key not in st.session_state:
@@ -3390,6 +3588,7 @@ st.markdown(r"""
 """, unsafe_allow_html=True)
 
 user=st.session_state.user
+apply_company_website_theme(user)
 
 # Master and customer workspaces intentionally have different visual identities.
 if user.get("role") == "master":
@@ -4016,7 +4215,7 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
 
     with tabs[0]:
         st.subheader("Executive Overview")
-        recent= pd.read_sql_query("SELECT username,company_name,action,created_at FROM activity ORDER BY id DESC LIMIT 15",con)
+        recent= pd.read_sql_query("SELECT username,company_name,action,created_at FROM activity WHERE lower(username) != lower(?) UNION ALL SELECT 'Visitor' AS username, 'PUBLIC' AS company_name, (event_type || ' · ' || page_name) AS action, created_at FROM public_visits ORDER BY created_at DESC LIMIT 15",con,params=(MASTER_USERNAME,))
         left,right=st.columns([1.25,1])
         with left:
             st.markdown("#### Recent system activity")
@@ -4081,7 +4280,7 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
 
     with tabs[2]:
         st.subheader("All Organizations")
-        companies_df=pd.read_sql_query("SELECT id,name,owner_username,created_at FROM companies ORDER BY id DESC",con)
+        companies_df=pd.read_sql_query("SELECT id,name,owner_username,website_url,created_at FROM companies ORDER BY id DESC",con)
         st.dataframe(safe_dataframe_for_streamlit(companies_df),use_container_width=True,hide_index=True)
         st.metric("Organizations",len(companies_df))
 
@@ -4111,12 +4310,12 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
 
     with tabs[4]:
         st.subheader("System Activity")
-        activity_df=pd.read_sql_query("SELECT id,username,company_name,action,created_at FROM activity ORDER BY id DESC",con)
-        st.dataframe(activity_df,use_container_width=True,hide_index=True)
+        activity_df=pd.read_sql_query("SELECT id,username,company_name,action,created_at FROM activity WHERE lower(username) != lower(?) UNION ALL SELECT id, 'Visitor' AS username, 'PUBLIC' AS company_name, (event_type || ' · ' || page_name) AS action, created_at FROM public_visits ORDER BY created_at DESC",con,params=(MASTER_USERNAME,))
+        st.dataframe(safe_dataframe_for_streamlit(activity_df),use_container_width=True,hide_index=True)
 
     with tabs[5]:
         st.subheader("DI Conversations Across DACRE")
-        chat_df=pd.read_sql_query("SELECT id,username,company_name,sender,message,created_at FROM chat_history ORDER BY id DESC",con)
+        chat_df=pd.read_sql_query("SELECT id,username,company_name,sender,message,created_at FROM chat_history WHERE lower(username) != lower(?) ORDER BY id DESC",con,params=(MASTER_USERNAME,))
         st.dataframe(chat_df,use_container_width=True,hide_index=True)
         st.caption("This view gives the master administration layer system-wide visibility into DI conversations. It is not shown to ordinary users.")
 
