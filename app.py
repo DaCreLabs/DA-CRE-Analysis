@@ -2555,79 +2555,244 @@ def render_opportunity_page(user):
             st.markdown(f"<div class='di-answer-panel'><div class='answer-label'>DI INVESTIGATION</div><div>{_escape_html(answer).replace(chr(10), '<br>')}</div></div>", unsafe_allow_html=True)
 
 
+def _dacre_logo_data_uri():
+    """Return the bundled DACRE logo as a data URI when available."""
+    try:
+        import base64
+        if LOGO_PATH.exists():
+            raw = LOGO_PATH.read_bytes()
+            mime = "image/png"
+            if LOGO_PATH.suffix.lower() in (".jpg", ".jpeg"):
+                mime = "image/jpeg"
+            elif LOGO_PATH.suffix.lower() == ".webp":
+                mime = "image/webp"
+            return f"data:{mime};base64,{base64.b64encode(raw).decode('ascii')}"
+    except Exception:
+        pass
+    return ""
+
+
+def _landing_auth_panel():
+    """Render authentication inside the public DACRE landing page."""
+    mode = st.session_state.get("landing_mode", "home")
+    if mode not in ("login", "signup"):
+        return
+
+    st.markdown("""
+    <style>
+      .auth-anchor { scroll-margin-top: 20px; }
+      .auth-shell {
+        max-width: 980px; margin: 18px auto 42px; padding: 1px;
+        border-radius: 24px;
+        background: linear-gradient(135deg, rgba(91,73,255,.75), rgba(37,211,238,.55), rgba(255,255,255,.08));
+        box-shadow: 0 28px 90px rgba(0,0,0,.38);
+      }
+      .auth-inner {
+        border-radius: 23px; background: #0b1020; padding: 30px;
+        border: 1px solid rgba(255,255,255,.08);
+      }
+      .auth-title { color:#f7f9ff; font-size:28px; font-weight:800; letter-spacing:-.03em; }
+      .auth-sub { color:#9ba9c2; margin-top:6px; margin-bottom:20px; }
+      .auth-badge {
+        display:inline-flex; align-items:center; gap:8px; padding:6px 10px;
+        border-radius:999px; border:1px solid rgba(126,115,255,.3);
+        background:rgba(92,76,255,.10); color:#bfc5ff; font-size:12px; font-weight:700;
+      }
+    </style>
+    <div id="dacre-auth" class="auth-anchor auth-shell">
+      <div class="auth-inner">
+        <div class="auth-badge">✦ DACRE secure workspace access</div>
+        <div class="auth-title">Your DACRE workspace starts here.</div>
+        <div class="auth-sub">Sign in to your existing workspace or create your organization account without leaving the DACRE landing page.</div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    c1, c2, c3 = st.columns([1, 2.2, 1])
+    with c2:
+        tab_login, tab_signup = st.tabs(["Sign In", "Create Account"])
+
+        with tab_login:
+            with st.form("landing_login_form", clear_on_submit=False):
+                login_company = st.text_input(
+                    "Company / Organization",
+                    placeholder="e.g. Edubridge Consultant Limited",
+                    key="landing_login_company",
+                )
+                login_fullname = st.text_input(
+                    "Full Name",
+                    placeholder="e.g. David Emenike",
+                    key="landing_login_fullname",
+                )
+                login_email = st.text_input(
+                    "Email Address",
+                    placeholder="Use the email registered with DACRE",
+                    key="landing_login_email",
+                )
+                login_passkey = st.text_input(
+                    "Account Passkey",
+                    type="password",
+                    placeholder="Enter your DACRE account passkey",
+                    key="landing_login_passkey",
+                )
+                login_submit = st.form_submit_button(
+                    "Sign In & Open My DACRE Workspace",
+                    use_container_width=True,
+                    type="primary",
+                )
+
+            if login_submit:
+                auth, auth_message = authenticate(
+                    login_company, login_fullname, login_passkey, login_email
+                )
+                if auth:
+                    st.session_state.user = auth
+                    st.session_state.master_route = auth.get("role") == "master"
+                    st.session_state.landing_mode = "home"
+                    st.session_state.last_speech = (
+                        f"Welcome back, {auth['first_name']}. I am DI. "
+                        "Where would you like to start today?"
+                    )
+                    project = restore_project(auth)
+                    if project:
+                        st.session_state.active_filename = project["filename"] or ""
+                        st.session_state.raw_df = project["raw"]
+                        st.session_state.processed_df = project["processed"]
+                        st.session_state.formula_logs = project["logs"]
+                        st.session_state.chart_config = project["chart"]
+                    st.toast(f"Welcome back, {auth['first_name']}!")
+                    st.rerun()
+                else:
+                    st.error(
+                        auth_message or
+                        "We could not sign you in. Check your details or create a DACRE account."
+                    )
+
+        with tab_signup:
+            with st.form("landing_signup_form", clear_on_submit=False):
+                s_first = st.text_input(
+                    "First Name", placeholder="e.g. David", key="landing_signup_first"
+                )
+                s_last = st.text_input(
+                    "Last Name", placeholder="e.g. Emenike", key="landing_signup_last"
+                )
+                s_company = st.text_input(
+                    "Company / Organization",
+                    placeholder="e.g. Edubridge Consultant Limited",
+                    key="landing_signup_company",
+                )
+                s_email = st.text_input(
+                    "Email Address",
+                    placeholder="e.g. name@example.com",
+                    key="landing_signup_email",
+                )
+                s_email_pass = st.text_input(
+                    "Email Password (optional)",
+                    type="password",
+                    placeholder="Optional — only needed for configured email features",
+                    key="landing_signup_email_password",
+                )
+                s_passkey = st.text_input(
+                    "Create Account Passkey",
+                    type="password",
+                    placeholder="Create a secure passkey for your DACRE account",
+                    key="landing_signup_passkey",
+                )
+                signup_submit = st.form_submit_button(
+                    "Create My DACRE Account",
+                    use_container_width=True,
+                    type="primary",
+                )
+
+            if signup_submit:
+                success, msg, created = create_account(
+                    s_first, s_last, s_company, s_email, s_email_pass, s_passkey
+                )
+                if success:
+                    st.session_state.user = created
+                    st.session_state.master_route = False
+                    st.session_state.landing_mode = "home"
+                    if is_chibobec_company(created["company"]):
+                        st.session_state.last_speech = (
+                            f"We know you are coming, {CHIBOBEC_OWNER_NAME}. "
+                            "Welcome to DACRE Analysis. Your loan collection workspace is ready, "
+                            "and DI is standing by to help you manage your clients and repayment reminders."
+                        )
+                    else:
+                        st.session_state.last_speech = (
+                            f"Welcome to DACRE, {created['first_name']}. "
+                            "I am DI, your business intelligence assistant. "
+                            "What would you like us to work on first?"
+                        )
+                    st.toast(f"Welcome to DACRE, {created['first_name']}!")
+                    st.rerun()
+                else:
+                    st.error(msg)
+
+        if st.button("← Continue browsing DACRE", key="landing_auth_back", use_container_width=True):
+            st.session_state.landing_mode = "home"
+            st.rerun()
+
+
 def landing_page():
-    # Discreet CEO access: double-click the building mark. The master passkey is
-    # never displayed on the public landing page.
-    gate_requested = str(st.query_params.get("master_gate", "")) == "1"
-
-    # No public CEO building/card is rendered here. Master administration is
-    # intentionally discreet and is protected by the existing master gate.
-
     # -------------------------------------------------------------------------
-    # CEO GATE
-    # Stage 1: passkey. If it is wrong, require security verification.
-    # Stage 2: after verification, request the passkey again. A second wrong
-    # attempt sends the visitor back to the ordinary Sign Up page.
+    # PRIVATE MASTER GATE
     # -------------------------------------------------------------------------
-    if gate_requested:
-        captcha_required = bool(st.session_state.get("master_captcha_required", False))
-        captcha_passed = bool(st.session_state.get("master_captcha_passed", False))
-        second_attempt = bool(st.session_state.get("master_second_attempt", False))
+    if st.query_params.get("master_gate") == "1":
+        captcha_required = st.session_state.get("master_captcha_required", False)
+        captcha_passed = st.session_state.get("master_captcha_passed", False)
+        second_attempt = st.session_state.get("master_second_attempt", False)
 
         st.markdown("""
-        <div class="dacre-hero" style="max-width:720px;margin:35px auto 20px;text-align:center;">
-          <div class="dacre-title" style="font-size:2.05rem;">Overall Admin DI — Master Access</div>
-          <div class="dacre-sub" style="font-size:1.05rem;">Dear Master David, please kindly put in your account passkey. This is the private Overall Admin DI access for DACRE-ANALYSIS.</div>
+        <style>
+          .dacre-master-shell { max-width: 720px; margin: 60px auto; padding: 36px;
+            border-radius: 24px; background:#0b1020; border:1px solid rgba(255,255,255,.09);
+            box-shadow:0 30px 90px rgba(0,0,0,.45); }
+        </style>
+        <div class="dacre-master-shell">
+          <div style="color:#f7f9ff;font-size:28px;font-weight:800;">Overall Admin DI — Master Access</div>
+          <div style="color:#9ba9c2;margin-top:8px;">Private system-wide access for the DACRE master administrator.</div>
         </div>
         """, unsafe_allow_html=True)
 
-        gate_col1, gate_col2, gate_col3 = st.columns([1,2,1])
+        gate_col1, gate_col2, gate_col3 = st.columns([1, 2, 1])
         with gate_col2:
             if captcha_required and not captcha_passed:
                 st.markdown("### Security verification")
                 site_key = os.getenv("DACRE_RECAPTCHA_SITE_KEY", "").strip()
                 if site_key:
-                    st.markdown("Google reCAPTCHA is enabled for this deployment. Complete the verification below, then continue.")
                     components.html(f"""
                     <div style="display:flex;justify-content:center;">
                       <div class="g-recaptcha" data-sitekey="{site_key}"></div>
                     </div>
                     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
                     """, height=100)
-                    st.caption("For production verification, set DACRE_RECAPTCHA_SITE_KEY and DACRE_RECAPTCHA_SECRET in Streamlit Secrets. The server verifies the token before access is granted.")
+                    st.caption("Complete the configured security verification before continuing.")
                     if st.button("I completed the reCAPTCHA", use_container_width=True):
-                        # The browser widget cannot safely hand its token to Python
-                        # through a plain HTML iframe. Therefore production mode
-                        # requires the official custom-component token bridge.
-                        st.warning("Complete the Google reCAPTCHA widget first. If the verification is not being accepted, configure the DACRE reCAPTCHA component bridge and secrets.")
+                        st.warning("Complete the verification widget first.")
                 else:
-                    st.markdown("""
-                    <div style="border:1px solid #d9d9d9;border-radius:4px;padding:16px 14px;background:#ffffff;max-width:430px;margin:0 auto;box-shadow:0 2px 8px rgba(0,0,0,.10);">
-                      <div style="display:flex;align-items:center;gap:12px;">
-                        <div style="width:28px;height:28px;border:1px solid #b8b8b8;border-radius:3px;background:#fafafa;"></div>
-                        <div style="font:500 15px Arial,sans-serif;color:#333;">I'm not a robot</div>
-                        <div style="margin-left:auto;font:11px Arial,sans-serif;color:#777;text-align:center;">reCAPTCHA<br>Privacy - Terms</div>
-                      </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    st.caption("Google reCAPTCHA is not configured on this deployment yet. This is a local security-verification fallback, not a claim that Google has verified you.")
                     if st.checkbox("Complete security verification", key="local_captcha_check"):
                         st.session_state.master_captcha_passed = True
                         st.session_state.master_second_attempt = True
                         st.rerun()
 
-                if st.button("Return to DACRE Sign Up", use_container_width=True):
+                if st.button("Return to DACRE", use_container_width=True):
                     st.session_state.master_captcha_required = False
                     st.session_state.master_captcha_passed = False
                     st.session_state.master_second_attempt = False
-                    st.session_state.landing_mode = "signup"
                     st.query_params.clear()
                     st.rerun()
                 return
 
-            master_pk = st.text_input("Account Passkey", type="password", placeholder="Enter your private account passkey", key="master_gate_pk")
+            master_pk = st.text_input(
+                "Account Passkey",
+                type="password",
+                placeholder="Enter your private account passkey",
+                key="master_gate_pk",
+            )
             if second_attempt:
                 st.info("Security verification completed. Please enter the passkey again.")
+
             g1, g2 = st.columns(2)
             with g1:
                 if st.button("Open Overall Admin DI", use_container_width=True, type="primary"):
@@ -2637,17 +2802,23 @@ def landing_page():
                         st.session_state.master_captcha_required = False
                         st.session_state.master_captcha_passed = False
                         st.session_state.master_second_attempt = False
-                        st.session_state.last_speech = "Welcome, Master David. The Overall Admin DI Office is online. I have the organization, user, activity and DI workforce systems ready for your direction."
+                        st.session_state.last_speech = (
+                            "Welcome, Master David. The Overall Admin DI Office is online."
+                        )
                         st.query_params.clear()
-                        log_activity(MASTER_USERNAME, "DACRE MASTER", "Opened Overall CEO Office", notify_admin=False)
+                        log_activity(
+                            MASTER_USERNAME,
+                            "DACRE MASTER",
+                            "Opened Overall CEO Office",
+                            notify_admin=False,
+                        )
                         st.rerun()
                     else:
                         if second_attempt:
-                            st.warning("The second passkey attempt was incorrect. For security, you are being returned to the normal DACRE Sign Up page.")
+                            st.warning("The second passkey attempt was incorrect. Returning to DACRE.")
                             st.session_state.master_captcha_required = False
                             st.session_state.master_captcha_passed = False
                             st.session_state.master_second_attempt = False
-                            st.session_state.landing_mode = "signup"
                             st.query_params.clear()
                             st.rerun()
                         else:
@@ -2664,146 +2835,233 @@ def landing_page():
                     st.rerun()
         return
 
-    if st.session_state.landing_mode in ("login","signup"):
-        c1,c2,c3=st.columns([1,2,1])
-        with c2:
-            if st.button("← Back to DACRE Introduction"):
-                st.session_state.landing_mode="home"; st.rerun()
-            tab_login,tab_signup=st.tabs(["Sign In","Sign Up"])
-            with tab_login:
-                st.markdown("### Access your workspace")
-                login_company=st.text_input("Company / Organization Name",placeholder="e.g. Edubridge Consultant Limited",key="lin_comp")
-                login_fullname=st.text_input("Full Name",placeholder="e.g. David Emenike",key="lin_fn")
-                login_email=st.text_input("Email Address (recommended)",placeholder="Use the email you registered with",key="lin_email")
-                login_passkey=st.text_input("Account Passkey",type="password",placeholder="Enter your account passkey",key="lin_pk")
-                if st.button("Sign In & Restore Workspace",use_container_width=True):
-                    auth, auth_message=authenticate(login_company,login_fullname,login_passkey,login_email)
-                    if auth:
-                        st.session_state.user=auth
-                        st.session_state.master_route = (auth.get("role") == "master")
-                        st.session_state.last_speech=f"Welcome back, {auth['first_name']}. I am DI. Where would you like to start today? You can ask me a business question, upload data, investigate a problem, or ask me to research something current."
-                        project=restore_project(auth)
-                        if project:
-                            st.session_state.active_filename=project["filename"] or ""
-                            st.session_state.raw_df=project["raw"]
-                            st.session_state.processed_df=project["processed"]
-                            st.session_state.formula_logs=project["logs"]
-                            st.session_state.chart_config=project["chart"]
-                        st.toast(f"Welcome back, {auth['first_name']}!")
-                        st.rerun()
-                    else: st.error(auth_message or "This account has not been created. Please go to the Sign Up page and create your account to access DACRE Analysis.")
-                # Very discreet private master entry at the very bottom of
-                # the Sign In panel. It remains protected by the existing
-                # master passkey/security gate.
-                st.markdown("<div class='dacre-private-admin-divider'></div>",unsafe_allow_html=True)
-                if st.button("·",key="private_master_entry",help="Private system access"):
-                    st.query_params["master_gate"]="1"
-                    st.rerun()
-            with tab_signup:
-                st.markdown("### Create a DACRE account")
-                s_first=st.text_input("First Name",placeholder="e.g. David",key="su_first")
-                s_last=st.text_input("Last Name",placeholder="e.g. Emenike",key="su_last")
-                s_company=st.text_input("Company / Organization Name",placeholder="e.g. Edubridge Consultant Limited",key="su_comp")
-                s_email=st.text_input("Email Address",placeholder="e.g. name@example.com",key="su_email")
-                s_email_pass=st.text_input("Email Password (optional)",type="password",placeholder="Optional — SMTP credentials are safer",key="su_epass")
-                s_passkey=st.text_input("Create Account Passkey",type="password",placeholder="Create your account passkey",key="su_passkey")
-                if st.button("Create DACRE Account",use_container_width=True):
-                    success,msg,created=create_account(s_first,s_last,s_company,s_email,s_email_pass,s_passkey)
-                    if success:
-                        st.session_state.user=created
-                        st.session_state.master_route = False
-                        if is_chibobec_company(created["company"]):
-                            st.session_state.last_speech=(
-                                f"We know you are coming, {CHIBOBEC_OWNER_NAME}. Welcome to DACRE Analysis. "
-                                "We were asked to treat you and your Chibobec Loan Service workspace with immense care. "
-                                "Your loan collection workspace is ready, and DI is standing by to help you manage your clients and repayment reminders."
-                            )
-                            st.toast(f"Welcome, {CHIBOBEC_OWNER_NAME}. Your Chibobec Loan Service workspace is ready.")
-                        else:
-                            st.session_state.last_speech=f"Welcome to DACRE, {created['first_name']}. I am DI, your business intelligence assistant. What would you like us to work on first?"
-                            st.toast(f"Welcome to DACRE, {created['first_name']}!")
-                        st.rerun()
-                    else: st.error(msg)
-        return
+    logo_uri = _dacre_logo_data_uri()
+    if logo_uri:
+        logo = f'<img src="{logo_uri}" alt="DACRE" class="brand-logo"/>'
+        hero_logo = f'<img src="{logo_uri}" alt="DACRE" class="hero-logo"/>'
+    else:
+        logo = '<span class="brand-fallback">D</span>'
+        hero_logo = '<span class="hero-logo-fallback">D</span>'
 
     # -------------------------------------------------------------------------
-    # DACRE BOOT SPLASH
-    # Show the DACRE logo first whenever a new browser session starts.
-    # -------------------------------------------------------------------------
-    if not st.session_state.get("dacre_boot_complete", False):
-        import base64
-        logo_markup = '<div class="dacre-boot-mark">DC</div>'
-        if LOGO_PATH.exists():
-            try:
-                logo_bytes = LOGO_PATH.read_bytes()
-                logo_b64 = base64.b64encode(logo_bytes).decode("ascii")
-                logo_markup = f'<img class="dacre-boot-logo" src="data:image/png;base64,{logo_b64}" alt="DACRE logo" />'
-            except Exception:
-                pass
-        st.markdown(f"""
-        <style>
-          .dacre-boot-wrap{{min-height:72vh;display:flex;align-items:center;justify-content:center;flex-direction:column;background:radial-gradient(circle at 50% 42%,rgba(75,130,245,.18),transparent 38%),#0b1020;border-radius:20px;margin:12px 0;padding:40px;}}
-          .dacre-boot-logo{{width:min(240px,55vw);max-height:240px;object-fit:contain;filter:drop-shadow(0 0 28px rgba(75,130,245,.5));animation:dacreBootLogo 1.15s ease-out both;}}
-          .dacre-boot-mark{{width:118px;height:118px;border-radius:28px;display:grid;place-items:center;background:linear-gradient(135deg,#3f74dc,#4b82f5);color:white;font:800 38px monospace;box-shadow:0 0 45px rgba(75,130,245,.45);animation:dacreBootLogo 1.15s ease-out both;}}
-          .dacre-boot-name{{margin-top:18px;color:#f4f7ff;font:700 1.45rem Geist,Inter,sans-serif;letter-spacing:.18em;}}
-          .dacre-boot-status{{margin-top:8px;color:#8492aa;font:500 .72rem Geist,Inter,sans-serif;letter-spacing:.08em;}}
-          .dacre-boot-loader{{margin-top:20px;width:170px;height:3px;border-radius:999px;background:#202a3e;overflow:hidden;}}
-          .dacre-boot-loader i{{display:block;height:100%;width:45%;border-radius:999px;background:#4b82f5;animation:dacreBootBar 1.2s ease-in-out infinite;box-shadow:0 0 12px rgba(75,130,245,.7);}}
-          @keyframes dacreBootLogo{{0%{{opacity:0;transform:scale(.78);}}100%{{opacity:1;transform:scale(1);}}}}
-          @keyframes dacreBootBar{{0%{{transform:translateX(-180%)}}100%{{transform:translateX(390%)}}}}
-        </style>
-        <div class="dacre-boot-wrap">
-          {logo_markup}
-          <div class="dacre-boot-name">DACRE</div>
-          <div class="dacre-boot-status">INITIALIZING ANALYSIS ENGINE</div>
-          <div class="dacre-boot-loader"><i></i></div>
-        </div>
-        """, unsafe_allow_html=True)
-        time.sleep(1.25)
-        st.session_state.dacre_boot_complete = True
-        st.rerun()
-
-    # -------------------------------------------------------------------------
-    # SUPPLIED PUBLIC LANDING PAGE
-    # Use the exact Bolt-hosted DACRE landing page as the public introduction.
-    # A direct-open button is provided as a fallback if the remote host blocks
-    # iframe embedding in a particular browser.
+    # FULL DACRE PUBLIC LANDING PAGE
+    # The Bolt page is used as the visual/content reference, but the public
+    # experience is rendered natively inside Streamlit so its auth buttons can
+    # connect directly to DACRE's real account system.
     # -------------------------------------------------------------------------
     st.markdown("""
     <style>
-      .dacre-public-shell{background:#0b1020;border:1px solid rgba(128,154,196,.18);border-radius:18px 18px 0 0;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.28);}
-      .dacre-public-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 16px;border-bottom:1px solid rgba(128,154,196,.16);background:#0e1526;}
-      .dacre-public-brand{display:flex;align-items:center;gap:10px;color:#f4f7ff;font-weight:800;letter-spacing:.08em;}
-      .dacre-public-dot{width:8px;height:8px;border-radius:50%;background:#62d7a2;box-shadow:0 0 12px rgba(98,215,162,.7);}
-      .dacre-public-link{color:#aab8ce;font-size:.72rem;}
+      #MainMenu, footer, header { visibility:hidden; }
+      [data-testid="stSidebar"] { display:none; }
+      .stApp { background:
+        radial-gradient(circle at 78% 18%, rgba(71,81,255,.18), transparent 28%),
+        radial-gradient(circle at 18% 48%, rgba(0,205,255,.08), transparent 26%),
+        #050817 !important;
+      }
+      .block-container { max-width: 1440px !important; padding: 0 28px 50px !important; }
+      .dacre-landing {
+        color:#f6f8ff; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+        overflow:hidden;
+      }
+      .dacre-nav {
+        min-height:76px; display:flex; align-items:center; justify-content:space-between; gap:20px;
+        padding:12px 18px; border:1px solid rgba(150,164,205,.16); border-radius:18px;
+        background:rgba(8,13,30,.82); backdrop-filter:blur(18px);
+        box-shadow:0 18px 60px rgba(0,0,0,.24); position:sticky; top:10px; z-index:10;
+      }
+      .dacre-brand { display:flex; align-items:center; gap:12px; min-width:210px; }
+      .brand-logo { width:43px; height:43px; object-fit:contain; border-radius:12px; filter:drop-shadow(0 0 16px rgba(84,92,255,.35)); }
+      .brand-fallback,.hero-logo-fallback {
+        display:grid; place-items:center; background:linear-gradient(135deg,#754cff,#3d8dff 55%,#18c8df);
+        color:#fff; font-weight:900; border-radius:12px;
+      }
+      .brand-fallback { width:43px;height:43px;font-size:21px; }
+      .dacre-brand-name { font-size:17px;font-weight:850;letter-spacing:-.02em; }
+      .dacre-brand-sub { color:#8996b2;font-size:10px;margin-top:2px; }
+      .dacre-nav-links { display:flex; gap:28px; color:#aeb9d0;font-size:13px; }
+      .dacre-nav-links span { transition:.2s; }
+      .dacre-nav-links span:hover { color:#fff; }
+      .dacre-hero { min-height:650px; display:grid; grid-template-columns:1.03fr .97fr; gap:30px; align-items:center; padding:75px 30px 55px; }
+      .hero-eyebrow { display:inline-flex; padding:8px 13px; border:1px solid rgba(144,132,255,.28); background:rgba(93,73,255,.08);
+        border-radius:999px;color:#d2d0ff;font-size:12px;font-weight:650; }
+      .hero-title { font-size:clamp(48px,6.5vw,82px); line-height:.96; letter-spacing:-.065em; font-weight:850; margin:22px 0 20px; max-width:700px; }
+      .gradient-text { background:linear-gradient(90deg,#a4b4ff 0%,#8d77ff 38%,#28d5e8 72%,#f5dc59 100%); -webkit-background-clip:text;background-clip:text;color:transparent; }
+      .hero-copy { max-width:610px; color:#99a7c2;font-size:17px;line-height:1.7; }
+      .hero-proof { display:flex; gap:24px; flex-wrap:wrap; margin-top:34px; color:#c2cbe0;font-size:12px; }
+      .proof-dot { color:#5fe2ae; }
+      .hero-visual { position:relative; min-height:490px; display:flex; align-items:center; justify-content:center; }
+      .orb { position:absolute; width:360px;height:360px;border-radius:50%; background:radial-gradient(circle,#5f5aff38 0%,#2f6cff16 35%,transparent 70%); filter:blur(4px); }
+      .dash-card { position:relative;width:min(570px,100%);border:1px solid rgba(137,157,202,.2);border-radius:25px;background:linear-gradient(145deg,rgba(24,34,58,.9),rgba(8,14,31,.86));padding:20px;box-shadow:0 35px 90px rgba(0,0,0,.4);transform:rotate(-1deg); }
+      .dash-top { display:flex;justify-content:space-between;color:#8997b3;font-size:11px;margin-bottom:18px; }
+      .dash-metric { font-size:28px;font-weight:800;letter-spacing:-.04em; }
+      .metric-up { color:#52dca9;font-size:11px;margin-left:8px; }
+      .bars { height:190px;display:flex;align-items:flex-end;gap:8px;padding:18px 4px;border-radius:17px;background:rgba(100,122,161,.09); }
+      .bar { flex:1;border-radius:7px 7px 2px 2px;background:linear-gradient(180deg,#2cd1df,#5554d8);box-shadow:0 0 22px rgba(57,125,245,.15); }
+      .mini-grid { display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px; }
+      .mini { padding:13px;border:1px solid rgba(144,159,197,.12);border-radius:14px;background:rgba(255,255,255,.025); }
+      .mini-label { color:#8593ae;font-size:10px; }
+      .mini-value { margin-top:4px;font-size:18px;font-weight:750; }
+      .section { padding:78px 30px; }
+      .section-head { max-width:720px;margin-bottom:35px; }
+      .section-kicker { color:#6f7cff;text-transform:uppercase;letter-spacing:.16em;font-size:10px;font-weight:800; }
+      .section-title { font-size:clamp(30px,4vw,48px);line-height:1.04;letter-spacing:-.045em;font-weight:820;margin:10px 0; }
+      .section-copy { color:#8f9db8;line-height:1.7; }
+      .feature-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:16px; }
+      .feature { min-height:190px;padding:24px;border-radius:20px;border:1px solid rgba(144,159,197,.13);background:linear-gradient(145deg,rgba(20,28,49,.86),rgba(8,13,28,.72)); }
+      .feature-icon { width:38px;height:38px;display:grid;place-items:center;border-radius:11px;background:rgba(100,85,255,.14);color:#8f82ff;font-weight:800; }
+      .feature h3 { margin:18px 0 8px;font-size:16px; }
+      .feature p { color:#8795b0;font-size:13px;line-height:1.65;margin:0; }
+      .intel-grid { display:grid;grid-template-columns:1fr 1fr;gap:18px; }
+      .intel-panel { padding:28px;border-radius:22px;border:1px solid rgba(144,159,197,.13);background:rgba(15,22,40,.72); }
+      .intel-panel h3 { margin:0 0 9px;font-size:20px; }
+      .intel-panel p { color:#8d9ab4;line-height:1.7;font-size:13px; }
+      .workflow { display:grid;grid-template-columns:repeat(4,1fr);gap:12px; }
+      .step { padding:20px;border-radius:18px;background:#0b1122;border:1px solid rgba(144,159,197,.12); }
+      .step-num { color:#7786ff;font-family:monospace;font-size:12px; }
+      .step h4 { margin:18px 0 7px; }
+      .step p { color:#8795b0;font-size:12px;line-height:1.6; }
+      .cta { padding:60px 30px;margin:20px 0 60px;border-radius:28px;border:1px solid rgba(121,111,255,.24);
+        background:radial-gradient(circle at 50% 0%,rgba(83,75,255,.25),transparent 45%),linear-gradient(145deg,#111a32,#080d1d);text-align:center; }
+      .cta h2 { font-size:clamp(32px,4vw,54px);letter-spacing:-.05em;margin:0 auto 12px;max-width:750px; }
+      .cta p { max-width:620px;margin:0 auto;color:#8f9db8;line-height:1.7; }
+      .footer { display:flex;justify-content:space-between;gap:20px;padding:30px;color:#687692;border-top:1px solid rgba(144,159,197,.1);font-size:11px; }
+      @media(max-width:900px){
+        .dacre-nav-links{display:none}.dacre-hero{grid-template-columns:1fr;padding-top:45px}.hero-visual{min-height:400px}
+        .feature-grid{grid-template-columns:1fr 1fr}.intel-grid{grid-template-columns:1fr}.workflow{grid-template-columns:1fr 1fr}
+      }
+      @media(max-width:600px){
+        .block-container{padding:0 12px 30px !important}.dacre-hero,.section,.cta{padding-left:12px;padding-right:12px}
+        .feature-grid,.workflow{grid-template-columns:1fr}.hero-title{font-size:50px}.dash-card{padding:14px}.footer{flex-direction:column}
+      }
     </style>
-    <div class="dacre-public-shell">
-      <div class="dacre-public-head">
-        <div class="dacre-public-brand"><span class="dacre-public-dot"></span>DACRE</div>
-        <div class="dacre-public-link">Official public introduction</div>
-      </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown(f"""
+    <div class="dacre-landing">
+      <nav class="dacre-nav">
+        <div class="dacre-brand">
+          {logo}
+          <div><div class="dacre-brand-name">DACRE</div><div class="dacre-brand-sub">Powered by DI Intelligence</div></div>
+        </div>
+        <div class="dacre-nav-links">
+          <span>Features</span><span>Intelligence</span><span>Workforce</span><span>Analytics</span><span>Security</span>
+        </div>
+        <div style="color:#71809d;font-size:11px;">● SYSTEM READY</div>
+      </nav>
+
+      <section class="dacre-hero">
+        <div>
+          <div class="hero-eyebrow">✦ Experience Next-Gen Business Intelligence</div>
+          <h1 class="hero-title">Transform Raw Data<br/>into <span class="gradient-text">Heavenly Insights.</span></h1>
+          <p class="hero-copy">DACRE turns scattered business data into clear intelligence, powerful analytics and practical decisions — with DI Intelligence built into the workspace.</p>
+          <div class="hero-proof">
+            <span><span class="proof-dot">●</span> Real-time analytics</span>
+            <span><span class="proof-dot">●</span> AI-assisted intelligence</span>
+            <span><span class="proof-dot">●</span> Secure workspaces</span>
+          </div>
+        </div>
+
+        <div class="hero-visual">
+          <div class="orb"></div>
+          <div class="dash-card">
+            <div class="dash-top"><span>DACRE / ANALYTICS</span><span>LIVE</span></div>
+            <div style="color:#8390aa;font-size:11px;">Revenue Growth</div>
+            <div class="dash-metric">$2.4M <span class="metric-up">↗ 18.2%</span></div>
+            <div class="bars">
+              <div class="bar" style="height:38%"></div><div class="bar" style="height:55%"></div>
+              <div class="bar" style="height:44%"></div><div class="bar" style="height:68%"></div>
+              <div class="bar" style="height:59%"></div><div class="bar" style="height:78%"></div>
+              <div class="bar" style="height:66%"></div><div class="bar" style="height:88%"></div>
+              <div class="bar" style="height:76%"></div><div class="bar" style="height:92%"></div>
+            </div>
+            <div class="mini-grid">
+              <div class="mini"><div class="mini-label">Data Points</div><div class="mini-value">4.2M</div></div>
+              <div class="mini"><div class="mini-label">System Health</div><div class="mini-value">99.98%</div></div>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
     """, unsafe_allow_html=True)
 
-    components.html(f"""
-      <iframe src="{DACRE_LANDING_URL}" title="DACRE Landing Page"
-        style="width:100%;height:780px;border:0;background:#0b1020;display:block;"
-        loading="eager" referrerpolicy="strict-origin-when-cross-origin"></iframe>
-    """, height=780, scrolling=False)
-
-    st.caption("If the landing page does not appear inside DACRE, use the button below to open the same official landing page directly.")
-    direct_col, start_col, login_col = st.columns([1,1,1])
-    with direct_col:
-        st.link_button("Open landing page", DACRE_LANDING_URL, use_container_width=True)
-    with start_col:
-        if st.button("Enter DACRE", use_container_width=True, type="primary"):
+    # Real Streamlit controls sit directly inside the landing page.
+    b1, b2, b3 = st.columns([1, 1.2, 1])
+    with b1:
+        if st.button("Explore DACRE", key="landing_explore", use_container_width=True):
+            st.session_state.landing_explore = True
+    with b2:
+        if st.button("Get Started Free", key="landing_get_started", use_container_width=True, type="primary"):
             st.session_state.landing_mode = "signup"
             st.rerun()
-    with login_col:
-        if st.button("Sign in", use_container_width=True):
+    with b3:
+        if st.button("Log In", key="landing_log_in", use_container_width=True):
             st.session_state.landing_mode = "login"
             st.rerun()
 
+    if st.session_state.get("landing_explore", False):
+        st.markdown("""
+        <div class="section" id="features">
+          <div class="section-head"><div class="section-kicker">The DACRE platform</div>
+          <div class="section-title">One intelligence layer for the work that matters.</div>
+          <div class="section-copy">From raw files to executive decisions, DACRE brings analysis, automation and DI Intelligence into one connected business workspace.</div></div>
+          <div class="feature-grid">
+            <div class="feature"><div class="feature-icon">↗</div><h3>Analytics Engine</h3><p>Clean, analyse and visualise structured business data with practical tools for real-world decisions.</p></div>
+            <div class="feature"><div class="feature-icon">DI</div><h3>DI Intelligence</h3><p>Ask questions, investigate problems, explain results and work with your data through the built-in intelligence layer.</p></div>
+            <div class="feature"><div class="feature-icon">▣</div><h3>Workspace & Data</h3><p>Bring CSV, Excel, TSV and JSON data into a focused workspace where analysis can happen immediately.</p></div>
+            <div class="feature"><div class="feature-icon">◎</div><h3>Formula Lab</h3><p>Use familiar spreadsheet-style calculations and data-cleaning operations without leaving DACRE.</p></div>
+            <div class="feature"><div class="feature-icon">▤</div><h3>Charts & Insights</h3><p>Turn processed information into business-ready charts, summaries and executive insights.</p></div>
+            <div class="feature"><div class="feature-icon">◇</div><h3>Secure Administration</h3><p>Organization workspaces, activity visibility and protected master administration keep the platform organized.</p></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="intel-grid">
+            <div class="intel-panel"><div class="section-kicker">Intelligence</div><h3>From data to decisions.</h3><p>DACRE is designed around a simple flow: bring information in, understand it, find the important signals and turn those signals into actions.</p></div>
+            <div class="intel-panel"><div class="section-kicker">Built for teams</div><h3>A workspace that grows with your organization.</h3><p>Each organization gets its own working environment while administration and security controls keep access structured.</p></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-head"><div class="section-kicker">Workflow</div><div class="section-title">Four steps from raw information to insight.</div></div>
+          <div class="workflow">
+            <div class="step"><div class="step-num">01 / INGEST</div><h4>Bring data in</h4><p>Upload supported datasets and establish your working context.</p></div>
+            <div class="step"><div class="step-num">02 / CLEAN</div><h4>Make it usable</h4><p>Inspect, clean and structure information before analysis.</p></div>
+            <div class="step"><div class="step-num">03 / ANALYSE</div><h4>Find the signal</h4><p>Use formulas, charts and DI Intelligence to understand the data.</p></div>
+            <div class="step"><div class="step-num">04 / DECIDE</div><h4>Act with clarity</h4><p>Turn insights into business actions, reports and decisions.</p></div>
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="cta">
+      <div class="section-kicker">Start your workspace</div>
+      <h2>Build a smarter way to understand your business.</h2>
+      <p>Create your DACRE account and move from scattered information to a connected intelligence workspace.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    cta1, cta2, cta3 = st.columns([1, 1.2, 1])
+    with cta1:
+        st.empty()
+    with cta2:
+        if st.button("Create Your DACRE Account", key="landing_bottom_signup", use_container_width=True, type="primary"):
+            st.session_state.landing_mode = "signup"
+            st.rerun()
+    with cta3:
+        if st.button("Already have an account? Sign In", key="landing_bottom_login", use_container_width=True):
+            st.session_state.landing_mode = "login"
+            st.rerun()
+
+    _landing_auth_panel()
+
+    st.markdown("""
+    <div class="dacre-landing">
+      <div class="footer">
+        <span>© DACRE Analysis · Business & Data Intelligence</span>
+        <span>Powered by DI — David's Intelligence</span>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 # =============================================================================
 # STREAMLIT SESSION STATE BOOTSTRAP
