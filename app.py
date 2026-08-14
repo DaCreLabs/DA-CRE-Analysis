@@ -792,21 +792,12 @@ def ensure_di_agent_columns():
             "avatar_url": "TEXT",
             "voice_profile": "TEXT",
             "thinking_style": "TEXT",
-            "created_by": "TEXT NOT NULL DEFAULT ''",
-            "created_at": "TEXT NOT NULL DEFAULT ''",
-            "last_active": "TEXT",
-        })
-        con.commit()
-    finally:
-        con.close()seed_named_di_workforce()
-
-def get_di_agents():
+        con.close()
+seed_named_di_workforce()def get_di_agents():
     con = db()
     rows = con.execute("SELECT * FROM di_agents ORDER BY id DESC").fetchall()
     con.close()
     return rows
-
-
 def create_di_agent(name, specialty, status="Available", assigned_company="", system_role=""):
     name = (name or "").strip()
     specialty = (specialty or "").strip()
