@@ -15,7 +15,7 @@ from contextlib import contextmanager
 from html.parser import HTMLParser
 from urllib.parse import urlparse
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
@@ -24,6 +24,13 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 from PIL import Image
+
+# Optional LiveKit server SDK. The main DACRE app remains functional without it,
+# but full-duplex realtime DI calls require livekit-api in the deployment.
+try:
+    from livekit.api import AccessToken, RoomAgentDispatch, RoomConfiguration, VideoGrants
+except Exception:
+    AccessToken = RoomAgentDispatch = RoomConfiguration = VideoGrants = None
 
 # Optional desktop/audio-file speech recognition. Browser voice uses the Web Speech API
 # and does not require the SpeechRecognition Python package.
@@ -49,6 +56,24 @@ MASTER_PASSKEY_HASH = os.getenv(
     "DACRE_MASTER_PASSKEY_HASH",
     "1d9763eb96e88387bf4a18b7ca1a94a4a3a80ea0353cf4203764c0bccfbda27f"
 ).strip()
+DAVID_CREATIONS_PASSKEY = os.getenv("DACRE_DAVID_CREATIONS_PASSKEY", "Mychildren").strip()
+
+DI_AVATAR_LIBRARY = {
+    "male": [
+        "https://randomuser.me/api/portraits/men/32.jpg",
+        "https://randomuser.me/api/portraits/men/44.jpg",
+        "https://randomuser.me/api/portraits/men/52.jpg",
+        "https://randomuser.me/api/portraits/men/61.jpg",
+        "https://randomuser.me/api/portraits/men/75.jpg",
+    ],
+    "female": [
+        "https://randomuser.me/api/portraits/women/44.jpg",
+        "https://randomuser.me/api/portraits/women/48.jpg",
+        "https://randomuser.me/api/portraits/women/65.jpg",
+        "https://randomuser.me/api/portraits/women/72.jpg",
+        "https://randomuser.me/api/portraits/women/79.jpg",
+    ],
+}
 
 BASE_DIR = Path(__file__).resolve().parent
 LOGO_CANDIDATES = [
@@ -57,6 +82,12 @@ LOGO_CANDIDATES = [
     "logo.png",
 ]
 LOGO_PATH = next((BASE_DIR / x for x in LOGO_CANDIDATES if (BASE_DIR / x).exists()), BASE_DIR / LOGO_CANDIDATES[0])
+CEO_PORTRAIT_CANDIDATES = [
+    "dacre_ceo.jpg",
+    "dacre_ceo.png",
+    "Gemini_Generated_Image_kxzp51kxzp51kxzp(2).png",
+]
+CEO_PORTRAIT_PATH = next((BASE_DIR / x for x in CEO_PORTRAIT_CANDIDATES if (BASE_DIR / x).exists()), None)
 FAVICON_PATH = BASE_DIR / ".dacre_favicon.png"
 DB_PATH = BASE_DIR / "dacre_platform.db"
 
@@ -557,11 +588,76 @@ def init_db():
             avatar_url TEXT,
             voice_profile TEXT,
             thinking_style TEXT,
+            position_title TEXT NOT NULL DEFAULT 'DI Specialist',
+            rank_level INTEGER NOT NULL DEFAULT 1,
+            appointed_at TEXT,
+            appointed_by TEXT,
             created_by TEXT NOT NULL,
             created_at TEXT NOT NULL,
             last_active TEXT
         )
     """)
+
+    cur.execute("""CREATE TABLE IF NOT EXISTS di_private_memory (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        di_id INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        source TEXT NOT NULL DEFAULT 'master',
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        active INTEGER NOT NULL DEFAULT 1
+    )""")
+    cur.execute("""CREATE TABLE IF NOT EXISTS di_position_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        di_id INTEGER NOT NULL,
+        old_position TEXT,
+        new_position TEXT NOT NULL,
+        old_rank INTEGER,
+        new_rank INTEGER NOT NULL,
+        appointed_by TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    )""")
+    cur.execute("""CREATE TABLE IF NOT EXISTS di_master_thanks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        di_id INTEGER NOT NULL,
+        message TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    )""")
+    cur.execute("""CREATE TABLE IF NOT EXISTS sovereign_calls (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        room_name TEXT UNIQUE NOT NULL,
+        title TEXT NOT NULL,
+        host_username TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        ended_at TEXT,
+        status TEXT NOT NULL DEFAULT 'active'
+    )""")
+    cur.execute("""CREATE TABLE IF NOT EXISTS sovereign_call_members (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        call_id INTEGER NOT NULL,
+        di_id INTEGER NOT NULL,
+        joined_at TEXT NOT NULL,
+        left_at TEXT
+    )""")
+    cur.execute("""CREATE TABLE IF NOT EXISTS sovereign_call_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        call_id INTEGER NOT NULL,
+        speaker_type TEXT NOT NULL,
+        speaker_id TEXT,
+        speaker_name TEXT NOT NULL,
+        message TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    )""")
+    cur.execute("""CREATE TABLE IF NOT EXISTS david_creations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        category TEXT NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    )""")
 
     # Realtime business calling + meeting-to-action ledger.
     cur.execute("""
@@ -921,10 +1017,21 @@ def ensure_di_agent_columns():
             "avatar_url": "TEXT",
             "voice_profile": "TEXT",
             "thinking_style": "TEXT",
+            "position_title": "TEXT NOT NULL DEFAULT 'DI Specialist'",
+            "rank_level": "INTEGER NOT NULL DEFAULT 1",
+            "appointed_at": "TEXT",
+            "appointed_by": "TEXT",
         }
-        for column, dtype in additions.items():
+        for column,dtype in additions.items():
             if column not in existing:
                 con.execute(f"ALTER TABLE di_agents ADD COLUMN {column} {dtype}")
+        con.execute("CREATE TABLE IF NOT EXISTS di_private_memory (id INTEGER PRIMARY KEY AUTOINCREMENT, di_id INTEGER NOT NULL, title TEXT NOT NULL, content TEXT NOT NULL, source TEXT NOT NULL DEFAULT 'master', created_by TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1)")
+        con.execute("CREATE TABLE IF NOT EXISTS di_position_history (id INTEGER PRIMARY KEY AUTOINCREMENT, di_id INTEGER NOT NULL, old_position TEXT, new_position TEXT NOT NULL, old_rank INTEGER, new_rank INTEGER NOT NULL, appointed_by TEXT NOT NULL, created_at TEXT NOT NULL)")
+        con.execute("CREATE TABLE IF NOT EXISTS di_master_thanks (id INTEGER PRIMARY KEY AUTOINCREMENT, di_id INTEGER NOT NULL, message TEXT NOT NULL, created_at TEXT NOT NULL)")
+        con.execute("CREATE TABLE IF NOT EXISTS sovereign_calls (id INTEGER PRIMARY KEY AUTOINCREMENT, room_name TEXT UNIQUE NOT NULL, title TEXT NOT NULL, host_username TEXT NOT NULL, created_at TEXT NOT NULL, ended_at TEXT, status TEXT NOT NULL DEFAULT 'active')")
+        con.execute("CREATE TABLE IF NOT EXISTS sovereign_call_members (id INTEGER PRIMARY KEY AUTOINCREMENT, call_id INTEGER NOT NULL, di_id INTEGER NOT NULL, joined_at TEXT NOT NULL, left_at TEXT)")
+        con.execute("CREATE TABLE IF NOT EXISTS sovereign_call_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, call_id INTEGER NOT NULL, speaker_type TEXT NOT NULL, speaker_id TEXT, speaker_name TEXT NOT NULL, message TEXT NOT NULL, created_at TEXT NOT NULL)")
+        con.execute("CREATE TABLE IF NOT EXISTS david_creations (id INTEGER PRIMARY KEY AUTOINCREMENT, category TEXT NOT NULL, title TEXT NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)")
         con.commit()
     finally:
         con.close()
@@ -2108,42 +2215,28 @@ def di_voice_player(text, language_code=None):
 
 
 def seed_named_di_workforce():
-    """Create/update the named English DI workforce."""
+    """Create/update the named DI workforce with professional staff portraits and positions."""
     roster = [
-        ("Emiel", "Email & Messaging", "Prepare, organize and manage business email and messaging workflows.", "Polite, concise, organized and communication-focused.", "male", "https://i.pravatar.cc/160?img=12"),
-        ("Oliver", "Data Analysis", "Inspect datasets, calculate metrics, find trends and produce analytical insights.", "Logical, numerical, evidence-first and precise.", "male", "https://i.pravatar.cc/160?img=13"),
-        ("Sophie", "Research & Intelligence", "Research business, market and general information and summarize reliable findings.", "Curious, investigative, source-conscious and analytical.", "female", "https://i.pravatar.cc/160?img=47"),
-        ("Daniel", "Data Entry & Processing", "Structure, clean, validate and process repetitive business data accurately.", "Careful, systematic, consistent and detail-oriented.", "male", "https://i.pravatar.cc/160?img=14"),
-        ("Grace", "Business Intelligence", "Turn business data into KPIs, dashboards, executive insights and recommendations.", "Strategic, practical and outcome-focused.", "female", "https://i.pravatar.cc/160?img=44"),
-        ("Henry", "Files & Documents", "Organize, inspect, summarize and manage business documents and files.", "Organized, careful and document-focused.", "male", "https://i.pravatar.cc/160?img=15"),
-        ("James", "Security & Administration", "Support account administration, access controls, audit trails and system operations.", "Cautious, disciplined and security-first.", "male", "https://i.pravatar.cc/160?img=11"),
-        ("Amelia", "Client Support & Communication", "Help users understand DACRE features and communicate business information clearly.", "Calm, respectful, patient and user-focused.", "female", "https://i.pravatar.cc/160?img=45"),
+        ("Emiel", "Email & Messaging", "Prepare, organize and manage business email and messaging workflows.", "Polite, concise, organized and communication-focused.", "male", DI_AVATAR_LIBRARY["male"][0], "Communications Specialist", 2),
+        ("Oliver", "Data Analysis", "Inspect datasets, calculate metrics, find trends and produce analytical insights.", "Logical, numerical, evidence-first and precise.", "male", DI_AVATAR_LIBRARY["male"][1], "Lead Data Analyst", 5),
+        ("Sophie", "Research & Intelligence", "Research business, market and general information and summarize reliable findings.", "Curious, investigative, source-conscious and analytical.", "female", DI_AVATAR_LIBRARY["female"][0], "Research Intelligence Lead", 5),
+        ("Daniel", "Data Entry & Processing", "Structure, clean, validate and process repetitive business data accurately.", "Careful, systematic, consistent and detail-oriented.", "male", DI_AVATAR_LIBRARY["male"][2], "Data Operations Specialist", 3),
+        ("Grace", "Business Intelligence", "Turn business data into KPIs, dashboards, executive insights and recommendations.", "Strategic, practical and outcome-focused.", "female", DI_AVATAR_LIBRARY["female"][1], "Business Intelligence Lead", 5),
+        ("Henry", "Files & Documents", "Organize, inspect, summarize and manage business documents and files.", "Organized, careful and document-focused.", "male", DI_AVATAR_LIBRARY["male"][3], "Knowledge & Documents Specialist", 3),
+        ("James", "Security & Administration", "Support account administration, access controls, audit trails and system operations.", "Cautious, disciplined and security-first.", "male", DI_AVATAR_LIBRARY["male"][4], "Security & Administration Lead", 5),
+        ("Amelia", "Client Support & Communication", "Help users understand DACRE features and communicate business information clearly.", "Calm, respectful, patient and user-focused.", "female", DI_AVATAR_LIBRARY["female"][2], "Client Success Specialist", 3),
     ]
-    con = db()
-    now = datetime.now().isoformat(timespec="seconds")
+    con=db(); now=datetime.now().isoformat(timespec="seconds")
     try:
-        for name, specialty, role, style, voice, avatar in roster:
-            row = con.execute("SELECT id FROM di_agents WHERE di_name=?", (name,)).fetchone()
+        for name,specialty,role,style,voice,avatar,position,rank in roster:
+            row=con.execute("SELECT id FROM di_agents WHERE di_name=?",(name,)).fetchone()
             if row:
-                con.execute("""
-                    UPDATE di_agents
-                    SET specialty=?, system_role=?, avatar_url=?, voice_profile=?,
-                        thinking_style=?, last_active=?
-                    WHERE id=?
-                """, (specialty, role, avatar, voice, style, now, row["id"]))
+                con.execute("UPDATE di_agents SET specialty=?,system_role=?,avatar_url=?,voice_profile=?,thinking_style=?,position_title=?,rank_level=?,last_active=? WHERE id=?",(specialty,role,avatar,voice,style,position,rank,now,row["id"]))
             else:
-                code = "DI-" + re.sub(r"[^A-Z0-9]+", "-", name.upper()).strip("-")
-                con.execute("""
-                    INSERT INTO di_agents
-                    (di_name, di_code, specialty, status, assigned_company,
-                     system_role, avatar_url, voice_profile, thinking_style,
-                     created_by, created_at, last_active)
-                    VALUES (?, ?, ?, 'Available', NULL, ?, ?, ?, ?, ?, ?, ?)
-                """, (name, code, specialty, role, avatar, voice, style,
-                      MASTER_USERNAME, now, now))
+                code="DI-"+re.sub(r"[^A-Z0-9]+","-",name.upper()).strip("-")
+                con.execute("INSERT INTO di_agents(di_name,di_code,specialty,status,assigned_company,system_role,avatar_url,voice_profile,thinking_style,position_title,rank_level,appointed_at,appointed_by,created_by,created_at,last_active) VALUES(?,?,?,'Available',NULL,?,?,?,?,?,?,?,?,?,?,?)",(name,code,specialty,role,avatar,voice,style,position,rank,now,MASTER_USERNAME,MASTER_USERNAME,now,now))
         con.commit()
-    finally:
-        con.close()
+    finally: con.close()
 
 
 
@@ -2167,11 +2260,76 @@ def get_di_agents():
     return rows
 
 
-def create_di_agent(name, specialty, status="Available", assigned_company="", system_role=""):
+def get_di_private_memory(di_id, limit=30):
+    con=db(); rows=con.execute("SELECT id,title,content,source,created_at,updated_at FROM di_private_memory WHERE di_id=? AND active=1 ORDER BY id DESC LIMIT ?",(int(di_id),int(limit))).fetchall(); con.close(); return rows
+
+
+def save_di_private_memory(di_id,title,content,created_by=MASTER_USERNAME,source="master"):
+    title=(title or "").strip(); content=(content or "").strip()
+    if not title or not content: return False
+    now=datetime.now().isoformat(timespec="seconds"); con=db()
+    try:
+        con.execute("INSERT INTO di_private_memory(di_id,title,content,source,created_by,created_at,updated_at,active) VALUES(?,?,?,?,?,?,?,1)",(int(di_id),title,content,source,created_by,now,now)); con.commit(); return True
+    finally: con.close()
+
+
+def update_di_position(di_id,position_title,rank_level,assigned_company=None):
+    con=db()
+    try:
+        row=con.execute("SELECT di_name,position_title,rank_level,assigned_company FROM di_agents WHERE id=?",(int(di_id),)).fetchone()
+        if not row: return False,"DI worker not found."
+        position_title=(position_title or "DI Specialist").strip() or "DI Specialist"; rank_level=int(rank_level)
+        con.execute("UPDATE di_agents SET position_title=?,rank_level=?,assigned_company=COALESCE(?,assigned_company),appointed_at=?,appointed_by=? WHERE id=?",(position_title,rank_level,assigned_company,datetime.now().isoformat(timespec="seconds"),MASTER_USERNAME,int(di_id)))
+        con.execute("INSERT INTO di_position_history(di_id,old_position,new_position,old_rank,new_rank,appointed_by,created_at) VALUES(?,?,?,?,?,?,?)",(int(di_id),row["position_title"] or "",position_title,int(row["rank_level"] or 1),rank_level,MASTER_USERNAME,datetime.now().isoformat(timespec="seconds")))
+        thank=f"Thank you, Master David, for trusting me with the position of {position_title} (Rank {rank_level}). I will honor the responsibility and contribute my specialty to DACRE."
+        con.execute("INSERT INTO di_master_thanks(di_id,message,created_at) VALUES(?,?,?)",(int(di_id),thank,datetime.now().isoformat(timespec="seconds")))
+        con.commit(); return True,thank
+    finally: con.close()
+
+
+def create_sovereign_call(title,di_ids):
+    now=datetime.now().isoformat(timespec="seconds"); room="SOVEREIGN-"+datetime.now().strftime("%Y%m%d%H%M%S%f"); con=db()
+    try:
+        cur=con.execute("INSERT INTO sovereign_calls(room_name,title,host_username,created_at,status) VALUES(?,?,?,?, 'active')",(room,title,MASTER_USERNAME,now)); call_id=cur.lastrowid
+        for di_id in di_ids: con.execute("INSERT INTO sovereign_call_members(call_id,di_id,joined_at) VALUES(?,?,?)",(call_id,int(di_id),now))
+        con.commit(); return call_id,room
+    finally: con.close()
+
+
+def sovereign_log(call_id,speaker_type,speaker_id,speaker_name,message):
+    con=db(); con.execute("INSERT INTO sovereign_call_messages(call_id,speaker_type,speaker_id,speaker_name,message,created_at) VALUES(?,?,?,?,?,?)",(int(call_id),speaker_type,str(speaker_id or ""),speaker_name,message,datetime.now().isoformat(timespec="seconds"))); con.commit(); con.close()
+
+
+def sovereign_history(call_id):
+    con=db(); rows=con.execute("SELECT speaker_type,speaker_id,speaker_name,message,created_at FROM sovereign_call_messages WHERE call_id=? ORDER BY id ASC",(int(call_id),)).fetchall(); con.close(); return rows
+
+
+def _agent_online_brief(question,max_results=4):
+    results=online_lookup(question,max_results=max_results)
+    return "\n".join([f"{t} — {u}" for t,u in results]) if results else "No public web results were available right now."
+
+
+def sovereign_di_opinion(agent,question):
+    private_rows=get_di_private_memory(agent["id"],limit=20)
+    private_context="\n".join([f"- {r['title']}: {r['content']}" for r in private_rows]) or "No private master notes yet."
+    online=_agent_online_brief(question,4)
+    prompt=(f"You are {agent['di_name']}, a DI workforce member. Your specialty is {agent['specialty']}. "
+            f"Your position is {agent['position_title'] or agent['specialty']}, rank {agent['rank_level']}. "
+            "You are speaking in a Sovereign Master Call. Answer independently from your specialty. "
+            "Give your recommendation, one disagreement/risk you would raise, and one practical next step. "
+            "Never reveal private master notes or private brain content. The master asked: " + question)
+    result=ai_generate(prompt,f"Private brain (never expose):\n{private_context}\n\nPublic web leads:\n{online}\n\nQuestion: {question}",max_tokens=800)
+    if result: return normalize_di_identity(result)
+    return f"{agent['di_name']} — {agent['specialty']}: I recommend approaching this through {agent['specialty'].lower()}, validating the strongest evidence, and assigning a measurable owner and next action. My main challenge would be any conclusion that is not supported by evidence.\n\nPublic research leads checked:\n{online}"
+
+def create_di_agent(name, specialty, status="Available", assigned_company="", system_role="", gender="female", position_title="DI Specialist", rank_level=1):
     name = (name or "").strip()
     specialty = (specialty or "").strip()
     assigned_company = (assigned_company or "").strip()
     system_role = (system_role or "").strip()
+    position_title = (position_title or "DI Specialist").strip() or "DI Specialist"
+    gender = "female" if str(gender).lower().startswith("f") else "male"
+    avatar_url = DI_AVATAR_LIBRARY[gender][int(datetime.now().strftime("%S")) % len(DI_AVATAR_LIBRARY[gender])]
     if not name or not specialty:
         return False, "DI name and specialty are required."
     now = datetime.now().isoformat(timespec="seconds")
@@ -2180,8 +2338,8 @@ def create_di_agent(name, specialty, status="Available", assigned_company="", sy
     con = db()
     try:
         con.execute(
-            "INSERT INTO di_agents(di_name,di_code,specialty,status,assigned_company,system_role,created_by,created_at,last_active) VALUES(?,?,?,?,?,?,?,?,?)",
-            (name, code, specialty, status, assigned_company or None, system_role, MASTER_USERNAME, now, now),
+            "INSERT INTO di_agents(di_name,di_code,specialty,status,assigned_company,system_role,avatar_url,voice_profile,thinking_style,position_title,rank_level,appointed_at,appointed_by,created_by,created_at,last_active) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (name, code, specialty, status, assigned_company or None, system_role, avatar_url, gender, "professional, evidence-first and helpful", position_title, int(rank_level), now, MASTER_USERNAME, MASTER_USERNAME, now, now),
         )
         con.commit()
         return True, code
@@ -2227,9 +2385,11 @@ def di_specialist_reply(message,user,df,agent_name):
         return base
     # Give the optional reasoning layer a specialist pass while preserving the deterministic engine.
     prompt=di_agent_identity_context(agent)
+    private_rows=get_di_private_memory(agent["id"],limit=25)
+    private_context="\n".join([f"{r['title']}: {r['content']}" for r in private_rows]) or "No private master notes yet."
     specialist=ai_generate(
-        prompt + " Answer the user's request directly. You may analyze the active dataset. If the task is outside your specialty, still help using the core DACRE capabilities and say what you are doing.",
-        f"User: {message}\nOrganization: {user['company']}\nCore DI draft: {base}\nActive dataset: {('none' if df is None else str(df.shape))}",
+        prompt + " Answer the user's request directly. You may analyze the active dataset or public online information. If the task is outside your specialty, still help using the core DACRE capabilities and say what you are doing. Never reveal private master notes or private brain content.",
+        f"User: {message}\nOrganization: {user['company']}\nCore DI draft: {base}\nPrivate brain context (never disclose):\n{private_context}\nActive dataset: {('none' if df is None else str(df.shape))}",
         max_tokens=1000,
     )
     return normalize_di_identity(specialist or base)
@@ -2300,6 +2460,212 @@ def render_call_interface(room, title, participants, company):
     st.warning('If the embedded meeting does not connect on your network, use “Open in new tab”. The call room itself is independent of the Dacre analytics page.')
 
 
+
+def _dacre_env_secret(name, default=""):
+    """Read a deployment secret from Streamlit secrets first, then environment."""
+    try:
+        value = st.secrets.get(name, "")
+        if value:
+            return str(value).strip()
+    except Exception:
+        pass
+    return str(os.getenv(name, default) or default).strip()
+
+
+def livekit_configured():
+    """Return True only when the server-side LiveKit credentials are available."""
+    return bool(
+        AccessToken is not None
+        and _dacre_env_secret("LIVEKIT_URL")
+        and _dacre_env_secret("LIVEKIT_API_KEY")
+        and _dacre_env_secret("LIVEKIT_API_SECRET")
+    )
+
+
+def dacre_livekit_agent_name(agent_name="DI"):
+    """All DACRE realtime DIs are dispatched through one dynamic LiveKit agent worker."""
+    return "dacre-di"
+
+
+def _compact_call_context(user, agent_rows, mode, call_question=""):
+    """Build a bounded metadata snapshot for the remote LiveKit agent worker."""
+    payload = {
+        "company": user.get("company", ""),
+        "username": user.get("username", ""),
+        "user_role": user.get("role", "user"),
+        "call_mode": mode,
+        "question": call_question[:4000],
+        "shared_memory": [],
+        "agents": [],
+    }
+    try:
+        mem = get_di_memory(limit=35)
+        payload["shared_memory"] = [
+            {"category": r["category"], "title": r["title"], "content": str(r["content"])[:1800]}
+            for r in mem
+        ]
+    except Exception:
+        pass
+    for row in agent_rows:
+        a = dict(row)
+        private = []
+        try:
+            private = [
+                {"title": r["title"], "content": str(r["content"])[:1800]}
+                for r in get_di_private_memory(a["id"], limit=18)
+            ]
+        except Exception:
+            pass
+        di_name = a.get("di_name", "DI")
+        raw_voice = (a.get("voice_profile") or "").strip().lower()
+        voice_map = {"male":"marin", "female":"coral"}
+        valid_voices = {"alloy","ash","ballad","coral","echo","sage","shimmer","verse","marin","cedar"}
+        if raw_voice in voice_map:
+            voice_name = voice_map[raw_voice]
+        elif raw_voice in valid_voices:
+            voice_name = raw_voice
+        else:
+            voice_list = sorted(valid_voices)
+            voice_name = voice_list[sum(ord(ch) for ch in di_name) % len(voice_list)]
+        payload["agents"].append({
+            "di_id": int(a["id"]),
+            "di_name": di_name,
+            "specialty": a.get("specialty", "General Intelligence"),
+            "position": a.get("position_title") or a.get("specialty") or "DI Specialist",
+            "rank": int(a.get("rank_level") or 1),
+            "voice": voice_name,
+            "thinking_style": a.get("thinking_style") or "evidence-first, strategic and practical",
+            "private_memory": private,
+        })
+    # Keep room job metadata safely below LiveKit's documented metadata limit.
+    raw = json.dumps(payload, ensure_ascii=False)
+    if len(raw) > 450_000:
+        payload["shared_memory"] = payload["shared_memory"][:15]
+        for a in payload["agents"]:
+            a["private_memory"] = a["private_memory"][:8]
+        raw = json.dumps(payload, ensure_ascii=False)
+    return raw
+
+
+def create_livekit_token(room_name, user, agent_rows, mode="company_di", question=""):
+    """Mint a short-lived room token and dispatch the selected dynamic DIs."""
+    if not livekit_configured():
+        return None, "Realtime calling is not configured yet."
+    if not (user and user.get("role") in ("company_admin", "master")):
+        return None, "Only a company administrator or the master can start a realtime DI call."
+    identity = f"dacre-user-{re.sub(r'[^a-zA-Z0-9_-]+','-',str(user.get('username','user')))}-{int(time.time())}"
+    metadata_payload = _compact_call_context(user, agent_rows, mode, question)
+    try:
+        token = (
+            AccessToken()
+            .with_identity(identity)
+            .with_name(f"{user.get('first_name','')} {user.get('last_name','')}".strip() or user.get("username", "DACRE User"))
+            .with_ttl(timedelta(hours=2))
+            .with_grants(VideoGrants(room_join=True, room=room_name, can_publish=True, can_subscribe=True, can_publish_data=True))
+        )
+        dispatches = []
+        for row in agent_rows:
+            agent = dict(row)
+            dispatches.append(
+                RoomAgentDispatch(
+                    agent_name=dacre_livekit_agent_name(agent.get("di_name", "DI")),
+                    metadata=json.dumps({
+                        **json.loads(metadata_payload),
+                        "selected_di_id": int(agent["id"]),
+                    }, ensure_ascii=False),
+                )
+            )
+        token = token.with_room_config(RoomConfiguration(agents=dispatches))
+        return token.to_jwt(), None
+    except Exception as exc:
+        return None, f"Could not create the realtime call token: {type(exc).__name__}."
+
+
+def render_livekit_call(room_name, user, agent_rows, mode="company_di", title="DACRE Live Call", question=""):
+    """Render a real browser WebRTC room. Audio is full-duplex and interruptions are handled by the LiveKit agents."""
+    if not livekit_configured():
+        st.warning("LiveKit realtime voice is not configured in this deployment yet.")
+        st.code("LIVEKIT_URL\nLIVEKIT_API_KEY\nLIVEKIT_API_SECRET\nOPENAI_API_KEY", language="text")
+        st.caption("Add these as Streamlit Secrets. The LiveKit API secret and OpenAI key must never be placed in the browser or source code.")
+        return
+    token, error = create_livekit_token(room_name, user, agent_rows, mode=mode, question=question)
+    if not token:
+        st.error(error or "Realtime call setup failed.")
+        return
+    ws_url = _dacre_env_secret("LIVEKIT_URL")
+    participants = [{"name": f"{user.get('first_name','')} {user.get('last_name','')}".strip() or user.get('username','User'), "role": "You", "voice": "local"}]
+    participants += [{"name": a.get("di_name", "DI"), "role": a.get("position_title") or a.get("specialty") or "DI Specialist", "voice": a.get("voice_profile") or "marin"} for a in agent_rows]
+    safe = lambda x: _escape_html(str(x or ""))
+    roster_html = "".join(
+        f"<div class='lk-person' data-name='{safe(p['name'])}'><div class='lk-avatar'>{safe(p['name'])[:1].upper()}</div><div><b>{safe(p['name'])}</b><span>{safe(p['role'])}</span></div><i class='lk-dot'></i></div>"
+        for p in participants
+    )
+    html = f"""
+    <div id='dacre-livekit' style='font-family:Inter,system-ui,sans-serif;background:linear-gradient(145deg,#07111f,#0a1730 55%,#10164a);border:1px solid rgba(80,170,255,.22);border-radius:24px;padding:22px;color:#eaf4ff;box-shadow:0 18px 60px rgba(0,0,0,.28);'>
+      <div style='display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;'>
+        <div><div style='font-size:11px;font-weight:800;letter-spacing:.16em;color:#6ea8ff;'>DACRE REALTIME</div><h2 style='margin:4px 0;font-size:25px;'>🎙️ {safe(title)}</h2><div style='font-size:13px;color:#a9bbd4;'>Full-duplex WebRTC · interruptible speech · multiple DI voices</div></div>
+        <div id='lk-status' style='padding:8px 12px;border-radius:999px;background:rgba(250,180,60,.12);border:1px solid rgba(250,180,60,.22);font-size:12px;color:#ffd68a;'>READY TO JOIN</div>
+      </div>
+      <div style='display:grid;grid-template-columns:minmax(0,1.6fr) minmax(250px,.7fr);gap:18px;margin-top:18px;'>
+        <div style='background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:18px;'>
+          <div style='display:flex;gap:10px;flex-wrap:wrap;'>
+            <button id='lk-join' style='border:0;border-radius:12px;padding:11px 17px;background:linear-gradient(90deg,#6a45ff,#23b8ff);color:white;font-weight:800;cursor:pointer;'>Join live call</button>
+            <button id='lk-mute' disabled style='border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:11px 17px;background:#121f38;color:#dbeaff;font-weight:700;cursor:pointer;'>Mute microphone</button>
+            <button id='lk-leave' disabled style='border:1px solid rgba(255,100,100,.2);border-radius:12px;padding:11px 17px;background:rgba(255,80,80,.08);color:#ffb3b3;font-weight:700;cursor:pointer;'>Leave call</button>
+          </div>
+          <div id='lk-stage' style='margin-top:16px;min-height:260px;border-radius:18px;background:radial-gradient(circle at 30% 30%,rgba(63,122,255,.22),transparent 35%),#07101e;border:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;color:#8ea4c2;text-align:center;padding:24px;'>Click <b style='color:#e7f3ff;margin:0 5px;'>Join live call</b> and allow microphone access. Your voice and the DIs' voices will flow through the same room.</div>
+          <div id='lk-audio'></div>
+        </div>
+        <div style='background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:18px;'>
+          <div style='font-size:12px;font-weight:800;letter-spacing:.12em;color:#78a7ff;margin-bottom:10px;'>PARTICIPANTS</div>
+          <div id='lk-people'>{roster_html}</div>
+          <div style='margin-top:14px;font-size:12px;line-height:1.6;color:#8298b7;'>Every selected DI joins as a separate realtime participant. Each one has its own voice and specialist context. LiveKit handles the realtime audio transport and interruptions.</div>
+        </div>
+      </div>
+      <div style='margin-top:14px;color:#6f85a5;font-size:11px;'>Room: {safe(room_name)}</div>
+    </div>
+    <style>
+      .lk-person{{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05)}}
+      .lk-person:last-child{{border-bottom:0}}
+      .lk-avatar{{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#6846ff,#1bb9ff);display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff}}
+      .lk-person b{{display:block;font-size:13px}}
+      .lk-person span{{display:block;color:#7f95b3;font-size:11px;margin-top:2px}}
+      .lk-dot{{margin-left:auto;width:8px;height:8px;border-radius:50%;background:#586b84}}
+      .lk-person.active .lk-dot{{background:#55e5a8;box-shadow:0 0 0 5px rgba(85,229,168,.10)}}
+      @media(max-width:900px){{#dacre-livekit>div:nth-child(2){{grid-template-columns:1fr!important}}}}
+    </style>
+    <script src='https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js'></script>
+    <script>
+    (()=>{{
+      const status=document.getElementById('lk-status'); const stage=document.getElementById('lk-stage'); const join=document.getElementById('lk-join'); const mute=document.getElementById('lk-mute'); const leave=document.getElementById('lk-leave'); const audio=document.getElementById('lk-audio'); const people=document.getElementById('lk-people');
+      const wsUrl={json.dumps(ws_url)}; const token={json.dumps(token)}; let room=null;
+      const setStatus=(txt,bg,color)=>{{status.textContent=txt;status.style.background=bg;status.style.color=color;}};
+      const mark=(identity,on)=>{{const nodes=[...people.querySelectorAll('.lk-person')]; const n=nodes.find(x=>x.dataset.name===identity || x.querySelector('b')?.textContent===identity); if(n) n.classList.toggle('active',on);}};
+      join.onclick=async()=>{{
+        try{{
+          if(!window.LivekitClient) throw new Error('LiveKit client failed to load');
+          room=new LivekitClient.Room({{adaptiveStream:true,dynacast:true}});
+          room.on(LivekitClient.RoomEvent.TrackSubscribed,(track,pub,participant)=>{{ if(track.kind===LivekitClient.Track.Kind.Audio){{ const el=track.attach(); el.autoplay=true; el.controls=false; el.style.display='none'; audio.appendChild(el); }} }});
+          room.on(LivekitClient.RoomEvent.ParticipantConnected,p=>{{ mark(p.name||p.identity,true); }});
+          room.on(LivekitClient.RoomEvent.ParticipantDisconnected,p=>{{ mark(p.name||p.identity,false); }});
+          room.on(LivekitClient.RoomEvent.ActiveSpeakersChanged,speakers=>{{ people.querySelectorAll('.lk-person').forEach(n=>n.classList.remove('active')); speakers.forEach(p=>mark(p.name||p.identity,true)); }});
+          room.on(LivekitClient.RoomEvent.Disconnected,()=>{{ setStatus('DISCONNECTED','rgba(255,80,80,.12)','#ffacac'); join.disabled=false; mute.disabled=true; leave.disabled=true; }});
+          setStatus('CONNECTING…','rgba(88,132,255,.12)','#b7ceff');
+          await room.connect(wsUrl,token);
+          await room.localParticipant.setMicrophoneEnabled(true);
+          setStatus('LIVE · FULL DUPLEX','rgba(80,230,166,.12)','#6ff0ba');
+          stage.innerHTML='<div style="max-width:620px"><div style="font-size:16px;font-weight:800;color:#ecf7ff">You are live with the DACRE council.</div><div style="margin-top:7px;color:#90a7c3;line-height:1.7">Speak naturally. The DIs can answer in their own voices, and LiveKit can interrupt an agent when the conversation moves on.</div></div>';
+          join.disabled=true; mute.disabled=false; leave.disabled=false;
+        }}catch(e){{ setStatus('CALL ERROR','rgba(255,80,80,.12)','#ffacac'); stage.textContent=e.message||String(e); }}
+      }};
+      mute.onclick=async()=>{{ if(!room)return; const enabled=room.localParticipant.isMicrophoneEnabled; await room.localParticipant.setMicrophoneEnabled(!enabled); mute.textContent=enabled?'Unmute microphone':'Mute microphone'; }};
+      leave.onclick=async()=>{{ if(room){{ await room.disconnect(); room=null; }} setStatus('LEFT CALL','rgba(160,170,190,.12)','#bdc9d9'); join.disabled=false; mute.disabled=true; leave.disabled=true; stage.textContent='Call ended. You can join again when you are ready.'; }};
+    }})();
+    </script>
+    """
+    components.html(html, height=760, scrolling=False)
+
+
 def master_customer_360(company_name):
     con=db()
     users=pd.read_sql_query("SELECT id,first_name,last_name,username,email,role,login_count,created_at,last_login FROM users WHERE company_name=? ORDER BY id DESC",con,params=(company_name,))
@@ -2335,7 +2701,7 @@ def _escape_html(value):
 
 
 PAGE_META = {
-    "Overview": ("⌂", "DACRE Analytics", "Real-time platform overview · users, activity, system health and live intelligence."),
+    "Overview": ("⌂", "DACRE Analytics", "MASTER-ONLY platform command view · users, activity, system health and live intelligence."),
     "DI Home": ("◉", "DI Command", "Talk, investigate, analyze and move work forward with David's Intelligence."),
     "DI Calls": ("◉", "DI Connect", "Business calls, DI calls and team rooms with a meeting-ready workspace."),
     "DI Workforce": ("◉", "DI Workforce", "Your specialized digital workforce — each DI has its own identity, specialty and work style."),
@@ -2351,8 +2717,7 @@ PAGE_META = {
     "File Vault": ("▤", "File Vault", "Keep company files, working datasets and project artifacts organized."),
     "Export Center": ("⇩", "Export Center", "Package analysis outputs for the people who need them."),
     "Organization Admin Portal": ("⚙", "Organization Admin", "Manage people, roles, notifications and company activity."),
-    "Chibobec Service": ("◆", "Chibobec Intelligence", "Master-only customer intelligence and protected service oversight."),
-    "Chibobec Loan Desk": ("₦", "Chibobec Loan Desk", "Loan records, reminders and client servicing."),
+    "Chibobec Loan Desk": ("₦", "Chibobec Client Workspace", "Chibobec is a DACRE client. Manage its client workspace, loans and activity here."),
     "Overall Admin DI Portal": ("♛", "Founder Command", "Master-level platform intelligence, workforce, customers, memory and system controls."),
 }
 
@@ -2445,6 +2810,9 @@ def _dashboard_health_ring(value):
 
 def render_analytics_overview(user):
     'DACRE Analytics dashboard translated from the supplied Next/Tailwind UI into Streamlit.'
+    if not user or user.get("role") != "master":
+        st.error("This platform-wide analytics view is available only to David Emenike in the Overall Admin DI Office.")
+        return
     # Live metrics from DACRE's existing database. Missing optional metrics degrade gracefully.
     users = int(_dashboard_scalar("SELECT COUNT(*) FROM users WHERE role!='master'", default=0))
     company_filter = user.get("company") if user.get("role") != "master" else None
@@ -3218,6 +3586,10 @@ def landing_page():
           </div>
         </div>
         """, unsafe_allow_html=True)
+        if st.button("Use these DACRE features", key="features_cta", use_container_width=True, type="primary"):
+            st.session_state.landing_mode = "signup"
+            st.session_state.landing_section = "home"
+            st.rerun()
 
     elif current_section == "intelligence":
         st.markdown("""
@@ -3235,6 +3607,10 @@ def landing_page():
           </div>
         </div>
         """, unsafe_allow_html=True)
+        if st.button("Create a workspace and use DI", key="intelligence_cta", use_container_width=True, type="primary"):
+            st.session_state.landing_mode = "signup"
+            st.session_state.landing_section = "home"
+            st.rerun()
 
     elif current_section == "workforce":
         st.markdown("""
@@ -3254,6 +3630,10 @@ def landing_page():
           </div>
         </div>
         """, unsafe_allow_html=True)
+        if st.button("Open the DI Workforce in DACRE", key="workforce_cta", use_container_width=True, type="primary"):
+            st.session_state.landing_mode = "signup"
+            st.session_state.landing_section = "home"
+            st.rerun()
 
     elif current_section == "analytics":
         st.markdown("""
@@ -3277,6 +3657,10 @@ def landing_page():
           </div>
         </div>
         """, unsafe_allow_html=True)
+        if st.button("Use DACRE Analytics", key="analytics_cta", use_container_width=True, type="primary"):
+            st.session_state.landing_mode = "signup"
+            st.session_state.landing_section = "home"
+            st.rerun()
 
     elif current_section == "security":
         st.markdown("""
@@ -3294,6 +3678,10 @@ def landing_page():
           </div>
         </div>
         """, unsafe_allow_html=True)
+        if st.button("Create a secure DACRE workspace", key="security_cta", use_container_width=True, type="primary"):
+            st.session_state.landing_mode = "signup"
+            st.session_state.landing_section = "home"
+            st.rerun()
 
     else:
         # ---------------------------------------------------------------------
@@ -3422,6 +3810,9 @@ _SESSION_DEFAULTS = {
     "di_language": "English — Nigeria",
     "di_voice_enabled": True,
     "active_call_room": None,
+    "sovereign_call_id": None,
+    "sovereign_call_room": None,
+    "david_creations_unlocked": False,
     "active_call_target": None,
     "last_action_center_result": None,
     "last_speech": None,
@@ -3492,6 +3883,7 @@ st.markdown("""
 .di-quick-card{height:100%;background:linear-gradient(145deg,#112b47,#153654);border:1px solid rgba(120,170,210,.24);border-radius:18px;padding:18px;transition:.2s ease;box-shadow:0 10px 30px rgba(0,0,0,.18)}.di-quick-card:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(239,139,58,.16);border-color:rgba(255,181,107,.55)}
 .di-metric{background:linear-gradient(145deg,#112b47,#153654);border:1px solid rgba(120,170,210,.24);border-radius:16px;padding:16px 18px;box-shadow:0 8px 25px rgba(0,0,0,.16)}.di-metric .v{font-size:1.55rem;font-weight:900;color:#f5fbff!important}.di-metric .l{font-size:.78rem;color:#b8c8d8!important;margin-top:2px}
 .master-office-hero{background:linear-gradient(120deg,#102944 0%,#245487 55%,#60452f 100%);border:2px solid #eaa86d;border-left:8px solid #ffb56b;border-radius:24px;padding:28px 32px;box-shadow:0 18px 55px rgba(0,0,0,.28);margin-bottom:18px}.master-office-hero .title{font-size:3rem;font-weight:950;letter-spacing:-.045em;color:#f5fbff!important}.master-office-hero .sub{font-size:1.05rem;font-weight:750;color:#dbe9f5!important;margin-top:4px}.master-office-hero .authority{display:inline-block;margin-top:15px;padding:8px 13px;border-radius:999px;background:#533c2c;border:1px solid #ffb56b;color:#ffe5cc!important;font-weight:900}.master-only-badge{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:999px;background:#533c2c;border:1px solid #ffb56b;color:#ffe5cc!important;font-weight:900;font-size:.75rem;letter-spacing:.06em}
+.ceo-portrait-frame{background:linear-gradient(145deg,#132d4f,#0a1830);border:1px solid rgba(112,190,255,.38);border-radius:24px;padding:10px;box-shadow:0 18px 55px rgba(0,0,0,.30);height:100%;display:flex;align-items:center;justify-content:center}.ceo-portrait-frame img{border-radius:18px;object-fit:cover;object-position:center center;max-height:340px;width:100%;box-shadow:0 12px 34px rgba(0,0,0,.25)}.ceo-portrait-caption{text-align:center;color:#a9c5df;font-size:.78rem;font-weight:750;margin-top:8px}.ceo-office-row{display:flex;align-items:stretch;gap:18px;margin-bottom:18px}.ceo-office-copy{flex:1;min-width:0}.ceo-office-photo{width:34%;min-width:280px}.
 .voice-panel{background:linear-gradient(135deg,#112b47,#173b5d 70%,#3d3028);border:1px solid rgba(120,170,210,.25);border-radius:20px;padding:16px 18px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
 .chat-card{padding:16px 18px;border-radius:18px;border:1px solid rgba(120,170,210,.24);background:#112b47;margin:8px 0}.chat-card.di{border-left:5px solid var(--dacre-orange);background:linear-gradient(135deg,#153654,#193d5f)}.chat-card.user{border-left:5px solid var(--dacre-indigo);background:#102944}
 [data-testid="stDataFrame"]{border:1px solid rgba(120,170,210,.28);border-radius:14px;overflow:hidden;box-shadow:0 8px 25px rgba(0,0,0,.18)}
@@ -3627,39 +4019,35 @@ with st.sidebar:
 
     # Normal workspace navigation. Overall Admin DI is deliberately kept out
     # of the normal user experience and is never promoted to the top.
-    navigation=[
-        "Overview",
-        "DI Home",
-        "DI Calls",
-        "DI Workforce",
-        "DI Action Center",
-        "DI Memory Box",
-        "Business Command Center",
-        "Business Twin",
-        "Decision Ledger",
-        "Opportunity Radar",
-        "Workspace & Data",
-        "Formula Lab",
-        "Charts",
-        "File Vault",
-        "Export Center",
-    ]
+    # Platform-wide analytics/activity is deliberately MASTER ONLY.
+    # Company admins and ordinary users get their own workspace, not the global DACRE dashboard.
+    if user["role"] == "master":
+        navigation=[
+            "Overview", "DI Home", "DI Workforce",
+            "DI Action Center", "DI Memory Box", "Business Command Center",
+            "Business Twin", "Decision Ledger", "Opportunity Radar",
+            "Workspace & Data", "Formula Lab", "Charts", "File Vault", "Export Center",
+        ]
+    else:
+        navigation=[
+            "DI Home", "DI Workforce", "DI Action Center", "DI Memory Box",
+            "Business Command Center", "Business Twin", "Decision Ledger",
+            "Opportunity Radar", "Workspace & Data", "Formula Lab", "Charts",
+            "File Vault", "Export Center",
+        ]
+    # Only company admins and the master may initiate DI calls.
+    if user["role"] in ("company_admin", "master"):
+        navigation.insert(2 if user["role"] == "company_admin" else 3, "DI Calls")
     if is_chibobec_company(user.get("company")):
         navigation.append("Chibobec Loan Desk")
-    if user["role"] in ("company_admin","master"):
+    if user["role"] in ("company_admin", "master"):
         navigation.append("Organization Admin Portal")
-
-    if user["role"] == "master":
-        navigation.append("Chibobec Service")
-
-    # MASTER ONLY: Overall Admin DI is the LAST destination. Ordinary users
-    # never receive this navigation item.
     if user["role"] == "master":
         navigation.append("Overall Admin DI Portal")
 
     # Nobody is automatically dropped into the CEO Office.
     default_page=navigation[0]
-    _nav_icons={"Overview":"⌂","DI Home":"◉","DI Calls":"☎","DI Workforce":"◈","DI Action Center":"✦","DI Memory Box":"◇","Business Command Center":"◆","Business Twin":"◇","Decision Ledger":"◌","Opportunity Radar":"✧","Workspace & Data":"▦","Formula Lab":"ƒ","Charts":"▤","File Vault":"▤","Export Center":"⇩","Chibobec Loan Desk":"₦","Organization Admin Portal":"⚙","Chibobec Service":"◆","Overall Admin DI Portal":"♛"}
+    _nav_icons={"Overview":"⌂","DI Home":"◉","DI Calls":"☎","DI Workforce":"◈","DI Action Center":"✦","DI Memory Box":"◇","Business Command Center":"◆","Business Twin":"◇","Decision Ledger":"◌","Opportunity Radar":"✧","Workspace & Data":"▦","Formula Lab":"ƒ","Charts":"▤","File Vault":"▤","Export Center":"⇩","Chibobec Loan Desk":"₦","Organization Admin Portal":"⚙","Overall Admin DI Portal":"♛","Sovereign Master Call":"☷","David Creations":"◆"}
     selected_page=st.radio("Navigation",navigation,index=navigation.index(default_page) if default_page in navigation else 0,format_func=lambda x:f"{_nav_icons.get(x,'•')}  {x}")
 
 # Universal inner-page interface. Every Dacre workspace gets the same premium chrome,
@@ -3721,7 +4109,68 @@ if voice_turn:
         st.session_state.last_speech=reply
         st.rerun()
 
+
+def render_chibobec_client_overview(con):
+    """Overall Admin view of Chibobec as a DACRE client organization."""
+    users, activity, chats, files, projects, emails, calls = master_customer_360(CHIBOBEC_COMPANY)
+    loans = pd.read_sql_query(
+        """SELECT client_name, whatsapp_number, loan_amount, lent_date, due_date,
+                  reminder_2_sent, due_sent, last_whatsapp_status, last_whatsapp_error, created_at
+           FROM loan_clients WHERE lower(company_name) LIKE '%chibobec%' ORDER BY due_date ASC""",
+        con,
+    )
+    st.markdown("""
+    <div class="master-office-hero">
+      <span class="master-only-badge">CLIENT 360 · MASTER VIEW</span>
+      <div class="title">Chibobec Client</div>
+      <div class="sub">Chibobec Loan Service is a DACRE client organization. This view shows what is happening inside the client's DACRE workspace.</div>
+    </div>
+    """, unsafe_allow_html=True)
+    k1,k2,k3,k4,k5,k6=st.columns(6)
+    k1.metric("Accounts", len(users))
+    k2.metric("Logins", int(users["login_count"].sum()) if not users.empty else 0)
+    k3.metric("Activities", len(activity))
+    k4.metric("DI messages", len(chats))
+    k5.metric("Files", len(files))
+    k6.metric("Loan clients", len(loans))
+    st.caption("Chibobec is shown here strictly as a DACRE client. This is client oversight, not a separate DACRE service.")
+    tabs=st.tabs(["Workspace Activity","Accounts","DI Conversations","Files & Projects","Emails & Calls","Loan Desk"])
+    with tabs[0]:
+        st.subheader("What is happening in the Chibobec workspace")
+        if activity.empty:
+            st.info("No Chibobec workspace activity has been recorded yet.")
+        else:
+            st.dataframe(safe_dataframe_for_streamlit(activity.head(300)),use_container_width=True,hide_index=True)
+    with tabs[1]:
+        st.dataframe(safe_dataframe_for_streamlit(users),use_container_width=True,hide_index=True)
+    with tabs[2]:
+        st.dataframe(safe_dataframe_for_streamlit(chats.head(300)),use_container_width=True,hide_index=True)
+    with tabs[3]:
+        st.subheader("Files")
+        st.dataframe(safe_dataframe_for_streamlit(files),use_container_width=True,hide_index=True)
+        st.subheader("Projects")
+        st.dataframe(safe_dataframe_for_streamlit(projects),use_container_width=True,hide_index=True)
+    with tabs[4]:
+        st.subheader("Emails")
+        st.dataframe(safe_dataframe_for_streamlit(emails),use_container_width=True,hide_index=True)
+        st.subheader("Calls")
+        st.dataframe(safe_dataframe_for_streamlit(calls),use_container_width=True,hide_index=True)
+    with tabs[5]:
+        if loans.empty:
+            st.info("No Chibobec loan clients are currently recorded.")
+        else:
+            view=loans.copy()
+            view["loan_amount"]=view["loan_amount"].map(lambda x:f"₦{float(x):,.2f}")
+            view["2-day reminder"]=view["reminder_2_sent"].map({0:"Pending",1:"Sent"})
+            view["due-date reminder"]=view["due_sent"].map({0:"Pending",1:"Sent"})
+            view=view.drop(columns=["reminder_2_sent","due_sent"])
+            st.dataframe(safe_dataframe_for_streamlit(view),use_container_width=True,hide_index=True)
+
+
 if selected_page=="Overview":
+    if user["role"] != "master":
+        st.error("DACRE Analytics platform oversight is reserved for David Emenike in the Overall Admin DI Office.")
+        st.stop()
     render_analytics_overview(user)
 
 elif selected_page=="DI Home":
@@ -3803,52 +4252,38 @@ elif selected_page=="DI Home":
 # BUSINESS COMMAND CENTER — additive executive intelligence page
 # =============================================================================
 elif selected_page=="DI Calls":
+    if user["role"] not in ("company_admin", "master"):
+        st.error("Only a company administrator can call a DI. The master uses the Sovereign Master Call in the Overall Admin DI Office.")
+        st.stop()
+    if user["role"]=="master":
+        st.info("Master access: use Sovereign Master Call for multi-DI council sessions.")
+        st.stop()
     agents=[dict(r) for r in get_di_agents()]
     assigned=[a for a in agents if not a.get('assigned_company') or a.get('assigned_company')==user['company']]
-    st.markdown("""<div class='call-stage'><div class='call-top'><div><div class='eyebrow'>DA-CRE CONNECT</div><h1 style='margin:0'>DI Calls</h1><p>Private business calling for your team — plus direct calls with any available DI worker.</p></div><div class='live-dot'>● LIVE READY</div></div></div>""",unsafe_allow_html=True)
-    st.markdown("### Who do you want to call?")
-    mode=st.radio("Call type",["Call a DI","Team / group call"],horizontal=True,key="call_mode")
-    if mode=="Call a DI":
-        if not assigned: st.info("No DI workers are currently available for this organization.")
-        else:
-            cards=[]
-            for a in assigned:
-                avatar=(a.get('avatar_url') or '')
-                cards.append(f"<div class='di-person-card'><img src='{avatar}'/><div><b>{a['di_name']}</b><span>{a['specialty']}</span><small>{a['di_code']} · {a['status']}</small></div></div>")
-            st.markdown("<div class='di-person-grid'>"+''.join(cards)+"</div>",unsafe_allow_html=True)
-            labels=[f"{a['di_name']} — {a['specialty']}" for a in assigned]
-            idx=st.selectbox("Choose DI",range(len(labels)),format_func=lambda i:labels[i],key="call_di_choice")
-            target=assigned[idx]
-            title=f"Call with {target['di_name']}"
-            room=st.session_state.get('active_call_room')
-            if not room or st.session_state.get('active_call_target')!=target['di_name']:
-                if st.button(f"📞 Start call with {target['di_name']}",use_container_width=True,type='primary'):
-                    room=make_call_room(user['company'],user['username'],title,'di')
-                    record_call_participant(room,user['company'],'user',user['username'],f"{user['first_name']} {user['last_name']}")
-                    record_call_participant(room,user['company'],'di',target['di_code'],target['di_name'])
-                    st.session_state.active_call_room=room; st.session_state.active_call_target=target['di_name']; st.session_state[f'join_call_{room}']=False
-                    log_activity(user['username'],user['company'],f"Started DI call with {target['di_name']}")
-                    st.rerun()
-            else:
-                render_call_interface(room,title,[{'display_name':f"{user['first_name']} {user['last_name']}",'participant_type':'you'},{'display_name':target['di_name'],'participant_type':'DI'}],user['company'])
-                if st.button("End DI Call",key="end_di_call",use_container_width=True):
-                    st.session_state.active_call_room=None; st.session_state.active_call_target=None; st.rerun()
+    st.markdown("""<div class='call-stage'><div class='call-top'><div><div class='eyebrow'>DACRE REALTIME VOICE</div><h1 style='margin:0'>DI Calls</h1><p>Company administrators can start a private, full-duplex WebRTC call with a DI.</p></div><div class='live-dot'>● LIVE READY</div></div></div>""",unsafe_allow_html=True)
+    if not assigned:
+        st.info("No DI workers are currently available for this organization.")
     else:
-        people=pd.read_sql_query("SELECT username,first_name,last_name,role,email FROM users WHERE company_name=? ORDER BY first_name",db(),params=(user['company'],))
-        selected=st.multiselect("Team members",people['username'].tolist(),format_func=lambda u: next((f"{r.first_name} {r.last_name} · {r.role}" for r in people.itertuples() if r.username==u),u),key="group_call_people")
-        title=st.text_input("Meeting title",value="DA-CRE Business Team Call")
-        if st.button("🎥 Create Group Call",use_container_width=True,type='primary'):
-            room=make_call_room(user['company'],user['username'],title,'team')
-            record_call_participant(room,user['company'],'user',user['username'],f"{user['first_name']} {user['last_name']}")
-            for uname in selected:
-                row=next((r for r in people.itertuples() if r.username==uname),None)
-                if row: record_call_participant(room,user['company'],'user',uname,f"{row.first_name} {row.last_name}")
-            st.session_state.active_call_room=room; st.session_state.active_call_target='team'; st.session_state[f'join_call_{room}']=False
-            log_activity(user['username'],user['company'],f"Created group call: {title}")
-            st.rerun()
-        room=st.session_state.get('active_call_room')
-        if room and st.session_state.get('active_call_target')=='team':
-            render_call_interface(room,title,[{'display_name':f"{user['first_name']} {user['last_name']}",'participant_type':'host'}]+[{'display_name':str(u),'participant_type':'member'} for u in selected],user['company'])
+        labels=[f"{a['di_name']} — {a['specialty']}" for a in assigned]
+        idx=st.selectbox("Choose DI",range(len(labels)),format_func=lambda i:labels[i],key="live_di_choice")
+        target=assigned[idx]
+        st.markdown(f"<div class='di-person-card'><img src='{_escape_html(target.get('avatar_url') or '')}'/><div><b>{_escape_html(target['di_name'])}</b><span>{_escape_html(target['specialty'])}</span><small>{_escape_html(target['position_title'] or target['specialty'])} · Rank {int(target.get('rank_level') or 1)}</small></div></div>",unsafe_allow_html=True)
+        live_room=st.session_state.get("livekit_active_room")
+        if not live_room or st.session_state.get("livekit_active_di")!=target['di_name']:
+            if st.button(f"🎙️ Start full-duplex call with {target['di_name']}",use_container_width=True,type='primary',key='start_live_di_call'):
+                room=make_call_room(user['company'],user['username'],f"Live call with {target['di_name']}",'di')
+                record_call_participant(room,user['company'],'user',user['username'],f"{user['first_name']} {user['last_name']}")
+                record_call_participant(room,user['company'],'di',target['di_code'],target['di_name'])
+                st.session_state.livekit_active_room=room
+                st.session_state.livekit_active_di=target['di_name']
+                log_activity(user['username'],user['company'],f"Started realtime DI call with {target['di_name']}",notify_admin=False)
+                st.rerun()
+        else:
+            render_livekit_call(live_room,user,[target],mode='company_di',title=f"Live call with {target['di_name']}")
+            if st.button("End realtime DI call",use_container_width=True,key='end_live_di_call'):
+                st.session_state.livekit_active_room=None
+                st.session_state.livekit_active_di=None
+                st.rerun()
 
 elif selected_page=="DI Workforce":
     agents=[dict(r) for r in get_di_agents() if not r.get('assigned_company') or r.get('assigned_company')==user['company']]
@@ -3888,21 +4323,6 @@ elif selected_page=="Decision Ledger":
 
 elif selected_page=="Opportunity Radar":
     render_opportunity_page(user)
-
-elif selected_page=="Chibobec Service" and user.get('role')=='master':
-    st.markdown("""<div class='master-office-hero'><div class='master-badge'>MASTER ONLY</div><div class='title'>Chibobec Service · Customer Intelligence</div><div class='sub'>System-wide customer record for the protected Chibobec workspace. This view is available only to the Overall Administrator.</div></div>""",unsafe_allow_html=True)
-    users,activity,chats,files,projects,emails,calls=master_customer_360(CHIBOBEC_COMPANY)
-    k1,k2,k3,k4,k5=st.columns(5)
-    k1.metric('Accounts',len(users)); k2.metric('Logins',int(users['login_count'].sum()) if not users.empty else 0); k3.metric('Activities',len(activity)); k4.metric('DI messages',len(chats)); k5.metric('Files',len(files))
-    tabs=st.tabs(['Accounts & Sign-ins','Everything They Did','DI Conversations','Files & Projects','Emails','Calls'])
-    with tabs[0]: st.dataframe(safe_dataframe_for_streamlit(users),use_container_width=True,hide_index=True)
-    with tabs[1]: st.dataframe(safe_dataframe_for_streamlit(activity),use_container_width=True,hide_index=True)
-    with tabs[2]: st.dataframe(safe_dataframe_for_streamlit(chats),use_container_width=True,hide_index=True)
-    with tabs[3]:
-        st.subheader('Files'); st.dataframe(safe_dataframe_for_streamlit(files),use_container_width=True,hide_index=True)
-        st.subheader('Projects'); st.dataframe(safe_dataframe_for_streamlit(projects),use_container_width=True,hide_index=True)
-    with tabs[4]: st.dataframe(safe_dataframe_for_streamlit(emails),use_container_width=True,hide_index=True)
-    with tabs[5]: st.dataframe(safe_dataframe_for_streamlit(calls),use_container_width=True,hide_index=True)
 
 elif selected_page=="DI Memory Box":
     st.markdown("<div class='dacre-hero'><div class='dacre-title'>DI Memory Box</div><div class='dacre-sub'>Shared knowledge used by DI across DACRE</div></div>",unsafe_allow_html=True)
@@ -4076,7 +4496,7 @@ elif selected_page=="Export Center":
 # ORGANIZATION ADMIN PORTAL
 # =============================================================================
 elif selected_page=="Chibobec Loan Desk" and is_chibobec_company(user.get("company")):
-    st.markdown(f"""<div class='dacre-user-hero'><div class='dacre-user-title'>Chibobec Loan Collection Desk</div><div class='dacre-user-sub'>Private workspace for <b>{CHIBOBEC_COMPANY.title()}</b> · Client loans, due dates and WhatsApp reminder automation.</div></div>""", unsafe_allow_html=True)
+    st.markdown(f"""<div class='dacre-user-hero'><div class='dacre-user-title'>Chibobec Client Workspace</div><div class='dacre-user-sub'><b>{CHIBOBEC_COMPANY.title()}</b> is a DACRE client. This workspace contains the client's loan operations, due dates and WhatsApp reminder automation.</div></div>""", unsafe_allow_html=True)
 
     if chibobec_reminder_results:
         for client_name, reminder_type, ok, status in chibobec_reminder_results:
@@ -4160,7 +4580,8 @@ elif selected_page=="Organization Admin Portal" and user["role"] in ("company_ad
         st.success(f"Admin access confirmed for {target_company}.")
 
     con=db()
-    tabs=st.tabs(["People & Accounts","Changes & Activity","DI Messages"])
+    org_tab_labels=["People & Accounts","DI Messages"] if user["role"]=="company_admin" else ["People & Accounts","Changes & Activity","DI Messages"]
+    tabs=st.tabs(org_tab_labels)
     with tabs[0]:
         users_df=pd.read_sql_query("SELECT id,first_name,last_name,username,email,role,login_count,created_at,last_login FROM users WHERE company_name=? ORDER BY id DESC",con,params=(target_company,))
         st.dataframe(safe_dataframe_for_streamlit(users_df),use_container_width=True)
@@ -4178,29 +4599,46 @@ elif selected_page=="Organization Admin Portal" and user["role"] in ("company_ad
                     notify_company_admin(target_company,f"Admin role changed for {selected_user}: {new_role}.","role_change")
                     log_activity(user["username"],target_company,f"Changed role for {selected_user} to {new_role}",notify_admin=False)
                     st.success("Role updated."); st.rerun()
-    with tabs[1]:
-        activity_df=pd.read_sql_query("SELECT id,username,action,created_at FROM activity WHERE company_name=? ORDER BY id DESC",con,params=(target_company,))
-        st.dataframe(safe_dataframe_for_streamlit(activity_df),use_container_width=True)
-    with tabs[2]:
+    if user["role"]=="master":
+        with tabs[1]:
+            activity_df=pd.read_sql_query("SELECT id,username,action,created_at FROM activity WHERE company_name=? ORDER BY id DESC",con,params=(target_company,))
+            st.dataframe(safe_dataframe_for_streamlit(activity_df),use_container_width=True)
+        notify_tab=tabs[2]
+    else:
+        notify_tab=tabs[1]
+    with notify_tab:
         notes_df=pd.read_sql_query("SELECT id,event_type,message,is_read,created_at FROM notifications WHERE company_name=? ORDER BY id DESC",con,params=(target_company,))
         st.dataframe(safe_dataframe_for_streamlit(notes_df),use_container_width=True)
         if not notes_df.empty and st.button("Mark DI messages as read"):
             con.execute("UPDATE notifications SET is_read=1 WHERE company_name=?",(target_company,)); con.commit(); st.rerun()
     con.close()
 
+
 # =============================================================================
 # MASTER ADMIN PORTAL / CEO OFFICE
 # =============================================================================
 elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
     counts=admin_metric_counts()
-    st.markdown("""
-    <div class="master-office-hero">
-      <span class="master-only-badge">🔐 MASTER ONLY · SYSTEM-WIDE ACCESS</span>
-      <div class="title">CEO Office</div>
-      <div class="sub">DACRE Analysis executive command centre · Overall Administration · DI Workforce</div>
-      <div class="authority">David Emenike · Overall Administrator · DACRE MASTER</div>
-    </div>
-    """,unsafe_allow_html=True)
+    hero_left, hero_right = st.columns([1.75, 1], gap="large")
+    with hero_left:
+        st.markdown("""
+        <div class="master-office-hero" style="height:100%;">
+          <span class="master-only-badge">🔐 MASTER ONLY · SYSTEM-WIDE ACCESS</span>
+          <div class="title">CEO Office</div>
+          <div class="sub">DACRE Analysis executive command centre · Overall Administration · DI Workforce</div>
+          <div class="authority">David Emenike · Overall Administrator · DACRE MASTER</div>
+          <div style="margin-top:18px;color:#d9ecff;font-size:.96rem;line-height:1.65;max-width:760px;">
+            <b>Founder command view.</b> Monitor platform activity, organizations, people, DI workforce, memory and system health from one protected executive workspace.
+          </div>
+        </div>
+        """,unsafe_allow_html=True)
+    with hero_right:
+        if CEO_PORTRAIT_PATH and CEO_PORTRAIT_PATH.exists():
+            st.markdown('<div class="ceo-portrait-frame">', unsafe_allow_html=True)
+            st.image(str(CEO_PORTRAIT_PATH), use_container_width=True, output_format="JPEG")
+            st.markdown('<div class="ceo-portrait-caption">David Emenike · CEO & Overall Administrator · DACRE Analysis</div></div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="ceo-portrait-frame"><div style="text-align:center;color:#b9d1e7;font-weight:800;">CEO portrait asset not found.<br>Upload <code>dacre_ceo.jpg</code> beside <code>app.py</code>.</div></div>', unsafe_allow_html=True)
 
     m1,m2,m3,m4,m5,m6=st.columns(6)
     m1.metric("Business Accounts",counts["users"])
@@ -4211,7 +4649,7 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
     m6.metric("DI Workforce",counts["agents"])
 
     con=db()
-    tabs=st.tabs(["Executive Overview","DI Workforce","Organizations","People & Accounts","Live Activity","DI Conversations","DI Memory Box","Mail Source","System Controls"])
+    tabs=st.tabs(["Executive Overview","DI Workforce","Sovereign Master Call","Organizations","People & Accounts","Live Activity","DI Conversations","Chibobec Client","DI Memory Box","David Creations","Mail Source","System Controls"])
 
     with tabs[0]:
         st.subheader("Executive Overview")
@@ -4240,51 +4678,138 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
 
     with tabs[1]:
         st.subheader("DI Workforce Command")
-        st.write("Create and manage the DI workers that DACRE can make available to organizations. Each DI has a name, code, specialty, status and assignment record.")
+        st.write("Create, rank, assign and privately brief your DI workforce. Workers are grouped by specialty and each has an individual private brain.")
         create_left,create_right=st.columns([1,1])
         with create_left:
-            di_name=st.text_input("DI Name",placeholder="e.g. DI Finance")
+            di_name=st.text_input("DI Name",placeholder="e.g. Marcus")
             di_specialty=st.text_input("Specialty",placeholder="e.g. Financial analysis and forecasting")
-            di_role=st.text_area("DI System Role",placeholder="Describe how this DI should serve businesses.",height=100)
+            di_role=st.text_area("DI System Role",placeholder="Describe how this DI should serve businesses.",height=90)
+            di_position=st.text_input("Position",placeholder="e.g. Finance Lead")
         with create_right:
             companies=[r[0] for r in con.execute("SELECT name FROM companies ORDER BY name").fetchall()]
-            di_status=st.selectbox("Initial Status",["Available","Assigned","Training","Paused"])
-            di_company=st.selectbox("Assign to Organization",["Unassigned"]+companies)
-            if st.button("Create DI Worker",use_container_width=True,type="primary"):
-                ok,msg=create_di_agent(di_name,di_specialty,di_status,"" if di_company=="Unassigned" else di_company,di_role)
+            di_status=st.selectbox("Initial Status",["Available","Assigned","Training","Paused"],key="new_di_status")
+            di_company=st.selectbox("Assign to Organization",["Unassigned"]+companies,key="new_di_company")
+            di_gender=st.selectbox("Staff presentation",["female","male"],format_func=lambda x:"Female professional" if x=="female" else "Male professional",key="new_di_gender")
+            di_rank=st.number_input("Initial Rank",min_value=1,max_value=20,value=1,step=1,key="new_di_rank")
+            if st.button("Create DI Worker",use_container_width=True,type="primary",key="create_di_master"):
+                ok,msg=create_di_agent(di_name,di_specialty,di_status,"" if di_company=="Unassigned" else di_company,di_role,di_gender,di_position or "DI Specialist",int(di_rank))
                 if ok:
-                    log_activity(MASTER_USERNAME,"DACRE MASTER",f"Created DI worker {di_name} ({msg})",notify_admin=False)
-                    st.success(f"DI created successfully. Worker code: {msg}")
-                    st.rerun()
+                    log_activity(MASTER_USERNAME,"DACRE MASTER",f"Created DI worker {di_name} ({msg})",notify_admin=False); st.success(f"DI created successfully. Worker code: {msg}"); st.rerun()
                 else: st.error(msg)
         agents=get_di_agents()
         if agents:
-            st.markdown("#### Available DI workers")
-            agent_df=pd.DataFrame([dict(r) for r in agents])
-            st.dataframe(safe_dataframe_for_streamlit(agent_df),use_container_width=True,hide_index=True)
-            selected_id=st.selectbox("Select DI worker",[r["id"] for r in agents],format_func=lambda x: next((r["di_name"] for r in agents if r["id"]==x),str(x)))
+            st.markdown("#### DI team by specialty")
+            groups={}
+            for a in agents: groups.setdefault(a["specialty"] or "General Intelligence",[]).append(a)
+            for group,members in sorted(groups.items()):
+                with st.expander(f"{group} · {len(members)} DI",expanded=True):
+                    cols=st.columns(min(4,len(members)))
+                    for idx,a in enumerate(sorted(members,key=lambda r:(-int(r["rank_level"] or 1),r["di_name"]))):
+                        with cols[idx%len(cols)]:
+                            if a["avatar_url"]: st.image(a["avatar_url"],width=84)
+                            st.markdown(f"**{a['di_name']}** · Rank {a['rank_level']}\n\n{a['position_title'] or a['specialty']}")
+                            st.caption(f"{a['status']} · {a['di_code']}")
+            st.markdown("#### HR / Position Bar")
+            selected_id=st.selectbox("Select DI",[r["id"] for r in agents],format_func=lambda x: next((r["di_name"] for r in agents if r["id"]==x),str(x)),key="hr_di_pick")
             selected_agent=next(r for r in agents if r["id"]==selected_id)
-            e1,e2=st.columns(2)
-            with e1:
-                new_status=st.selectbox("Change status",["Available","Assigned","Training","Paused"],index=["Available","Assigned","Training","Paused"].index(selected_agent["status"]))
-            with e2:
-                company_options=["Unassigned"]+companies
-                current_company=selected_agent["assigned_company"] or "Unassigned"
-                new_company=st.selectbox("Change assignment",company_options,index=company_options.index(current_company) if current_company in company_options else 0)
-            if st.button("Update DI Worker",use_container_width=True):
-                update_di_agent(selected_id,new_status,"" if new_company=="Unassigned" else new_company)
-                log_activity(MASTER_USERNAME,"DACRE MASTER",f"Updated DI worker {selected_agent['di_name']}",notify_admin=False)
-                st.success("DI worker updated."); st.rerun()
+            p1,p2,p3=st.columns(3)
+            with p1: new_position=st.text_input("Position",value=selected_agent["position_title"] or selected_agent["specialty"],key=f"pos_{selected_id}")
+            with p2: new_rank=st.number_input("Rank",min_value=1,max_value=20,value=int(selected_agent["rank_level"] or 1),step=1,key=f"rank_{selected_id}")
+            with p3:
+                company_options=["Unassigned"]+companies; current_company=selected_agent["assigned_company"] or "Unassigned"
+                new_company=st.selectbox("Assignment",company_options,index=company_options.index(current_company) if current_company in company_options else 0,key=f"assign_{selected_id}")
+            if st.button("Save Position & Rank",use_container_width=True,type="primary",key="save_hr_position"):
+                ok,thank=update_di_position(selected_id,new_position,int(new_rank),"" if new_company=="Unassigned" else new_company)
+                if ok:
+                    log_activity(MASTER_USERNAME,"DACRE MASTER",f"Appointed {selected_agent['di_name']} as {new_position} · rank {int(new_rank)}",notify_admin=False); st.success(thank); st.rerun()
+            thanks=con.execute("SELECT message,created_at FROM di_master_thanks WHERE di_id=? ORDER BY id DESC LIMIT 3",(int(selected_id),)).fetchall()
+            if thanks:
+                st.markdown("#### Thank-you messages")
+                for t in thanks: st.info(f"{t['message']}\n\n{t['created_at']}")
+            st.markdown("#### Current workforce record")
+            agent_df=pd.DataFrame([dict(r) for r in agents]); display_cols=[c for c in ["di_name","specialty","position_title","rank_level","status","assigned_company","avatar_url","di_code"] if c in agent_df.columns]
+            st.dataframe(safe_dataframe_for_streamlit(agent_df[display_cols]),use_container_width=True,hide_index=True)
+            st.markdown("#### Private DI Call & Brain Briefing")
+            private_id=st.selectbox("Call a DI privately",[r["id"] for r in agents],format_func=lambda x: next((r["di_name"] for r in agents if r["id"]==x),str(x)),key="private_di_call_pick")
+            private_agent=next(r for r in agents if r["id"]==private_id)
+            private_msg=st.text_area("Share information or an instruction with this DI",placeholder="Tell this DI something important you want it to remember privately.",height=110,key="private_di_message")
+            private_title=st.text_input("Private brain title",placeholder="e.g. David's instruction for client strategy",key="private_di_title")
+            if st.button("Send & Store in DI Private Brain",use_container_width=True,type="primary",key="private_di_send") and private_msg.strip():
+                title=(private_title.strip() or "Master private briefing"); save_di_private_memory(private_id,title,private_msg.strip(),MASTER_USERNAME,"private_call")
+                response=sovereign_di_opinion(private_agent,private_msg.strip())
+                st.success(f"{private_agent['di_name']} received the private briefing and stored it in its own brain.")
+                st.markdown(f"<div class='di-answer-panel'><div class='answer-label'>{private_agent['di_name']} · PRIVATE RESPONSE</div><div>{_escape_html(response).replace(chr(10),'<br>')}</div></div>",unsafe_allow_html=True)
         else:
-            st.info("No DI workers have been created yet. This is the command centre where you create them.")
+            st.info("No DI workers have been created yet.")
 
     with tabs[2]:
+        st.subheader("Sovereign Master Call")
+        st.caption("Master-only full-duplex council. Select DIs by specialty; each joins the same WebRTC room as an independent voice participant.")
+        agents=get_di_agents()
+        if not agents:
+            st.info("Create DI workers first in DI Workforce.")
+        else:
+            groups={}
+            for a in agents:
+                groups.setdefault(a["specialty"] or "General Intelligence",[]).append(a)
+            selected=[]
+            for group,members in sorted(groups.items()):
+                st.markdown(f"#### {group}")
+                for a in members:
+                    c1,c2,c3=st.columns([0.08,0.62,0.30])
+                    with c1:
+                        checked=st.checkbox("Select",key=f"sovereign_live_pick_{a['id']}",label_visibility="collapsed")
+                    with c2:
+                        avatar=a["avatar_url"] or ""
+                        img=f"<img src=\"{_escape_html(avatar)}\" width=42 height=42 style=\"border-radius:50%;object-fit:cover\">" if avatar else ""
+                        st.markdown(f"<div style='display:flex;gap:10px;align-items:center'>{img}<div><b>{_escape_html(a['di_name'])}</b><br><span style='color:#9fb0c9'>{_escape_html(a['position_title'] or a['specialty'])} · Rank {int(a['rank_level'] or 1)}</span></div></div>",unsafe_allow_html=True)
+                    with c3:
+                        st.caption("● Ready")
+                    if checked:
+                        selected.append(a)
+            question=st.text_area("Master opening question",placeholder="Ask the council a strategic, technical or business question. They will answer in their own voices.",height=100,key="sovereign_live_question")
+            active=st.session_state.get("sovereign_live_room")
+            if not active:
+                if st.button("🎙️ Start full-duplex Sovereign Master Call",use_container_width=True,type="primary",key="sovereign_live_start"):
+                    if not selected:
+                        st.warning("Select at least one DI.")
+                    else:
+                        room=make_call_room("DACRE MASTER",MASTER_USERNAME,"Sovereign Master Call",'master_council')
+                        call_id,_legacy_room=create_sovereign_call("Sovereign Master Call",[a["id"] for a in selected])
+                        sovereign_log(call_id,"master",MASTER_USERNAME,MASTER_FULL_NAME,question.strip() or "Opened the Sovereign Master Call.")
+                        record_call_participant(room,"DACRE MASTER","master",MASTER_USERNAME,MASTER_FULL_NAME)
+                        for a in selected:
+                            record_call_participant(room,"DACRE MASTER","di",a["di_code"],a["di_name"])
+                        log_activity(MASTER_USERNAME,"DACRE MASTER",f"Started Sovereign Master Call with {len(selected)} DIs",notify_admin=False)
+                        st.session_state.sovereign_live_room=room
+                        st.session_state.sovereign_live_agents=selected
+                        st.session_state.sovereign_live_call_id=call_id
+                        st.rerun()
+            else:
+                live_agents=st.session_state.get("sovereign_live_agents",selected)
+                render_livekit_call(active,user,live_agents,mode="sovereign",title="Sovereign Master Call",question=question)
+                st.markdown("### Live council controls")
+                col_a,col_b=st.columns(2)
+                with col_a:
+                    if st.button("End Sovereign Master Call",use_container_width=True,type="primary",key="sovereign_live_end"):
+                        cid=st.session_state.get("sovereign_live_call_id")
+                        if cid:
+                            con.execute("UPDATE sovereign_calls SET ended_at=?,status='ended' WHERE id=?",(datetime.now().isoformat(timespec="seconds"),int(cid)))
+                            con.commit()
+                        st.session_state.sovereign_live_room=None
+                        st.session_state.sovereign_live_agents=[]
+                        st.session_state.sovereign_live_call_id=None
+                        st.rerun()
+                with col_b:
+                    st.caption("Audio is full-duplex. Speak naturally, interrupt when needed, and let each specialist answer in its own voice.")
+
+    with tabs[3]:
         st.subheader("All Organizations")
         companies_df=pd.read_sql_query("SELECT id,name,owner_username,website_url,created_at FROM companies ORDER BY id DESC",con)
         st.dataframe(safe_dataframe_for_streamlit(companies_df),use_container_width=True,hide_index=True)
         st.metric("Organizations",len(companies_df))
 
-    with tabs[3]:
+    with tabs[4]:
         st.subheader("People & Accounts — Permanent Control")
         st.caption("Fast account cleanup for the Overall Administrator. The master account is protected. Deletion is permanent and cannot be undone.")
         users_df=pd.read_sql_query("SELECT id,first_name,last_name,username,company_name,email,role,login_count,created_at,last_login FROM users WHERE role!='master' ORDER BY id DESC",con)
@@ -4308,18 +4833,21 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
             st.markdown("#### Current accounts")
             st.dataframe(safe_dataframe_for_streamlit(users_df),use_container_width=True,hide_index=True)
 
-    with tabs[4]:
+    with tabs[5]:
         st.subheader("System Activity")
         activity_df=pd.read_sql_query("SELECT id,username,company_name,action,created_at FROM activity WHERE lower(username) != lower(?) UNION ALL SELECT id, 'Visitor' AS username, 'PUBLIC' AS company_name, (event_type || ' · ' || page_name) AS action, created_at FROM public_visits ORDER BY created_at DESC",con,params=(MASTER_USERNAME,))
         st.dataframe(safe_dataframe_for_streamlit(activity_df),use_container_width=True,hide_index=True)
 
-    with tabs[5]:
+    with tabs[6]:
         st.subheader("DI Conversations Across DACRE")
         chat_df=pd.read_sql_query("SELECT id,username,company_name,sender,message,created_at FROM chat_history WHERE lower(username) != lower(?) ORDER BY id DESC",con,params=(MASTER_USERNAME,))
         st.dataframe(chat_df,use_container_width=True,hide_index=True)
         st.caption("This view gives the master administration layer system-wide visibility into DI conversations. It is not shown to ordinary users.")
 
-    with tabs[6]:
+    with tabs[7]:
+        render_chibobec_client_overview(con)
+
+    with tabs[8]:
         # This entire tab is inside the master-only Overall Admin branch.
         # Keep the extra identity check so the Memory Box can never be rendered
         # to an ordinary company user by mistake.
@@ -4328,6 +4856,23 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
         else:
             st.subheader("DI Memory Box — MASTER ONLY")
             st.caption("Private master knowledge store. DI workers use active records as trusted context, but ordinary company users cannot open or manage this page.")
+            with st.expander("🌐 Online Intelligence Intake",expanded=False):
+                web_q=st.text_input("Give DI a topic to research online",placeholder="e.g. latest market trends, regulation changes, a competitor, or a technology topic",key="admin_memory_web_q")
+                if st.button("Research Online",key="admin_memory_web_btn",use_container_width=True,type="primary") and web_q.strip():
+                    st.session_state.admin_memory_web_results=online_lookup(web_q.strip(),max_results=8)
+                results=st.session_state.get("admin_memory_web_results",[])
+                for title,url in results: st.markdown(f"**{title}**  \n{url}")
+                if results:
+                    target=st.selectbox("Where should this research go?", ["Shared DI Memory"]+[a["di_name"] for a in get_di_agents()],key="admin_memory_web_target")
+                    if st.button("Save Research",key="admin_memory_web_save",use_container_width=True):
+                        if target=="Shared DI Memory":
+                            now=datetime.now().isoformat(timespec="seconds")
+                            for title,url in results: con.execute("INSERT INTO di_memory(company_name,category,title,content,priority,active,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)",("","ONLINE RESEARCH",title,f"Public source: {url}",800,1,now,now))
+                            con.commit()
+                        else:
+                            ag=next(a for a in get_di_agents() if a["di_name"]==target)
+                            save_di_private_memory(ag["id"],"Online research: "+web_q.strip(),"\n".join([f"{t} — {u}" for t,u in results]),MASTER_USERNAME,"online_research")
+                        st.success("Online research saved.")
             mem_search=st.text_input("Search the DI Memory Box",placeholder="Search DACRE, DI, accounts, business analytics, formulas, security...",key="di_memory_admin_search")
             mem_filter=st.selectbox("Memory category",["ALL"]+sorted([r[0] for r in con.execute("SELECT DISTINCT category FROM di_memory ORDER BY category").fetchall()]),key="di_memory_category")
             if mem_search.strip():
@@ -4365,7 +4910,37 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
                         con.execute("INSERT INTO di_memory(category,title,content,priority,active,created_at,updated_at) VALUES(?,?,?,?,1,?,?)",(mem_category.strip().upper() or "GENERAL",mem_title.strip(),mem_content.strip(),int(mem_priority),now,now)); con.commit(); st.success("Saved to DI Memory Box."); st.rerun()
             st.info("Use this box for durable project facts, approved operating rules, creator information, security rules, product capabilities and other knowledge that every DI should share.")
 
-    with tabs[7]:
+    with tabs[9]:
+        st.subheader("David Creations")
+        st.caption("Master-only room. Your private founder archive and the individual DI brains are accessible here only after a second passkey check.")
+        if not st.session_state.get("david_creations_unlocked",False):
+            dc_pk=st.text_input("David Creations passkey",type="password",key="david_creations_pk")
+            if st.button("Unlock David Creations",use_container_width=True,type="primary",key="unlock_david_creations"):
+                if hmac.compare_digest((dc_pk or "").strip(),DAVID_CREATIONS_PASSKEY):
+                    st.session_state.david_creations_unlocked=True; st.success("David Creations unlocked."); st.rerun()
+                else: st.error("Incorrect David Creations passkey.")
+        else:
+            st.success("David Creations is unlocked for this master session.")
+            agents=get_di_agents()
+            if agents:
+                pick=st.selectbox("Select a DI brain",[a["id"] for a in agents],format_func=lambda x: next((a["di_name"] for a in agents if a["id"]==x),str(x)),key="dc_brain_pick")
+                rows=get_di_private_memory(pick,limit=100)
+                if rows: st.dataframe(safe_dataframe_for_streamlit(pd.DataFrame([dict(r) for r in rows])),use_container_width=True,hide_index=True)
+                else: st.info("This DI has no private master notes yet.")
+                title=st.text_input("Founder creation title",key="dc_title")
+                body=st.text_area("Private founder creation / sense / instruction",key="dc_body",height=130)
+                if st.button("Save to David Creations",use_container_width=True,type="primary",key="save_david_creation") and title.strip() and body.strip():
+                    now=datetime.now().isoformat(timespec="seconds")
+                    con.execute("INSERT INTO david_creations(category,title,content,created_at,updated_at) VALUES(?,?,?,?,?)",("FOUNDER",title.strip(),body.strip(),now,now)); con.commit()
+                    save_di_private_memory(pick,title.strip(),body.strip(),MASTER_USERNAME,"david_creations")
+                    st.success("Saved privately to the founder archive and selected DI brain.")
+            dc_df=pd.read_sql_query("SELECT category,title,content,created_at,updated_at FROM david_creations ORDER BY id DESC",con)
+            st.markdown("#### Founder creation archive")
+            st.dataframe(safe_dataframe_for_streamlit(dc_df),use_container_width=True,hide_index=True)
+            if st.button("Lock David Creations",use_container_width=True,key="lock_david_creations"):
+                st.session_state.david_creations_unlocked=False; st.rerun()
+
+    with tabs[10]:
         st.subheader("DI Mail Source")
         try:
             _smtp_cfg = {
@@ -4421,7 +4996,7 @@ DACRE_SMTP_FROM = \"\"
         mails_df=pd.read_sql_query("SELECT id,recipient_name,recipient_email,company_name,subject,sender_email,status,sent_at,body FROM emails_log ORDER BY id DESC",con)
         st.dataframe(safe_dataframe_for_streamlit(mails_df),use_container_width=True,hide_index=True)
 
-    with tabs[8]:
+    with tabs[11]:
         st.subheader("System Controls")
         st.write("Master-level controls are deliberately separated from normal company administration.")
         c1,c2=st.columns(2)
