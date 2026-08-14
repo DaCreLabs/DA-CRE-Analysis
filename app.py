@@ -2254,10 +2254,34 @@ def _bootstrap_runtime(schema_version=9):
 _bootstrap_runtime(_DB_SCHEMA_VERSION)
 
 def get_di_agents():
+    """Return DI workers as normalized dictionaries so older databases cannot
+    crash the UI when newly-added workforce columns are missing or null."""
     con = db()
-    rows = con.execute("SELECT * FROM di_agents ORDER BY id DESC").fetchall()
-    con.close()
-    return rows
+    try:
+        rows = con.execute("SELECT * FROM di_agents ORDER BY id DESC").fetchall()
+        normalized = []
+        for row in rows:
+            try:
+                item = dict(row)
+            except (TypeError, ValueError):
+                item = {
+                    key: row[idx] for idx, key in enumerate([col[0] for col in con.description or ()])
+                }
+            item.setdefault("position_title", "DI Specialist")
+            item.setdefault("rank_level", 1)
+            item.setdefault("assigned_company", None)
+            item.setdefault("avatar_url", "")
+            item.setdefault("voice_profile", "")
+            item.setdefault("thinking_style", "professional, evidence-first and helpful")
+            item["position_title"] = item.get("position_title") or item.get("specialty") or "DI Specialist"
+            try:
+                item["rank_level"] = int(item.get("rank_level") or 1)
+            except (TypeError, ValueError):
+                item["rank_level"] = 1
+            normalized.append(item)
+        return normalized
+    finally:
+        con.close()
 
 
 def get_di_private_memory(di_id, limit=30):
@@ -4704,10 +4728,10 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
             for group,members in sorted(groups.items()):
                 with st.expander(f"{group} · {len(members)} DI",expanded=True):
                     cols=st.columns(min(4,len(members)))
-                    for idx,a in enumerate(sorted(members,key=lambda r:(-int(r["rank_level"] or 1),r["di_name"]))):
+                    for idx,a in enumerate(sorted(members,key=lambda r:(-int((r.get("rank_level") if isinstance(r, dict) else r["rank_level"]) or 1),(r.get("di_name") if isinstance(r, dict) else r["di_name"]) or ""))):
                         with cols[idx%len(cols)]:
                             if a["avatar_url"]: st.image(a["avatar_url"],width=84)
-                            st.markdown(f"**{a['di_name']}** · Rank {a['rank_level']}\n\n{a['position_title'] or a['specialty']}")
+                            st.markdown(f"**{a['di_name']}** · Rank {int(a.get('rank_level') or 1)}\n\n{a.get('position_title') or a.get('specialty') or 'DI Specialist'}")
                             st.caption(f"{a['status']} · {a['di_code']}")
             st.markdown("#### HR / Position Bar")
             selected_id=st.selectbox("Select DI",[r["id"] for r in agents],format_func=lambda x: next((r["di_name"] for r in agents if r["id"]==x),str(x)),key="hr_di_pick")
