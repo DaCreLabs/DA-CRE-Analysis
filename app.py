@@ -57,6 +57,9 @@ LOGO_PATH = next((BASE_DIR / x for x in LOGO_CANDIDATES if (BASE_DIR / x).exists
 FAVICON_PATH = BASE_DIR / ".dacre_favicon.png"
 DB_PATH = BASE_DIR / "dacre_platform.db"
 
+# Public landing page supplied by the DACRE owner.
+DACRE_LANDING_URL = "https://dacre-landing-page-od7u.bolt.host/"
+
 # Streamlit Community Cloud does not guarantee persistence for local files.
 DI_MEMORY_SEED = [
     ("IDENTITY", "DI identity", "My name is DI — David's Intelligence. I am the built-in intelligence assistant inside DACRE Analysis.", 2000),
@@ -2723,34 +2726,83 @@ def landing_page():
                     else: st.error(msg)
         return
 
-    if LOGO_PATH.exists():
-        left,mid,right=st.columns([1,2,1])
-        with mid: st.image(str(LOGO_PATH),use_container_width=True)
+    # -------------------------------------------------------------------------
+    # DACRE BOOT SPLASH
+    # Show the DACRE logo first whenever a new browser session starts.
+    # -------------------------------------------------------------------------
+    if not st.session_state.get("dacre_boot_complete", False):
+        import base64
+        logo_markup = '<div class="dacre-boot-mark">DC</div>'
+        if LOGO_PATH.exists():
+            try:
+                logo_bytes = LOGO_PATH.read_bytes()
+                logo_b64 = base64.b64encode(logo_bytes).decode("ascii")
+                logo_markup = f'<img class="dacre-boot-logo" src="data:image/png;base64,{logo_b64}" alt="DACRE logo" />'
+            except Exception:
+                pass
+        st.markdown(f"""
+        <style>
+          .dacre-boot-wrap{{min-height:72vh;display:flex;align-items:center;justify-content:center;flex-direction:column;background:radial-gradient(circle at 50% 42%,rgba(75,130,245,.18),transparent 38%),#0b1020;border-radius:20px;margin:12px 0;padding:40px;}}
+          .dacre-boot-logo{{width:min(240px,55vw);max-height:240px;object-fit:contain;filter:drop-shadow(0 0 28px rgba(75,130,245,.5));animation:dacreBootLogo 1.15s ease-out both;}}
+          .dacre-boot-mark{{width:118px;height:118px;border-radius:28px;display:grid;place-items:center;background:linear-gradient(135deg,#3f74dc,#4b82f5);color:white;font:800 38px monospace;box-shadow:0 0 45px rgba(75,130,245,.45);animation:dacreBootLogo 1.15s ease-out both;}}
+          .dacre-boot-name{{margin-top:18px;color:#f4f7ff;font:700 1.45rem Geist,Inter,sans-serif;letter-spacing:.18em;}}
+          .dacre-boot-status{{margin-top:8px;color:#8492aa;font:500 .72rem Geist,Inter,sans-serif;letter-spacing:.08em;}}
+          .dacre-boot-loader{{margin-top:20px;width:170px;height:3px;border-radius:999px;background:#202a3e;overflow:hidden;}}
+          .dacre-boot-loader i{{display:block;height:100%;width:45%;border-radius:999px;background:#4b82f5;animation:dacreBootBar 1.2s ease-in-out infinite;box-shadow:0 0 12px rgba(75,130,245,.7);}}
+          @keyframes dacreBootLogo{{0%{{opacity:0;transform:scale(.78);}}100%{{opacity:1;transform:scale(1);}}}}
+          @keyframes dacreBootBar{{0%{{transform:translateX(-180%)}}100%{{transform:translateX(390%)}}}}
+        </style>
+        <div class="dacre-boot-wrap">
+          {logo_markup}
+          <div class="dacre-boot-name">DACRE</div>
+          <div class="dacre-boot-status">INITIALIZING ANALYSIS ENGINE</div>
+          <div class="dacre-boot-loader"><i></i></div>
+        </div>
+        """, unsafe_allow_html=True)
+        time.sleep(1.25)
+        st.session_state.dacre_boot_complete = True
+        st.rerun()
 
+    # -------------------------------------------------------------------------
+    # SUPPLIED PUBLIC LANDING PAGE
+    # Use the exact Bolt-hosted DACRE landing page as the public introduction.
+    # A direct-open button is provided as a fallback if the remote host blocks
+    # iframe embedding in a particular browser.
+    # -------------------------------------------------------------------------
     st.markdown("""
-    <div class="dacre-hero">
-      <div class="dacre-title">Turn business data into decisions.</div>
-      <div class="dacre-sub">DACRE Analysis combines data cleaning, analysis, visualisation, workspace memory and DI — David's Intelligence — in one business intelligence workspace.</div>
+    <style>
+      .dacre-public-shell{background:#0b1020;border:1px solid rgba(128,154,196,.18);border-radius:18px 18px 0 0;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.28);}
+      .dacre-public-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 16px;border-bottom:1px solid rgba(128,154,196,.16);background:#0e1526;}
+      .dacre-public-brand{display:flex;align-items:center;gap:10px;color:#f4f7ff;font-weight:800;letter-spacing:.08em;}
+      .dacre-public-dot{width:8px;height:8px;border-radius:50%;background:#62d7a2;box-shadow:0 0 12px rgba(98,215,162,.7);}
+      .dacre-public-link{color:#aab8ce;font-size:.72rem;}
+    </style>
+    <div class="dacre-public-shell">
+      <div class="dacre-public-head">
+        <div class="dacre-public-brand"><span class="dacre-public-dot"></span>DACRE</div>
+        <div class="dacre-public-link">Official public introduction</div>
+      </div>
     </div>
-    """,unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-    st.markdown("### Meet DI — your business intelligence copilot")
-    st.write("DI is designed to communicate naturally with users, understand the DACRE workspace, explain data in plain business language, and help users move from a question to an actionable answer.")
+    components.html(f"""
+      <iframe src="{DACRE_LANDING_URL}" title="DACRE Landing Page"
+        style="width:100%;height:780px;border:0;background:#0b1020;display:block;"
+        loading="eager" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    """, height=780, scrolling=False)
 
-    cols=st.columns(4)
-    cards=[("analytics","Analyse","Upload CSV, Excel, TSV or JSON data and inspect it quickly."),("cleaning","Clean","Clean headers, empty rows/columns, numeric fields and duplicates."),("charts","Visualise","Build bar, line and area charts from your active dataset."),("conversation","Talk to DI","Chat naturally with DI about your data, workspace or wider business questions.")]
-    for c,(image_key,title,desc) in zip(cols,cards):
-        with c:
-            st.markdown(f'<div class="feature-card image-card"><img src="{ONLINE_IMAGES[image_key]}" alt="{title}"/><div class="image-card-body"><h3>{title}</h3><p>{desc}</p></div></div>',unsafe_allow_html=True)
-
-    st.markdown("### Built for organizations")
-    st.write("Each organization gets its own workspace. The first account that creates a new organization becomes that organization's admin. Organization admins can monitor users, account creation, sign-ins and workspace changes for their organization. The master portal remains separate.")
-
-    a,b=st.columns(2)
-    with a:
-        if st.button("Start with DACRE",use_container_width=True): st.session_state.landing_mode="signup"; st.rerun()
-    with b:
-        if st.button("I already have an account",use_container_width=True): st.session_state.landing_mode="login"; st.rerun()
+    st.caption("If the landing page does not appear inside DACRE, use the button below to open the same official landing page directly.")
+    direct_col, start_col, login_col = st.columns([1,1,1])
+    with direct_col:
+        st.link_button("Open landing page", DACRE_LANDING_URL, use_container_width=True)
+    with start_col:
+        if st.button("Enter DACRE", use_container_width=True, type="primary"):
+            st.session_state.landing_mode = "signup"
+            st.rerun()
+    with login_col:
+        if st.button("Sign in", use_container_width=True):
+            st.session_state.landing_mode = "login"
+            st.rerun()
 
 
 # =============================================================================
@@ -2778,6 +2830,7 @@ _SESSION_DEFAULTS = {
     "active_call_target": None,
     "last_action_center_result": None,
     "last_speech": None,
+    "dacre_boot_complete": False,
 }
 for _key, _default in _SESSION_DEFAULTS.items():
     if _key not in st.session_state:
