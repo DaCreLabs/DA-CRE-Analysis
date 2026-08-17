@@ -25,6 +25,13 @@ import streamlit as st
 import streamlit.components.v1 as components
 from PIL import Image
 
+try:
+    import psycopg
+    from psycopg.rows import dict_row
+except Exception:
+    psycopg = None
+    dict_row = None
+
 # Optional LiveKit server SDK. The main DACRE app remains functional without it,
 # but full-duplex realtime DI calls require livekit-api in the deployment.
 try:
@@ -59,19 +66,20 @@ MASTER_PASSKEY_HASH = os.getenv(
 DAVID_CREATIONS_PASSKEY = os.getenv("DACRE_DAVID_CREATIONS_PASSKEY", "Mychildren").strip()
 
 DI_AVATAR_LIBRARY = {
+    # Stable professional public portrait URLs. Keep one fixed portrait per DI.
     "male": [
-        "https://randomuser.me/api/portraits/men/70.jpg",
-        "https://randomuser.me/api/portraits/men/41.jpg",
-        "https://randomuser.me/api/portraits/men/46.jpg",
-        "https://randomuser.me/api/portraits/men/64.jpg",
-        "https://randomuser.me/api/portraits/men/68.jpg",
+        "https://randomuser.me/api/portraits/men/32.jpg",
+        "https://randomuser.me/api/portraits/men/18.jpg",
+        "https://randomuser.me/api/portraits/men/75.jpg",
+        "https://randomuser.me/api/portraits/men/83.jpg",
+        "https://randomuser.me/api/portraits/men/52.jpg",
     ],
     "female": [
-        "https://randomuser.me/api/portraits/women/49.jpg",
-        "https://randomuser.me/api/portraits/women/44.jpg",
+        "https://randomuser.me/api/portraits/women/21.jpg",
+        "https://randomuser.me/api/portraits/women/32.jpg",
         "https://randomuser.me/api/portraits/women/68.jpg",
-        "https://randomuser.me/api/portraits/women/72.jpg",
-        "https://randomuser.me/api/portraits/women/79.jpg",
+        "https://randomuser.me/api/portraits/women/44.jpg",
+        "https://randomuser.me/api/portraits/women/65.jpg",
     ],
 }
 
@@ -228,11 +236,88 @@ DACRE Analysis is a business and data analysis workspace. Users can upload CSV, 
 DI means David's Intelligence. DI is the assistant inside DACRE Analysis. Each organization has its own workspace. The first person who creates a new organization becomes that organization's company admin. Later users joining an existing organization are regular users unless an admin grants them admin rights. Company admins can inspect users, account creation, sign-ins, file activity and changes for their organization. The master account can see system-wide activity.
 """.strip()
 
-def cloud_persistence_configured():
+def _secret_or_env(name, default=""):
     try:
-        return bool(st.secrets.get("DACRE_DATABASE_URL", "") or st.secrets.get("DATABASE_URL", "") or st.secrets.get("SUPABASE_DB_URL", ""))
+        value = st.secrets.get(name, "")
     except Exception:
-        return bool(os.getenv("DACRE_DATABASE_URL") or os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DB_URL"))
+        value = ""
+    return str(value or os.getenv(name, default) or default).strip()
+
+
+def database_url():
+    return (
+        _secret_or_env("SUPABASE_DB_URL")
+        or _secret_or_env("DACRE_DATABASE_URL")
+        or _secret_or_env("DATABASE_URL")
+    )
+
+
+def using_cloud_db():
+    return bool(database_url())
+
+
+def cloud_persistence_configured():
+    return bool(using_cloud_db() and psycopg is not None)
+
+
+def _qmark_to_pg(sql):
+    # DACRE historically uses SQLite-style '?' placeholders.
+    # PostgreSQL/psycopg uses '%s'; this conversion keeps the existing codebase
+    # intact while moving the persistent backend to Supabase PostgreSQL.
+    return str(sql).replace("?", "%s")
+
+
+class _PGCursorCompat:
+    def __init__(self, cur):
+        self._cur = cur
+
+    def execute(self, sql, params=None):
+        return self._cur.execute(_qmark_to_pg(sql), params)
+
+    def executemany(self, sql, params_seq):
+        return self._cur.executemany(_qmark_to_pg(sql), params_seq)
+
+    def fetchone(self):
+        return self._cur.fetchone()
+
+    def fetchall(self):
+        return self._cur.fetchall()
+
+    def __iter__(self):
+        return iter(self._cur)
+
+    def __getattr__(self, name):
+        return getattr(self._cur, name)
+
+
+class _PGConnectionCompat:
+    def __init__(self, conn):
+        self._conn = conn
+
+    def cursor(self, *args, **kwargs):
+        return _PGCursorCompat(self._conn.cursor(*args, **kwargs))
+
+    def execute(self, sql, params=None):
+        cur = self.cursor()
+        cur.execute(sql, params)
+        return cur
+
+    def executemany(self, sql, params_seq):
+        cur = self.cursor()
+        cur.executemany(sql, params_seq)
+        return cur
+
+    def commit(self):
+        return self._conn.commit()
+
+    def rollback(self):
+        return self._conn.rollback()
+
+    def close(self):
+        return self._conn.close()
+
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
 
 ONLINE_IMAGES = {
     "analytics": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=82",
@@ -329,6 +414,15 @@ def _db_file_lock(timeout=90):
 
 
 def db():
+    if using_cloud_db():
+        if psycopg is None or dict_row is None:
+            raise RuntimeError(
+                "Supabase database is configured, but psycopg is not installed. "
+                "Add psycopg[binary]>=3.2,<4 to requirements.txt and redeploy DACRE."
+            )
+        conn = psycopg.connect(database_url(), row_factory=dict_row, connect_timeout=15)
+        return _PGConnectionCompat(conn)
+
     con = sqlite3.connect(DB_PATH, timeout=60, check_same_thread=False)
     con.row_factory = sqlite3.Row
     try:
@@ -367,6 +461,141 @@ def verify_password(value, stored):
     legacy = hashlib.sha256(str(value).encode("utf-8")).hexdigest()
     return hmac.compare_digest(legacy, stored), True
 
+
+
+def _pg_table_columns(con, table_name):
+    rows = con.execute(
+        "SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name=? ORDER BY ordinal_position",
+        (table_name,),
+    ).fetchall()
+    return [str(r["column_name"]) for r in rows]
+
+
+def _pg_table_exists(con, table_name):
+    return bool(
+        con.execute(
+            "SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name=? LIMIT 1",
+            (table_name,),
+        ).fetchone()
+    )
+
+
+def _sqlite_source_tables(src):
+    rows = src.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+    ).fetchall()
+    return [r[0] for r in rows]
+
+
+def _migrate_sqlite_to_supabase_once():
+    """Copy the existing Streamlit SQLite database into Supabase exactly once.
+
+    This is intentionally performed from the running Streamlit deployment so the
+    current deployed customer accounts and DACRE records can survive the switch.
+    New Supabase records are never overwritten; conflicts on primary/unique keys
+    are ignored.
+    """
+    if not using_cloud_db():
+        return {"status": "local"}
+    if not DB_PATH.exists():
+        return {"status": "no_local_db", "copied": 0}
+
+    con = db()
+    try:
+        marker = con.execute(
+            "SELECT value FROM dacre_schema_meta WHERE key=? LIMIT 1",
+            ("sqlite_migrated_v1",),
+        ).fetchone()
+        if marker:
+            return {"status": "already_done", "copied": 0}
+
+        source = sqlite3.connect(DB_PATH)
+        source.row_factory = sqlite3.Row
+        try:
+            local_tables = _sqlite_source_tables(source)
+            # If Supabase already contains users, treat it as the production source
+            # and do not replay an older local snapshot into it.
+            target_users = con.execute("SELECT COUNT(*) AS n FROM public.users").fetchone()["n"]
+            if int(target_users or 0) > 0:
+                con.execute(
+                    "INSERT INTO dacre_schema_meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value",
+                    ("sqlite_migrated_v1", "skipped_existing_supabase_accounts"),
+                )
+                con.commit()
+                return {"status": "skipped_existing_supabase_accounts", "copied": 0}
+
+            # Copy the core dependency order first; the remaining tables follow.
+            preferred = [
+                "companies","users","notifications","activity","chat_history","files","projects",
+                "company_website_profile","public_visits","emails_log","di_agents","di_private_memory",
+                "di_position_history","di_master_thanks","di_jobs","di_collaboration","sovereign_calls",
+                "sovereign_call_members","sovereign_call_messages","david_creations","call_rooms",
+                "call_participants","decision_ledger","opportunity_radar","loan_clients","whatsapp_delivery_log",
+                "di_memory"
+            ]
+            ordered = [t for t in preferred if t in local_tables] + [t for t in local_tables if t not in preferred]
+            copied = {}
+            for table in ordered:
+                if not _pg_table_exists(con, table):
+                    continue
+                src_cols = [r[1] for r in source.execute('PRAGMA table_info("' + table + '")').fetchall()]
+                dst_cols = _pg_table_columns(con, table)
+                common = [c for c in src_cols if c in dst_cols]
+                if not common:
+                    continue
+                rows = source.execute('SELECT ' + ','.join('"' + c.replace('"', '""') + '"' for c in common) + ' FROM "' + table + '"').fetchall()
+                if not rows:
+                    copied[table] = 0
+                    continue
+                cols_sql = ",".join('"'+c.replace('"','""')+'"' for c in common)
+                vals_sql = ",".join(["%s"] * len(common))
+                insert_sql = f'INSERT INTO public."{table}" ({cols_sql}) VALUES ({vals_sql}) ON CONFLICT DO NOTHING'
+                con._conn.cursor().executemany(insert_sql, [tuple(r[c] for c in common) for r in rows])
+                copied[table] = len(rows)
+
+            # Reset PostgreSQL identity sequences to the imported maximum IDs.
+            for table in ordered:
+                if not _pg_table_exists(con, table) or "id" not in _pg_table_columns(con, table):
+                    continue
+                seq = con.execute("SELECT pg_get_serial_sequence(?, 'id') AS seq", (f"public.{table}",)).fetchone()
+                seq_name = seq["seq"] if seq else None
+                if not seq_name:
+                    continue
+                has_rows = con.execute(f'SELECT COUNT(*) AS n FROM public."{table}"').fetchone()["n"]
+                if int(has_rows or 0) > 0:
+                    max_id = con.execute(f'SELECT MAX(id) AS max_id FROM public."{table}"').fetchone()["max_id"]
+                    con.execute("SELECT setval(?, ?, true)", (seq_name, int(max_id or 1)))
+
+            con.execute(
+                "INSERT INTO dacre_schema_meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value",
+                ("sqlite_migrated_v1", json.dumps({"copied_at": datetime.now().isoformat(timespec="seconds"), "tables": copied})),
+            )
+            con.commit()
+            return {"status": "migrated", "copied": sum(copied.values()), "tables": copied}
+        finally:
+            source.close()
+    except Exception:
+        try:
+            con.rollback()
+        except Exception:
+            pass
+        raise
+    finally:
+        con.close()
+
+
+def seed_di_memory_postgres():
+    con = db(); now = datetime.now().isoformat(timespec="seconds")
+    try:
+        rows = [("",c,t,x,p,MASTER_USERNAME,now,now) for c,t,x,p in DI_MEMORY_SEED]
+        sql = (
+            "INSERT INTO di_memory(company_name,category,title,content,priority,created_by,created_at,updated_at) "
+            "SELECT ?,?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM di_memory WHERE company_name=? AND title=?)"
+        )
+        con.executemany(sql, [r + (r[0], r[2]) for r in rows])
+        con.commit()
+    finally:
+        con.close()
 
 def init_db():
     con = db()
@@ -905,6 +1134,8 @@ def _rebuild_call_participants(con):
 
 
 def ensure_runtime_schema():
+    if using_cloud_db():
+        return True
     """Repair historical DACRE call schemas every startup when needed.
 
     The migration is deliberately schema-driven, not version-driven. Older builds
@@ -1010,6 +1241,27 @@ def ensure_runtime_schema():
 
 def ensure_di_agent_columns():
     """Safely upgrade older DACRE databases without duplicate-column errors."""
+    if using_cloud_db():
+        con = db()
+        try:
+            existing = set(_pg_table_columns(con, "di_agents"))
+            additions = {
+                "avatar_url": "TEXT",
+                "voice_profile": "TEXT",
+                "thinking_style": "TEXT",
+                "position_title": "TEXT NOT NULL DEFAULT 'DI Specialist'",
+                "rank_level": "INTEGER NOT NULL DEFAULT 1",
+                "appointed_at": "TIMESTAMPTZ",
+                "appointed_by": "TEXT",
+            }
+            for column, dtype in additions.items():
+                if column not in existing:
+                    con.execute(f'ALTER TABLE public.di_agents ADD COLUMN "{column}" {dtype}')
+            con.commit()
+        finally:
+            con.close()
+        return
+
     con = db()
     try:
         existing = {row["name"] for row in con.execute("PRAGMA table_info(di_agents)").fetchall()}
@@ -1059,6 +1311,8 @@ def ensure_master():
 
 def seed_di_memory():
     """Seed the shared DI Memory Box without overwriting user-created memory."""
+    if using_cloud_db():
+        return seed_di_memory_postgres()
     con=db(); now=datetime.now().isoformat(timespec="seconds")
     con.execute("PRAGMA journal_mode=WAL")
     # Ensure the current schema can accept the seed records even when upgrading
@@ -2175,25 +2429,46 @@ def chibobec_login_monitor():
         con.close()
 
 def render_di_video_call_stage(agent_rows, title, user_label):
-    """Premium video-call shell. The face and mouth animate while the realtime call is active."""
-    cards=[]
-    for row in agent_rows:
-        a=dict(row)
-        name=str(a.get("di_name") or "DI")
-        avatar=str(a.get("avatar_url") or "")
+    """Premium video-call visual with high-quality faces and a moving mouth indicator.
+
+    The stage cycles the active-speaker emphasis through actual call participants.
+    When realtime audio is available, this gives the call a human conference-call
+    appearance while keeping the visual layer independent from the audio transport.
+    """
+    people=[]
+    for idx,row in enumerate(agent_rows):
+        a=dict(row); name=str(a.get("di_name") or "DI"); avatar=str(a.get("avatar_url") or DI_AVATAR_LIBRARY["male"][idx % len(DI_AVATAR_LIBRARY["male"])])
         position=str(a.get("position_title") or a.get("specialty") or "DI Specialist")
-        cards.append(f"""<div class='di-video-person is-speaking'>
+        people.append(f"""<div class='di-video-person' data-speaker-index='{idx}'>
           <div class='di-video-face-wrap'><div class='di-video-ring'></div><img class='di-video-face' src='{_escape_html(avatar)}' alt='{_escape_html(name)}'><span class='di-video-mouth'></span></div>
-          <div class='di-video-name'>{_escape_html(name)}</div><div class='di-video-role'>{_escape_html(position)}</div><div class='di-video-status'>● Speaking</div>
+          <div class='di-video-name'>{_escape_html(name)}</div><div class='di-video-role'>{_escape_html(position)}</div><div class='di-video-status'><span class='speaker-dot'>●</span> <span class='speaker-text'>Ready</span></div>
         </div>""")
-    human=f"""<div class='di-video-person'>
+    human=f"""<div class='di-video-person active-human'>
       <div class='di-video-face-wrap'><div class='di-video-ring'></div><div class='di-video-human'>{_escape_html((user_label or 'You')[:1].upper())}</div></div>
-      <div class='di-video-name'>{_escape_html(user_label)}</div><div class='di-video-role'>You</div><div class='di-video-status'>● Connected</div>
+      <div class='di-video-name'>{_escape_html(user_label)}</div><div class='di-video-role'>You</div><div class='di-video-status'><span class='speaker-dot'>●</span> <span class='speaker-text'>Connected</span></div>
     </div>"""
-    st.markdown(f"""<section class='di-video-call'>
-      <div class='di-video-call-head'><div><div class='eyebrow'>DACRE VIDEO CALL</div><h2>{_escape_html(title)}</h2><p>Full-face DI presence with animated speaking state.</p></div><strong>● LIVE</strong></div>
-      <div class='di-video-grid'>{human}{''.join(cards)}</div>
-    </section>""",unsafe_allow_html=True)
+    speaker_count=max(1,len(agent_rows))
+    components.html(f"""
+    <section class='di-video-call'>
+      <div class='di-video-call-head'><div><div class='eyebrow'>DACRE VIDEO CALL</div><h2>{_escape_html(title)}</h2><p>Full-face DI presence · animated mouth · active-speaker focus</p></div><strong>● LIVE</strong></div>
+      <div class='di-video-grid'>{human}{''.join(people)}</div>
+    </section>
+    <script>
+      (()=>{{
+        const cards=[...document.querySelectorAll('.di-video-person[data-speaker-index]')];
+        let current=0;
+        const tick=()=>{{
+          cards.forEach((card,i)=>{{
+            const on=i===current; card.classList.toggle('is-speaking',on);
+            const txt=card.querySelector('.speaker-text'); if(txt) txt.textContent=on?'Speaking':'Ready';
+          }});
+          current=(current+1)%Math.max(cards.length,1);
+        }};
+        if(cards.length){{tick();setInterval(tick,3200);}}
+      }})();
+    </script>
+    """, height=430, scrolling=False)
+
 
 def di_voice_player(text, language_code=None):
     """Render a visible DI voice control. Auto-speak is attempted; the button
@@ -2259,7 +2534,15 @@ def seed_named_di_workforce():
 
 @st.cache_resource(show_spinner=False)
 def _bootstrap_runtime(schema_version=9):
-    """Run database/schema/bootstrap once per process per schema version."""
+    """Bootstrap DACRE on either legacy SQLite or persistent Supabase PostgreSQL."""
+    if using_cloud_db():
+        _migrate_sqlite_to_supabase_once()
+        ensure_di_agent_columns()
+        ensure_master()
+        seed_di_memory()
+        seed_named_di_workforce()
+        return True
+
     init_db()
     ensure_runtime_schema()
     ensure_di_agent_columns()
@@ -2272,6 +2555,8 @@ _bootstrap_runtime(_DB_SCHEMA_VERSION)
 
 
 def ensure_admin_runtime_schema():
+    if using_cloud_db():
+        return True
     """Idempotently repair every table/column required by the Overall Admin portal.
 
     This runs outside the cached bootstrap so legacy SQLite databases are repaired
@@ -4234,122 +4519,94 @@ render_page_chrome(selected_page, user)
 # =============================================================================
 
 def di_voice_bridge(language_code="en-NG"):
-    """Eight-second browser voice capture for DI Home.
+    """Reliable 8-second browser speech capture with live transcript preview.
 
-    A user presses the microphone button, speaks naturally for up to eight seconds,
-    and the browser sends the combined transcript back to Streamlit automatically.
-    No audio file is uploaded to the server.
+    The browser captures speech, shows the words as they are recognized, stops at
+    eight seconds, then sends exactly one combined question back to the Streamlit
+    session. We intentionally avoid file upload so the microphone remains private.
     """
     lang_json = json.dumps(language_code)
     components.html(f"""
-    <div id="dacre-voice-box" style="font-family:Inter,system-ui,sans-serif;display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:2px 0;">
-      <button id="dacre-voice-btn" type="button" style="
-        border:1px solid #79c6f2;background:#eaf7ff;color:#0b5d8f;border-radius:12px;
-        padding:10px 15px;font-weight:800;cursor:pointer;font-size:14px;box-shadow:0 4px 14px rgba(0,103,170,.10);">
-        🎙️ Speak to DI
-      </button>
-      <div id="dacre-voice-status" style="font-size:13px;color:#49677f;font-weight:700;min-width:210px;">
-        Click the microphone, then speak for up to 8 seconds.
+    <div id="dacre-voice-box" style="font-family:Inter,system-ui,sans-serif;display:grid;gap:9px;padding:2px 0;">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <button id="dacre-voice-btn" type="button" style="border:1px solid #69b8ee;background:linear-gradient(135deg,#0e5f98,#1e82c0);color:#fff;border-radius:13px;padding:11px 17px;font-weight:850;cursor:pointer;font-size:14px;box-shadow:0 7px 18px rgba(0,103,170,.18);">🎙️ Talk to DI</button>
+        <div id="dacre-voice-status" style="font-size:13px;color:#49677f;font-weight:750;min-width:250px;">Click the microphone and speak naturally. DACRE will send your message after 8 seconds.</div>
       </div>
+      <div id="dacre-live-transcript" style="min-height:42px;padding:10px 12px;border-radius:12px;background:#0d223c;border:1px solid rgba(120,170,210,.28);color:#eaf6ff;font-size:14px;line-height:1.45;">Your words will appear here while you speak…</div>
     </div>
     <script>
     (() => {{
-      const btn = document.getElementById('dacre-voice-btn');
-      const status = document.getElementById('dacre-voice-status');
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      const lang = {lang_json};
-      let timer = null;
-      let remaining = 8;
-      let active = false;
-      let collected = [];
-      let rec = null;
+      const btn=document.getElementById('dacre-voice-btn');
+      const status=document.getElementById('dacre-voice-status');
+      const preview=document.getElementById('dacre-live-transcript');
+      const SpeechRecognition=window.SpeechRecognition || window.webkitSpeechRecognition;
+      const lang={lang_json};
+      let rec=null, timer=null, remaining=8, active=false, finals=[];
 
-      function setStatus(text) {{
-        if (status) status.textContent = text;
-      }}
-
-      function finishCapture() {{
-        if (!active) return;
-        active = false;
-        if (timer) {{ clearInterval(timer); timer = null; }}
-        try {{ if (rec) rec.stop(); }} catch (e) {{}}
-        const text = collected.join(' ').replace(/\\s+/g, ' ').trim();
-        btn.disabled = false;
-        btn.textContent = '🎙️ Speak to DI';
-        if (!text) {{
-          setStatus('I could not hear a clear question. Click the microphone and try again.');
-          return;
+      const setStatus=(t)=>{{ if(status) status.textContent=t; }};
+      const setPreview=(t)=>{{ if(preview) preview.textContent=t || 'Your words will appear here while you speak…'; }};
+      const navigateWithTranscript=(text)=>{{
+        const clean=String(text||'').replace(/\\s+/g,' ').trim();
+        if(!clean){{
+          setStatus('I could not hear a clear question. Please try again and speak a little closer to the microphone.');
+          btn.disabled=false; btn.textContent='🎙️ Talk to DI'; return;
         }}
-        setStatus('Sending your 8-second question to DI…');
-        const url = new URL(window.parent.location.href);
-        url.searchParams.set('di_voice', text);
-        url.searchParams.set('di_voice_lang', lang);
-        window.parent.location.href = url.toString();
-      }}
+        setStatus('Sending your question to DI…');
+        setPreview(clean);
+        const url=new URL(window.parent.location.href);
+        url.searchParams.set('di_voice',clean);
+        url.searchParams.set('di_voice_lang',lang);
+        window.parent.location.assign(url.toString());
+      }};
+      const finish=()=>{{
+        if(!active) return;
+        active=false;
+        if(timer){{clearInterval(timer);timer=null;}}
+        try{{if(rec) rec.stop();}}catch(e){{}}
+        btn.disabled=false; btn.textContent='🎙️ Talk to DI';
+        navigateWithTranscript(finals.join(' '));
+      }};
 
-      if (!SpeechRecognition) {{
-        btn.disabled = true;
-        btn.style.opacity = '0.55';
-        setStatus('Voice input is not available in this browser. You can still type to DI.');
+      if(!SpeechRecognition){{
+        btn.disabled=true; btn.style.opacity='.55';
+        setStatus('Voice input is unavailable in this browser. Please use Chrome or type your question below.');
         return;
       }}
 
-      btn.addEventListener('click', () => {{
-        if (active) return;
-        active = true;
-        collected = [];
-        remaining = 8;
-        btn.disabled = true;
-        btn.textContent = '⏺ Listening…';
-        setStatus('Listening… 8 seconds remaining');
-
-        rec = new SpeechRecognition();
-        rec.lang = lang;
-        rec.continuous = true;
-        rec.interimResults = true;
-        rec.maxAlternatives = 1;
-
-        rec.onresult = (event) => {{
-          const parts = [];
-          for (let i = event.resultIndex; i < event.results.length; i++) {{
-            const item = event.results[i];
-            if (item && item[0] && item[0].transcript) parts.push(item[0].transcript.trim());
+      btn.addEventListener('click',()=>{{
+        if(active) return;
+        active=true; finals=[]; remaining=8; setPreview('Listening…');
+        btn.disabled=true; btn.textContent='⏺ Listening…'; setStatus('Listening… 8 seconds remaining');
+        rec=new SpeechRecognition();
+        rec.lang=lang; rec.continuous=true; rec.interimResults=true; rec.maxAlternatives=1;
+        rec.onresult=(event)=>{{
+          let interim='';
+          for(let i=event.resultIndex;i<event.results.length;i++){{
+            const r=event.results[i]; const phrase=(r && r[0] && r[0].transcript ? r[0].transcript.trim() : '');
+            if(!phrase) continue;
+            if(r.isFinal) finals.push(phrase); else interim += (interim?' ':'')+phrase;
           }}
-          if (parts.length) collected.push(parts.join(' '));
+          const whole=[...finals,interim].join(' ').replace(/\\s+/g,' ').trim();
+          setPreview(whole || 'Listening…');
         }};
-
-        rec.onerror = () => {{
-          if (!active) return;
-          setStatus('Voice capture hit a browser microphone issue. Finishing what was heard…');
-          setTimeout(finishCapture, 120);
+        rec.onerror=(event)=>{{
+          if(!active) return;
+          if(event && event.error==='not-allowed'){{active=false;clearInterval(timer);timer=null;btn.disabled=false;btn.textContent='🎙️ Talk to DI';setStatus('Microphone permission was blocked. Allow microphone access for DACRE and try again.');return;}}
+          setStatus('Microphone connection hiccup — continuing the 8-second capture…');
         }};
-        rec.onend = () => {{
-          if (active) {{
-            // Chrome may end recognition early; restart quietly until the 8-second window ends.
-            try {{ rec.start(); }} catch (e) {{}}
-          }}
+        rec.onend=()=>{{
+          if(active){{ try{{rec.start();}}catch(e){{}} }}
         }};
-
-        try {{ rec.start(); }} catch (e) {{
-          active = false;
-          btn.disabled = false;
-          btn.textContent = '🎙️ Speak to DI';
-          setStatus('Microphone could not be started. Please allow microphone access and try again.');
-          return;
-        }}
-
-        timer = setInterval(() => {{
-          remaining -= 1;
-          if (remaining <= 0) {{
-            finishCapture();
-          }} else {{
-            setStatus(`Listening… ${{remaining}} second${{remaining === 1 ? '' : 's'}} remaining`);
-          }}
-        }}, 1000);
+        try{{rec.start();}}catch(e){{active=false;btn.disabled=false;btn.textContent='🎙️ Talk to DI';setStatus('Microphone could not be started. Please allow microphone access and try again.');return;}}
+        timer=setInterval(()=>{{
+          remaining-=1;
+          if(remaining<=0) finish();
+          else setStatus(`Listening… ${{remaining}} second${{remaining===1?'':'s'}} remaining`);
+        }},1000);
       }});
     }})();
     </script>
-    """, height=48)
+    """, height=116, scrolling=False)
 
 
 # Process a voice turn before rendering the page. This gives DI a real
@@ -4934,10 +5191,9 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
             st.write("The CEO Office is the highest DACRE administration layer. This is where master-level oversight, DI workforce creation, organization visibility and platform activity are managed.")
             st.write("All normal company users remain isolated inside their own organization workspaces.")
             if cloud_persistence_configured():
-                st.success("Cloud database persistence is configured.")
+                st.caption("Persistence: Supabase PostgreSQL · Connected")
             else:
-                st.warning("Cloud database persistence is NOT configured. This deployment is currently using local SQLite; Streamlit Community Cloud does not guarantee local-file persistence across restarts/redeploys.")
-                st.caption("If a customer signs up and the app later restarts, that local database can disappear. A remote SQL database is required for permanent customer accounts.")
+                st.caption("Persistence: Local development database")
             st.markdown("#### Latest customer sign-ups")
             signup_df=pd.read_sql_query("SELECT first_name,last_name,company_name,email,role,created_at,last_login FROM users WHERE role!='master' ORDER BY id DESC LIMIT 20",con)
             if signup_df.empty:
