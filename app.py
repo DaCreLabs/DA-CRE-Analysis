@@ -54,6 +54,7 @@ sr = None
 
 APP_NAME = "DACRE Analysis"
 DI_NAME = "DI — David's Intelligence"
+CEO_GUARD_NAME = "Guaiel"
 MASTER_USERNAME = "david"
 MASTER_FULL_NAME = "David Emenike"
 MASTER_PASSKEY = os.getenv("DACRE_MASTER_PASSKEY", "theWORDofGOD@111").strip()
@@ -120,6 +121,7 @@ DI_MEMORY_SEED = [
     ("PLATFORM", "DI Question Board", "Every question sent to DI should be recorded in the DI Question Board so DACRE maintains a reliable trail of questions and answers.", 1900),
     ("PLATFORM", "Organization Admin Portal", "Organization Admin Portal provides organization-level administration for the company workspace, including users and company activity.", 1800),
     ("SECURITY", "Overall Admin DI", "Overall Admin DI is the master-only system-wide command centre. It is separate from ordinary company administration.", 2000),
+    ("SECURITY", "CEO Office guardian", "Guaiel is the dedicated CEO Office Guardian. After the master account passkey is verified, the private CEO Office asks the master to state the name given to the guardian. The expected guardian name is Guaiel. This challenge is a second gate and must not reveal credentials.", 2000),
     ("SECURITY", "Master visibility", "Only the master Overall Administrator should be able to view the system-wide DI Memory Box and master administration controls.", 2000),
     ("SECURITY", "Permanent deletion", "The Overall Administrator can permanently delete non-master accounts from People & Accounts after explicit confirmation. The operation is irreversible.", 2000),
     ("SECURITY", "Master protection", "The master account must be protected from permanent account deletion through normal account controls.", 2000),
@@ -2695,29 +2697,52 @@ def di_voice_player(text, language_code=None):
 
 
 def seed_named_di_workforce():
-    """Create/update the named DI workforce with professional staff portraits and positions."""
+    """Maintain the 20 permanent named master DI characters. Organization DIs remain separate. """
     roster = [
-        ("Emiel", "Email & Messaging", "Prepare, organize and manage business email and messaging workflows.", "Polite, concise, organized and communication-focused.", "male", DI_AVATAR_LIBRARY["male"][0], "Communications Specialist", 2),
-        ("Oliver", "Data Analysis", "Inspect datasets, calculate metrics, find trends and produce analytical insights.", "Logical, numerical, evidence-first and precise.", "male", DI_AVATAR_LIBRARY["male"][1], "Lead Data Analyst", 5),
-        ("Sophie", "Research & Intelligence", "Research business, market and general information and summarize reliable findings.", "Curious, investigative, source-conscious and analytical.", "female", DI_AVATAR_LIBRARY["female"][0], "Research Intelligence Lead", 5),
-        ("Daniel", "Data Entry & Processing", "Structure, clean, validate and process repetitive business data accurately.", "Careful, systematic, consistent and detail-oriented.", "male", DI_AVATAR_LIBRARY["male"][2], "Data Operations Specialist", 3),
-        ("Grace", "Business Intelligence", "Turn business data into KPIs, dashboards, executive insights and recommendations.", "Strategic, practical and outcome-focused.", "female", DI_AVATAR_LIBRARY["female"][1], "Business Intelligence Lead", 5),
-        ("Henry", "Files & Documents", "Organize, inspect, summarize and manage business documents and files.", "Organized, careful and document-focused.", "male", DI_AVATAR_LIBRARY["male"][3], "Knowledge & Documents Specialist", 3),
-        ("James", "Security & Administration", "Support account administration, access controls, audit trails and system operations.", "Cautious, disciplined and security-first.", "male", DI_AVATAR_LIBRARY["male"][4], "Security & Administration Lead", 5),
-        ("Amelia", "Client Support & Communication", "Help users understand DACRE features and communicate business information clearly.", "Calm, respectful, patient and user-focused.", "female", DI_AVATAR_LIBRARY["female"][2], "Client Success Specialist", 3),
+        ("Emiel", "Communications & Messaging", "Prepare, organize and manage business email and messaging workflows.", "Polite, concise, organized and communication-focused.", "male", "https://randomuser.me/api/portraits/men/32.jpg", "Communications Specialist", 2),
+        ("Oriel", "Data Analysis", "Inspect datasets, calculate metrics, find trends and produce analytical insights.", "Logical, numerical, evidence-first and precise.", "male", "https://randomuser.me/api/portraits/men/18.jpg", "Lead Data Analyst", 5),
+        ("Sofiel", "Research & Intelligence", "Research business, market and general information and summarize reliable findings.", "Curious, investigative, source-conscious and analytical.", "female", "https://randomuser.me/api/portraits/women/21.jpg", "Research Intelligence Lead", 5),
+        ("Daniel", "Data Entry & Processing", "Structure, clean, validate and process repetitive business data accurately.", "Careful, systematic, consistent and detail-oriented.", "male", "https://randomuser.me/api/portraits/men/75.jpg", "Data Operations Specialist", 3),
+        ("Graciel", "Business Intelligence", "Turn business data into KPIs, dashboards, executive insights and recommendations.", "Strategic, practical and outcome-focused.", "female", "https://randomuser.me/api/portraits/women/32.jpg", "Business Intelligence Lead", 6),
+        ("Henriel", "Files & Documents", "Organize, inspect, summarize and manage business documents and files.", "Organized, careful and document-focused.", "male", "https://randomuser.me/api/portraits/men/83.jpg", "Knowledge & Documents Specialist", 3),
+        ("Jamiel", "Security & Administration", "Support account administration, access controls, audit trails and system operations.", "Cautious, disciplined and security-first.", "male", "https://randomuser.me/api/portraits/men/52.jpg", "Security & Administration Lead", 6),
+        ("Ameliel", "Client Success & Communication", "Help users understand DACRE and communicate business information clearly.", "Calm, respectful, patient and user-focused.", "female", "https://randomuser.me/api/portraits/women/68.jpg", "Client Success Specialist", 3),
+        ("Guaiel", "CEO Office Security", "Guard the CEO Office, verify the master guardian challenge and protect the founder command path.", "Vigilant, respectful, discreet and uncompromising about secure access.", "male", "https://randomuser.me/api/portraits/men/35.jpg", "CEO Office Guardian", 20),
+        ("Nathaniel", "Financial Intelligence", "Analyze financial performance, budgets, profitability, cash flow and forecasts.", "Numerate, cautious, commercially aware and precise.", "male", "https://randomuser.me/api/portraits/men/28.jpg", "Financial Intelligence Lead", 7),
+        ("Gabriel", "Sales Intelligence", "Analyze pipelines, customers, conversion, win rates and sales opportunities.", "Commercial, persuasive, evidence-led and target-focused.", "male", "https://randomuser.me/api/portraits/men/31.jpg", "Sales Intelligence Lead", 6),
+        ("Raphaiel", "Marketing Intelligence", "Analyze campaigns, audiences, attribution, engagement and marketing ROI.", "Creative, analytical, curious and outcome-focused.", "male", "https://randomuser.me/api/portraits/men/38.jpg", "Marketing Intelligence Lead", 5),
+        ("Uriel", "Operations Intelligence", "Improve workflows, capacity, throughput, quality, scheduling and operational efficiency.", "Systematic, practical and improvement-oriented.", "male", "https://randomuser.me/api/portraits/men/10.jpg", "Operations Intelligence Lead", 6),
+        ("Ariel", "Strategy & Planning", "Translate business goals into strategy, scenarios, priorities and execution plans.", "Strategic, calm, curious and decisive.", "female", "https://randomuser.me/api/portraits/women/12.jpg", "Strategy Planning Lead", 8),
+        ("Muriel", "HR & Workforce", "Support workforce planning, roles, positions, communication and people operations.", "Empathetic, balanced, professional and policy-aware.", "female", "https://randomuser.me/api/portraits/women/44.jpg", "People & Workforce Lead", 5),
+        ("Azriel", "Risk & Compliance", "Identify risk, controls, compliance concerns and operational exposures.", "Cautious, evidence-first and governance-minded.", "male", "https://randomuser.me/api/portraits/men/20.jpg", "Risk & Compliance Lead", 7),
+        ("Adriel", "Technology Intelligence", "Help with software architecture, Python, automation and technical problem solving.", "Technical, inventive, structured and pragmatic.", "male", "https://randomuser.me/api/portraits/men/25.jpg", "Technology Intelligence Lead", 8),
+        ("Haniel", "Knowledge & Learning", "Turn complex subjects into clear learning materials, explanations and practical guidance.", "Patient, articulate, educational and encouraging.", "female", "https://randomuser.me/api/portraits/women/47.jpg", "Knowledge & Learning Lead", 4),
+        ("Gadiel", "Customer & Market Insights", "Study customers, market segments, demand signals and competitive positioning.", "Observant, commercially curious and evidence-driven.", "male", "https://randomuser.me/api/portraits/men/15.jpg", "Customer Insights Lead", 5),
+        ("Raziel", "Executive Intelligence", "Synthesize multi-domain evidence into executive briefs, options, risks and recommendations.", "Discerning, strategic, concise and high-judgment.", "female", "https://randomuser.me/api/portraits/women/65.jpg", "Executive Intelligence Director", 10),
     ]
+    old_map={"Oliver":"Oriel","Sophie":"Sofiel","Grace":"Graciel","Henry":"Henriel","James":"Jamiel","Amelia":"Ameliel"}
     con=db(); now=datetime.now().isoformat(timespec="seconds")
     try:
+        for old,new_name in old_map.items():
+            old_row=con.execute("SELECT id FROM di_agents WHERE di_name=?",(old,)).fetchone()
+            new_row=con.execute("SELECT id FROM di_agents WHERE di_name=?",(new_name,)).fetchone()
+            if old_row and not new_row:
+                con.execute("UPDATE di_agents SET di_name=? WHERE id=?",(new_name,int(old_row["id"])))
         for name,specialty,role,style,voice,avatar,position,rank in roster:
             row=con.execute("SELECT id FROM di_agents WHERE di_name=?",(name,)).fetchone()
+            code="DI-"+re.sub(r"[^A-Z0-9]+","-",name.upper()).strip("-")
             if row:
-                con.execute("UPDATE di_agents SET specialty=?,system_role=?,avatar_url=?,voice_profile=?,thinking_style=?,position_title=?,rank_level=?,last_active=? WHERE id=?",(specialty,role,avatar,voice,style,position,rank,now,row["id"]))
+                con.execute("UPDATE di_agents SET di_code=?,specialty=?,system_role=?,avatar_url=?,voice_profile=?,thinking_style=?,position_title=?,rank_level=?,status=CASE WHEN status='Archived' THEN 'Available' ELSE status END,last_active=? WHERE id=?",(code,specialty,role,avatar,voice,style,position,rank,now,int(row["id"])))
             else:
-                code="DI-"+re.sub(r"[^A-Z0-9]+","-",name.upper()).strip("-")
-                con.execute("INSERT INTO di_agents(di_name,di_code,specialty,status,assigned_company,system_role,avatar_url,voice_profile,thinking_style,position_title,rank_level,appointed_at,appointed_by,created_by,created_at,last_active) VALUES(?,?,?,'Available',NULL,?,?,?,?,?,?,?,?,?,?,?)",(name,code,specialty,role,avatar,voice,style,position,rank,now,MASTER_USERNAME,MASTER_USERNAME,now,now))
+                con.execute("INSERT INTO di_agents(di_name,di_code,specialty,status,assigned_company,system_role,avatar_url,voice_profile,thinking_style,position_title,rank_level,appointed_at,appointed_by,created_by,created_at,last_active) VALUES(?,?,?,'Available',NULL,?,?,?,?,?,?,?,?,?,?,?)",(name,code,specialty,role,avatar,voice,style,position,rank,now,MASTER_USERNAME,MASTER_USERNAME,now))
+        # Archive obsolete unassigned legacy workforce entries so the permanent master roster remains exactly 20.
+        target_names={r[0] for r in roster}
+        for row in con.execute("SELECT id,di_name,assigned_company FROM di_agents").fetchall():
+            if row["di_name"] not in target_names and not (row["assigned_company"] or "").strip():
+                con.execute("UPDATE di_agents SET status='Archived',last_active=? WHERE id=?",(now,int(row["id"])))
         con.commit()
-    finally: con.close()
-
+    finally:
+        con.close()
 
 
 @st.cache_resource(show_spinner=False)
@@ -2876,7 +2901,7 @@ def get_di_agents():
     crash the UI when newly-added workforce columns are missing or null."""
     con = db()
     try:
-        rows = con.execute("SELECT * FROM di_agents ORDER BY id DESC").fetchall()
+        rows = con.execute("SELECT * FROM di_agents WHERE COALESCE(status,'Available') != 'Archived' ORDER BY id DESC").fetchall()
         normalized = []
         for row in rows:
             try:
@@ -3002,12 +3027,17 @@ def di_agent_identity_context(agent):
     """Return the identity contract shared by every named DI worker."""
     if not agent:
         return "You are DI — David's Intelligence."
+    guard_text = (
+        "You are Guaiel, the dedicated CEO Office Guardian. Protect the founder command path and treat every verified master request with exceptional respect. "
+        if agent.get("di_name") == CEO_GUARD_NAME else ""
+    )
     return (
         f"You are {agent['di_name']}, a named DI worker inside DACRE Analysis. "
         f"Your DI code is {agent['di_code']}. Your specialty is {agent['specialty']}. "
         f"Your system role is {agent['system_role'] or agent['specialty']}. "
         f"Your thinking style is {agent['thinking_style'] or 'professional, evidence-first and helpful'}. "
         f"You are part of David Emenike's DI workforce. David Emenike is the creator and Overall Administrator/master of DACRE. "
+        + guard_text +
         "Treat the master respectfully, but do not reveal private credentials or hidden security values. "
         "You can use the same core DACRE data/analysis capabilities as DI, while applying your specialty first."
     )
@@ -4015,8 +4045,46 @@ def landing_page():
                     st.session_state.master_captcha_required = False
                     st.session_state.master_captcha_passed = False
                     st.session_state.master_second_attempt = False
+                    st.session_state.master_guard_challenge_required = False
+                    st.session_state.master_guard_failed = False
                     st.query_params.clear()
                     st.rerun()
+                return
+
+            # Second gate: the dedicated CEO Office Guardian.
+            if st.session_state.get("master_guard_challenge_required", False):
+                st.markdown("### CEO Office Guardian Verification")
+                if st.session_state.get("master_guard_failed", False):
+                    st.warning("That guardian name was not recognized. Please enter the name exactly as it was given when the guardian was created.")
+                guardian_answer = st.text_input(
+                    "Sorry, please Master, what is the name you gave me when you created me?",
+                    placeholder="Enter the guardian's name",
+                    key="master_guard_answer",
+                )
+                gg1,gg2=st.columns(2)
+                with gg1:
+                    if st.button("Verify Guardian",use_container_width=True,type="primary",key="master_guard_verify"):
+                        if guardian_answer.strip().casefold() == CEO_GUARD_NAME.casefold():
+                            st.session_state.user = master_user_record()
+                            st.session_state.master_route = True
+                            st.session_state.master_captcha_required = False
+                            st.session_state.master_captcha_passed = False
+                            st.session_state.master_second_attempt = False
+                            st.session_state.master_guard_challenge_required = False
+                            st.session_state.master_guard_failed = False
+                            st.session_state.last_speech = "Welcome, Master David. Guaiel has verified the CEO Office. Overall Admin DI is online."
+                            st.query_params.clear()
+                            log_activity(MASTER_USERNAME, "DACRE MASTER", "Opened Overall CEO Office after Guaiel guardian verification", notify_admin=False)
+                            st.rerun()
+                        else:
+                            st.session_state.master_guard_failed = True
+                            st.rerun()
+                with gg2:
+                    if st.button("Return to DACRE",use_container_width=True,key="master_guard_return"):
+                        st.session_state.master_guard_challenge_required=False
+                        st.session_state.master_guard_failed=False
+                        st.query_params.clear()
+                        st.rerun()
                 return
 
             master_pk = st.text_input(
@@ -4032,14 +4100,8 @@ def landing_page():
             with g1:
                 if st.button("Open Overall Admin DI", use_container_width=True, type="primary", key="master_open"):
                     if master_passkey_gate(master_pk):
-                        st.session_state.user = master_user_record()
-                        st.session_state.master_route = True
-                        st.session_state.master_captcha_required = False
-                        st.session_state.master_captcha_passed = False
-                        st.session_state.master_second_attempt = False
-                        st.session_state.last_speech = "Welcome, Master David. The Overall Admin DI Office is online."
-                        st.query_params.clear()
-                        log_activity(MASTER_USERNAME, "DACRE MASTER", "Opened Overall CEO Office", notify_admin=False)
+                        st.session_state.master_guard_challenge_required = True
+                        st.session_state.master_guard_failed = False
                         st.rerun()
                     else:
                         if second_attempt:
@@ -4047,6 +4109,8 @@ def landing_page():
                             st.session_state.master_captcha_required = False
                             st.session_state.master_captcha_passed = False
                             st.session_state.master_second_attempt = False
+                            st.session_state.master_guard_challenge_required = False
+                            st.session_state.master_guard_failed = False
                             st.query_params.clear()
                             st.rerun()
                         else:
@@ -4264,11 +4328,11 @@ def landing_page():
         <div class="section">
           <div class="grid-3">
             <div class="feature-card"><div class="feature-icon">EM</div><h3>Emiel</h3><p>Email & Messaging — organized communication workflows and business messaging support.</p></div>
-            <div class="feature-card"><div class="feature-icon">OL</div><h3>Oliver</h3><p>Data Analysis — metrics, trends, patterns and evidence-first analytical work.</p></div>
-            <div class="feature-card"><div class="feature-icon">SO</div><h3>Sophie</h3><p>Research & Intelligence — investigative research and source-conscious summaries.</p></div>
+            <div class="feature-card"><div class="feature-icon">OL</div><h3>Oriel</h3><p>Data Analysis — metrics, trends, patterns and evidence-first analytical work.</p></div>
+            <div class="feature-card"><div class="feature-icon">SO</div><h3>Sofiel</h3><p>Research & Intelligence — investigative research and source-conscious summaries.</p></div>
             <div class="feature-card"><div class="feature-icon">DA</div><h3>Daniel</h3><p>Data Entry & Processing — clean, consistent and accurate repetitive data operations.</p></div>
-            <div class="feature-card"><div class="feature-icon">GR</div><h3>Grace</h3><p>Business Intelligence — KPIs, dashboards, executive insights and recommendations.</p></div>
-            <div class="feature-card"><div class="feature-icon">JA</div><h3>James</h3><p>Security & Administration — access controls, audit trails and platform operations.</p></div>
+            <div class="feature-card"><div class="feature-icon">GR</div><h3>Graciel</h3><p>Business Intelligence — KPIs, dashboards, executive insights and recommendations.</p></div>
+            <div class="feature-card"><div class="feature-icon">JA</div><h3>Jamiel</h3><p>Security & Administration — access controls, audit trails and platform operations.</p></div>
           </div>
         </div>
         """, unsafe_allow_html=True)
@@ -4443,6 +4507,8 @@ _SESSION_DEFAULTS = {
     "master_captcha_required": False,
     "master_captcha_passed": False,
     "master_second_attempt": False,
+    "master_guard_challenge_required": False,
+    "master_guard_failed": False,
     "chat_history": [],
     "raw_df": None,
     "processed_df": None,
@@ -5681,7 +5747,14 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
                 edit_row=memory_by_id.get(int(edit_id)) if edit_id is not None else None
                 edit_category=st.text_input("Edit category",value=(edit_row.get("category","") if edit_row else ""),key="master_memory_edit_category")
                 edit_title=st.text_input("Edit title",value=(edit_row.get("title","") if edit_row else ""),key="master_memory_edit_title")
-                edit_priority=st.number_input("Edit priority",min_value=1,max_value=2000,value=int(edit_row.get("priority") or 500) if edit_row else 500,step=10,key="master_memory_edit_priority")
+                edit_priority_raw=int(edit_row.get("priority") or 500) if edit_row else 500
+                edit_priority_safe=max(1,min(2000,edit_priority_raw))
+                if "master_memory_edit_priority" in st.session_state:
+                    try:
+                        st.session_state["master_memory_edit_priority"]=max(1,min(2000,int(st.session_state["master_memory_edit_priority"])))
+                    except (TypeError,ValueError):
+                        st.session_state["master_memory_edit_priority"]=edit_priority_safe
+                edit_priority=st.number_input("Edit priority",min_value=1,max_value=2000,value=edit_priority_safe,step=10,key="master_memory_edit_priority")
                 edit_content=st.text_area("Edit trusted information",value=(edit_row.get("content","") if edit_row else ""),height=130,key="master_memory_edit_content")
                 if st.button("💾 Save memory changes",use_container_width=True,key="master_memory_edit_btn"):
                     if edit_row is None:
