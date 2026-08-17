@@ -221,6 +221,12 @@ TEMPLATES = [
     ("best practice", "Best practice for {term}", "A strong practice for {term} is to document the definition, source, owner, calculation, reporting frequency and intended decision. This makes analysis repeatable and easier to audit."),
 ]
 
+
+
+# User-friendly technical knowledge extracted from the current DACRE source.
+# Never store or expose raw credential values here.
+DACRE_TECHNICAL_KNOWLEDGE = [('TECHNICAL_DACRE', 'DACRE architecture', 'DACRE Analysis is a Streamlit application with a persistent database layer, DI intelligence layer, data-analysis tools, organization administration, company workspaces, Chibobec client operations, and an optional realtime voice layer.'), ('TECHNICAL_DACRE', 'DI identity', "DI means David's Intelligence. DI is the built-in intelligence assistant inside DACRE Analysis and should explain DACRE features in clear, user-friendly language."), ('TECHNICAL_DACRE', 'Data stack', 'DACRE uses Python, Streamlit, pandas, SQLite for local development/fallback, and PostgreSQL through psycopg when Supabase persistence is configured.'), ('TECHNICAL_DACRE', 'Persistence', 'When Supabase is configured, DACRE routes the persistent database connection to PostgreSQL. The application contains a one-time SQLite-to-Supabase migration path designed to preserve existing records.'), ('TECHNICAL_DACRE', 'Security principle', 'DACRE source code may describe security controls, but DI must never reveal passwords, passkeys, API keys, access tokens, database credentials, or other secret values.'), ('TECHNICAL_DACRE', 'Authentication', 'DACRE stores user accounts with company membership, email identity, password/passkey hashes, roles, login counts, creation time, and last-login information.'), ('TECHNICAL_DACRE', 'Organization roles', "The first account for a new organization becomes its company administrator. Later members are normal users unless administration changes their role. David's master account has system-wide administration rights."), ('TECHNICAL_DACRE', 'DI Memory', 'The shared DI Memory Box stores trusted platform knowledge, DACRE rules, product capabilities, project history, and approved technical knowledge. DI retrieves relevant records instead of blindly using every memory item.'), ('TECHNICAL_DACRE', 'Private DI brains', "Each DI can have separate private memory records. A DI should not reveal another DI's private master notes to ordinary users or other DIs."), ('TECHNICAL_DACRE', 'Conversation memory', 'DI chat history is stored by username and company, allowing conversations to be restored after a later sign-in when persistent storage is available.'), ('TECHNICAL_DACRE', 'Web research', 'DI contains a public web-lookup path using DuckDuckGo HTML search when a question needs current public information. Retrieved sources are then available to the DI reasoning layer.'), ('TECHNICAL_DACRE', 'Reasoning layer', 'DACRE has an optional external reasoning layer configured through a server-side API key. DI must not expose that secret or claim a model call succeeded when it did not.'), ('TECHNICAL_DACRE', 'Fast DI mode', 'DI should answer simple questions from deterministic knowledge and relevant memory first. It should avoid web search and expensive reasoning when they are unnecessary.'), ('TECHNICAL_DACRE', 'Deep DI mode', 'Complex questions can use DI memory, active workspace data, public research, and the optional reasoning layer. The result should explain conclusions naturally and distinguish evidence from inference.'), ('TECHNICAL_DACRE', 'Dataset intelligence', 'DI can inspect the active pandas dataset, answer row/column questions, report duplicates and missing values, summarize the dataset, and work with selected business data.'), ('TECHNICAL_DACRE', 'Formula Lab', 'DACRE supports practical spreadsheet-style calculations including SUM, AVERAGE, COUNT, COUNTA, MAX, MIN, CONCATENATE, UPPER, LOWER, and TRIM.'), ('TECHNICAL_DACRE', 'Charts', 'DACRE can create business visualisations including bar, line, and area charts from workspace data.'), ('TECHNICAL_DACRE', 'File Vault', 'DACRE includes a File Vault for storing organization work files and keeping important business material organized within the workspace.'), ('TECHNICAL_DACRE', 'Export Center', 'DACRE supports exporting processed results, including CSV and Excel outputs.'), ('TECHNICAL_DACRE', 'Website intelligence', 'During company onboarding, DACRE can inspect a supplied public company website, extract useful page information, infer presentation/theme hints, and feed approved findings into company intelligence.'), ('TECHNICAL_DACRE', 'Chibobec workspace', 'Chibobec Loan Service is represented as a protected DACRE client workspace with its own loan desk and client operations.'), ('TECHNICAL_DACRE', 'Chibobec loan records', 'The Chibobec loan desk stores client name, WhatsApp number, loan amount, loan dispatch/lent date, due date, reminder states, message IDs, status, errors, and timestamps.'), ('TECHNICAL_DACRE', 'WhatsApp reminder logic', 'The Chibobec reminder system is designed for a two-day-before reminder and a due-date reminder. Delivery should be treated as successful only when the WhatsApp provider returns a message identifier, and duplicate reminders are prevented by saved delivery state.'), ('TECHNICAL_DACRE', 'DI Workforce', 'DACRE has a DI workforce registry containing specialist name, code, specialty, status, assignment, system role, avatar, voice profile, thinking style, position, rank, appointment information, and activity state.'), ('TECHNICAL_DACRE', 'DI jobs', 'DI jobs can be assigned to specialists with a title, description, company, priority, status, timestamps, and result so digital workers have persistent work records.'), ('TECHNICAL_DACRE', 'DI collaboration', 'The DI collaboration layer stores handoffs or messages between specialists on a topic, supporting multi-DI teamwork.'), ('TECHNICAL_DACRE', 'HR and positions', 'The master administration layer can assign a DI a position and rank, record position history, and store a thank-you message from the DI for the appointment.'), ('TECHNICAL_DACRE', 'Sovereign Master Call', 'The Overall Administrator has a Sovereign Master Call concept for bringing multiple specialist DIs together. Ordinary users cannot access the master-only council.'), ('TECHNICAL_DACRE', 'Realtime calls', 'DACRE contains an optional LiveKit integration for realtime browser voice calls. Full-duplex realtime calling requires server-side LiveKit credentials and a separate voice-agent service; those secrets are never shown to users.'), ('TECHNICAL_DACRE', 'CEO Office', 'The Overall Admin/CEO Office is master-only and contains system-wide administration, DI workforce controls, platform memory, organizations, people/accounts, activity, conversations, and founder-only areas.'), ('TECHNICAL_DACRE', 'David Creations', 'David Creations is a master-only private room intended for founder-level DI knowledge and private creations. Its passkey is a secret and must never be disclosed by DI.'), ('TECHNICAL_DACRE', 'System tables', 'The current DACRE database schema includes: activity, call_participants, call_rooms, chat_history, companies, company_website_profile, dacre_schema_meta, david_creations, decision_ledger, di_action_log, di_agents, di_master_thanks, di_memory, di_position_history, di_private_memory, emails_log, files, loan_clients, notifications, opportunity_radar, projects, public_visits, sovereign_call_members, sovereign_call_messages, sovereign_calls, users, whatsapp_delivery_log. These table names describe storage structures, not secret credentials.'), ('TECHNICAL_DACRE', 'Public technical inventory', 'The current DACRE source contains about 116 application functions and the supporting connection/helper classes. DI may explain what these functions do conceptually, but must not expose secret literals or credential material.'), ('TECHNICAL_DACRE', 'User-friendly code explanations', 'When a user asks how DACRE works, DI should translate implementation concepts into plain English. For example, explain that authentication checks a saved account record; memory retrieval finds relevant stored knowledge; web research fetches public information; and the database stores durable workspace state.'), ('TECHNICAL_DACRE', 'Code access policy', 'DI may explain DACRE architecture, features, workflows, database concepts, function purposes, and technical design derived from the application source. DI must refuse to disclose exact passwords, passkeys, API keys, access tokens, database connection strings, secrets, or other credential values.'), ('TECHNICAL_DACRE', 'Application function map', 'Major application functions currently include: add_loan_client, admin_metric_counts, ai_generate, apply_company_website_theme, apply_formula, ask_data_question, authenticate, build_di_context, build_executive_brief, business_health, business_signals, canonical_company_name, chibobec_login_monitor, clean_dataframe, close, cloud_persistence_configured, col_or, commit, create_account, create_decision, create_di_agent, create_livekit_token, create_sovereign_call, cursor, dacre_livekit_agent_name, database_url, dataframe_from_json, dataframe_to_json, db, delete_loan_client, di_agent_identity_context, di_memory_context, di_reply, di_specialist_reply, di_voice_bridge, di_voice_player, ensure_admin_runtime_schema, ensure_company_di, ensure_di_agent_columns, ensure_master, ensure_runtime_schema, execute, executemany, expr, fetchall, fetchone, get_di_agents, get_di_memory, get_di_private_memory, get_files, get_named_di, get_recent_di_actions, handle_data, handle_endtag, handle_starttag, hash_password, init_db, is_chibobec_company, landing_page, livekit_configured, load_chat_history, load_dataframe, log_activity, log_di_action, mail_secret, make_call_room, make_excel, master_customer_360, master_passkey_gate, master_user_record, maybe_upgrade_password_hash, memory_box_direct_answer, normalize_di_identity, normalize_whatsapp_number, notify_company_admin, online_lookup, opportunity_radar, permanently_delete_accounts, poly, prepare_favicon, process_chibobec_reminders, record_call_participant, record_public_visit, render_action_center, render_analytics_overview, render_business_twin, render_call_interface, render_chibobec_client_overview, render_decision_ledger, render_di_video_call_stage, render_livekit_call, render_opportunity_page, render_page_chrome, restore_project, rollback, safe_dataframe_for_streamlit, save_di_private_memory, save_file, save_project, seed_di_memory, seed_di_memory_postgres, seed_named_di_workforce, send_di_welcome_email, send_whatsapp_message, send_whatsapp_template, sovereign_di_opinion, sovereign_history, sovereign_log, speak, start_website_onboarding, transcribe_audio, update_di_agent, update_di_position, using_cloud_db, verify_password, verify_recaptcha_token')]
+
 DI_MEMORY_SEED = DI_MEMORY_SEED[:4000]
 
 CHIBOBEC_COMPANY = "chibobec loan service"
@@ -588,6 +594,7 @@ def seed_di_memory_postgres():
     con = db(); now = datetime.now().isoformat(timespec="seconds")
     try:
         rows = [("",c,t,x,p,MASTER_USERNAME,now,now) for c,t,x,p in DI_MEMORY_SEED]
+        rows.extend([("",c,t,x,1850,MASTER_USERNAME,now,now) for c,t,x in DACRE_TECHNICAL_KNOWLEDGE])
         sql = (
             "INSERT INTO di_memory(company_name,category,title,content,priority,created_by,created_at,updated_at) "
             "SELECT ?,?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM di_memory WHERE company_name=? AND title=?)"
@@ -1134,8 +1141,6 @@ def _rebuild_call_participants(con):
 
 
 def ensure_runtime_schema():
-    if using_cloud_db():
-        return True
     """Repair historical DACRE call schemas every startup when needed.
 
     The migration is deliberately schema-driven, not version-driven. Older builds
@@ -1143,6 +1148,8 @@ def ensure_runtime_schema():
     legacy room_code NOT NULL schema. Therefore we always inspect the real table
     before deciding that migration is unnecessary.
     """
+    if using_cloud_db():
+        return True
     max_attempts = 8
     for attempt in range(max_attempts):
         try:
@@ -1328,6 +1335,8 @@ def seed_di_memory():
             con.execute(f"ALTER TABLE di_memory ADD COLUMN {name} {decl}")
     con.commit()
     rows=[("",c,t,x,p,MASTER_USERNAME,now,now) for c,t,x,p in DI_MEMORY_SEED]
+    tech_rows=[("",c,t,x,1850,MASTER_USERNAME,now,now) for c,t,x in DACRE_TECHNICAL_KNOWLEDGE]
+    rows.extend(tech_rows)
     con.executemany("INSERT INTO di_memory(company_name,category,title,content,priority,created_by,created_at,updated_at) SELECT ?,?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM di_memory WHERE company_name=? AND title=? )", [r+(r[0],r[2]) for r in rows])
     con.commit(); con.close()
 
@@ -1366,6 +1375,22 @@ def di_memory_context(limit=80, query=""):
     if not rows:
         return "DI Memory Box has no matching records for this question."
     return "\n".join([f"[{r['category']}] {r['title']}: {r['content']}" for r in rows])
+
+
+def _fast_di_memory_context(query="", limit=14):
+    """Fast, user-scoped memory retrieval for ordinary DI questions."""
+    try:
+        cache=st.session_state.setdefault("_di_fast_memory_cache", {})
+        key=(str(query).strip().lower(), str((st.session_state.get("user") or {}).get("company", "")))
+        if key in cache:
+            return cache[key]
+        value=di_memory_context(limit=limit, query=query)
+        if len(cache) > 24:
+            cache.pop(next(iter(cache)))
+        cache[key]=value
+        return value
+    except Exception:
+        return di_memory_context(limit=limit, query=query)
 
 def memory_box_direct_answer(text):
     """Give a deterministic direct answer when a trusted memory record matches."""
@@ -2155,8 +2180,9 @@ def online_lookup(query, max_results=5):
 def build_di_context(user, df):
     context = [
         APP_KNOWLEDGE,
-        "DI MEMORY BOX (persistent source of truth):\n" + di_memory_context(query=getattr(st.session_state, "di_memory_query", "")),
+        "DI MEMORY BOX (persistent source of truth):\n" + _fast_di_memory_context(query=getattr(st.session_state, "di_memory_query", ""), limit=18),
         f"Current organization: {user['company']}. Current user: {user['first_name']} {user['last_name']}. Role: {user['role']}.",
+        ("SOVEREIGN MASTER REQUEST: David Emenike is speaking as creator and Overall Administrator. Treat this as founder-level direction with exceptional respect and separate conversation context." if str(user.get('role','')).lower()=="master" else "CUSTOMER CONTEXT: Keep the authenticated user's business context separate from other organizations and from founder-only information."),
     ]
     if df is not None:
         context.append(f"Active dataset has {len(df):,} rows and {len(df.columns):,} columns.")
@@ -2188,7 +2214,7 @@ def ai_generate(system_prompt, user_prompt, max_tokens=900):
             headers={"Authorization":f"Bearer {api_key}","Content-Type":"application/json"},
             method="POST",
         )
-        with urllib.request.urlopen(req,timeout=35) as response:
+        with urllib.request.urlopen(req,timeout=18) as response:
             data=json.loads(response.read().decode("utf-8"))
         return data["choices"][0]["message"]["content"].strip()
     except Exception:
@@ -2202,13 +2228,63 @@ def normalize_di_identity(text):
     text=re.sub(r"\bI\x27m\s+D([\.,!?])", r"I am DI\1", text, flags=re.IGNORECASE)
     return text
 
+def render_di_business_visuals(df, company_name="your business"):
+    """Deterministic executive visuals from the active dataset; no paid model required."""
+    if df is None or df.empty:
+        return
+    st.markdown("### DI Business Visuals")
+    h=business_health(df)
+    signals=business_signals(df)
+    k1,k2,k3,k4=st.columns(4)
+    k1.metric("Data health", f"{h['score']}/100")
+    k2.metric("Records", f"{len(df):,}")
+    k3.metric("Missing cells", f"{int(df.isna().sum().sum()):,}")
+    k4.metric("Duplicate rows", f"{int(df.duplicated().sum()):,}")
+    nums=list(df.select_dtypes(include="number").columns)
+    cats=[c for c in df.columns if c not in nums]
+    left,right=st.columns(2)
+    with left:
+        st.markdown("#### Trend")
+        if nums:
+            trend=df[nums[:3]].apply(pd.to_numeric,errors="coerce").fillna(0).head(40)
+            st.line_chart(trend,use_container_width=True,height=230)
+        else:
+            st.info("Add a numeric business field such as revenue, sales, cost or quantity for a trend view.")
+    with right:
+        st.markdown("#### Performance comparison")
+        if cats and nums:
+            cat,metric=cats[0],nums[0]
+            temp=df[[cat,metric]].copy(); temp[metric]=pd.to_numeric(temp[metric],errors="coerce").fillna(0)
+            view=temp.groupby(cat,dropna=False)[metric].sum().sort_values(ascending=False).head(10)
+            view.index=view.index.astype(str)
+            st.bar_chart(view,use_container_width=True,height=230)
+        elif nums:
+            st.bar_chart(df[nums[:2]].apply(pd.to_numeric,errors="coerce").fillna(0).head(12),use_container_width=True,height=230)
+        else:
+            st.info("Add categorical and numeric fields for a business comparison view.")
+    if signals:
+        st.markdown("#### DI business signals")
+        for sig in signals[:4]:
+            icon="📈" if sig.get("type")=="trend" else "⚠️" if sig.get("type")=="anomaly" else "🧹"
+            st.markdown(f"**{icon} {sig.get('column','Business signal')}** — {sig.get('message','Review this signal with DI.')}")
+    st.caption(f"Calculated from the active {company_name} workspace. DI does not invent these figures.")
+
 def di_reply(message, user, df, allow_online=True, language="English — Nigeria"):
     text=message.strip()
     low=text.lower()
     if not text:
         return "I am ready. Tell me the business result you want to achieve."
 
-    name="Master David" if user["role"]=="master" else user["first_name"]
+    is_master = str(user.get("role", "")).lower()=="master"
+    name="Master David" if is_master else user.get("first_name", "there")
+    user_identity = (
+        "SOVEREIGN MASTER REQUEST. The current speaker is David Emenike, creator and Overall Administrator/master of DACRE. "
+        "Respond with exceptional respect, executive judgment, technical depth and clear actions. Never expose credentials or private secrets. "
+        "This conversation is founder-only and must remain separate from normal customer conversations."
+        if is_master else
+        f"AUTHENTICATED USER: {user.get('first_name','')} {user.get('last_name','')}; COMPANY: {user.get('company','')}; ROLE: {user.get('role','user')}. "
+        "Use the user's identity when helpful and keep this conversation isolated to the current organization."
+    )
     greetings=["hello","hi","good morning","good afternoon","good evening","good day"]
     if any(p in low for p in greetings) and len(low.split())<=6:
         return f"Good day {name}. DI is online. What would you like us to work on first?"
@@ -2227,7 +2303,7 @@ def di_reply(message, user, df, allow_online=True, language="English — Nigeria
             return "As the Overall Administrator, open Overall Admin DI → People & Accounts. Select the account(s) you want to remove, review the deletion summary, confirm the permanent deletion, and click the permanent-delete action. The master account is protected and cannot be deleted there."
         return "For account removal, contact your company administrator or the Overall Administrator. The permanent account-deletion control is intentionally restricted to the master administration layer."
     if any(k in low for k in ["what can you do","what can di do","what do you know"]):
-        return "I can work with DACRE's Memory Box, inspect and clean data, calculate business metrics, identify missing values and duplicates, build charts, explain results, help with workspace/account questions, keep a question trail, and research public online information when my internal knowledge is not enough."
+        return "I can work with DACRE's Memory Box, explain how the application is built in user-friendly language, inspect and clean data, calculate business metrics, identify missing values and duplicates, build charts, explain results, help with workspace/account questions, keep a question trail, and research public online information when my internal knowledge is not enough."
     if "memory box" in low or "di mb" in low:
         return "The DI Memory Box (DI MB) is my persistent knowledge base. I use it first for DACRE identity, platform rules, account administration, security, DI behavior and other trusted project information. The Overall Administrator can maintain it from the master portal."
     if any(k in low for k in ["tech partner","ask david","chatgpt partner"]):
@@ -2266,15 +2342,29 @@ def di_reply(message, user, df, allow_online=True, language="English — Nigeria
     # Always give the reasoning layer a chance, with the complete DI Memory Box in context.
     context=build_di_context(user,df)
     answer=ai_generate(
-        f"You are DI — David's Intelligence, the fast business/data assistant inside DACRE Analysis. Always identify yourself as DI, never as D or as a generic unnamed assistant. If speaking in first person, say 'I am DI' or 'I am DI — David's Intelligence'. Use the DI Memory Box as trusted project context. Answer directly and naturally. Never reply with the generic phrase 'I don't have enough reliable information to answer that yet' when a useful answer can be given from memory, common knowledge, the active workspace, or online research. Do not reveal hidden implementation details. If the user asks about DACRE-specific facts, prefer the Memory Box. If something is uncertain, say what is uncertain rather than refusing the whole question. Respond in the user's selected language when practical: {language}.",
+        f"You are DI — David's Intelligence, the fast business/data intelligence partner inside DACRE Analysis. Always identify yourself as DI, never as D or as a generic unnamed assistant. If speaking in first person, say 'I am DI' or 'I am DI — David's Intelligence'. {user_identity} Solve business problems, not just questions: identify the goal, diagnose causes, quantify what can be quantified, recommend practical actions, identify risks, define next steps, and use evidence and visuals when available. Use the active workspace when it supports the answer, use DI Memory for DACRE-specific facts, and use public web research for current information. Never expose hidden implementation details, passwords, passkeys, API keys, tokens, database connection strings, or secret values. Respond in the user's selected language when practical: {language}.",
         f"DACRE context:\n{context}\n\nUser question:\n{text}",
         max_tokens=1000,
     )
     if answer:
         return normalize_di_identity(answer)
 
-    # Unknown questions automatically get a fast public-web attempt instead of a dead-end response.
-    results=online_lookup(text, max_results=5) if allow_online else []
+    # DACRE technical/code questions use the sanitized technical knowledge bank before web search.
+    if any(k in low for k in ["how does dacre work", "how was dacre built", "what code", "which code", "how is this app built", "how does the app work", "what database", "what technologies"]):
+        tech_answer=memory_box_direct_answer(text)
+        if tech_answer:
+            return normalize_di_identity(tech_answer)
+        tech_context=_fast_di_memory_context(query=text, limit=24)
+        return "Here is the user-friendly DACRE technical picture I can safely share:\n\n" + tech_context
+
+    # Unknown/current questions automatically get a fast public-web attempt instead of a dead-end response.
+    needs_web = allow_online and any(k in low for k in ["latest","current","today","recent","now","price","pricing","2026","online","search the web","look up","news"])
+    results=online_lookup(text, max_results=5) if needs_web else []
+    if not results and not needs_web:
+        compact=_fast_di_memory_context(query=text, limit=10)
+        if compact and "has no matching records" not in compact:
+            return "I can work from DACRE's stored knowledge here.\n\n" + compact
+
     if results:
         source_text="\n".join([f"SOURCE {i+1}: {title}\nURL: {href}" for i,(title,href) in enumerate(results)])
         answer=ai_generate(
@@ -2428,12 +2518,11 @@ def chibobec_login_monitor():
     finally:
         con.close()
 
-def render_di_video_call_stage(agent_rows, title, user_label):
-    """Premium video-call visual with high-quality faces and a moving mouth indicator.
+def render_di_video_call_stage(agent_rows, title, user_label, user_avatar=None):
+    """Premium conference-call stage with David's real portrait plus DI portraits.
 
-    The stage cycles the active-speaker emphasis through actual call participants.
-    When realtime audio is available, this gives the call a human conference-call
-    appearance while keeping the visual layer independent from the audio transport.
+    The founder avatar is used when supplied so David is visually present in
+    Sovereign Master calls. DI participants retain their own professional avatars.
     """
     people=[]
     for idx,row in enumerate(agent_rows):
@@ -2443,9 +2532,14 @@ def render_di_video_call_stage(agent_rows, title, user_label):
           <div class='di-video-face-wrap'><div class='di-video-ring'></div><img class='di-video-face' src='{_escape_html(avatar)}' alt='{_escape_html(name)}'><span class='di-video-mouth'></span></div>
           <div class='di-video-name'>{_escape_html(name)}</div><div class='di-video-role'>{_escape_html(position)}</div><div class='di-video-status'><span class='speaker-dot'>●</span> <span class='speaker-text'>Ready</span></div>
         </div>""")
+    human_face = (
+        f"<img class='di-video-face di-video-founder-face' src='{_escape_html(user_avatar)}' alt='{_escape_html(user_label or 'David Emenike')}'><span class='di-video-mouth founder-mouth'></span>"
+        if user_avatar else
+        f"<div class='di-video-human'>{_escape_html((user_label or 'You')[:1].upper())}</div>"
+    )
     human=f"""<div class='di-video-person active-human'>
-      <div class='di-video-face-wrap'><div class='di-video-ring'></div><div class='di-video-human'>{_escape_html((user_label or 'You')[:1].upper())}</div></div>
-      <div class='di-video-name'>{_escape_html(user_label)}</div><div class='di-video-role'>You</div><div class='di-video-status'><span class='speaker-dot'>●</span> <span class='speaker-text'>Connected</span></div>
+      <div class='di-video-face-wrap'><div class='di-video-ring'></div>{human_face}</div>
+      <div class='di-video-name'>{_escape_html(user_label)}</div><div class='di-video-role'>David Emenike · Creator &amp; Overall Administrator</div><div class='di-video-status'><span class='speaker-dot'>●</span> <span class='speaker-text'>Connected</span></div>
     </div>"""
     speaker_count=max(1,len(agent_rows))
     components.html(f"""
@@ -2555,13 +2649,13 @@ _bootstrap_runtime(_DB_SCHEMA_VERSION)
 
 
 def ensure_admin_runtime_schema():
-    if using_cloud_db():
-        return True
     """Idempotently repair every table/column required by the Overall Admin portal.
 
     This runs outside the cached bootstrap so legacy SQLite databases are repaired
     before any CEO Office query. It is safe to run repeatedly.
     """
+    if using_cloud_db():
+        return True
     con = db()
     try:
         ddl = {
@@ -4617,6 +4711,8 @@ if voice_turn:
     st.query_params.clear()
     spoken = str(voice_turn).strip()
     if spoken:
+        st.session_state.di_voice_prefill = spoken
+        st.session_state.di_voice_captured_at = datetime.now().isoformat(timespec="seconds")
         st.session_state.chat_history.append({"sender":user["first_name"],"text":spoken})
         reply=di_reply(spoken,user,st.session_state.processed_df,allow_online=True,language=st.session_state.get("di_language","English — Nigeria"))
         st.session_state.chat_history.append({"sender":"DI","text":reply})
@@ -4751,14 +4847,18 @@ elif selected_page=="DI Home":
         metrics=[("Rows",f"{len(df):,}"),("Columns",f"{len(df.columns):,}"),("Duplicates",f"{int(df.duplicated().sum()):,}"),("Active file",st.session_state.active_filename or "Workspace")]
         for col,(label,value) in zip([a,b,c,d],metrics):
             with col: st.markdown(f"<div class='di-metric'><div class='v'>{value}</div><div class='l'>{label}</div></div>",unsafe_allow_html=True)
+        render_di_business_visuals(df, user.get("company","your business"))
 
     st.markdown("### Conversation")
     for msg in st.session_state.chat_history[-12:]:
         who="DI" if msg["sender"]=="DI" else msg["sender"]
         st.markdown(f"<div style='background:{'#eaf7ff' if who=='DI' else '#ffffff'};border:1px solid #b8ddf4;border-radius:14px;padding:13px 16px;margin:8px 0'><b>{who}</b><div style='margin-top:5px;line-height:1.55'>{msg['text']}</div></div>",unsafe_allow_html=True)
 
+    voice_prefill=str(st.session_state.pop("di_voice_prefill", "") or "")
+    if voice_prefill:
+        st.markdown(f"<div style='margin:8px 0 10px;padding:10px 14px;border:1px solid #75bde9;background:#eef9ff;border-radius:12px;color:#0b4d78'><b>🎙️ Voice captured in chat:</b> {_escape_html(voice_prefill)}</div>",unsafe_allow_html=True)
     with st.form("di_chat_form",clear_on_submit=True):
-        chat_text=st.text_input("Ask DI",placeholder="Type here if you prefer text…",label_visibility="collapsed")
+        chat_text=st.text_input("Ask DI",value=voice_prefill,placeholder="Type here or speak…",label_visibility="collapsed")
         send=st.form_submit_button("Send to DI",use_container_width=True)
     if send and chat_text.strip():
         st.session_state.chat_history.append({"sender":user["first_name"],"text":chat_text.strip()})
@@ -4803,7 +4903,7 @@ elif selected_page=="DI Calls":
                 log_activity(user['username'],user['company'],f"Started realtime DI call with {target['di_name']}",notify_admin=False)
                 st.rerun()
         else:
-            render_di_video_call_stage([target], title=f"Live call with {target['di_name']}", user_label=f"{user['first_name']} {user['last_name']}")
+            render_di_video_call_stage([target], title=f"Live call with {target['di_name']}", user_label=f"{user['first_name']} {user['last_name']}", user_avatar=(str(CEO_PORTRAIT_PATH) if user.get('role')=='master' and CEO_PORTRAIT_PATH and CEO_PORTRAIT_PATH.exists() else None))
             render_livekit_call(live_room,user,[target],mode='company_di',title=f"Live call with {target['di_name']}")
             if st.button("End realtime DI call",use_container_width=True,key='end_live_di_call'):
                 st.session_state.livekit_active_room=None
@@ -5271,7 +5371,26 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
 
     with tabs[2]:
         st.subheader("Sovereign Master Call")
-        st.caption("Master-only full-duplex council. Select DIs by specialty; each joins the same WebRTC room as an independent voice participant.")
+        st.caption("Master-only founder channel. Every request here is treated as a Sovereign Master Request from David Emenike and kept separate from ordinary user conversations.")
+        st.markdown("<div class='di-answer-panel'><div class='answer-label'>♛ SOVEREIGN MASTER REQUEST</div><div style='line-height:1.65'>Master David can speak to the DI workforce from this channel. DIs respond with exceptional respect, business judgment, technical depth and clear actions. This founder conversation is separate from normal customer chat.</div></div>",unsafe_allow_html=True)
+        if "master_command_history" not in st.session_state: st.session_state.master_command_history=[]
+        for mm in st.session_state.master_command_history[-8:]:
+            who="Sovereign Master" if mm["sender"]=="master" else "DI"
+            st.markdown(f"<div style='background:#0d223c;color:#eaf6ff;border:1px solid rgba(120,170,210,.28);border-radius:14px;padding:12px 15px;margin:7px 0'><b>{who}</b><div style='margin-top:5px;line-height:1.55'>{_escape_html(mm['text']).replace(chr(10),'<br>')}</div></div>",unsafe_allow_html=True)
+        with st.form("sovereign_master_text_form",clear_on_submit=True):
+            master_request=st.text_input("Sovereign Master Request",placeholder="Speak or type your instruction to the DI workforce…",label_visibility="collapsed")
+            master_send=st.form_submit_button("Send Sovereign Master Request",use_container_width=True,type="primary")
+        if master_send and master_request.strip():
+            master_text=master_request.strip()
+            master_reply=di_reply(master_text,user,st.session_state.processed_df,allow_online=True,language=st.session_state.get("di_language","English — Nigeria"))
+            st.session_state.master_command_history.extend([{"sender":"master","text":master_text},{"sender":"di","text":master_reply}])
+            con_master=db(); now_master=datetime.now().isoformat(timespec="seconds")
+            con_master.execute("INSERT INTO chat_history(username,company_name,sender,message,created_at) VALUES(?,?,?,?,?)",(MASTER_USERNAME,"DACRE MASTER","SOVEREIGN MASTER",master_text,now_master))
+            con_master.execute("INSERT INTO chat_history(username,company_name,sender,message,created_at) VALUES(?,?,?,?,?)",(MASTER_USERNAME,"DACRE MASTER","DI",master_reply,now_master)); con_master.commit(); con_master.close()
+            st.session_state.last_speech=master_reply
+            if st.session_state.get("di_response_mode","voice")=="voice": speak(master_reply, DI_LANGUAGE_PROFILES[st.session_state.di_language]["code"])
+            st.rerun()
+
         agents=get_di_agents()
         if not agents:
             st.info("Create DI workers first in DI Workforce.")
@@ -5314,7 +5433,7 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
                         st.rerun()
             else:
                 live_agents=st.session_state.get("sovereign_live_agents",selected)
-                render_di_video_call_stage(live_agents, title="Sovereign Master Call", user_label=MASTER_FULL_NAME)
+                render_di_video_call_stage(live_agents, title="Sovereign Master Call", user_label=MASTER_FULL_NAME, user_avatar=(str(CEO_PORTRAIT_PATH) if CEO_PORTRAIT_PATH and CEO_PORTRAIT_PATH.exists() else None))
                 render_livekit_call(active,user,live_agents,mode="sovereign",title="Sovereign Master Call",question=question)
                 st.markdown("### Live council controls")
                 col_a,col_b=st.columns(2)
