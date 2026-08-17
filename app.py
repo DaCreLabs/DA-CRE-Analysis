@@ -2621,44 +2621,63 @@ def chibobec_login_monitor():
         con.close()
 
 def render_di_video_call_stage(agent_rows, title, user_label):
-    """Render the DACRE video-call stage with the founder's real portrait and DI portraits."""
+    """Render a premium visual call stage.
+
+    The actual speaker state is synchronized inside render_livekit_call() when
+    LiveKit is configured. This stage is the visual pre-call/companion stage and
+    never pretends that a DI is speaking on a timer.
+    """
     people=[]
     for idx,row in enumerate(agent_rows):
         a=dict(row)
         name=str(a.get("di_name") or "DI")
-        avatar=str(a.get("avatar_url") or DI_AVATAR_LIBRARY["male"][idx % len(DI_AVATAR_LIBRARY["male"])])
+        avatar=str(a.get("avatar_url") or "")
         position=str(a.get("position_title") or a.get("specialty") or "DI Specialist")
+        if not avatar:
+            avatar = DI_AVATAR_LIBRARY["female" if idx % 2 else "male"][idx % len(DI_AVATAR_LIBRARY["female" if idx % 2 else "male"])]
         people.append(f"""<div class='di-video-person' data-speaker-index='{idx}'>
-          <div class='di-video-face-wrap'><div class='di-video-ring'></div><img class='di-video-face' src='{_escape_html(avatar)}' alt='{_escape_html(name)}'><span class='di-video-mouth'></span></div>
+          <div class='di-video-face-wrap'><div class='di-video-ring'></div><img class='di-video-face' src='{_escape_html(avatar)}' alt='{_escape_html(name)}' onerror=\"this.style.display='none';this.parentElement.classList.add('avatar-fallback')\"><div class='di-avatar-fallback'>{_escape_html(name[:1].upper())}</div></div>
           <div class='di-video-name'>{_escape_html(name)}</div><div class='di-video-role'>{_escape_html(position)}</div><div class='di-video-status'><span class='speaker-dot'>●</span> <span class='speaker-text'>Ready</span></div>
         </div>""")
     founder_src = CEO_PORTRAIT_DATA_URL if 'CEO_PORTRAIT_DATA_URL' in globals() else ''
     founder = f"""<div class='di-video-person active-human' data-founder='1'>
-      <div class='di-video-face-wrap'><div class='di-video-ring'></div><img class='di-video-face founder-face' src='{founder_src}' alt='David Emenike'><span class='di-video-mouth'></span></div>
+      <div class='di-video-face-wrap'><div class='di-video-ring'></div><img class='di-video-face founder-face' src='{founder_src}' alt='David Emenike' onerror=\"this.style.display='none';this.parentElement.classList.add('avatar-fallback')\"><div class='di-avatar-fallback founder-fallback'>DE</div></div>
       <div class='di-video-name'>{_escape_html(user_label or 'David Emenike')}</div><div class='di-video-role'>Creator · CEO · Overall Administrator</div><div class='di-video-status'><span class='speaker-dot'>●</span> <span class='speaker-text'>Connected</span></div>
     </div>"""
     components.html(f"""
     <section class='di-video-call'>
-      <div class='di-video-call-head'><div><div class='eyebrow'>DACRE VIDEO CALL</div><h2>{_escape_html(title)}</h2><p>David Emenike and the selected DI specialists</p></div><strong>● LIVE</strong></div>
+      <div class='di-video-call-head'><div><div class='eyebrow'>DACRE VIDEO CALL</div><h2>{_escape_html(title)}</h2><p>Fixed DI identities · permanent portraits · real call speaker state when LiveKit is connected</p></div><strong>● LIVE READY</strong></div>
       <div class='di-video-grid'>{founder}{''.join(people)}</div>
     </section>
-    <script>
-      (()=>{{
-        const cards=[...document.querySelectorAll('.di-video-person[data-speaker-index]')];
-        const founder=document.querySelector('.di-video-person[data-founder="1"]');
-        let current=0;
-        const tick=()=>{{
-          if(founder) founder.classList.toggle('is-speaking', false);
-          cards.forEach((card,i)=>{{
-            const on=i===current; card.classList.toggle('is-speaking',on);
-            const txt=card.querySelector('.speaker-text'); if(txt) txt.textContent=on?'Speaking':'Ready';
-          }});
-          current=(current+1)%Math.max(cards.length,1);
-        }};
-        if(cards.length){{tick();setInterval(tick,3200);}}
-      }})();
-    </script>
-    """, height=430, scrolling=False)
+    <style>
+      .di-video-call{{font-family:Inter,Segoe UI,sans-serif;background:linear-gradient(145deg,#071a32,#0c2a4b);border:1px solid rgba(110,202,255,.28);border-radius:26px;padding:22px;margin:18px 0;box-shadow:0 24px 70px rgba(0,35,80,.26);color:#f4fbff}}
+      .di-video-call-head{{display:flex;justify-content:space-between;gap:18px;align-items:center;margin-bottom:18px}}
+      .di-video-call-head h2{{color:#f5fbff;margin:.2rem 0;font-size:24px}}
+      .di-video-call-head p{{color:#a9c9de;margin:0;font-size:12px}}
+      .di-video-call-head strong{{color:#81f5bc;letter-spacing:.12em;font-size:.78rem}}
+      .di-video-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px}}
+      .di-video-person{{background:linear-gradient(145deg,rgba(11,33,55,.96),rgba(9,25,45,.96));border:1px solid rgba(132,210,255,.18);border-radius:20px;padding:14px;text-align:center;transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease}}
+      .di-video-person.is-speaking{{border-color:rgba(86,245,190,.82);box-shadow:0 0 0 1px rgba(86,245,190,.24),0 0 34px rgba(86,245,190,.17);transform:translateY(-2px)}}
+      .di-video-face-wrap{{position:relative;width:170px;height:170px;margin:0 auto 12px;border-radius:50%;overflow:visible}}
+      .di-video-face{{width:170px;height:170px;border-radius:50%;object-fit:cover;border:3px solid rgba(111,213,255,.62);position:relative;z-index:2;background:#142a45}}
+      .di-video-ring{{position:absolute;inset:-8px;border-radius:50%;border:3px solid rgba(86,202,255,.28);z-index:0}}
+      .di-avatar-fallback{{display:none;position:absolute;inset:0;place-items:center;border-radius:50%;background:linear-gradient(135deg,#3b74dc,#774ee7);color:#fff;font-weight:900;font-size:54px;z-index:1}}
+      .avatar-fallback .di-avatar-fallback{{display:grid}}
+      .avatar-fallback .di-video-face{{display:none}}
+      .di-video-mouth{{position:absolute;z-index:4;left:50%;bottom:34px;transform:translateX(-50%);width:24px;height:7px;background:#24100f;border-radius:50%;opacity:.16}}
+      .di-video-person.is-speaking .di-video-face-wrap{{animation:diFacePulse 1.05s ease-in-out infinite}}
+      .di-video-person.is-speaking .di-video-ring{{animation:diRingPulse 1.05s ease-in-out infinite}}
+      .di-video-person.is-speaking .di-video-mouth{{animation:diMouth 180ms ease-in-out infinite alternate;opacity:.78}}
+      .di-video-name{{color:#f3fbff;font-size:1.04rem;font-weight:900}}
+      .di-video-role{{color:#a8c7db;font-size:.78rem;margin-top:3px}}
+      .di-video-status{{color:#83f3bd;font-size:.74rem;margin-top:9px;font-weight:800}}
+      @keyframes diFacePulse{{0%,100%{{transform:scale(1)}}50%{{transform:scale(1.022)}}}}
+      @keyframes diRingPulse{{0%,100%{{transform:scale(1);opacity:.55}}50%{{transform:scale(1.07);opacity:1}}}}
+      @keyframes diMouth{{from{{width:14px;height:4px}}to{{width:30px;height:11px}}}}
+      @media(max-width:700px){{.di-video-call-head{{align-items:flex-start;flex-direction:column}}.di-video-grid{{grid-template-columns:1fr 1fr}}.di-video-face-wrap,.di-video-face{{width:130px;height:130px}}}}
+    </style>
+    """, height=470, scrolling=False)
+
 
 def di_voice_player(text, language_code=None):
     """Render a visible DI voice control. Auto-speak is attempted; the button
@@ -3254,65 +3273,77 @@ def create_livekit_token(room_name, user, agent_rows, mode="company_di", questio
 
 
 def render_livekit_call(room_name, user, agent_rows, mode="company_di", title="DACRE Live Call", question=""):
-    """Render a real browser WebRTC room. Audio is full-duplex and interruptions are handled by the LiveKit agents."""
+    """Render a real browser WebRTC room with fixed DI portraits and actual active-speaker animation."""
     if not livekit_configured():
-        st.warning("LiveKit realtime voice is not configured in this deployment yet.")
-        st.code("LIVEKIT_URL\nLIVEKIT_API_KEY\nLIVEKIT_API_SECRET\nOPENAI_API_KEY", language="text")
-        st.caption("Add these as Streamlit Secrets. The LiveKit API secret and OpenAI key must never be placed in the browser or source code.")
+        st.warning("LiveKit realtime voice is not configured in this deployment yet. You can keep using browser DI voice without LiveKit.")
         return
     token, error = create_livekit_token(room_name, user, agent_rows, mode=mode, question=question)
     if not token:
         st.error(error or "Realtime call setup failed.")
         return
     ws_url = _dacre_env_secret("LIVEKIT_URL")
-    participants = [{"name": f"{user.get('first_name','')} {user.get('last_name','')}".strip() or user.get('username','User'), "role": "You", "voice": "local"}]
-    participants += [{"name": a.get("di_name", "DI"), "role": a.get("position_title") or a.get("specialty") or "DI Specialist", "voice": a.get("voice_profile") or "marin"} for a in agent_rows]
     safe = lambda x: _escape_html(str(x or ""))
+    founder_src = CEO_PORTRAIT_DATA_URL if 'CEO_PORTRAIT_DATA_URL' in globals() else ''
+    people = [{"name": f"{user.get('first_name','')} {user.get('last_name','')}".strip() or user.get('username','User'), "role": "David Emenike · Creator", "voice": "local", "avatar": founder_src, "founder": True}]
+    people += [{"name": a.get("di_name", "DI"), "role": a.get("position_title") or a.get("specialty") or "DI Specialist", "voice": a.get("voice_profile") or "default", "avatar": a.get("avatar_url") or "", "founder": False} for a in agent_rows]
     roster_html = "".join(
-        f"<div class='lk-person' data-name='{safe(p['name'])}'><div class='lk-avatar'>{safe(p['name'])[:1].upper()}</div><div><b>{safe(p['name'])}</b><span>{safe(p['role'])}</span></div><i class='lk-dot'></i></div>"
-        for p in participants
+        f"""<div class='lk-person' data-name='{safe(p['name'])}'><div class='lk-face-wrap'><img class='lk-face' src='{safe(p['avatar'])}' alt='{safe(p['name'])}' onerror=\"this.style.display='none';this.parentElement.classList.add('lk-fallback-wrap')\"><div class='lk-fallback'>{safe(p['name'][:2].upper())}</div><span class='lk-mouth'></span></div><div class='lk-person-meta'><b>{safe(p['name'])}</b><span>{safe(p['role'])}</span><em class='lk-speaking'>Listening</em></div></div>"""
+        for p in people
     )
     html = f"""
     <div id='dacre-livekit' style='font-family:Inter,system-ui,sans-serif;background:linear-gradient(145deg,#07111f,#0a1730 55%,#10164a);border:1px solid rgba(80,170,255,.22);border-radius:24px;padding:22px;color:#eaf4ff;box-shadow:0 18px 60px rgba(0,0,0,.28);'>
       <div style='display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;'>
-        <div><div style='font-size:11px;font-weight:800;letter-spacing:.16em;color:#6ea8ff;'>DACRE REALTIME</div><h2 style='margin:4px 0;font-size:25px;'>🎙️ {safe(title)}</h2><div style='font-size:13px;color:#a9bbd4;'>Full-duplex WebRTC · interruptible speech · multiple DI voices</div></div>
+        <div><div style='font-size:11px;font-weight:800;letter-spacing:.16em;color:#6ea8ff;'>DACRE REALTIME</div><h2 style='margin:4px 0;font-size:25px;color:#f6fbff;'>🎙️ {safe(title)}</h2><div style='font-size:13px;color:#a9bbd4;'>Fixed DI characters · permanent voices · actual speaker detection · full-duplex audio</div></div>
         <div id='lk-status' style='padding:8px 12px;border-radius:999px;background:rgba(250,180,60,.12);border:1px solid rgba(250,180,60,.22);font-size:12px;color:#ffd68a;'>READY TO JOIN</div>
       </div>
-      <div style='display:grid;grid-template-columns:minmax(0,1.6fr) minmax(250px,.7fr);gap:18px;margin-top:18px;'>
+      <div style='display:grid;grid-template-columns:minmax(0,1.7fr) minmax(280px,.8fr);gap:18px;margin-top:18px;'>
         <div style='background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:18px;'>
           <div style='display:flex;gap:10px;flex-wrap:wrap;'>
             <button id='lk-join' style='border:0;border-radius:12px;padding:11px 17px;background:linear-gradient(90deg,#6a45ff,#23b8ff);color:white;font-weight:800;cursor:pointer;'>Join live call</button>
             <button id='lk-mute' disabled style='border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:11px 17px;background:#121f38;color:#dbeaff;font-weight:700;cursor:pointer;'>Mute microphone</button>
             <button id='lk-leave' disabled style='border:1px solid rgba(255,100,100,.2);border-radius:12px;padding:11px 17px;background:rgba(255,80,80,.08);color:#ffb3b3;font-weight:700;cursor:pointer;'>Leave call</button>
           </div>
-          <div id='lk-stage' style='margin-top:16px;min-height:260px;border-radius:18px;background:radial-gradient(circle at 30% 30%,rgba(63,122,255,.22),transparent 35%),#07101e;border:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;color:#8ea4c2;text-align:center;padding:24px;'>Click <b style='color:#e7f3ff;margin:0 5px;'>Join live call</b> and allow microphone access. Your voice and the DIs' voices will flow through the same room.</div>
+          <div id='lk-stage' style='margin-top:16px;min-height:250px;border-radius:18px;background:radial-gradient(circle at 30% 30%,rgba(63,122,255,.22),transparent 35%),#07101e;border:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;color:#8ea4c2;text-align:center;padding:24px;'>Click <b style='color:#e7f3ff;margin:0 5px;'>Join live call</b> and allow microphone access. Speaker animation follows LiveKit's active speaker events.</div>
           <div id='lk-audio'></div>
         </div>
         <div style='background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:18px;'>
           <div style='font-size:12px;font-weight:800;letter-spacing:.12em;color:#78a7ff;margin-bottom:10px;'>PARTICIPANTS</div>
           <div id='lk-people'>{roster_html}</div>
-          <div style='margin-top:14px;font-size:12px;line-height:1.6;color:#8298b7;'>Every selected DI joins as a separate realtime participant. Each one has its own voice and specialist context. LiveKit handles the realtime audio transport and interruptions.</div>
+          <div style='margin-top:14px;font-size:12px;line-height:1.6;color:#8298b7;'>Each selected DI keeps the same face and role. The green speaking state is controlled by the realtime room, not by a fake timer.</div>
         </div>
       </div>
       <div style='margin-top:14px;color:#6f85a5;font-size:11px;'>Room: {safe(room_name)}</div>
     </div>
     <style>
-      .lk-person{{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05)}}
+      .lk-person{{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05);transition:.18s ease}}
       .lk-person:last-child{{border-bottom:0}}
-      .lk-avatar{{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#6846ff,#1bb9ff);display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff}}
-      .lk-person b{{display:block;font-size:13px}}
-      .lk-person span{{display:block;color:#7f95b3;font-size:11px;margin-top:2px}}
-      .lk-dot{{margin-left:auto;width:8px;height:8px;border-radius:50%;background:#586b84}}
-      .lk-person.active .lk-dot{{background:#55e5a8;box-shadow:0 0 0 5px rgba(85,229,168,.10)}}
+      .lk-person.active{{background:rgba(81,231,177,.07);border-radius:12px;padding-left:8px;padding-right:8px}}
+      .lk-face-wrap{{position:relative;width:48px;height:48px;flex:0 0 48px;border-radius:50%}}
+      .lk-face{{width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid rgba(93,168,255,.44);display:block;background:#18304b}}
+      .lk-fallback{{display:none;position:absolute;inset:0;place-items:center;border-radius:50%;background:linear-gradient(135deg,#4a65e6,#23b8ff);color:#fff;font-weight:900}}
+      .lk-fallback-wrap .lk-fallback{{display:grid}}
+      .lk-fallback-wrap .lk-face{{display:none}}
+      .lk-mouth{{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);width:9px;height:3px;border-radius:50%;background:#1a0f0c;opacity:.15}}
+      .lk-person.active .lk-face-wrap{{animation:lkTalk 1s ease-in-out infinite}}
+      .lk-person.active .lk-mouth{{animation:lkMouth .18s ease-in-out infinite alternate;opacity:.75}}
+      .lk-person.active .lk-face{{border-color:#55e5b5;box-shadow:0 0 0 4px rgba(85,229,181,.08),0 0 24px rgba(85,229,181,.15)}}
+      .lk-person-meta b{{display:block;font-size:13px;color:#f5fbff}}
+      .lk-person-meta span{{display:block;color:#7f95b3;font-size:11px;margin-top:2px}}
+      .lk-person-meta em{{display:block;color:#7186a3;font-style:normal;font-size:10px;margin-top:3px}}
+      .lk-person.active .lk-speaking{{color:#64efba;font-weight:800}}
+      @keyframes lkTalk{{0%,100%{{transform:translateY(0) scale(1)}}50%{{transform:translateY(-1px) scale(1.02)}}}}
+      @keyframes lkMouth{{from{{width:7px;height:2px}}to{{width:14px;height:6px}}}}
       @media(max-width:900px){{#dacre-livekit>div:nth-child(2){{grid-template-columns:1fr!important}}}}
     </style>
     <script src='https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js'></script>
     <script>
     (()=>{{
+      const root=document.getElementById('dacre-livekit');
       const status=document.getElementById('lk-status'); const stage=document.getElementById('lk-stage'); const join=document.getElementById('lk-join'); const mute=document.getElementById('lk-mute'); const leave=document.getElementById('lk-leave'); const audio=document.getElementById('lk-audio'); const people=document.getElementById('lk-people');
       const wsUrl={json.dumps(ws_url)}; const token={json.dumps(token)}; let room=null;
       const setStatus=(txt,bg,color)=>{{status.textContent=txt;status.style.background=bg;status.style.color=color;}};
-      const mark=(identity,on)=>{{const nodes=[...people.querySelectorAll('.lk-person')]; const n=nodes.find(x=>x.dataset.name===identity || x.querySelector('b')?.textContent===identity); if(n) n.classList.toggle('active',on);}};
+      const mark=(identity,on)=>{{const nodes=[...people.querySelectorAll('.lk-person')]; const n=nodes.find(x=>x.dataset.name===identity || x.querySelector('b')?.textContent===identity); if(n){{n.classList.toggle('active',on); const t=n.querySelector('.lk-speaking'); if(t)t.textContent=on?'Speaking':'Listening';}}}};
+      const clearActive=()=>people.querySelectorAll('.lk-person').forEach(n=>{{n.classList.remove('active'); const t=n.querySelector('.lk-speaking'); if(t)t.textContent='Listening';}});
       join.onclick=async()=>{{
         try{{
           if(!window.LivekitClient) throw new Error('LiveKit client failed to load');
@@ -3320,22 +3351,23 @@ def render_livekit_call(room_name, user, agent_rows, mode="company_di", title="D
           room.on(LivekitClient.RoomEvent.TrackSubscribed,(track,pub,participant)=>{{ if(track.kind===LivekitClient.Track.Kind.Audio){{ const el=track.attach(); el.autoplay=true; el.controls=false; el.style.display='none'; audio.appendChild(el); }} }});
           room.on(LivekitClient.RoomEvent.ParticipantConnected,p=>{{ mark(p.name||p.identity,true); }});
           room.on(LivekitClient.RoomEvent.ParticipantDisconnected,p=>{{ mark(p.name||p.identity,false); }});
-          room.on(LivekitClient.RoomEvent.ActiveSpeakersChanged,speakers=>{{ people.querySelectorAll('.lk-person').forEach(n=>n.classList.remove('active')); speakers.forEach(p=>mark(p.name||p.identity,true)); }});
-          room.on(LivekitClient.RoomEvent.Disconnected,()=>{{ setStatus('DISCONNECTED','rgba(255,80,80,.12)','#ffacac'); join.disabled=false; mute.disabled=true; leave.disabled=true; }});
+          room.on(LivekitClient.RoomEvent.ActiveSpeakersChanged,speakers=>{{ clearActive(); speakers.forEach(p=>mark(p.name||p.identity,true)); if(speakers.length) stage.innerHTML='<div style=\"max-width:620px\"><div style=\"font-size:18px;font-weight:900;color:#ecf7ff\">'+speakers.map(p=>p.name||p.identity).join(', ')+' speaking</div><div style=\"margin-top:7px;color:#90a7c3;line-height:1.7\">The active speaker state is synchronized to the realtime room.</div></div>'; }});
+          room.on(LivekitClient.RoomEvent.Disconnected,()=>{{ clearActive(); setStatus('DISCONNECTED','rgba(255,80,80,.12)','#ffacac'); join.disabled=false; mute.disabled=true; leave.disabled=true; }});
           setStatus('CONNECTING…','rgba(88,132,255,.12)','#b7ceff');
           await room.connect(wsUrl,token);
           await room.localParticipant.setMicrophoneEnabled(true);
+          mark(room.localParticipant.name||room.localParticipant.identity,true);
           setStatus('LIVE · FULL DUPLEX','rgba(80,230,166,.12)','#6ff0ba');
-          stage.innerHTML='<div style="max-width:620px"><div style="font-size:16px;font-weight:800;color:#ecf7ff">You are live with the DACRE council.</div><div style="margin-top:7px;color:#90a7c3;line-height:1.7">Speak naturally. The DIs can answer in their own voices, and LiveKit can interrupt an agent when the conversation moves on.</div></div>';
+          stage.innerHTML='<div style=\"max-width:620px\"><div style=\"font-size:16px;font-weight:800;color:#ecf7ff\">You are live with the DACRE council.</div><div style=\"margin-top:7px;color:#90a7c3;line-height:1.7\">Speak naturally. Real active-speaker events control the talking animation; no fake timer is used.</div></div>';
           join.disabled=true; mute.disabled=false; leave.disabled=false;
         }}catch(e){{ setStatus('CALL ERROR','rgba(255,80,80,.12)','#ffacac'); stage.textContent=e.message||String(e); }}
       }};
       mute.onclick=async()=>{{ if(!room)return; const enabled=room.localParticipant.isMicrophoneEnabled; await room.localParticipant.setMicrophoneEnabled(!enabled); mute.textContent=enabled?'Unmute microphone':'Mute microphone'; }};
-      leave.onclick=async()=>{{ if(room){{ await room.disconnect(); room=null; }} setStatus('LEFT CALL','rgba(160,170,190,.12)','#bdc9d9'); join.disabled=false; mute.disabled=true; leave.disabled=true; stage.textContent='Call ended. You can join again when you are ready.'; }};
+      leave.onclick=async()=>{{ if(room){{ await room.disconnect(); room=null; }} clearActive(); setStatus('LEFT CALL','rgba(160,170,190,.12)','#bdc9d9'); join.disabled=false; mute.disabled=true; leave.disabled=true; stage.textContent='Call ended. You can join again when you are ready.'; }};
     }})();
     </script>
     """
-    components.html(html, height=760, scrolling=False)
+    components.html(html, height=900, scrolling=False)
 
 
 def master_customer_360(company_name):
@@ -4722,6 +4754,47 @@ with head_col2:
         st.session_state.user=None
         st.rerun()
 
+
+# Final visual safety layer: keeps interactive bars/buttons/inputs visible across all pages.
+st.markdown("""
+<style>
+/* DACRE final UI override — ensure no white-on-white controls */
+.stApp, .main, .block-container { color:#eef6ff !important; }
+.stButton > button, .stFormSubmitButton > button, .stDownloadButton > button {
+  background: linear-gradient(135deg,#2f6fd4 0%,#4b7ff0 55%,#287fc6 100%) !important;
+  color:#ffffff !important;
+  border:1px solid rgba(112,180,255,.60) !important;
+  border-radius:12px !important;
+  min-height:42px !important;
+  box-shadow:0 8px 24px rgba(22,74,153,.22) !important;
+  font-weight:800 !important;
+}
+.stButton > button:hover, .stFormSubmitButton > button:hover, .stDownloadButton > button:hover {
+  background:linear-gradient(135deg,#4386ec 0%,#5c93ff 55%,#2f9edf 100%) !important;
+  border-color:#8ec8ff !important;
+  color:#ffffff !important;
+  transform:translateY(-1px);
+}
+.stButton > button:disabled, .stFormSubmitButton > button:disabled { opacity:.55 !important; color:#d9e8ff !important; }
+.stTextInput input, .stTextArea textarea, .stNumberInput input, .stDateInput input {
+  background:#111a2d !important;
+  color:#f3f7ff !important;
+  caret-color:#6ec6ff !important;
+  border:1px solid rgba(123,161,214,.34) !important;
+}
+.stTextInput input::placeholder, .stTextArea textarea::placeholder, .stNumberInput input::placeholder { color:#94aac7 !important; opacity:1 !important; }
+div[data-baseweb="select"] > div { background:#111a2d !important; color:#f3f7ff !important; border-color:rgba(123,161,214,.34) !important; }
+[data-testid="stTabs"] button { color:#b9cae2 !important; }
+[data-testid="stTabs"] button[aria-selected="true"] { color:#ffffff !important; border-bottom-color:#53bfff !important; }
+[data-testid="stMetricValue"], [data-testid="stMetricLabel"] { color:#f4f8ff !important; }
+[data-testid="stDataFrame"] { background:#0e1728 !important; }
+[data-testid="stExpander"] { background:rgba(12,24,42,.92) !important; border:1px solid rgba(109,160,221,.20) !important; }
+.progress-bar, [role="progressbar"] { background:#1a2940 !important; }
+/* Any remaining generic white cards created by older CSS get readable dark backgrounds. */
+.element-container:has(> div > .stMarkdown) .stMarkdown { color:#edf5ff; }
+</style>
+""", unsafe_allow_html=True)
+
 with st.sidebar:
     if LOGO_PATH.exists():
         st.image(str(LOGO_PATH),use_container_width=True)
@@ -5748,13 +5821,14 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
                 edit_category=st.text_input("Edit category",value=(edit_row.get("category","") if edit_row else ""),key="master_memory_edit_category")
                 edit_title=st.text_input("Edit title",value=(edit_row.get("title","") if edit_row else ""),key="master_memory_edit_title")
                 edit_priority_raw=int(edit_row.get("priority") or 500) if edit_row else 500
-                edit_priority_safe=max(1,min(2000,edit_priority_raw))
-                if "master_memory_edit_priority" in st.session_state:
+                edit_priority_safe=max(1,min(10000,edit_priority_raw))
+                edit_priority_key=f"master_memory_edit_priority_{int(edit_id or 0)}"
+                if edit_priority_key in st.session_state:
                     try:
-                        st.session_state["master_memory_edit_priority"]=max(1,min(2000,int(st.session_state["master_memory_edit_priority"])))
+                        st.session_state[edit_priority_key]=max(1,min(10000,int(st.session_state[edit_priority_key])))
                     except (TypeError,ValueError):
-                        st.session_state["master_memory_edit_priority"]=edit_priority_safe
-                edit_priority=st.number_input("Edit priority",min_value=1,max_value=2000,value=edit_priority_safe,step=10,key="master_memory_edit_priority")
+                        st.session_state[edit_priority_key]=edit_priority_safe
+                edit_priority=st.number_input("Edit priority",min_value=1,max_value=10000,value=edit_priority_safe,step=10,key=edit_priority_key)
                 edit_content=st.text_area("Edit trusted information",value=(edit_row.get("content","") if edit_row else ""),height=130,key="master_memory_edit_content")
                 if st.button("💾 Save memory changes",use_container_width=True,key="master_memory_edit_btn"):
                     if edit_row is None:
@@ -5776,7 +5850,7 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
                 with mc1:
                     mem_category=st.text_input("Category",placeholder="PLATFORM / SECURITY / DI / HELP",key="master_memory_add_category")
                     mem_title=st.text_input("Memory title",key="master_memory_add_title")
-                    mem_priority=st.number_input("Priority",min_value=1,max_value=2000,value=500,step=10,key="master_memory_add_priority")
+                    mem_priority=st.number_input("Priority",min_value=1,max_value=10000,value=500,step=10,key="master_memory_add_priority")
                 with mc2:
                     mem_content=st.text_area("Trusted information",height=150,placeholder="Write the exact information DI should know.",key="master_memory_add_content")
                 if st.button("Save to DI Memory Box",use_container_width=True,type="primary",key="master_memory_add_btn"):
