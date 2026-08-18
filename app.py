@@ -10395,10 +10395,8 @@ st.markdown("""
 [data-testid="stSidebar"] *{color:#eef6ff!important}
 [data-testid="stSidebar"] [data-testid="stRadio"] label{border-radius:14px;padding:9px 11px;transition:.2s ease;font-weight:750}
 [data-testid="stSidebar"] [data-testid="stRadio"] label:hover{background:rgba(239,139,58,.16);transform:translateX(4px);box-shadow:inset 3px 0 0 #ffb56b}
-.stButton>button,.stFormSubmitButton>button,.stDownloadButton>button{border:1px solid rgba(255,181,107,.62)!important;background:linear-gradient(135deg,#173b66,#245487)!important;color:#f5fbff!important}
-</style>
-""", unsafe_allow_html=True)            st.session_state.last_speech=answer
-
+""", unsafe_allow_html=True)
+st.session_state.last_speech = answer
 # PAGE 1 WORKSPACE
 # =============================================================================
 elif selected_page=="Workspace & Data":
