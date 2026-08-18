@@ -10422,12 +10422,12 @@ for _key, _default in _SESSION_DEFAULTS.items():
             st.session_state[_key] = list(_default)
         elif isinstance(_default, dict):
             st.session_state[_key] = dict(_default)
-        else:
+else:
             st.session_state[_key] = _default
 
 if st.session_state.user is None:
     landing_page()
- st.stop()
+    st.stop()
 
 if not st.session_state.chat_history:
     st.session_state.chat_history = load_chat_history(st.session_state.user, limit=40)
@@ -10447,10 +10447,11 @@ elif selected_page == "Workspace & Data":
             st.session_state.raw_df=df_raw
             st.session_state.processed_df=clean_dataframe(df_raw)
             st.session_state.active_filename=file_upload.name
-            save_file(user,file_upload,st.session_state.processed_df)            st.success(f"Loaded '{file_upload.name}' successfully!")
+            save_file(user,file_upload,st.session_state.processed_df)
+            st.success(f"Loaded '{file_upload.name}' successfully!")
             st.rerun()
-        except Exception as exc: st.error(f"Could not load the dataset: {exc}")
-
+        except Exception as exc: 
+            st.error(f"Could not load the dataset: {exc}")
     if st.session_state.processed_df is not None:
         df=st.session_state.processed_df
         st.subheader(f"Active File: {st.session_state.active_filename}")
