@@ -10369,38 +10369,76 @@ for _key, _default in _SESSION_DEFAULTS.items():
 
 if st.session_state.user is None:
     landing_page()
+  # Section pages bottom navigation
+    if current_section != "home":
+        c1, c2, c3 = st.columns([1, 1, 1])
+        with c1:
+            if st.button("← Back to Landing", key="section_back", use_container_width=True):
+                st.session_state.landing_section = "home"
+                st.rerun()
+        with c2:
+            if st.button("Create Your DACRE Account", key="section_signup", use_container_width=True, type="primary"):
+                st.session_state.landing_mode = "signup"
+                st.rerun()
+        with c3:
+            if st.button("Sign In", key="section_login", use_container_width=True):
+                st.session_state.landing_mode = "login"
+                st.rerun()
+
+# =============================================================================
+# STREAMLIT SESSION STATE BOOTSTRAP
+# =============================================================================
+_SESSION_DEFAULTS = {
+    "user": None,
+    "master_route": False,
+    "landing_mode": "home",
+    "landing_section": "home",
+    "master_captcha_required": False,
+    "master_captcha_passed": False,
+    "master_second_attempt": False,
+    "chat_history": [],
+    "raw_df": None,
+    "processed_df": None,
+    "active_filename": "",
+    "formula_logs": [],
+    "chart_config": None,
+    "di_language": "English — Nigeria",
+    "di_voice_enabled": True,
+    "di_response_mode": "voice",
+    "active_call_room": None,
+    "sovereign_call_id": None,
+    "sovereign_call_room": None,
+    "david_creations_unlocked": False,
+    "active_call_target": None,
+    "last_action_center_result": None,
+    "last_speech": None,
+    "dacre_boot_complete": False,
+    "visitor_id": None,
+    "public_visit_logged": False,
+}
+for _key, _default in _SESSION_DEFAULTS.items():
+    if _key not in st.session_state:
+        if isinstance(_default, list):
+            st.session_state[_key] = list(_default)
+        elif isinstance(_default, dict):
+            st.session_state[_key] = dict(_default)
+        else:
+            st.session_state[_key] = _default
+
+if st.session_state.user is None:
+    landing_page()
     st.stop()
 
 if not st.session_state.chat_history:
     st.session_state.chat_history = load_chat_history(st.session_state.user, limit=40)
 
 # =============================================================================
-# DACRE AURORA EXECUTIVE — DEEP BLUE + SOFT ORANGE + BROWN PREMIUM CONSOLE
+# APPLICATION PAGE ROUTING
 # =============================================================================
-st.markdown("""
-<style>
-:root{
- --dacre-blue:#173b66;--dacre-blue-2:#245487;--dacre-navy:#0b1b31;--dacre-panel:#102844;
- --dacre-panel-2:#143454;--dacre-indigo:#4b63b6;--dacre-violet:#7658b8;--dacre-cyan:#5eb8e8;
- --dacre-orange:#ef8b3a;--dacre-orange-2:#ffb56b;--dacre-brown:#9b704f;--dacre-brown-2:#c79b78;
- --dacre-ink:#edf6ff;--dacre-muted:#b8c8d8;--dacre-line:rgba(150,190,225,.22);
- --dacre-shadow:0 18px 50px rgba(0,0,0,.28)
-}
-.stApp{background:radial-gradient(circle at 7% 0%,rgba(239,139,58,.10),transparent 28%),radial-gradient(circle at 94% 5%,rgba(75,99,182,.12),transparent 30%),linear-gradient(145deg,#09182c 0%,#0d2039 55%,#102944 100%) !important;color:var(--dacre-ink)!important}
-.main .block-container{max-width:1540px;padding-top:1.25rem;padding-bottom:4rem}
-.stApp p,.stApp span,.stApp label,.stApp div,.stApp li,.stApp td,.stApp th,.stApp h1,.stApp h2,.stApp h3,.stApp h4,.stApp h5,.stApp h6{color:var(--dacre-ink)!important}
-.stApp p,.stApp li,.stApp td,.stApp th{line-height:1.55}
-.stCaption,.stApp small,[data-testid="stCaptionContainer"]{color:#b8c8d8!important}
-[data-testid="stSidebar"]{background:linear-gradient(180deg,#0a1a30 0%,#0d2340 55%,#102b49 100%)!important;border-right:2px solid rgba(239,139,58,.72)!important;box-shadow:12px 0 40px rgba(0,0,0,.25)}
-[data-testid="stSidebar"] *{color:#eef6ff!important}
-[data-testid="stSidebar"] [data-testid="stRadio"] label{border-radius:14px;padding:9px 11px;transition:.2s ease;font-weight:750}
-[data-testid="stSidebar"] [data-testid="stRadio"] label:hover{background:rgba(239,139,58,.16);transform:translateX(4px);box-shadow:inset 3px 0 0 #ffb56b}
-""", unsafe_allow_html=True)
-st.session_state.last_speech = answer
-# PAGE 1 WORKSPACE
-# =============================================================================
-elif selected_page=="Workspace & Data":
-    st.header("Workspace & Data Engine")
+if selected_page == "Landing Page":
+    landing_page()
+
+elif selected_page == "Workspace & Data":    st.header("Workspace & Data Engine")
     file_upload=st.file_uploader("Upload dataset (CSV, Excel, TSV, JSON)",type=SUPPORTED_EXTENSIONS)
     if file_upload is not None and st.button("Import & Load Dataset"):
         try:
