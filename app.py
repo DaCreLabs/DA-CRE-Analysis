@@ -10705,24 +10705,24 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
         else:
             st.markdown('<div class="ceo-portrait-frame"><div style="text-align:center;color:#b9d1e7;font-weight:800;">CEO portrait asset not found.<br>Upload <code>dacre_ceo.jpg</code> beside <code>app.py</code>.</div></div>', unsafe_allow_html=True)
 
-    m1,m2,m3,m4,m5,m6=st.columns(6)
-    m1.metric("Business Accounts",counts["users"])
-    m2.metric("Organizations",counts["companies"])
-    m3.metric("Activities",counts["activities"])
-    m4.metric("DI Conversations",counts["messages"])
-    m5.metric("Stored Files",counts["files"])
-    m6.metric("DI Workforce",counts["agents"])
+    m1, m2, m3, m4, m5, m6 = st.columns(6)
+    m1.metric("Business Accounts", counts["users"])
+    m2.metric("Organizations", counts["companies"])
+    m3.metric("Activities", counts["activities"])
+    m4.metric("DI Conversations", counts["messages"])
+    m5.metric("Stored Files", counts["files"])
+    m6.metric("DI Workforce", counts["agents"])
 
-    con=db()
-    tabs=st.tabs(["Executive Overview","DI Workforce","Sovereign Master Call","Organizations","People & Accounts","Live Activity","DI Conversations","Chibobec Client","DI Memory Box","David Creations","Mail Source","System Controls"])
+    con = db()
+    tabs = st.tabs(["Executive Overview", "DI Workforce", "Sovereign Master Call", "Organizations", "People & Accounts", "Live Activity", "DI Conversations", "Chibobec Client", "DI Memory Box", "David Creations", "Mail Source", "System Controls"])
 
     with tabs[0]:
         st.subheader("Executive Overview")
-        recent= pd.read_sql_query("SELECT username,company_name,action,created_at FROM activity WHERE lower(username) != lower(?) UNION ALL SELECT 'Visitor' AS username, 'PUBLIC' AS company_name, (event_type || ' · ' || page_name) AS action, created_at FROM public_visits ORDER BY created_at DESC LIMIT 15",con,params=(MASTER_USERNAME,))
-        left,right=st.columns([1.25,1])
+        recent = pd.read_sql_query("SELECT username,company_name,action,created_at FROM activity WHERE lower(username) != lower(?) UNION ALL SELECT 'Visitor' AS username, 'PUBLIC' AS company_name, (event_type || ' · ' || page_name) AS action, created_at FROM public_visits ORDER BY created_at DESC LIMIT 15", con, params=(MASTER_USERNAME,))
+        left, right = st.columns([1.25, 1])
         with left:
             st.markdown("#### Recent system activity")
-            st.dataframe(safe_dataframe_for_streamlit(recent),use_container_width=True,hide_index=True)
+            st.dataframe(safe_dataframe_for_streamlit(recent), use_container_width=True, hide_index=True)
         with right:
             st.markdown("#### Platform position")
             st.write("The CEO Office is the highest DACRE administration layer. This is where master-level oversight, DI workforce creation, organization visibility and platform activity are managed.")
@@ -10732,273 +10732,307 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
             else:
                 st.caption("Persistence: Local development database")
             st.markdown("#### Latest customer sign-ups")
-            signup_df=pd.read_sql_query("SELECT first_name,last_name,company_name,email,role,created_at,last_login FROM users WHERE role!='master' ORDER BY id DESC LIMIT 20",con)
+            signup_df = pd.read_sql_query("SELECT first_name,last_name,company_name,email,role,created_at,last_login FROM users WHERE role!='master' ORDER BY id DESC LIMIT 20", con)
             if signup_df.empty:
                 st.info("No non-master customer accounts are currently present in this database.")
             else:
-                st.dataframe(safe_dataframe_for_streamlit(signup_df),use_container_width=True,hide_index=True)
-if st.button("Refresh executive view", key="refresh_executive_view_admin", use_container_width=True):
-    st.rerun()
+                st.dataframe(safe_dataframe_for_streamlit(signup_df), use_container_width=True, hide_index=True)
 
-with tabs[1]:
-    st.subheader("DI Workforce Command")
-    st.write("Create, rank, assign and privately brief your DI workforce. Workers are grouped by specialty and each has an individual private brain.")
-    create_left, create_right = st.columns([1, 1])
-    with create_left:
-        di_name = st.text_input("DI Name", placeholder="e.g. Marcus")
-        di_specialty = st.text_input("Specialty", placeholder="e.g. Financial Analyst")
-        di_role = st.text_area("DI System Role", placeholder="Describe how this DI should serve businesses.", height=90)
-    with create_right:
-        companies = [r[0] for r in con.execute("SELECT name FROM companies ORDER BY name").fetchall()]
-        di_status = st.selectbox("Initial Status", ["Available", "Assigned", "Training", "Paused"], key="new_di_status")
-        di_company = st.selectbox("Assign to Organization", ["Unassigned"] + companies, key="new_di_company")
-        di_gender = st.selectbox("Staff presentation", ["female", "male"], format_func=lambda x: "Female professional" if x == "female" else "Male professional", key="new_di_gender")
-        di_rank = st.number_input("Initial Rank", min_value=1, max_value=20, value=1, step=1, key="new_di_rank")        di_rank = st.number_input("Initial Rank", min_value=1, max_value=20, value=1, step=1, key="new_di_rank")            if st.button("Create DI Worker",use_container_width=True,type="primary",key="create_di_master"):
-                ok,msg=create_di_agent(di_name,di_specialty,di_status,"" if di_company=="Unassigned" else di_company,di_role,di_gender,di_position or "DI Specialist",int(di_rank))
-                if ok:
-                    log_activity(MASTER_USERNAME,"DACRE MASTER",f"Created DI worker {di_name} ({msg})",notify_admin=False); st.success(f"DI created successfully. Worker code: {msg}"); st.rerun()
-                else: st.error(msg)
-        agents=get_di_agents()
+    if st.button("Refresh executive view", key="refresh_executive_view_admin", use_container_width=True):
+        st.rerun()
+
+    with tabs[1]:
+        st.subheader("DI Workforce Command")
+        st.write("Create, rank, assign and privately brief your DI workforce. Workers are grouped by specialty and each has an individual private brain.")
+        create_left, create_right = st.columns([1, 1])
+        with create_left:
+            di_name = st.text_input("DI Name", placeholder="e.g. Marcus")
+            di_specialty = st.text_input("Specialty", placeholder="e.g. Financial Analyst")
+            di_role = st.text_area("DI System Role", placeholder="Describe how this DI should serve businesses.", height=90)
+            di_position = st.text_input("Position", placeholder="e.g. Finance Lead")
+        with create_right:
+            companies = [r[0] for r in con.execute("SELECT name FROM companies ORDER BY name").fetchall()]
+            di_status = st.selectbox("Initial Status", ["Available", "Assigned", "Training", "Paused"], key="new_di_status")
+            di_company = st.selectbox("Assign to Organization", ["Unassigned"] + companies, key="new_di_company")
+            di_gender = st.selectbox("Staff presentation", ["female", "male"], format_func=lambda x: "Female professional" if x == "female" else "Male professional", key="new_di_gender")
+            di_rank = st.number_input("Initial Rank", min_value=1, max_value=20, value=1, step=1, key="new_di_rank")
+            
+        if st.button("Create DI Worker", use_container_width=True, type="primary", key="create_di_master"):
+            ok, msg = create_di_agent(di_name, di_specialty, di_status, "" if di_company == "Unassigned" else di_company, di_role, di_gender, di_position or "DI Specialist", int(di_rank))
+            if ok:
+                log_activity(MASTER_USERNAME, "DACRE MASTER", f"Created DI worker {di_name} ({msg})", notify_admin=False)
+                st.success(f"DI created successfully. Worker code: {msg}")
+                st.rerun()
+            else:
+                st.error(msg)
+                
+        agents = get_di_agents()
         if agents:
             st.markdown("#### DI team by specialty")
-            groups={}
-            for a in agents: groups.setdefault(a["specialty"] or "General Intelligence",[]).append(a)
-            for group,members in sorted(groups.items()):
-                with st.expander(f"{group} · {len(members)} DI",expanded=True):
-                    cols=st.columns(min(4,len(members)))
-                    for idx,a in enumerate(sorted(members,key=lambda r:(-int((r.get("rank_level") if isinstance(r, dict) else r["rank_level"]) or 1),(r.get("di_name") if isinstance(r, dict) else r["di_name"]) or ""))):
-                        with cols[idx%len(cols)]:
-                            if a["avatar_url"]: st.image(a["avatar_url"],width=84)
+            groups = {}
+            for a in agents:
+                groups.setdefault(a["specialty"] or "General Intelligence", []).append(a)
+            for group, members in sorted(groups.items()):
+                with st.expander(f"{group} · {len(members)} DI", expanded=True):
+                    cols = st.columns(min(4, len(members)))
+                    for idx, a in enumerate(sorted(members, key=lambda r: (-int((r.get("rank_level") if isinstance(r, dict) else r["rank_level"]) or 1), (r.get("di_name") if isinstance(r, dict) else r["di_name"]) or ""))):
+                        with cols[idx % len(cols)]:
+                            if a["avatar_url"]:
+                                st.image(a["avatar_url"], width=84)
                             st.markdown(f"**{a['di_name']}** · Rank {int(a.get('rank_level') or 1)}\n\n{a.get('position_title') or a.get('specialty') or 'DI Specialist'}")
                             st.caption(f"{a['status']} · {a['di_code']}")
+            
             st.markdown("#### HR / Position Bar")
-            selected_id=st.selectbox("Select DI",[r["id"] for r in agents],format_func=lambda x: next((r["di_name"] for r in agents if r["id"]==x),str(x)),key="hr_di_pick")
-            selected_agent=next(r for r in agents if r["id"]==selected_id)
-            p1,p2,p3=st.columns(3)
-            with p1: new_position=st.text_input("Position",value=selected_agent["position_title"] or selected_agent["specialty"],key=f"pos_{selected_id}")
-            with p2: new_rank=st.number_input("Rank",min_value=1,max_value=20,value=int(selected_agent["rank_level"] or 1),step=1,key=f"rank_{selected_id}")
+            selected_id = st.selectbox("Select DI", [r["id"] for r in agents], format_func=lambda x: next((r["di_name"] for r in agents if r["id"] == x), str(x)), key="hr_di_pick")
+            selected_agent = next(r for r in agents if r["id"] == selected_id)
+            p1, p2, p3 = st.columns(3)
+            with p1:
+                new_position = st.text_input("Position", value=selected_agent["position_title"] or selected_agent["specialty"], key=f"pos_{selected_id}")
+            with p2:
+                new_rank = st.number_input("Rank", min_value=1, max_value=20, value=int(selected_agent["rank_level"] or 1), step=1, key=f"rank_{selected_id}")
             with p3:
-                company_options=["Unassigned"]+companies; current_company=selected_agent["assigned_company"] or "Unassigned"
-                new_company=st.selectbox("Assignment",company_options,index=company_options.index(current_company) if current_company in company_options else 0,key=f"assign_{selected_id}")
-            if st.button("Save Position & Rank",use_container_width=True,type="primary",key="save_hr_position"):
-                ok,thank=update_di_position(selected_id,new_position,int(new_rank),"" if new_company=="Unassigned" else new_company)
+                company_options = ["Unassigned"] + companies
+                current_company = selected_agent["assigned_company"] or "Unassigned"
+                new_company = st.selectbox("Assignment", company_options, index=company_options.index(current_company) if current_company in company_options else 0, key=f"assign_{selected_id}")
+            
+            if st.button("Save Position & Rank", use_container_width=True, type="primary", key="save_hr_position"):
+                ok, thank = update_di_position(selected_id, new_position, int(new_rank), "" if new_company == "Unassigned" else new_company)
                 if ok:
-                    log_activity(MASTER_USERNAME,"DACRE MASTER",f"Appointed {selected_agent['di_name']} as {new_position} · rank {int(new_rank)}",notify_admin=False); st.success(thank); st.rerun()
-            thanks=con.execute("SELECT message,created_at FROM di_master_thanks WHERE di_id=? ORDER BY id DESC LIMIT 3",(int(selected_id),)).fetchall()
+                    log_activity(MASTER_USERNAME, "DACRE MASTER", f"Appointed {selected_agent['di_name']} as {new_position} · rank {int(new_rank)}", notify_admin=False)
+                    st.success(thank)
+                    st.rerun()
+                    
+            thanks = con.execute("SELECT message,created_at FROM di_master_thanks WHERE di_id=? ORDER BY id DESC LIMIT 3", (int(selected_id),)).fetchall()
             if thanks:
                 st.markdown("#### Thank-you messages")
-                for t in thanks: st.info(f"{t['message']}\n\n{t['created_at']}")
+                for t in thanks:
+                    st.info(f"{t['message']}\n\n{t['created_at']}")
+                    
             st.markdown("#### Current workforce record")
-            agent_df=pd.DataFrame([dict(r) for r in agents]); display_cols=[c for c in ["di_name","specialty","position_title","rank_level","status","assigned_company","avatar_url","di_code"] if c in agent_df.columns]
-            st.dataframe(safe_dataframe_for_streamlit(agent_df[display_cols]),use_container_width=True,hide_index=True)
+            agent_df = pd.DataFrame([dict(r) for r in agents])
+            display_cols = [c for c in ["di_name", "specialty", "position_title", "rank_level", "status", "assigned_company", "avatar_url", "di_code"] if c in agent_df.columns]
+            st.dataframe(safe_dataframe_for_streamlit(agent_df[display_cols]), use_container_width=True, hide_index=True)
+            
             st.markdown("#### Private DI Call & Brain Briefing")
-            private_id=st.selectbox("Call a DI privately",[r["id"] for r in agents],format_func=lambda x: next((r["di_name"] for r in agents if r["id"]==x),str(x)),key="private_di_call_pick")
-            private_agent=next(r for r in agents if r["id"]==private_id)
-            private_msg=st.text_area("Share information or an instruction with this DI",placeholder="Tell this DI something important you want it to remember privately.",height=110,key="private_di_message")
-            private_title=st.text_input("Private brain title",placeholder="e.g. David's instruction for client strategy",key="private_di_title")
-            if st.button("Send & Store in DI Private Brain",use_container_width=True,type="primary",key="private_di_send") and private_msg.strip():
-                title=(private_title.strip() or "Master private briefing"); save_di_private_memory(private_id,title,private_msg.strip(),MASTER_USERNAME,"private_call")
-                response=sovereign_di_opinion(private_agent,private_msg.strip())
+            private_id = st.selectbox("Call a DI privately", [r["id"] for r in agents], format_func=lambda x: next((r["di_name"] for r in agents if r["id"] == x), str(x)), key="private_di_call_pick")
+            private_agent = next(r for r in agents if r["id"] == private_id)
+            private_msg = st.text_area("Share information or an instruction with this DI", placeholder="Tell this DI something important you want it to remember privately.", height=110, key="private_di_message")
+            private_title = st.text_input("Private brain title", placeholder="e.g. David's instruction for client strategy", key="private_di_title")
+            if st.button("Send & Store in DI Private Brain", use_container_width=True, type="primary", key="private_di_send") and private_msg.strip():
+                title = (private_title.strip() or "Master private briefing")
+                save_di_private_memory(private_id, title, private_msg.strip(), MASTER_USERNAME, "private_call")
+                response = sovereign_di_opinion(private_agent, private_msg.strip())
                 st.success(f"{private_agent['di_name']} received the private briefing and stored it in its own brain.")
-                st.markdown(f"<div class='di-answer-panel'><div class='answer-label'>{private_agent['di_name']} · PRIVATE RESPONSE</div><div>{_escape_html(response).replace(chr(10),'<br>')}</div></div>",unsafe_allow_html=True)
+                st.markdown(f"<div class='di-answer-panel'><div class='answer-label'>{private_agent['di_name']} · PRIVATE RESPONSE</div><div>{_escape_html(response).replace(chr(10),'<br>')}</div></div>", unsafe_allow_html=True)
         else:
             st.info("No DI workers have been created yet.")
 
     with tabs[2]:
         st.subheader("Sovereign Master Call")
         st.caption("Master-only full-duplex council. Select DIs by specialty; each joins the same WebRTC room as an independent voice participant.")
-        agents=get_di_agents()
+        agents = get_di_agents()
         if not agents:
             st.info("Create DI workers first in DI Workforce.")
         else:
-            groups={}
+            groups = {}
             for a in agents:
-                groups.setdefault(a["specialty"] or "General Intelligence",[]).append(a)
-            selected=[]
-            for group,members in sorted(groups.items()):
+                groups.setdefault(a["specialty"] or "General Intelligence", []).append(a)
+            selected = []
+            for group, members in sorted(groups.items()):
                 st.markdown(f"#### {group}")
                 for a in members:
-                    c1,c2,c3=st.columns([0.08,0.62,0.30])
+                    c1, c2, c3 = st.columns([0.08, 0.62, 0.30])
                     with c1:
-                        checked=st.checkbox("Select",key=f"sovereign_live_pick_{a['id']}",label_visibility="collapsed")
+                        checked = st.checkbox("Select", key=f"sovereign_live_pick_{a['id']}", label_visibility="collapsed")
                     with c2:
-                        avatar=a["avatar_url"] or ""
-                        img=f"<img src=\"{_escape_html(avatar)}\" width=42 height=42 style=\"border-radius:50%;object-fit:cover\">" if avatar else ""
-                        st.markdown(f"<div style='display:flex;gap:10px;align-items:center'>{img}<div><b>{_escape_html(a['di_name'])}</b><br><span style='color:#9fb0c9'>{_escape_html(a['position_title'] or a['specialty'])} · Rank {int(a['rank_level'] or 1)}</span></div></div>",unsafe_allow_html=True)
+                        avatar = a["avatar_url"] or ""
+                        img = f"<img src=\"{_escape_html(avatar)}\" width=42 height=42 style=\"border-radius:50%;object-fit:cover\">" if avatar else ""
+                        st.markdown(f"<div style='display:flex;gap:10px;align-items:center'>{img}<div><b>{_escape_html(a['di_name'])}</b><br><span style='color:#9fb0c9'>{_escape_html(a['position_title'] or a['specialty'])} · Rank {int(a['rank_level'] or 1)}</span></div></div>", unsafe_allow_html=True)
                     with c3:
                         st.caption("● Ready")
                     if checked:
                         selected.append(a)
-            question=st.text_area("Master opening question",placeholder="Ask the council a strategic, technical or business question. They will answer in their own voices.",height=100,key="sovereign_live_question")
-            active=st.session_state.get("sovereign_live_room")
+            question = st.text_area("Master opening question", placeholder="Ask the council a strategic, technical or business question. They will answer in their own voices.", height=100, key="sovereign_live_question")
+            active = st.session_state.get("sovereign_live_room")
             if not active:
-                if st.button("🎙️ Start full-duplex Sovereign Master Call",use_container_width=True,type="primary",key="sovereign_live_start"):
+                if st.button("🎙️ Start full-duplex Sovereign Master Call", use_container_width=True, type="primary", key="sovereign_live_start"):
                     if not selected:
                         st.warning("Select at least one DI.")
                     else:
-                        room=make_call_room("DACRE MASTER",MASTER_USERNAME,"Sovereign Master Call",'master_council')
-                        call_id,_legacy_room=create_sovereign_call("Sovereign Master Call",[a["id"] for a in selected])
-                        sovereign_log(call_id,"master",MASTER_USERNAME,MASTER_FULL_NAME,question.strip() or "Opened the Sovereign Master Call.")
-                        record_call_participant(room,"DACRE MASTER","master",MASTER_USERNAME,MASTER_FULL_NAME)
+                        room = make_call_room("DACRE MASTER", MASTER_USERNAME, "Sovereign Master Call", 'master_council')
+                        call_id, _legacy_room = create_sovereign_call("Sovereign Master Call", [a["id"] for a in selected])
+                        sovereign_log(call_id, "master", MASTER_USERNAME, MASTER_FULL_NAME, question.strip() or "Opened the Sovereign Master Call.")
+                        record_call_participant(room, "DACRE MASTER", "master", MASTER_USERNAME, MASTER_FULL_NAME)
                         for a in selected:
-                            record_call_participant(room,"DACRE MASTER","di",a["di_code"],a["di_name"])
-                        log_activity(MASTER_USERNAME,"DACRE MASTER",f"Started Sovereign Master Call with {len(selected)} DIs",notify_admin=False)
-                        st.session_state.sovereign_live_room=room
-                        st.session_state.sovereign_live_agents=selected
-                        st.session_state.sovereign_live_call_id=call_id
+                            record_call_participant(room, "DACRE MASTER", "di", a["di_code"], a["di_name"])
+                        log_activity(MASTER_USERNAME, "DACRE MASTER", f"Started Sovereign Master Call with {len(selected)} DIs", notify_admin=False)
+                        st.session_state.sovereign_live_room = room
+                        st.session_state.sovereign_live_agents = selected
+                        st.session_state.sovereign_live_call_id = call_id
                         st.rerun()
             else:
-                live_agents=st.session_state.get("sovereign_live_agents",selected)
+                live_agents = st.session_state.get("sovereign_live_agents", selected)
                 render_di_video_call_stage(live_agents, title="Sovereign Master Call", user_label=MASTER_FULL_NAME)
-                render_livekit_call(active,user,live_agents,mode="sovereign",title="Sovereign Master Call",question=question)
+                render_livekit_call(active, user, live_agents, mode="sovereign", title="Sovereign Master Call", question=question)
                 st.markdown("### Live council controls")
-                col_a,col_b=st.columns(2)
+                col_a, col_b = st.columns(2)
                 with col_a:
-                    if st.button("End Sovereign Master Call",use_container_width=True,type="primary",key="sovereign_live_end"):
-                        cid=st.session_state.get("sovereign_live_call_id")
+                    if st.button("End Sovereign Master Call", use_container_width=True, type="primary", key="sovereign_live_end"):
+                        cid = st.session_state.get("sovereign_live_call_id")
                         if cid:
-                            con.execute("UPDATE sovereign_calls SET ended_at=?,status='ended' WHERE id=?",(datetime.now().isoformat(timespec="seconds"),int(cid)))
+                            con.execute("UPDATE sovereign_calls SET ended_at=?,status='ended' WHERE id=?", (datetime.now().isoformat(timespec="seconds"), int(cid)))
                             con.commit()
-                        st.session_state.sovereign_live_room=None
-                        st.session_state.sovereign_live_agents=[]
-                        st.session_state.sovereign_live_call_id=None
+                        st.session_state.sovereign_live_room = None
+                        st.session_state.sovereign_live_agents = []
+                        st.session_state.sovereign_live_call_id = None
                         st.rerun()
                 with col_b:
                     st.caption("Audio is full-duplex. Speak naturally, interrupt when needed, and let each specialist answer in its own voice.")
 
     with tabs[3]:
         st.subheader("All Organizations")
-        companies_df=pd.read_sql_query("SELECT id,name,owner_username,website_url,created_at FROM companies ORDER BY id DESC",con)
-        st.dataframe(safe_dataframe_for_streamlit(companies_df),use_container_width=True,hide_index=True)
-        st.metric("Organizations",len(companies_df))
+        companies_df = pd.read_sql_query("SELECT id,name,owner_username,website_url,created_at FROM companies ORDER BY id DESC", con)
+        st.dataframe(safe_dataframe_for_streamlit(companies_df), use_container_width=True, hide_index=True)
+        st.metric("Organizations", len(companies_df))
 
     with tabs[4]:
         st.subheader("People & Accounts — Permanent Control")
         st.caption("Fast account cleanup for the Overall Administrator. The master account is protected. Deletion is permanent and cannot be undone.")
-        users_df=pd.read_sql_query("SELECT id,first_name,last_name,username,company_name,email,role,login_count,created_at,last_login FROM users WHERE role!='master' ORDER BY id DESC",con)
-        st.metric("Deletable accounts",len(users_df))
+        users_df = pd.read_sql_query("SELECT id,first_name,last_name,username,company_name,email,role,login_count,created_at,last_login FROM users WHERE role!='master' ORDER BY id DESC", con)
+        st.metric("Deletable accounts", len(users_df))
         if users_df.empty:
             st.success("There are currently no non-master accounts to delete.")
         else:
-            account_options={int(r.id): f"#{int(r.id)} · {r.first_name} {r.last_name} · {r.email} · {r.company_name}" for r in users_df.itertuples()}
-            selected_delete=st.multiselect("Select account(s) to permanently delete",options=list(account_options),format_func=lambda x: account_options[x],key="master_delete_accounts")
+            account_options = {int(r.id): f"#{int(r.id)} · {r.first_name} {r.last_name} · {r.email} · {r.company_name}" for r in users_df.itertuples()}
+            selected_delete = st.multiselect("Select account(s) to permanently delete", options=list(account_options), format_func=lambda x: account_options[x], key="master_delete_accounts")
             if selected_delete:
-                preview=users_df[users_df["id"].isin(selected_delete)][["id","first_name","last_name","email","company_name","role","created_at"]]
-                st.dataframe(preview,use_container_width=True,hide_index=True)
+                preview = users_df[users_df["id"].isin(selected_delete)][["id", "first_name", "last_name", "email", "company_name", "role", "created_at"]]
+                st.dataframe(preview, use_container_width=True, hide_index=True)
                 st.warning(f"You selected {len(selected_delete)} account(s). This removes the account and its stored workspace records. This cannot be undone.")
-                confirm=st.checkbox("I understand these selected accounts will be permanently deleted.",key="confirm_bulk_delete")
-                if confirm and st.button("DELETE SELECTED ACCOUNTS PERMANENTLY",use_container_width=True,type="primary",key="bulk_delete_accounts_btn"):
-                    deleted,removed=permanently_delete_accounts(selected_delete)
+                confirm = st.checkbox("I understand these selected accounts will be permanently deleted.", key="confirm_bulk_delete")
+                if confirm and st.button("DELETE SELECTED ACCOUNTS PERMANENTLY", use_container_width=True, type="primary", key="bulk_delete_accounts_btn"):
+                    deleted, removed = permanently_delete_accounts(selected_delete)
                     for r in removed:
-                        log_activity(MASTER_USERNAME,"DACRE MASTER",f"PERMANENTLY DELETED account {r['username']} ({r['email']})",notify_admin=False)
+                        log_activity(MASTER_USERNAME, "DACRE MASTER", f"PERMANENTLY DELETED account {r['username']} ({r['email']})", notify_admin=False)
                     st.success(f"Permanently deleted {deleted} account(s).")
                     st.rerun()
             st.markdown("#### Current accounts")
-            st.dataframe(safe_dataframe_for_streamlit(users_df),use_container_width=True,hide_index=True)
+            st.dataframe(safe_dataframe_for_streamlit(users_df), use_container_width=True, hide_index=True)
 
     with tabs[5]:
         st.subheader("System Activity")
-        activity_df=pd.read_sql_query("SELECT id,username,company_name,action,created_at FROM activity WHERE lower(username) != lower(?) UNION ALL SELECT id, 'Visitor' AS username, 'PUBLIC' AS company_name, (event_type || ' · ' || page_name) AS action, created_at FROM public_visits ORDER BY created_at DESC",con,params=(MASTER_USERNAME,))
-        st.dataframe(safe_dataframe_for_streamlit(activity_df),use_container_width=True,hide_index=True)
+        activity_df = pd.read_sql_query("SELECT id,username,company_name,action,created_at FROM activity WHERE lower(username) != lower(?) UNION ALL SELECT id, 'Visitor' AS username, 'PUBLIC' AS company_name, (event_type || ' · ' || page_name) AS action, created_at FROM public_visits ORDER BY created_at DESC", con, params=(MASTER_USERNAME,))
+        st.dataframe(safe_dataframe_for_streamlit(activity_df), use_container_width=True, hide_index=True)
 
     with tabs[6]:
         st.subheader("DI Conversations Across DACRE")
-        chat_df=pd.read_sql_query("SELECT id,username,company_name,sender,message,created_at FROM chat_history WHERE lower(username) != lower(?) ORDER BY id DESC",con,params=(MASTER_USERNAME,))
-        st.dataframe(chat_df,use_container_width=True,hide_index=True)
+        chat_df = pd.read_sql_query("SELECT id,username,company_name,sender,message,created_at FROM chat_history WHERE lower(username) != lower(?) ORDER BY id DESC", con, params=(MASTER_USERNAME,))
+        st.dataframe(chat_df, use_container_width=True, hide_index=True)
         st.caption("This view gives the master administration layer system-wide visibility into DI conversations. It is not shown to ordinary users.")
 
     with tabs[7]:
         render_chibobec_client_overview(con)
 
     with tabs[8]:
-        # This entire tab is inside the master-only Overall Admin branch.
-        # Keep the extra identity check so the Memory Box can never be rendered
-        # to an ordinary company user by mistake.
         if user.get("role") != "master" or user.get("username") != MASTER_USERNAME:
             st.error("DI Memory Box is restricted to the Overall Administrator.")
         else:
             st.subheader("DI Memory Box — MASTER ONLY")
             st.caption("Private master knowledge store. DI workers use active records as trusted context, but ordinary company users cannot open or manage this page.")
-            with st.expander("🌐 Online Intelligence Intake",expanded=False):
-                web_q=st.text_input("Give DI a topic to research online",placeholder="e.g. latest market trends, regulation changes, a competitor, or a technology topic",key="admin_memory_web_q")
-                if st.button("Research Online",key="admin_memory_web_btn",use_container_width=True,type="primary") and web_q.strip():
-                    st.session_state.admin_memory_web_results=online_lookup(web_q.strip(),max_results=8)
-                results=st.session_state.get("admin_memory_web_results",[])
-                for title,url in results: st.markdown(f"**{title}**  \n{url}")
+            with st.expander("🌐 Online Intelligence Intake", expanded=False):
+                web_q = st.text_input("Give DI a topic to research online", placeholder="e.g. latest market trends, regulation changes, a competitor, or a technology topic", key="admin_memory_web_q")
+                if st.button("Research Online", key="admin_memory_web_btn", use_container_width=True, type="primary") and web_q.strip():
+                    st.session_state.admin_memory_web_results = online_lookup(web_q.strip(), max_results=8)
+                results = st.session_state.get("admin_memory_web_results", [])
+                for title, url in results:
+                    st.markdown(f"**{title}**  \n{url}")
                 if results:
-                    target=st.selectbox("Where should this research go?", ["Shared DI Memory"]+[a["di_name"] for a in get_di_agents()],key="admin_memory_web_target")
-                    if st.button("Save Research",key="admin_memory_web_save",use_container_width=True):
-                        if target=="Shared DI Memory":
-                            now=datetime.now().isoformat(timespec="seconds")
-                            for title,url in results: con.execute("INSERT INTO di_memory(company_name,category,title,content,priority,active,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)",("","ONLINE RESEARCH",title,f"Public source: {url}",800,1,now,now))
+                    target = st.selectbox("Where should this research go?", ["Shared DI Memory"] + [a["di_name"] for a in get_di_agents()], key="admin_memory_web_target")
+                    if st.button("Save Research", key="admin_memory_web_save", use_container_width=True):
+                        if target == "Shared DI Memory":
+                            now = datetime.now().isoformat(timespec="seconds")
+                            for title, url in results:
+                                con.execute("INSERT INTO di_memory(company_name,category,title,content,priority,active,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)", ("", "ONLINE RESEARCH", title, f"Public source: {url}", 800, 1, now, now))
                             con.commit()
                         else:
-                            ag=next(a for a in get_di_agents() if a["di_name"]==target)
-                            save_di_private_memory(ag["id"],"Online research: "+web_q.strip(),"\n".join([f"{t} — {u}" for t,u in results]),MASTER_USERNAME,"online_research")
+                            ag = next(a for a in get_di_agents() if a["di_name"] == target)
+                            save_di_private_memory(ag["id"], "Online research: " + web_q.strip(), "\n".join([f"{t} — {u}" for t, u in results]), MASTER_USERNAME, "online_research")
                         st.success("Online research saved.")
-            mem_search=st.text_input("Search the DI Memory Box",placeholder="Search DACRE, DI, accounts, business analytics, formulas, security...",key="di_memory_admin_search")
-            mem_filter=st.selectbox("Memory category",["ALL"]+sorted([r[0] for r in con.execute("SELECT DISTINCT category FROM di_memory ORDER BY category").fetchall()]),key="di_memory_category")
+            
+            mem_search = st.text_input("Search the DI Memory Box", placeholder="Search DACRE, DI, accounts, business analytics, formulas, security...", key="di_memory_admin_search")
+            mem_filter = st.selectbox("Memory category", ["ALL"] + sorted([r[0] for r in con.execute("SELECT DISTINCT category FROM di_memory ORDER BY category").fetchall()]), key="di_memory_category")
             if mem_search.strip():
-                pattern="%"+mem_search.strip()+"%"
-                mem_sql="SELECT id,category,title,content,priority,active,created_at,updated_at FROM di_memory WHERE (title LIKE ? OR content LIKE ? OR category LIKE ?)"
-                params=(pattern,pattern,pattern)
-                if mem_filter!="ALL":
-                    mem_sql+=" AND category=?"; params=params+(mem_filter,)
-                mem_sql+=" ORDER BY priority DESC,id ASC LIMIT 500"
-                mem_df=pd.read_sql_query(mem_sql,con,params=params)
-            elif mem_filter!="ALL":
-                mem_df=pd.read_sql_query("SELECT id,category,title,content,priority,active,created_at,updated_at FROM di_memory WHERE category=? ORDER BY priority DESC,id ASC",con,params=(mem_filter,))
+                pattern = "%" + mem_search.strip() + "%"
+                mem_sql = "SELECT id,category,title,content,priority,active,created_at,updated_at FROM di_memory WHERE (title LIKE ? OR content LIKE ? OR category LIKE ?)"
+                params = (pattern, pattern, pattern)
+                if mem_filter != "ALL":
+                    mem_sql += " AND category=?"
+                    params = params + (mem_filter,)
+                mem_sql += " ORDER BY priority DESC,id ASC LIMIT 500"
+                mem_df = pd.read_sql_query(mem_sql, con, params=params)
+            elif mem_filter != "ALL":
+                mem_df = pd.read_sql_query("SELECT id,category,title,content,priority,active,created_at,updated_at FROM di_memory WHERE category=? ORDER BY priority DESC,id ASC", con, params=(mem_filter,))
             else:
-                mem_df=pd.read_sql_query("SELECT id,category,title,content,priority,active,created_at,updated_at FROM di_memory ORDER BY priority DESC,id ASC",con)
-            total_mem=con.execute("SELECT COUNT(*) FROM di_memory").fetchone()[0]
-            active_mem=con.execute("SELECT COUNT(*) FROM di_memory WHERE active=1").fetchone()[0]
-            a,b,c=st.columns(3)
-            a.metric("Total Memory Records",total_mem)
-            b.metric("Active Records",active_mem)
+                mem_df = pd.read_sql_query("SELECT id,category,title,content,priority,active,created_at,updated_at FROM di_memory ORDER BY priority DESC,id ASC", con)
+            
+            total_mem = con.execute("SELECT COUNT(*) FROM di_memory").fetchone()[0]
+            active_mem = con.execute("SELECT COUNT(*) FROM di_memory WHERE active=1").fetchone()[0]
+            a, b, c = st.columns(3)
+            a.metric("Total Memory Records", total_mem)
+            b.metric("Active Records", active_mem)
             c.metric("Target Library", "4,000")
-            st.dataframe(safe_dataframe_for_streamlit(mem_df),use_container_width=True,hide_index=True)
-            with st.expander("Add a new DI Memory Box record",expanded=False):
-                mc1,mc2=st.columns([1,2])
+            st.dataframe(safe_dataframe_for_streamlit(mem_df), use_container_width=True, hide_index=True)
+            
+            with st.expander("Add a new DI Memory Box record", expanded=False):
+                mc1, mc2 = st.columns([1, 2])
                 with mc1:
-                    mem_category=st.text_input("Category",placeholder="PLATFORM / SECURITY / DI / HELP")
-                    mem_title=st.text_input("Memory title")
-                    mem_priority=st.number_input("Priority",min_value=1,max_value=2000,value=500,step=10)
+                    mem_category = st.text_input("Category", placeholder="PLATFORM / SECURITY / DI / HELP")
+                    mem_title = st.text_input("Memory title")
+                    mem_priority = st.number_input("Priority", min_value=1, max_value=2000, value=500, step=10)
                 with mc2:
-                    mem_content=st.text_area("Trusted information",height=150,placeholder="Write the exact information DI should know.")
-                if st.button("Save to DI Memory Box",use_container_width=True,type="primary"):
+                    mem_content = st.text_area("Trusted information", height=150, placeholder="Write the exact information DI should know.")
+                if st.button("Save to DI Memory Box", use_container_width=True, type="primary"):
                     if not mem_title.strip() or not mem_content.strip():
                         st.error("Memory title and trusted information are required.")
                     else:
-                        now=datetime.now().isoformat(timespec="seconds")
-                        con.execute("INSERT INTO di_memory(category,title,content,priority,active,created_at,updated_at) VALUES(?,?,?,?,1,?,?)",(mem_category.strip().upper() or "GENERAL",mem_title.strip(),mem_content.strip(),int(mem_priority),now,now)); con.commit(); st.success("Saved to DI Memory Box."); st.rerun()
+                        now = datetime.now().isoformat(timespec="seconds")
+                        con.execute("INSERT INTO di_memory(category,title,content,priority,active,created_at,updated_at) VALUES(?,?,?,?,1,?,?)", (mem_category.strip().upper() or "GENERAL", mem_title.strip(), mem_content.strip(), int(mem_priority), now, now))
+                        con.commit()
+                        st.success("Saved to DI Memory Box.")
+                        st.rerun()
             st.info("Use this box for durable project facts, approved operating rules, creator information, security rules, product capabilities and other knowledge that every DI should share.")
 
     with tabs[9]:
         st.subheader("David Creations")
         st.caption("Master-only room. Your private founder archive and the individual DI brains are accessible here only after a second passkey check.")
-        if not st.session_state.get("david_creations_unlocked",False):
-            dc_pk=st.text_input("David Creations passkey",type="password",key="david_creations_pk")
-            if st.button("Unlock David Creations",use_container_width=True,type="primary",key="unlock_david_creations"):
-                if hmac.compare_digest((dc_pk or "").strip(),DAVID_CREATIONS_PASSKEY):
-                    st.session_state.david_creations_unlocked=True; st.success("David Creations unlocked."); st.rerun()
-                else: st.error("Incorrect David Creations passkey.")
+        if not st.session_state.get("david_creations_unlocked", False):
+            dc_pk = st.text_input("David Creations passkey", type="password", key="david_creations_pk")
+            if st.button("Unlock David Creations", use_container_width=True, type="primary", key="unlock_david_creations"):
+                if hmac.compare_digest((dc_pk or "").strip(), DAVID_CREATIONS_PASSKEY):
+                    st.session_state.david_creations_unlocked = True
+                    st.success("David Creations unlocked.")
+                    st.rerun()
+                else:
+                    st.error("Incorrect David Creations passkey.")
         else:
             st.success("David Creations is unlocked for this master session.")
-            agents=get_di_agents()
+            agents = get_di_agents()
             if agents:
-                pick=st.selectbox("Select a DI brain",[a["id"] for a in agents],format_func=lambda x: next((a["di_name"] for a in agents if a["id"]==x),str(x)),key="dc_brain_pick")
-                rows=get_di_private_memory(pick,limit=100)
-                if rows: st.dataframe(safe_dataframe_for_streamlit(pd.DataFrame([dict(r) for r in rows])),use_container_width=True,hide_index=True)
-                else: st.info("This DI has no private master notes yet.")
-                title=st.text_input("Founder creation title",key="dc_title")
-                body=st.text_area("Private founder creation / sense / instruction",key="dc_body",height=130)
-                if st.button("Save to David Creations",use_container_width=True,type="primary",key="save_david_creation") and title.strip() and body.strip():
-                    now=datetime.now().isoformat(timespec="seconds")
-                    con.execute("INSERT INTO david_creations(category,title,content,created_at,updated_at) VALUES(?,?,?,?,?)",("FOUNDER",title.strip(),body.strip(),now,now)); con.commit()
-                    save_di_private_memory(pick,title.strip(),body.strip(),MASTER_USERNAME,"david_creations")
+                pick = st.selectbox("Select a DI brain", [a["id"] for a in agents], format_func=lambda x: next((a["di_name"] for a in agents if a["id"] == x), str(x)), key="dc_brain_pick")
+                rows = get_di_private_memory(pick, limit=100)
+                if rows:
+                    st.dataframe(safe_dataframe_for_streamlit(pd.DataFrame([dict(r) for r in rows])), use_container_width=True, hide_index=True)
+                else:
+                    st.info("This DI has no private master notes yet.")
+                title = st.text_input("Founder creation title", key="dc_title")
+                body = st.text_area("Private founder creation / sense / instruction", key="dc_body", height=130)
+                if st.button("Save to David Creations", use_container_width=True, type="primary", key="save_david_creation") and title.strip() and body.strip():
+                    now = datetime.now().isoformat(timespec="seconds")
+                    con.execute("INSERT INTO david_creations(category,title,content,created_at,updated_at) VALUES(?,?,?,?,?)", ("FOUNDER", title.strip(), body.strip(), now, now))
+                    con.commit()
+                    save_di_private_memory(pick, title.strip(), body.strip(), MASTER_USERNAME, "david_creations")
                     st.success("Saved privately to the founder archive and selected DI brain.")
-            dc_df=pd.read_sql_query("SELECT category,title,content,created_at,updated_at FROM david_creations ORDER BY id DESC",con)
-            st.markdown("#### Founder creation archive")
+            dc_df = pd.read_sql_query("SELECT category,title,content,created_at,updated_at FROM david_creations ORDER BY id DESC", con)            st.markdown("#### Founder creation archive")
             st.dataframe(safe_dataframe_for_streamlit(dc_df),use_container_width=True,hide_index=True)
             if st.button("Lock David Creations",use_container_width=True,key="lock_david_creations"):
                 st.session_state.david_creations_unlocked=False; st.rerun()
