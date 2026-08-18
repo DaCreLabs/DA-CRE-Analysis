@@ -10427,7 +10427,7 @@ for _key, _default in _SESSION_DEFAULTS.items():
 
 if st.session_state.user is None:
     landing_page()
-    st.stop()
+ st.stop()
 
 if not st.session_state.chat_history:
     st.session_state.chat_history = load_chat_history(st.session_state.user, limit=40)
@@ -10438,7 +10438,8 @@ if not st.session_state.chat_history:
 if selected_page == "Landing Page":
     landing_page()
 
-elif selected_page == "Workspace & Data":    st.header("Workspace & Data Engine")
+elif selected_page == "Workspace & Data":
+    st.header("Workspace & Data Engine")
     file_upload=st.file_uploader("Upload dataset (CSV, Excel, TSV, JSON)",type=SUPPORTED_EXTENSIONS)
     if file_upload is not None and st.button("Import & Load Dataset"):
         try:
@@ -10446,9 +10447,7 @@ elif selected_page == "Workspace & Data":    st.header("Workspace & Data Engine"
             st.session_state.raw_df=df_raw
             st.session_state.processed_df=clean_dataframe(df_raw)
             st.session_state.active_filename=file_upload.name
-            save_file(user,file_upload,st.session_state.processed_df)
-            save_project(user,st.session_state.raw_df,st.session_state.processed_df,st.session_state.active_filename,st.session_state.formula_logs,st.session_state.chart_config)
-            st.success(f"Loaded '{file_upload.name}' successfully!")
+            save_file(user,file_upload,st.session_state.processed_df)            st.success(f"Loaded '{file_upload.name}' successfully!")
             st.rerun()
         except Exception as exc: st.error(f"Could not load the dataset: {exc}")
 
