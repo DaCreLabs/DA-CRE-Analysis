@@ -10982,27 +10982,7 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
             b.metric("Active Records", active_mem)
             c.metric("Target Library", "4,000")
             st.dataframe(safe_dataframe_for_streamlit(mem_df), use_container_width=True, hide_index=True)
-            
-            with st.expander("Add a new DI Memory Box record", expanded=False):
-                mc1, mc2 = st.columns([1, 2])
-                with mc1:
-                    mem_category = st.text_input("Category", placeholder="PLATFORM / SECURITY / DI / HELP")
-                    mem_title = st.text_input("Memory title")
-                    mem_priority = st.number_input("Priority", min_value=1, max_value=2000, value=500, step=10)
-                with mc2:
-                    mem_content = st.text_area("Trusted information", height=150, placeholder="Write the exact information DI should know.")
-                if st.button("Save to DI Memory Box", use_container_width=True, type="primary"):
-                    if not mem_title.strip() or not mem_content.strip():
-                        st.error("Memory title and trusted information are required.")
-                    else:
-                        now = datetime.now().isoformat(timespec="seconds")
-                        con.execute("INSERT INTO di_memory(category,title,content,priority,active,created_at,updated_at) VALUES(?,?,?,?,1,?,?)", (mem_category.strip().upper() or "GENERAL", mem_title.strip(), mem_content.strip(), int(mem_priority), now, now))
-                        con.commit()
-                        st.success("Saved to DI Memory Box.")
-                        st.rerun()
-            st.info("Use this box for durable project facts, approved operating rules, creator information, security rules, product capabilities and other knowledge that every DI should share.")
-
-    with tabs[9]:
+           with tabs[9]:
         st.subheader("David Creations")
         st.caption("Master-only room. Your private founder archive and the individual DI brains are accessible here only after a second passkey check.")
         if not st.session_state.get("david_creations_unlocked", False):
@@ -11032,11 +11012,11 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
                     con.commit()
                     save_di_private_memory(pick, title.strip(), body.strip(), MASTER_USERNAME, "david_creations")
                     st.success("Saved privately to the founder archive and selected DI brain.")
-            dc_df = pd.read_sql_query("SELECT category,title,content,created_at,updated_at FROM david_creations ORDER BY id DESC", con)            st.markdown("#### Founder creation archive")
-            st.dataframe(safe_dataframe_for_streamlit(dc_df),use_container_width=True,hide_index=True)
-            if st.button("Lock David Creations",use_container_width=True,key="lock_david_creations"):
-                st.session_state.david_creations_unlocked=False; st.rerun()
-
+                    st.rerun()
+            
+            st.markdown("#### Saved David Creations")
+            dc_df = pd.read_sql_query("SELECT category,title,content,created_at,updated_at FROM david_creations ORDER BY id DESC", con)
+            st.dataframe(safe_dataframe_for_streamlit(dc_df), use_container_width=True, hide_index=True)
     with tabs[10]:
         st.subheader("DI Mail Source")
         try:
