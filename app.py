@@ -5547,25 +5547,23 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
             <b>Founder command view.</b> Monitor platform activity, organizations, people, DI workforce, memory and system health from one protected executive workspace.
           </div>
         </div>
-        """,unsafe_allow_html=True)
+       """, unsafe_allow_html=True)
     with hero_right:
         st.markdown('<div class="ceo-portrait-frame">', unsafe_allow_html=True)
         if CEO_PORTRAIT_PATH and CEO_PORTRAIT_PATH.exists():
             st.image(str(CEO_PORTRAIT_PATH), use_container_width=True, output_format="JPEG")
-        else:
-            import base64 as _b64
-            _raw = CEO_PORTRAIT_DATA_URL.split(',',1)[1] if ',' in CEO_PORTRAIT_DATA_URL else ''
-            st.image(_b64.b64decode(_raw), use_container_width=True, output_format="JPEG")
+        elif CEO_PORTRAIT_DATA_URL:
+            # Streamlit accepts standard Data URLs directly without manual base64 decoding
+            st.image(CEO_PORTRAIT_DATA_URL, use_container_width=True)
         st.markdown('<div class="ceo-portrait-caption">David Emenike · CEO & Overall Administrator · DACRE Analysis</div></div>', unsafe_allow_html=True)
 
-    m1,m2,m3,m4,m5,m6=st.columns(6)
-    m1.metric("Business Accounts",counts["users"])
-    m2.metric("Organizations",counts["companies"])
-    m3.metric("Activities",counts["activities"])
-    m4.metric("DI Conversations",counts["messages"])
-    m5.metric("Stored Files",counts["files"])
-    m6.metric("DI Workforce",counts["agents"])
-
+    m1, m2, m3, m4, m5, m6 = st.columns(6)
+    m1.metric("Business Accounts", counts["users"])
+    m2.metric("Organizations", counts["companies"])
+    m3.metric("Activities", counts["activities"])
+    m4.metric("DI Conversations", counts["messages"])
+    m5.metric("Stored Files", counts["files"])
+    m6.metric("DI Workforce", counts["agents"])
     con=db()
     tabs=st.tabs(["Executive Overview","DI Workforce","Sovereign Master Call","Organizations","People & Accounts","Live Activity","DI Conversations","Chibobec Client","DI Memory Box","David Creations","Mail Source","System Controls"])
 
