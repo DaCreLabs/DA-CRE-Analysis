@@ -10737,8 +10737,11 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
                 st.info("No non-master customer accounts are currently present in this database.")
             else:
                 st.dataframe(safe_dataframe_for_streamlit(signup_df),use_container_width=True,hide_index=True)
-           if st.button(
-    "Refresh executive view",
+  #  Make sure 'if' aligns exactly with the surrounding block in line 10740:
+
+    if st.button("Refresh executive view", key="refresh_exec_view_btn", use_container_width=True):
+        # Your button action code here
+        pass    "Refresh executive view",
     use_container_width=True,
     key="refresh_executive_view_admin",
 ):
