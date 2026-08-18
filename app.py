@@ -1832,7 +1832,7 @@ def _meta_whatsapp_config():
         "reminder_2_template": _dacre_secret(
             "DACRE_WHATSAPP_2DAY_TEMPLATE", "dacre_loan_due_2days"
         ),
-        "due_template": _dacre_secret(
+      "due_template": _dacre_secret(
             "DACRE_WHATSAPP_DUE_TEMPLATE", "dacre_loan_due_today"
         ),
         "language": _dacre_secret("DACRE_WHATSAPP_TEMPLATE_LANGUAGE", "en_US"),
@@ -1899,6 +1899,23 @@ def _log_whatsapp_delivery(
             """,
             (
                 loan_id,
+                company,
+                client_name,
+                phone,
+                reminder_type,
+                template_name,
+                message_id,
+                status,
+                str(response)[:4000],
+                datetime.now().isoformat(timespec="seconds"),
+            ),
+        )
+        con.commit()
+    except Exception as e:
+        print(f"Database logging failed: {e}")
+    finally:
+        # Release connection immediately to prevent Streamlit locking errors
+        con.close()                loan_id,
                 company,
                 client_name,
                 phone,
