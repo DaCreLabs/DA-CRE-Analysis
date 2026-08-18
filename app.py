@@ -10741,20 +10741,19 @@ if st.button("Refresh executive view", key="refresh_executive_view_admin", use_c
     st.rerun()
 
 with tabs[1]:
-    st.subheader("DI Workforce Command")
+   st.subheader("DI Workforce Command")
     st.write("Create, rank, assign and privately brief your DI workforce. Workers are grouped by specialty and each has an individual private brain.")
     create_left, create_right = st.columns([1, 1])
-     with create_left:
+    with create_left:
         di_name = st.text_input("DI Name", placeholder="e.g. Marcus")
         di_specialty = st.text_input("Specialty", placeholder="e.g. Financial Analyst")
         di_role = st.text_area("DI System Role", placeholder="Describe how this DI should serve businesses.", height=90)
     with create_right:
         companies = [r[0] for r in con.execute("SELECT name FROM companies ORDER BY name").fetchall()]
-            di_status=st.selectbox("Initial Status",["Available","Assigned","Training","Paused"],key="new_di_status")
-            di_company=st.selectbox("Assign to Organization",["Unassigned"]+companies,key="new_di_company")
-            di_gender=st.selectbox("Staff presentation",["female","male"],format_func=lambda x:"Female professional" if x=="female" else "Male professional",key="new_di_gender")
-            di_rank=st.number_input("Initial Rank",min_value=1,max_value=20,value=1,step=1,key="new_di_rank")
-            if st.button("Create DI Worker",use_container_width=True,type="primary",key="create_di_master"):
+        di_status = st.selectbox("Initial Status", ["Available", "Assigned", "Training", "Paused"], key="new_di_status")
+        di_company = st.selectbox("Assign to Organization", ["Unassigned"] + companies, key="new_di_company")
+        di_gender = st.selectbox("Staff presentation", ["female", "male"], format_func=lambda x: "Female professional" if x == "female" else "Male professional", key="new_di_gender")
+        di_rank = st.number_input("Initial Rank", min_value=1, max_value=20, value=1, step=1, key="new_di_rank")            if st.button("Create DI Worker",use_container_width=True,type="primary",key="create_di_master"):
                 ok,msg=create_di_agent(di_name,di_specialty,di_status,"" if di_company=="Unassigned" else di_company,di_role,di_gender,di_position or "DI Specialist",int(di_rank))
                 if ok:
                     log_activity(MASTER_USERNAME,"DACRE MASTER",f"Created DI worker {di_name} ({msg})",notify_admin=False); st.success(f"DI created successfully. Worker code: {msg}"); st.rerun()
