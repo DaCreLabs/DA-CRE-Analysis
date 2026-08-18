@@ -10549,7 +10549,7 @@ head_col1,head_col2=st.columns([4,1])
 with head_col1:
     st.markdown(f"""<div class="dacre-user-hero"><div class="dacre-user-title">{'Welcome back, Master David.' if user.get('role')=='master' else 'Good to have you here, '+user['first_name']+'.'}</div><div class="dacre-user-sub">{'DA-CRE Founder Command is online. Your DI workforce, organizations, platform memory and global operations are connected.' if user.get('role')=='master' else DI_NAME+' is active for <b>'+user['company']+'</b>. Your business workspace, data tools and DI conversation are connected.'}</div></div>""",unsafe_allow_html=True)
 with head_col2:
-    if st.button("Sign Out",use_container_width=True):
+if st.button("Sign Out", key="sign_out_btn_10552", use_container_width=True):
         log_activity(user["username"],user["company"],"Signed out",notify_admin=user["role"] not in ("master","company_admin"))
         st.session_state.user=None
         st.rerun()
