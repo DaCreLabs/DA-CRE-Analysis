@@ -1912,12 +1912,7 @@ def _log_whatsapp_delivery(
     except Exception as e:
         print(f"Database write error: {e}")
     finally:
-        con.close()        con.commit()
-    except Exception as e:
-        print(f"Error logging WhatsApp delivery: {e}")
-    finally:
-        # Guarantee connection closure so SQLite database file locks are released
-        con.close()    finally:
+        con.close()
         con.close()
 def send_whatsapp_template(to_number, template_name, parameters):
     """Send an approved Meta WhatsApp Cloud API template."""
