@@ -10697,7 +10697,7 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
           </div>
         </div>
         """,unsafe_allow_html=True)
-    with hero_right:
+   with hero_right:
         if CEO_PORTRAIT_PATH and CEO_PORTRAIT_PATH.exists():
             st.markdown('<div class="ceo-portrait-frame">', unsafe_allow_html=True)
             st.image(str(CEO_PORTRAIT_PATH), use_container_width=True, output_format="JPEG")
@@ -10927,7 +10927,13 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
     with tabs[6]:
         st.subheader("DI Conversations Across DACRE")
         chat_df = pd.read_sql_query("SELECT id,username,company_name,sender,message,created_at FROM chat_history WHERE lower(username) != lower(?) ORDER BY id DESC", con, params=(MASTER_USERNAME,))
-        with tabs[8]:
+        st.dataframe(safe_dataframe_for_streamlit(chat_df), use_container_width=True, hide_index=True)
+        st.caption("This view gives the master administration layer system-wide visibility into DI conversations. It is not shown to ordinary users.")
+
+    with tabs[7]:
+        render_chibobec_client_overview(con)
+
+    with tabs[8]:
         if user.get("role") != "master" or user.get("username") != MASTER_USERNAME:
             st.error("DI Memory Box is restricted to the Overall Administrator.")
         else:
@@ -11052,45 +11058,46 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
                 configured = False
             provider_status.append((label, configured))
         configured_labels = [x for x, ok in provider_status if ok]
-        if configured_labels:            st.success("Real mail providers configured: " + ", ".join(configured_labels) + ". DACRE tries them in order and stops after the first successful delivery.")
+        if configured_labels:
+            st.success("Real mail providers configured: " + ", ".join(configured_labels) + ". DACRE tries them in order and stops after the first successful delivery.")
         else:
             st.warning("No real mail provider is configured yet. Accounts can still be created, but real welcome emails require at least one configured provider.")
         st.code("""# Gmail
-DACRE_GMAIL_SMTP_HOST = \"smtp.gmail.com\"
+DACRE_GMAIL_SMTP_HOST = "smtp.gmail.com"
 DACRE_GMAIL_SMTP_PORT = 587
-DACRE_GMAIL_SMTP_USER = \"your-gmail@gmail.com\"
-DACRE_GMAIL_SMTP_PASSWORD = \"your-google-app-password\"
-DACRE_GMAIL_SMTP_FROM = \"your-gmail@gmail.com\"
+DACRE_GMAIL_SMTP_USER = "your-gmail@gmail.com"
+DACRE_GMAIL_SMTP_PASSWORD = "your-google-app-password"
+DACRE_GMAIL_SMTP_FROM = "your-gmail@gmail.com"
 
 # Outlook / Microsoft 365
-DACRE_OUTLOOK_SMTP_HOST = \"smtp.office365.com\"
+DACRE_OUTLOOK_SMTP_HOST = "smtp.office365.com"
 DACRE_OUTLOOK_SMTP_PORT = 587
-DACRE_OUTLOOK_SMTP_USER = \"your-outlook@outlook.com\"
-DACRE_OUTLOOK_SMTP_PASSWORD = \"your-outlook-app-password\"
-DACRE_OUTLOOK_SMTP_FROM = \"your-outlook@outlook.com\"
+DACRE_OUTLOOK_SMTP_USER = "your-outlook@outlook.com"
+DACRE_OUTLOOK_SMTP_PASSWORD = "your-outlook-app-password"
+DACRE_OUTLOOK_SMTP_FROM = "your-outlook@outlook.com"
 
 # Proton: configure a Proton-supported SMTP endpoint that is reachable from deployment.
-DACRE_PROTON_SMTP_HOST = \"your-proton-smtp-host\"
+DACRE_PROTON_SMTP_HOST = "your-proton-smtp-host"
 DACRE_PROTON_SMTP_PORT = 587
-DACRE_PROTON_SMTP_USER = \"your-proton-sender\"
-DACRE_PROTON_SMTP_PASSWORD = \"your-proton-smtp-credential\"
-DACRE_PROTON_SMTP_FROM = \"your-proton-address\"
+DACRE_PROTON_SMTP_USER = "your-proton-sender"
+DACRE_PROTON_SMTP_PASSWORD = "your-proton-smtp-credential"
+DACRE_PROTON_SMTP_FROM = "your-proton-address"
 
 # Optional legacy fallback
-DACRE_SMTP_HOST = \"\"
+DACRE_SMTP_HOST = ""
 DACRE_SMTP_PORT = 587
-DACRE_SMTP_USER = \"\"
-DACRE_SMTP_PASSWORD = \"\"
-DACRE_SMTP_FROM = \"\"
+DACRE_SMTP_USER = ""
+DACRE_SMTP_PASSWORD = ""
+DACRE_SMTP_FROM = ""
 """, language="toml")
         st.info("Use provider app passwords/SMTP credentials, not a DACRE user's mailbox password. A local-only Proton Mail Bridge endpoint cannot be reached by Streamlit Cloud; Proton must provide a deployment-reachable SMTP method.")
-        mails_df=pd.read_sql_query("SELECT id,recipient_name,recipient_email,company_name,subject,sender_email,status,sent_at,body FROM emails_log ORDER BY id DESC",con)
-        st.dataframe(safe_dataframe_for_streamlit(mails_df),use_container_width=True,hide_index=True)
+        mails_df = pd.read_sql_query("SELECT id,recipient_name,recipient_email,company_name,subject,sender_email,status,sent_at,body FROM emails_log ORDER BY id DESC", con)
+        st.dataframe(safe_dataframe_for_streamlit(mails_df), use_container_width=True, hide_index=True)
 
     with tabs[11]:
         st.subheader("System Controls")
         st.write("Master-level controls are deliberately separated from normal company administration.")
-        c1,c2=st.columns(2)
+        c1, c2 = st.columns(2)
         with c1:
             st.markdown("**Master identity**")
             st.write("David Emenike")
@@ -11099,9 +11106,9 @@ DACRE_SMTP_FROM = \"\"
         with c2:
             st.markdown("**Security**")
             st.write("The master passkey is checked server-side against its hash. It is not displayed in the CEO Office.")
-            if st.button("Lock CEO Office",use_container_width=True):
-                st.session_state.user=None
-                st.session_state.master_route=False
+            if st.button("Lock CEO Office", use_container_width=True):
+                st.session_state.user = None
+                st.session_state.master_route = False
                 st.query_params.clear()
                 st.rerun()
     con.close()
@@ -11111,19 +11118,20 @@ DACRE_SMTP_FROM = \"\"
 # =============================================================================
 
 st.markdown("---")
-with st.expander("Chat with DI — quick assistant",expanded=False):
-    for msg in st.session_state.chat_history[-10:]: st.write(f"**{msg['sender']}**: {msg['text']}")
-    with st.form("quick_di_form",clear_on_submit=True):
-        q=st.text_input("Chat with DI",placeholder="Chat with DI — ask a question...",label_visibility="collapsed")
-        send=st.form_submit_button("Send")
+with st.expander("Chat with DI — quick assistant", expanded=False):
+    for msg in st.session_state.chat_history[-10:]:
+        st.write(f"**{msg['sender']}**: {msg['text']}")
+    with st.form("quick_di_form", clear_on_submit=True):
+        q = st.text_input("Chat with DI", placeholder="Chat with DI — ask a question...", label_visibility="collapsed")
+        send = st.form_submit_button("Send")
     if send and q.strip():
-        st.session_state.chat_history.append({"sender":user["first_name"],"text":q.strip()})
-        reply=di_reply(q,user,st.session_state.processed_df,allow_online=True,language=st.session_state.get("di_language","English — Nigeria"))
-        st.session_state.chat_history.append({"sender":"DI","text":reply})
-        st.session_state.last_speech=reply
+        st.session_state.chat_history.append({"sender": user["first_name"], "text": q.strip()})
+        reply = di_reply(q, user, st.session_state.processed_df, allow_online=True, language=st.session_state.get("di_language", "English — Nigeria"))
+        st.session_state.chat_history.append({"sender": "DI", "text": reply})
+        st.session_state.last_speech = reply
         st.rerun()
 
 if st.session_state.last_speech:
-    speech=st.session_state.last_speech
-    st.session_state.last_speech=None
-    di_voice_player(speech, DI_LANGUAGE_PROFILES.get(st.session_state.get("di_language","English — Nigeria"),{}).get("code","en-NG"))
+    speech = st.session_state.last_speech
+    st.session_state.last_speech = None
+    di_voice_player(speech, DI_LANGUAGE_PROFILES.get(st.session_state.get("di_language", "English — Nigeria"), {}).get("code", "en-NG"))
