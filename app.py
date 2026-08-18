@@ -6060,20 +6060,23 @@ with st.expander(quick_title,expanded=False):
         st.session_state.chat_history.append({"sender":"DI","text":reply})
         st.session_state.last_speech=reply
         st.rerun()
-
 if st.session_state.last_speech:
-    speech=st.session_state.last_speech
-    st.session_state.last_speech=None
-    di_voice_player(speech, DI_LANGUAGE_PROFILES.get(st.session_state.get("di_language","English — Nigeria"),{}).get("code","en-NG"))
-ultipart import MIMEMultipart
+    speech = st.session_state.last_speech
+    st.session_state.last_speech = None
+    di_voice_player(
+        speech,
+        DI_LANGUAGE_PROFILES.get(
+            st.session_state.get("di_language", "English — Nigeria"), {}
+        ).get("code", "en-NG"),
+    )
+
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 import pandas as pd
+from PIL import Image
 import streamlit as st
 import streamlit.components.v1 as components
-from PIL import Image
-
 try:
     import psycopg
     from psycopg.rows import dict_row
