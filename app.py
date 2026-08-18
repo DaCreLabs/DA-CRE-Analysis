@@ -5602,7 +5602,11 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
                 st.info("No non-master customer accounts are currently present in this database.")
             else:
                 st.dataframe(safe_dataframe_for_streamlit(signup_df),use_container_width=True,hide_index=True)
-            if st.button("Refresh executive view",use_container_width=True):
+            if st.button(
+    "Refresh executive view",
+    use_container_width=True,
+    key="refresh_executive_view_secondary",
+):
                 st.rerun()
 
     with tabs[1]:
@@ -10733,9 +10737,12 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
                 st.info("No non-master customer accounts are currently present in this database.")
             else:
                 st.dataframe(safe_dataframe_for_streamlit(signup_df),use_container_width=True,hide_index=True)
-            if st.button("Refresh executive view",use_container_width=True):
-                st.rerun()
-
+           if st.button(
+    "Refresh executive view",
+    use_container_width=True,
+    key="refresh_executive_view_admin",
+):
+    st.rerun()
     with tabs[1]:
         st.subheader("DI Workforce Command")
         st.write("Create, rank, assign and privately brief your DI workforce. Workers are grouped by specialty and each has an individual private brain.")
