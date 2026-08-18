@@ -10927,13 +10927,7 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
     with tabs[6]:
         st.subheader("DI Conversations Across DACRE")
         chat_df = pd.read_sql_query("SELECT id,username,company_name,sender,message,created_at FROM chat_history WHERE lower(username) != lower(?) ORDER BY id DESC", con, params=(MASTER_USERNAME,))
-        st.dataframe(chat_df, use_container_width=True, hide_index=True)
-        st.caption("This view gives the master administration layer system-wide visibility into DI conversations. It is not shown to ordinary users.")
-
-    with tabs[7]:
-        render_chibobec_client_overview(con)
-
-    with tabs[8]:
+        with tabs[8]:
         if user.get("role") != "master" or user.get("username") != MASTER_USERNAME:
             st.error("DI Memory Box is restricted to the Overall Administrator.")
         else:
@@ -10982,7 +10976,27 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
             b.metric("Active Records", active_mem)
             c.metric("Target Library", "4,000")
             st.dataframe(safe_dataframe_for_streamlit(mem_df), use_container_width=True, hide_index=True)
-           with tabs[9]:
+            
+            with st.expander("Add a new DI Memory Box record", expanded=False):
+                mc1, mc2 = st.columns([1, 2])
+                with mc1:
+                    mem_category = st.text_input("Category", placeholder="PLATFORM / SECURITY / DI / HELP")
+                    mem_title = st.text_input("Memory title")
+                    mem_priority = st.number_input("Priority", min_value=1, max_value=2000, value=500, step=10)
+                with mc2:
+                    mem_content = st.text_area("Trusted information", height=150, placeholder="Write the exact information DI should know.")
+                if st.button("Save to DI Memory Box", use_container_width=True, type="primary"):
+                    if not mem_title.strip() or not mem_content.strip():
+                        st.error("Memory title and trusted information are required.")
+                    else:
+                        now = datetime.now().isoformat(timespec="seconds")
+                        con.execute("INSERT INTO di_memory(category,title,content,priority,active,created_at,updated_at) VALUES(?,?,?,?,1,?,?)", (mem_category.strip().upper() or "GENERAL", mem_title.strip(), mem_content.strip(), int(mem_priority), now, now))
+                        con.commit()
+                        st.success("Saved to DI Memory Box.")
+                        st.rerun()
+            st.info("Use this box for durable project facts, approved operating rules, creator information, security rules, product capabilities and other knowledge that every DI should share.")
+
+    with tabs[9]:
         st.subheader("David Creations")
         st.caption("Master-only room. Your private founder archive and the individual DI brains are accessible here only after a second passkey check.")
         if not st.session_state.get("david_creations_unlocked", False):
@@ -11017,6 +11031,7 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
             st.markdown("#### Saved David Creations")
             dc_df = pd.read_sql_query("SELECT category,title,content,created_at,updated_at FROM david_creations ORDER BY id DESC", con)
             st.dataframe(safe_dataframe_for_streamlit(dc_df), use_container_width=True, hide_index=True)
+
     with tabs[10]:
         st.subheader("DI Mail Source")
         try:
@@ -11029,16 +11044,15 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
             }
         except Exception:
             _smtp_cfg = {"host": "", "port": "587", "user": "", "password": "", "from": ""}
-        provider_status=[]
-        for label,prefix in [("Gmail","DACRE_GMAIL"),("Outlook / Microsoft 365","DACRE_OUTLOOK"),("Proton","DACRE_PROTON")]:
+        provider_status = []
+        for label, prefix in [("Gmail", "DACRE_GMAIL"), ("Outlook / Microsoft 365", "DACRE_OUTLOOK"), ("Proton", "DACRE_PROTON")]:
             try:
-                configured=bool(st.secrets.get(f"{prefix}_SMTP_HOST", "") and st.secrets.get(f"{prefix}_SMTP_USER", "") and st.secrets.get(f"{prefix}_SMTP_PASSWORD", ""))
+                configured = bool(st.secrets.get(f"{prefix}_SMTP_HOST", "") and st.secrets.get(f"{prefix}_SMTP_USER", "") and st.secrets.get(f"{prefix}_SMTP_PASSWORD", ""))
             except Exception:
-                configured=False
-            provider_status.append((label,configured))
-        configured_labels=[x for x,ok in provider_status if ok]
-        if configured_labels:
-            st.success("Real mail providers configured: " + ", ".join(configured_labels) + ". DACRE tries them in order and stops after the first successful delivery.")
+                configured = False
+            provider_status.append((label, configured))
+        configured_labels = [x for x, ok in provider_status if ok]
+        if configured_labels:            st.success("Real mail providers configured: " + ", ".join(configured_labels) + ". DACRE tries them in order and stops after the first successful delivery.")
         else:
             st.warning("No real mail provider is configured yet. Accounts can still be created, but real welcome emails require at least one configured provider.")
         st.code("""# Gmail
