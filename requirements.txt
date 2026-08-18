@@ -4,3 +4,61 @@ openpyxl>=3.1,<4.0
 Pillow>=10.0,<12.0
 SpeechRecognition>=3.10,<4.0
 psycopg[binary]>=3.2,<4
+# =============================================================================
+# DACRE WORLDWIDE - PRODUCTION REQUIREMENTS
+# Version: 7.0.0
+# =============================================================================
+
+# Core
+streamlit>=1.28.0
+pandas>=2.0.0
+Pillow>=10.0.0
+python-dotenv>=1.0.0
+
+# Database
+sqlite3
+psycopg2-binary>=2.9.0  # For PostgreSQL/Supabase
+
+# AI & Machine Learning
+google-generativeai>=0.8.0
+openai>=1.0.0
+transformers>=4.35.0
+torch>=2.0.0  # Required for transformers
+
+# Voice & Audio
+SpeechRecognition>=3.10.0
+pyttsx3>=2.90
+pyaudio>=0.2.11
+sounddevice>=0.4.6
+wave
+pydub>=0.25.1
+
+# Web Search
+googlesearch-python>=1.2.0
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+
+# Finance & Data
+yfinance>=0.2.0
+plotly>=5.17.0
+networkx>=3.1
+folium>=0.14.0
+streamlit-folium>=0.17.0
+
+# Computer Vision
+opencv-python>=4.8.0
+numpy>=1.24.0
+deepface>=0.0.79
+
+# Communication
+websockets>=12.0
+livekit>=0.5.0
+
+# Email
+smtplib
+email
+
+# Utilities
+python-magic>=0.4.27
+python-dotenv>=1.0.0
+pyyaml>=6.0
