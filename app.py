@@ -1912,28 +1912,7 @@ def _log_whatsapp_delivery(
     except Exception as e:
         print(f"Database write error: {e}")
     finally:
-        con.close()
-            ),
-        )
-        con.commit()
-    except Exception as e:
-        print(f"Database logging failed: {e}")
-    finally:
-        # Release connection immediately to prevent Streamlit locking errors
-        con.close()                loan_id,
-                company,
-                client_name,
-                phone,
-                reminder_type,
-                template_name,
-                message_id,
-                status,
-                str(response)[:4000],
-                datetime.now().isoformat(timespec="seconds"),
-            ),
-        )
-
-        con.commit()
+        con.close()        con.commit()
     except Exception as e:
         print(f"Error logging WhatsApp delivery: {e}")
     finally:
