@@ -702,6 +702,7 @@ def init_db():
             created_at TEXT NOT NULL,
             last_login TEXT
         )
+           )
     """)
 
     cur.execute("""
@@ -715,6 +716,8 @@ def init_db():
             created_at TEXT NOT NULL
         )
     """)
+
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS activity (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL,
@@ -794,6 +797,28 @@ def init_db():
             sender TEXT NOT NULL,
             message TEXT NOT NULL,
             created_at TEXT NOT NULL
+        )
+    """)
+
+    # Chibobec Loan Service client/loan tracking and WhatsApp reminder ledger.
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS loan_clients (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            company_name TEXT NOT NULL,
+            client_name TEXT NOT NULL,
+            whatsapp_number TEXT NOT NULL,
+            loan_amount REAL NOT NULL DEFAULT 0,
+            lent_date TEXT NOT NULL,
+            due_date TEXT NOT NULL,
+            reminder_2_sent INTEGER NOT NULL DEFAULT 0,
+            due_sent INTEGER NOT NULL DEFAULT 0,
+            reminder_2_message_id TEXT,
+            due_message_id TEXT,
+            last_whatsapp_status TEXT,
+            last_whatsapp_error TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
         )
     """)
 
