@@ -2753,7 +2753,7 @@ def seed_named_di_workforce():
             if row:
                 con.execute("UPDATE di_agents SET di_code=?,specialty=?,system_role=?,avatar_url=?,voice_profile=?,thinking_style=?,position_title=?,rank_level=?,status=CASE WHEN status='Archived' THEN 'Available' ELSE status END,last_active=? WHERE id=?",(code,specialty,role,avatar,voice,style,position,rank,now,int(row["id"])))
             else:
-                con.execute("INSERT INTO di_agents(di_name,di_code,specialty,status,assigned_company,system_role,avatar_url,voice_profile,thinking_style,position_title,rank_level,appointed_at,appointed_by,created_by,created_at,last_active) VALUES(?,?,?,'Available',NULL,?,?,?,?,?,?,?,?,?,?,?)",(name,code,specialty,role,avatar,voice,style,position,rank,now,MASTER_USERNAME,MASTER_USERNAME,now))
+                con.execute("INSERT INTO di_agents(di_name,di_code,specialty,status,assigned_company,system_role,avatar_url,voice_profile,thinking_style,position_title,rank_level,appointed_at,appointed_by,created_by,created_at,last_active) VALUES(?,?,?,'Available',NULL,?,?,?,?,?,?,?,?,?,?,?)",(name,code,specialty,role,avatar,voice,style,position,rank,now,MASTER_USERNAME,MASTER_USERNAME,now,now))
         # Archive obsolete unassigned legacy workforce entries so the permanent master roster remains exactly 20.
         target_names={r[0] for r in roster}
         for row in con.execute("SELECT id,di_name,assigned_company FROM di_agents").fetchall():
