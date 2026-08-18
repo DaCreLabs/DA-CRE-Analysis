@@ -1836,18 +1836,70 @@ def _meta_whatsapp_config():
 def _meta_phone(phone):
     return re.sub(r"[^0-9]", "", normalize_whatsapp_number(phone))
 
-def _log_whatsapp_delivery(loan_id, company, client_name, phone, reminder_type, template_name, message_id, status, response):
+def _log_whatsapp_delivery(
+    loan_id,
+    company,
+    client_name,
+    phone,
+    reminder_type,
+    template_name,
+    message_id,
+    status,
+    response,
+):
     con = db()
-    con.execute(
-        """INSERT INTO whatsapp_delivery_log
-        (loan_id,company_name,client_name,whatsapp_number,reminder_type,template_name,message_id,status,response,created_at)
-        VALUES(?,?,?,?,?,?,?,?,?,?)""",
-        (loan_id, company, client_name, phone, reminder_type, template_name, message_id,
-         status, str(response)[:4000], datetime.now().isoformat(timespec="seconds")),
-    )
-    con.commit()
-    con.close()
+    try:
+        # Make sure older DACRE databases have this table before logging a reminder.
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS whatsapp_delivery_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                loan_id INTEGER,
+                company_name TEXT NOT NULL DEFAULT '',
+                client_name TEXT NOT NULL DEFAULT '',
+                whatsapp_number TEXT NOT NULL DEFAULT '',
+                reminder_type TEXT NOT NULL DEFAULT '',
+                template_name TEXT,
+                message_id TEXT,
+                status TEXT NOT NULL DEFAULT '',
+                response TEXT,
+                created_at TEXT NOT NULL DEFAULT ''
+            )
+        """)
 
+        con.execute(
+            """
+            INSERT INTO whatsapp_delivery_log
+            (
+                loan_id,
+                company_name,
+                client_name,
+                whatsapp_number,
+                reminder_type,
+                template_name,
+                message_id,
+                status,
+                response,
+                created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                loan_id,
+                company,
+                client_name,
+                phone,
+                reminder_type,
+                template_name,
+                message_id,
+                status,
+                str(response)[:4000],
+                datetime.now().isoformat(timespec="seconds"),
+            ),
+        )
+
+        con.commit()
+    finally:
+        con.close()
 def send_whatsapp_template(to_number, template_name, parameters):
     """Send an approved Meta WhatsApp Cloud API template."""
     cfg = _meta_whatsapp_config()
