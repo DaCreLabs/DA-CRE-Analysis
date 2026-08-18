@@ -1818,23 +1818,30 @@ def normalize_whatsapp_number(number):
 def _dacre_secret(name, default=""):
     """Read a Streamlit secret first, then an environment variable."""
     try:
-        value = st.secrets.get(name, "")
+      value = st.secrets.get(name, "")
     except Exception:
         value = ""
     return str(value or os.getenv(name, default) or default).strip()
+
 
 def _meta_whatsapp_config():
     return {
         "token": _dacre_secret("DACRE_WHATSAPP_TOKEN"),
         "phone_id": _dacre_secret("DACRE_WHATSAPP_PHONE_NUMBER_ID"),
         "version": _dacre_secret("DACRE_WHATSAPP_API_VERSION", "v23.0"),
-        "reminder_2_template": _dacre_secret("DACRE_WHATSAPP_2DAY_TEMPLATE", "dacre_loan_due_2days"),
-        "due_template": _dacre_secret("DACRE_WHATSAPP_DUE_TEMPLATE", "dacre_loan_due_today"),
+        "reminder_2_template": _dacre_secret(
+            "DACRE_WHATSAPP_2DAY_TEMPLATE", "dacre_loan_due_2days"
+        ),
+        "due_template": _dacre_secret(
+            "DACRE_WHATSAPP_DUE_TEMPLATE", "dacre_loan_due_today"
+        ),
         "language": _dacre_secret("DACRE_WHATSAPP_TEMPLATE_LANGUAGE", "en_US"),
     }
 
+
 def _meta_phone(phone):
     return re.sub(r"[^0-9]", "", normalize_whatsapp_number(phone))
+
 
 def _log_whatsapp_delivery(
     loan_id,
@@ -1849,6 +1856,13 @@ def _log_whatsapp_delivery(
 ):
     con = db()
     try:
+        # Set busy timeout to wait for active operations instead of crashing
+        con.execute("PRAGMA busy_timeout = 30000;")
+        try:
+            con.execute("PRAGMA journal_mode = WAL;")
+        except Exception:
+            pass  # WAL mode might be restricted on certain hosted filesystems
+
         # Make sure older DACRE databases have this table before logging a reminder.
         con.execute("""
             CREATE TABLE IF NOT EXISTS whatsapp_delivery_log (
@@ -1898,7 +1912,11 @@ def _log_whatsapp_delivery(
         )
 
         con.commit()
+    except Exception as e:
+        print(f"Error logging WhatsApp delivery: {e}")
     finally:
+        # Guarantee connection closure so SQLite database file locks are released
+        con.close()    finally:
         con.close()
 def send_whatsapp_template(to_number, template_name, parameters):
     """Send an approved Meta WhatsApp Cloud API template."""
