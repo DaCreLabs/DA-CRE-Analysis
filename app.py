@@ -10697,7 +10697,7 @@ elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
           </div>
         </div>
         """,unsafe_allow_html=True)
-   with hero_right:
+  with hero_right:
         if CEO_PORTRAIT_PATH and CEO_PORTRAIT_PATH.exists():
             st.markdown('<div class="ceo-portrait-frame">', unsafe_allow_html=True)
             st.image(str(CEO_PORTRAIT_PATH), use_container_width=True, output_format="JPEG")
