@@ -10744,9 +10744,9 @@ with tabs[1]:
     st.subheader("DI Workforce Command")
     st.write("Create, rank, assign and privately brief your DI workforce. Workers are grouped by specialty and each has an individual private brain.")
     create_left, create_right = st.columns([1, 1])
-    with create_left:
-        di_name = st.text_input("DI Name", placeholder="e.g. Marcus")            di_specialty=st.text_input("Specialty",placeholder="e.g. Financial analysis and forecasting")
-            di_role=st.text_area("DI System Role",placeholder="Describe how this DI should serve businesses.",height=90)
+       with create_left:
+        di_name = st.text_input("DI Name", placeholder="e.g. Marcus")
+        di_specialty = st.text_input("Specialty", placeholder="e.g. Financial Analyst")            di_role=st.text_area("DI System Role",placeholder="Describe how this DI should serve businesses.",height=90)
             di_position=st.text_input("Position",placeholder="e.g. Finance Lead")
         with create_right:
             companies=[r[0] for r in con.execute("SELECT name FROM companies ORDER BY name").fetchall()]
