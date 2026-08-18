@@ -1832,7 +1832,7 @@ def _meta_whatsapp_config():
         "reminder_2_template": _dacre_secret(
             "DACRE_WHATSAPP_2DAY_TEMPLATE", "dacre_loan_due_2days"
         ),
-      "due_template": _dacre_secret(
+"due_template": _dacre_secret(
             "DACRE_WHATSAPP_DUE_TEMPLATE", "dacre_loan_due_today"
         ),
         "language": _dacre_secret("DACRE_WHATSAPP_TEMPLATE_LANGUAGE", "en_US"),
@@ -1856,14 +1856,12 @@ def _log_whatsapp_delivery(
 ):
     con = db()
     try:
-        # Set busy timeout to wait for active operations instead of crashing
         con.execute("PRAGMA busy_timeout = 30000;")
         try:
             con.execute("PRAGMA journal_mode = WAL;")
         except Exception:
-            pass  # WAL mode might be restricted on certain hosted filesystems
+            pass
 
-        # Make sure older DACRE databases have this table before logging a reminder.
         con.execute("""
             CREATE TABLE IF NOT EXISTS whatsapp_delivery_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1908,6 +1906,13 @@ def _log_whatsapp_delivery(
                 status,
                 str(response)[:4000],
                 datetime.now().isoformat(timespec="seconds"),
+            ),
+        )
+        con.commit()
+    except Exception as e:
+        print(f"Database write error: {e}")
+    finally:
+        con.close()
             ),
         )
         con.commit()
