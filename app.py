@@ -6066,8 +6066,9 @@ if st.session_state.last_speech:
     st.session_state.last_speech=None
     di_voice_player(speech, DI_LANGUAGE_PROFILES.get(st.session_state.get("di_language","English — Nigeria"),{}).get("code","en-NG"))
 ultipart import MIMEMultipart
+^
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from pathlib import Path
 
 import pandas as pd
 import streamlit as st
