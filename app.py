@@ -1821,7 +1821,7 @@ def notify_company_admin(company, message, event_type="system"):
     )
     con.commit()
     con.close()
-PAGE2                              # =============================================================================
+  # =============================================================================
 # AUTHENTICATION FUNCTIONS
 # =============================================================================
 
@@ -2532,7 +2532,7 @@ def process_chibobec_reminders(username, company):
     con.commit()
     con.close()
     return results
-PAGE3                            # =============================================================================
+   # =============================================================================
 # DATA PROCESSING FUNCTIONS
 # =============================================================================
 
@@ -3267,7 +3267,7 @@ def verify_recaptcha_token(token):
         return bool(data.get("success"))
     except Exception:
         return False
-PAGE4                                  # =============================================================================
+   # =============================================================================
 # VOICE & UI FUNCTIONS
 # =============================================================================
 
@@ -3806,7 +3806,7 @@ def update_di_position(di_id, position_title, rank_level, assigned_company=None)
         return True, thank
     finally:
         con.close()
-PAGE5                     # =============================================================================
+ # =============================================================================
 # CALL & WORKFORCE FUNCTIONS
 # =============================================================================
 
@@ -4387,7 +4387,7 @@ def render_livekit_call(room_name, user, agent_rows, mode="company_di", title="D
     </script>
     """
     components.html(html, height=900, scrolling=False)
-PAGE6                        # =============================================================================
+ # =============================================================================
 # ADMIN & DASHBOARD FUNCTIONS
 # =============================================================================
 
@@ -4463,42 +4463,90 @@ def _escape_html(value):
             .replace("<", "&lt;")
             .replace(">", "&gt;")
             .replace('"', "&quot;"))
-
-PAGE_META = {
-    "Overview": ("⌂", "DACRE Analytics", "MASTER-ONLY platform command view · users, activity, system health and live intelligence."),
-    "DI Home": ("◉", "DI Command", "Talk, investigate, analyze and move work forward with David's Intelligence."),
-    "DI Calls": ("◉", "DI Connect", "Business calls, DI calls and team rooms with a meeting-ready workspace."),
-    "DI Workforce": ("◉", "DI Workforce", "Your specialized digital workforce — each DI has its own identity, specialty and work style."),
-    "DI Action Center": ("✦", "DI Action Center", "Give DI a goal and let it turn the request into analysis, recommendations and next actions."),
-    "DI Memory Box": ("◈", "DI Memory", "The trusted institutional memory layer shared by the Dacre intelligence workforce."),
-    "Business Command Center": ("◆", "Business Command", "Executive signals, business health and the most important changes in your active data."),
-    "Business Twin": ("◇", "Business Twin", "A living snapshot of how your business is performing, changing and where attention is needed."),
-    "Decision Ledger": ("◌", "Decision Ledger", "Record decisions, expected outcomes and results so the organization learns from its own history."),
-    "Opportunity Radar": ("✧", "Opportunity Radar", "Surface measurable growth signals and turn them into actionable business opportunities."),
-    "Workspace & Data": ("▦", "Workspace & Data", "Bring data into Dacre and turn raw information into useful business knowledge."),
-    "Formula Lab": ("ƒ", "Formula Lab", "Practical spreadsheet-style formulas and transformations."),
-    "Charts": ("◫", "Charts", "Turn data into clear visual stories and business dashboards."),
-    "File Vault": ("▤", "File Vault", "Keep company files, working datasets and project artifacts organized."),
-    "Export Center": ("⇩", "Export Center", "Package analysis outputs for the people who need them."),
-    "Organization Admin Portal": ("⚙", "Organization Admin", "Manage people, roles, notifications and company activity."),
-    "Chibobec Loan Desk": ("₦", "Chibobec Client Workspace", "Chibobec is a DACRE client. Manage its client workspace, loans and activity here."),
-    "Overall Admin DI Portal": ("♛", "Founder Command", "Master-level platform intelligence, workforce, customers, memory and system controls."),
-    "🌍 Global Markets": ("🌍", "Global Markets", "Real-time global market data, currencies, and business intelligence."),
-    "🎥 DI Conference": ("🎥", "DI Conference", "Real-time video calls with your DI team."),
-}
-
-def _dashboard_safe_query(sql, params=(), default=None):
-    """Run a read-only dashboard query without allowing an optional metric to break the app."""
-    try:
-        con = db()
-        try:
-            row = con.execute(sql, params).fetchone()
-            return row
-        finally:
-            con.close()
     except Exception:
         return default
 
+def _dashboard_escape(value):
+    """Escape value for dashboard."""
+    return _escape_html(str(value))
+
+def _dashboard_spark(values, width=112, height=34):
+    """Create a sparkline SVG."""
+    values = [float(v or 0) for v in values]
+    if len(values) < 2:
+        values = values + [values[-1] if values else 0]
+    
+    lo, hi = min(values), max(values)
+    span = hi - lo or 1.0
+    pts = []
+    
+    for i, value in enumerate(values):
+        x = i * width / (len(values) - 1)
+        y = height - 4 - ((value - lo) / span) * (height - 8)
+        pts.append(f"{x:.1f},{y:.1f}")
+    
+    line = " ".join(pts)
+    return f'''<svg viewBox="0 0 {width} {height}" class="dacre-spark" aria-hidden="true">
+        <polyline points="{line}" fill="none" stroke="var(--dacre-chart-1)" stroke-width="2" 
+                  stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>'''
+
+def _dashboard_area_chart(points):
+    """Create an area chart SVG."""
+    if not points:
+        points = [(f"{h:02d}:00", 0, 0) for h in range(0, 24, 3)]
+    
+    width, height = 900, 300
+    left, right, top, bottom = 52, 20, 22, 42
+    plot_w, plot_h = width - left - right, height - top - bottom
+    maxv = max([max(a, b) for _, a, b in points] or [1]) or 1
+    
+    coords_a = []
+    coords_b = []
+    
+    for i, (_, a, b) in enumerate(points):
+        x = left + (i * plot_w / max(1, len(points) - 1))
+        ya = top + plot_h - (a / maxv) * plot_h
+        yb = top + plot_h - (b / maxv) * plot_h
+        coords_a.append((x, ya))
+        coords_b.append((x, yb))
+    
+    def poly(coords):
+        return " ".join(f"{x:.1f},{y:.1f}" for x, y in coords)
+    
+    area_a = f"{left},{top + plot_h} {poly(coords_a)} {left + plot_w},{top + plot_h}"
+    area_b = f"{left},{top + plot_h} {poly(coords_b)} {left + plot_w},{top + plot_h}"
+    
+    labels = []
+    for i, (label, _, _) in enumerate(points):
+        x = left + (i * plot_w / max(1, len(points) - 1))
+        labels.append(f'<text x="{x:.1f}" y="{height - 12}" text-anchor="middle" class="chart-label">{_dashboard_escape(label)}</text>')
+    
+    grids = []
+    for n in range(5):
+        y = top + (plot_h * n / 4)
+        val = maxv * (1 - n / 4)
+        grids.append(f'<line x1="{left}" y1="{y:.1f}" x2="{left + plot_w}" y2="{y:.1f}" class="chart-grid"/>')
+        grids.append(f'<text x="{left - 9}" y="{y + 4:.1f}" text-anchor="end" class="chart-label">{val / 1000:.1f}k</text>')
+    
+    return f'''<svg viewBox="0 0 {width} {height}" class="dacre-area-chart" role="img" aria-label="Request throughput chart">
+        <defs>
+            <linearGradient id="dacreFillA" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="var(--dacre-chart-1)" stop-opacity=".34"/>
+                <stop offset="100%" stop-color="var(--dacre-chart-1)" stop-opacity=".02"/>
+            </linearGradient>
+            <linearGradient id="dacreFillB" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="var(--dacre-chart-3)" stop-opacity=".22"/>
+                <stop offset="100%" stop-color="var(--dacre-chart-3)" stop-opacity=".01"/>
+            </linearGradient>
+        </defs>
+        {''.join(grids)}
+        <polygon points="{area_b}" fill="url(#dacreFillB)"/>
+        <polygon points="{area_a}" fill="url(#dacreFillA)"/>
+        <polyline points="{poly(coords_b)}" fill="none" stroke="var(--dacre-chart-3)" stroke-width="2" stroke-linecap="round"/>
+        <polyline points="{poly(coords_a)}" fill="none" stroke="var(--dacre-chart-1)" stroke-width="2.5" stroke-linecap="round"/>
+        {''.join(labels)}
+    </svg>'''
 def _dashboard_scalar(sql, params=(), default=0):
     """Get a scalar value from a dashboard query."""
     row = _dashboard_safe_query(sql, params, None)
@@ -5021,7 +5069,7 @@ def render_action_center(user):
     if not recent.empty:
         st.markdown("### Your DI action history")
         st.dataframe(safe_dataframe_for_streamlit(recent), use_container_width=True, hide_index=True)
-PAGE7                           # =============================================================================
+ # =============================================================================
 # RENDER FUNCTIONS
 # =============================================================================
 
@@ -5529,28 +5577,30 @@ st.markdown(f"""
       <div class="system-ready"><span class="ready-dot"></span> DI ONLINE · DAVID'S INTELLIGENCE</div>
     </div>
     """, unsafe_allow_html=True)
-
-  nav_items = [("Features", "features"), ("Intelligence", "intelligence"), ("Workforce", "workforce"), ("Analytics", "analytics"), ("Security", "security")]
+nav_items = [("Features", "features"), ("Intelligence", "intelligence"), ("Workforce", "workforce"), ("Analytics", "analytics"), ("Security", "security")]
 nav_cols = st.columns([1.0, 1.0, 1.0, 1.0, 1.0, 0.85, 0.85])
 for i, (label, target) in enumerate(nav_items):
-        with nav_cols[i]:
-            if st.button(label, key=f"landing_nav_{target}", use_container_width=True):
-                st.session_state.landing_section = target
-                st.session_state.landing_mode = "home"
-                st.rerun()
-    with nav_cols[5]:
-        if st.button("Log In", key="landing_nav_login", use_container_width=True):
-            st.session_state.landing_mode = "login"
-            st.session_state.landing_section = "home"
+    with nav_cols[i]:
+        if st.button(label, key=f"landing_nav_{target}", use_container_width=True):
+            st.session_state.landing_section = target
+            st.session_state.landing_mode = "home"
             st.rerun()
-    with nav_cols[6]:
-        if st.button("Get Started", key="landing_nav_signup", use_container_width=True, type="primary"):
-            st.session_state.landing_mode = "signup"
-            st.session_state.landing_section = "home"
-            st.rerun()
-
-    # Style actual Streamlit navigation buttons
-    st.markdown("""
+with nav_cols[5]:
+    if st.button("Log In", key="landing_nav_login", use_container_width=True):
+        st.session_state.landing_mode = "login"
+        st.session_state.landing_section = "home"
+        st.rerun()
+with nav_cols[6]:
+    if st.button("Get Started", key="landing_nav_signup", use_container_width=True, type="primary"):
+        st.session_state.landing_mode = "signup"
+        st.session_state.landing_section = "home"
+        st.rerun()
+<style>
+div[data-testid="stButton"] > button { border-radius:12px !important; min-height:42px !important; border:1px solid rgba(124,150,213,.15) !important; background:rgba(13,21,42,.72) !important; color:#cad5e8 !important; font-weight:700 !important; transition:.18s ease !important; }
+div[data-testid="stButton"] > button:hover { border-color:rgba(73,148,255,.55) !important; color:#ffffff !important; box-shadow:0 0 24px rgba(48,126,255,.12) !important; transform:translateY(-1px); }
+div[data-testid="stButton"] > button[kind="primary"] { background:linear-gradient(100deg,#7558ff,#4b8cff 52%,#18bfe1) !important; border:none !important; color:#fff !important; box-shadow:0 10px 30px rgba(69,115,255,.22) !important; }
+</style>
+""", unsafe_allow_html=True)    st.markdown("""
     <style>
       div[data-testid="stButton"] > button { border-radius:12px !important; min-height:42px !important; border:1px solid rgba(124,150,213,.15) !important; background:rgba(13,21,42,.72) !important; color:#cad5e8 !important; font-weight:700 !important; transition:.18s ease !important; }
       div[data-testid="stButton"] > button:hover { border-color:rgba(73,148,255,.55) !important; color:#ffffff !important; box-shadow:0 0 24px rgba(48,126,255,.12) !important; transform:translateY(-1px); }
@@ -5923,7 +5973,7 @@ def render_enhanced_di_chat():
         
         st.session_state.chat_history.append({"sender": "DI", "text": response})
         st.rerun()
-PAGE9                       # =============================================================================
+ # =============================================================================
 # ENHANCED CLASSES - DI, VIDEO CALL, GLOBAL BUSINESS INTELLIGENCE
 # =============================================================================
 
@@ -6458,10 +6508,9 @@ class EnhancedDIWorkforce:
             self.active_calls[call_id]["status"] = "ended"
             return True
         return False
-PAGE10                  # =============================================================================
+ # =============================================================================
 # SESSION STATE BOOTSTRAP
 # =============================================================================
-
 _SESSION_DEFAULTS = {
     "user": None,
     "master_route": False,
@@ -6514,6 +6563,123 @@ for _key, _default in _SESSION_DEFAULTS.items():
         else:
             st.session_state[_key] = _default
 
+
+# =============================================================================
+# SELF-HEALING DATABASE & ERROR SHIELD - ADDED
+# =============================================================================
+
+def self_healing_database():
+    """Self-healing database function."""
+    try:
+        con = db()
+        required_tables = [
+            'companies', 'users', 'files', 'projects', 'activity',
+            'company_website_profile', 'public_visits', 'emails_log',
+            'notifications', 'chat_history', 'loan_clients',
+            'whatsapp_delivery_log', 'di_memory', 'di_agents',
+            'di_private_memory', 'di_position_history', 'di_master_thanks',
+            'sovereign_calls', 'sovereign_call_members', 'sovereign_call_messages',
+            'david_creations', 'call_rooms', 'call_participants',
+            'decision_ledger', 'opportunity_radar', 'di_action_log'
+        ]
+        
+        repaired = []
+        for table in required_tables:
+            try:
+                con.execute(f"SELECT 1 FROM {table} LIMIT 1")
+            except:
+                try:
+                    init_db()
+                    repaired.append(table)
+                except:
+                    pass
+        
+        con.commit()
+        con.close()
+        
+        return {
+            "status": "healthy",
+            "repaired": repaired,
+            "tables": len(required_tables),
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
+
+
+class ErrorShield:
+    """Error Shield - catches runtime failures."""
+    
+    def __init__(self):
+        self.errors = []
+        self.recoveries = []
+        self.shield_active = True
+    
+    def protect(self, func, *args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            self.errors.append({
+                "function": func.__name__,
+                "error": str(e),
+                "timestamp": datetime.now().isoformat()
+            })
+            return None
+    
+    def get_status(self):
+        return {
+            "shield_active": self.shield_active,
+            "errors_caught": len(self.errors),
+            "recoveries": len(self.recoveries),
+            "last_error": self.errors[-1] if self.errors else None,
+            "last_recovery": self.recoveries[-1] if self.recoveries else None
+        }
+
+
+def generate_di_grid_image() -> Optional[bytes]:
+    """Generate a 3x4 grid of REAL AI DI agent portraits."""
+    if not GENAI_AVAILABLE:
+        return None
+    
+    try:
+        client = genai.Client()
+        
+        prompt_text = (
+            "A 3x4 grid collage featuring 12 individual portraits of diverse male and female "
+            "professional business AI androids in a sleek, high-tech corporate laboratory. "
+            "Each portrait shows realistic human faces with subtle glowing cybernetic and "
+            "circuit board elements integrated into their necks and sides of their heads. "
+            "They are dressed in professional business attire: suits, blazers, and formal wear. "
+            "Clean, professional lighting, cinematic style, sharp detail, 8k resolution."
+        )
+        
+        response = client.models.generate_images(
+            model='imagen-3.0-generate-002',
+            prompt=prompt_text,
+            config=types.GenerateImagesConfig(
+                number_of_images=1,
+                aspect_ratio="16:9",
+                output_mime_type="image/jpeg"
+            )
+        )
+        
+        if response.generated_images:
+            image_bytes = response.generated_images[0].image.image_bytes
+            with open("di_grid_portraits.jpg", "wb") as f:
+                f.write(image_bytes)
+            return image_bytes
+        
+    except Exception as e:
+        print(f"DI Grid generation error: {e}")
+    
+    return None
+
+
 # =============================================================================
 # INITIALIZATION - PRODUCTION CORE
 # =============================================================================
@@ -6550,7 +6716,6 @@ def init_production_core():
 # =============================================================================
 # RENDER PRODUCTION CORE VISUAL
 # =============================================================================
-
 def render_dacre_production_core():
     """Display the DACRE Production Core architecture diagram."""
     st.markdown("""
@@ -7068,7 +7233,7 @@ def render_chibobec_loan_desk(user):
 # =============================================================================
 # CONTINUED IN NEXT PART...
 # =============================================================================
-PAGE11             # =============================================================================
+ # =============================================================================
 # REMAINING PAGE RENDERERS
 # =============================================================================
 
@@ -7629,7 +7794,7 @@ if __name__ == "__main__":
         landing_page()
     else:
         main_app()
-PAGE11                # =============================================================================
+ # =============================================================================
 # EMAIL VERIFICATION & DI WELCOME SYSTEM
 # =============================================================================
 
@@ -8725,5 +8890,4 @@ def init_verification_system():
 
 # =============================================================================
 # END OF ADDED CODE
-# =============================================================================
-PAGE12                 
+# =============================================================================       
