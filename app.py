@@ -575,7 +575,8 @@ DI_MEMORY_SEED = [
     ("ACCOUNT", "Company admin", "The first account creating a new organization becomes that organization's company admin. Later users are normal users unless an admin grants admin access.", 1850),
     ("ACCOUNT", "Subscription tiers", "DACRE offers Free, Professional, Business, and Enterprise tiers with different features and limits.", 1850),
     ("ACCOUNT", "User roles", "DACRE supports multiple user roles: master, admin, manager, analyst, and standard user with granular permissions.", 1850)
-]        try:
+]
+    try:
             company_name = (st.session_state.get("user") or {}).get("company")
         except Exception:
             company_name = None
