@@ -4,7 +4,6 @@
 # Total Lines: ~11,000+
 # Features: Self-Healing DB, DI Intelligence, Error Shield, Voice, Video, AI
 # =============================================================================
-
 import hashlib
 import hmac
 import io
@@ -42,15 +41,12 @@ import warnings
 import zipfile
 import csv
 import xml.etree.ElementTree as ET
-import hashlib
-import hmac
 import secrets
 import binascii
 import struct
 import pickle
 import shelve
 import dbm
-import sqlite3
 import zlib
 import gzip
 import bz2
@@ -60,206 +56,145 @@ import shutil
 import fileinput
 import glob
 import fnmatch
-import tempfile
 import pipes
 import getpass
 import platform
 import sysconfig
-import distutils
-import setuptools
-import pip
-import venv
-import virtualenv
-import conda
-import docker
-import kubernetes
-import helm
-import terraform
-import ansible
-import puppet
-import chef
-import salt
-import fabric
-import paramiko
-import netmiko
-import napalm
-import scp
-import rsync
-import sftp
-import ftplib
-import telnetlib
 import socket
 import ssl
-import cryptography
-import pyopenssl
-import certifi
-import urllib3
+
+# =============================================================================
+# THIRD-PARTY IMPORTS (ONLY VALID PACKAGES)
+# =============================================================================
+
+import pandas as pd
+import streamlit as st
+import streamlit.components.v1 as components
+from PIL import Image
 import requests
-import httpx
-import aiohttp
+import yfinance as yf
+import plotly.graph_objects as go
+import plotly.express as px
+from plotly.subplots import make_subplots
 import websockets
-import grpc
-import thrift
-import zeromq
-import rabbitmq
-import kafka
-import redis
-import memcached
-import mongodb
-import elasticsearch
-import solr
-import splunk
-import datadog
-import newrelic
-import prometheus
-import grafana
-import kibana
-import logstash
-import fluentd
-import syslog
-import rsyslog
-import journald
-import auditd
-import selinux
-import apparmor
-import iptables
-import nftables
-import firewalld
-import ufw
-import fail2ban
-import clamav
-import rkhunter
-import chkrootkit
-import lynis
-import tripwire
-import aide
-import ossec
-import wazuh
-import suricata
-import snort
-import zeek
-import tcpdump
-import wireshark
-import nmap
-import masscan
-import zmap
-import scanless
-import shodan
-import censys
-import virustotal
-import abuseipdb
-import threatcrowd
-import alienvault
-import malshare
-import hybridanalysis
-import anyrun
-import joesandbox
-import cuckoo
-import capa
-import flare
-import ida
-import ghidra
-import radare2
-import cutter
-import x64dbg
-import ollydbg
-import windbg
-import gdb
-import lldb
-import valgrind
-import strace
-import ltrace
-import dtrace
-import systemtap
-import perf
-import flamegraph
-import pyflame
-import py-spy
-import memory_profiler
-import line_profiler
-import cProfile
-import pstats
-import snakeviz
-import pycallgraph
-import pyheat
-import vprof
-import tuna
-import sched
-import cpuset
-import numactl
-import hwloc
-import lstopo
-import dmidecode
-import lshw
-import lscpu
-import lsblk
-import lspci
-import lsusb
-import lsof
-import netstat
-import ss
-import ip
-import ifconfig
-import ethtool
-import mii-tool
-import ipmitool
-import smartctl
-import hdparm
-import sdparm
-import scsi
-import raid
-import mdadm
-import lvm
-import pv
-import vg
-import lv
-import mkfs
-import fsck
-import mount
-import umount
-import fdisk
-import parted
-import gparted
-import kpartx
-import multipath
-import dm-crypt
-import luks
-import cryptsetup
-import openssl
-import gpg
-import gnupg
-import openssh
-import putty
-import ssh-keygen
-import sslscan
-import testssl
-import nikto
-import wpscan
-import sqlmap
-import burpsuite
-import zap
-import metasploit
-import exploitdb
-import searchsploit
-import beef
-import bettercap
-import ettercap
-import dsniff
-import tcpkill
-import tcpreplay
-import tcprewrite
-import tcpdump
-import tshark
-import capinfos
-import editcap
-import mergecap
-import reordercap
-import text2pcap
-import dftest
-import randpkt
-import rawshark
-import wireshark
-import tshark
+import psycopg
+from psycopg.rows import dict_row
+
+# =============================================================================
+# OPTIONAL IMPORTS - WITH ERROR HANDLING
+# =============================================================================
+
+# Google Gemini
+try:
+    from google import genai
+    from google.genai import types
+    GENAI_AVAILABLE = True
+except ImportError:
+    genai = None
+    types = None
+    GENAI_AVAILABLE = False
+
+try:
+    import google.generativeai as genai_text
+    GENAI_TEXT_AVAILABLE = True
+except ImportError:
+    genai_text = None
+    GENAI_TEXT_AVAILABLE = False
+
+# OpenAI
+try:
+    import openai
+    from openai import OpenAI
+    OPENAI_AVAILABLE = True
+except ImportError:
+    openai = None
+    OpenAI = None
+    OPENAI_AVAILABLE = False
+
+# Speech Recognition (browser-based is preferred)
+try:
+    import speech_recognition as sr
+    SR_AVAILABLE = True
+except ImportError:
+    sr = None
+    SR_AVAILABLE = False
+
+# Text to Speech (browser-based is preferred)
+try:
+    import pyttsx3
+    TTS_AVAILABLE = True
+except ImportError:
+    pyttsx3 = None
+    TTS_AVAILABLE = False
+
+# Web Search
+try:
+    from googlesearch import search as google_search
+    WEB_SEARCH_AVAILABLE = True
+except ImportError:
+    WEB_SEARCH_AVAILABLE = False
+
+# Audio (optional)
+try:
+    import pyaudio
+    PYAUDIO_AVAILABLE = True
+except ImportError:
+    pyaudio = None
+    PYAUDIO_AVAILABLE = False
+
+# Computer Vision (optional)
+try:
+    import cv2
+    CV2_AVAILABLE = True
+except ImportError:
+    cv2 = None
+    CV2_AVAILABLE = False
+
+try:
+    import numpy as np
+    NUMPY_AVAILABLE = True
+except ImportError:
+    np = None
+    NUMPY_AVAILABLE = False
+
+# DeepFace (optional)
+try:
+    from deepface import DeepFace
+    DEEPFACE_AVAILABLE = True
+except ImportError:
+    DeepFace = None
+    DEEPFACE_AVAILABLE = False
+
+# NetworkX (optional)
+try:
+    import networkx as nx
+    NETWORKX_AVAILABLE = True
+except ImportError:
+    nx = None
+    NETWORKX_AVAILABLE = False
+
+# Maps (optional)
+try:
+    import folium
+    from streamlit_folium import folium_static
+    FOLIUM_AVAILABLE = True
+except ImportError:
+    folium = None
+    folium_static = None
+    FOLIUM_AVAILABLE = False
+
+# LiveKit (optional)
+try:
+    from livekit import RoomServiceClient, AccessToken, VideoGrants
+    from livekit.api import RoomAgentDispatch, RoomConfiguration
+    LIVEKIT_AVAILABLE = True
+except Exception:
+    RoomServiceClient = None
+    AccessToken = None
+    VideoGrants = None
+    RoomAgentDispatch = None
+    RoomConfiguration = None
+    LIVEKIT_AVAILABLE = False
 
 from contextlib import contextmanager
 from html.parser import HTMLParser
@@ -269,7 +204,6 @@ from typing import Optional, Dict, List, Any, Tuple
 from enum import Enum
 from functools import wraps
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
-
 from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
