@@ -626,7 +626,7 @@ SHEET_FORMULAS = ["SUM","AVERAGE","COUNT","COUNTA","MAX","MIN","CONCATENATE","UP
 APP_KNOWLEDGE = """
 DACRE Analysis is a business and data analysis workspace. Users can upload CSV, Excel, TSV and JSON files; clean datasets; remove empty rows/columns and duplicates; inspect rows and columns; run formulas such as SUM, AVERAGE, COUNT, COUNTA, MAX, MIN, CONCATENATE, UPPER, LOWER and TRIM; build bar, line and area charts; save workspace state; use a File Vault; and export processed data as CSV or Excel.
 DI means David's Intelligence. DI is the assistant inside DACRE Analysis. Free-first reasoning is preferred: the normal deployment must not make paid model calls automatically. Free-tier Gemini and Groq keys may be configured server-side, while OpenAI remains disabled unless the owner explicitly enables paid AI. Each organization has its own workspace. The first person who creates a new organization becomes that organization's company admin. Later users joining an existing organization are regular users unless an admin grants them admin rights. Company admins can inspect users, account creation, sign-ins, file activity and changes for their organization. The master account can see system-wide activity.
-""".strip()    PAGE1.              
+""".strip()              
                                   # =============================================================================
 # DATABASE FUNCTIONS
 # =============================================================================
