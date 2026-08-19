@@ -501,6 +501,7 @@ LOGO_CANDIDATES = [
     "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png",
     "dacre_logo.png",
     "logo.png",
+    "assets/dacre_logo_fallback.png",
 ]
 LOGO_PATH = next((BASE_DIR / x for x in LOGO_CANDIDATES if (BASE_DIR / x).exists()), BASE_DIR / LOGO_CANDIDATES[0])
 CEO_PORTRAIT_CANDIDATES = [
