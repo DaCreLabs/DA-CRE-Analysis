@@ -5530,9 +5530,9 @@ st.markdown(f"""
     </div>
     """, unsafe_allow_html=True)
 
-    nav_items = [("Features", "features"), ("Intelligence", "intelligence"), ("Workforce", "workforce"), ("Analytics", "analytics"), ("Security", "security")]
-    nav_cols = st.columns([1.0,1.0,1.0,1.0,1.0,0.85,0.85])
-    for i, (label, target) in enumerate(nav_items):
+  nav_items = [("Features", "features"), ("Intelligence", "intelligence"), ("Workforce", "workforce"), ("Analytics", "analytics"), ("Security", "security")]
+nav_cols = st.columns([1.0, 1.0, 1.0, 1.0, 1.0, 0.85, 0.85])
+for i, (label, target) in enumerate(nav_items):
         with nav_cols[i]:
             if st.button(label, key=f"landing_nav_{target}", use_container_width=True):
                 st.session_state.landing_section = target
