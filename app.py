@@ -217,6 +217,19 @@ import streamlit.components.v1 as components
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance, ImageOps, ImageChops
 
 # =============================================================================
+# HIDE MANAGE APP BUTTON
+# =============================================================================
+
+st.markdown("""
+<style>
+    /* Hide only the Manage App button */
+    header[data-testid="stHeader"] button[data-testid="baseButton-header"] {
+        display: none !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# =============================================================================
 # AI & MACHINE LEARNING IMPORTS
 # =============================================================================
 
@@ -246,9 +259,7 @@ try:
 except ImportError:
     openai = None
     OpenAI = None
-    OPENAI_AVAILABLE = False
-
-# Transformers
+    OPENAI_AVAILABLE = False# Transformers
 try:
     from transformers import pipeline, AutoModel, AutoTokenizer, AutoModelForCausalLM
     TRANSFORMERS_AVAILABLE = True
@@ -5596,7 +5607,7 @@ with nav_cols[6]:
         st.session_state.landing_section = "home"
         st.rerun()
 <style>
-div[data-testid="stButton"] > button { border-radius:12px !important; min-height:42px !important; border:1px solid rgba(124,150,213,.15) !important; background:rgba(13,21,42,.72) !important; color:#cad5e8 !important; font-weight:700 !important; transition:.18s ease !important; }
+div[data-testid="stButton"] > button { border-radius:12px !important; min-height:42px !important;border:1px solid rgba(124,150,213,0.15) !important; background:rgba(13,21,42,.72) !important; color:#cad5e8 !important; font-weight:700 !important; transition:.18s ease !important; }
 div[data-testid="stButton"] > button:hover { border-color:rgba(73,148,255,.55) !important; color:#ffffff !important; box-shadow:0 0 24px rgba(48,126,255,.12) !important; transform:translateY(-1px); }
 div[data-testid="stButton"] > button[kind="primary"] { background:linear-gradient(100deg,#7558ff,#4b8cff 52%,#18bfe1) !important; border:none !important; color:#fff !important; box-shadow:0 10px 30px rgba(69,115,255,.22) !important; }
 </style>
