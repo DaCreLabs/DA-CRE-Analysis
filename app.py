@@ -5516,15 +5516,14 @@ def landing_page():
       @media(max-width:980px){ .hero{grid-template-columns:1fr;padding-top:48px}.grid-3,.grid-2{grid-template-columns:1fr 1fr}.workflow{grid-template-columns:1fr 1fr}.metric-row{grid-template-columns:1fr 1fr}.hero-visual-host{min-height:430px} }
       @media(max-width:680px){ .block-container{padding:0 12px 40px !important}.dacre-nav{position:static;padding:12px}.dacre-brand{min-width:auto}.system-ready{display:none}.hero{padding:42px 10px 25px;min-height:auto}.hero-title{font-size:48px}.section,.page-hero{padding:48px 10px 20px}.grid-3,.grid-2,.workflow,.metric-row{grid-template-columns:1fr}.section-title{font-size:31px}.hero-visual-host{min-height:360px}.cta{margin:18px 10px 25px;padding:34px 20px}.footer{padding:22px 10px} }
     </style>
-    """, unsafe_allow_html=True)
-PAGE8                      # =============================================================================
+    """, unsafe_allow_html=True)  # =============================================================================
 # LANDING PAGE CONTINUED & ENHANCED FEATURES
 # =============================================================================
 
-    current_section = st.session_state.get("landing_section", "home")
-    mode = st.session_state.get("landing_mode", "home")
+current_section = st.session_state.get("landing_section", "home")
+mode = st.session_state.get("landing_mode", "home")
 
-    st.markdown(f"""
+st.markdown(f"""
     <div class="dacre-nav">
       <div class="dacre-brand">{logo}<div><div class="dacre-brand-name">DACRE</div><div class="dacre-brand-sub">Powered by DI — David's Intelligence</div></div></div>
       <div class="system-ready"><span class="ready-dot"></span> DI ONLINE · DAVID'S INTELLIGENCE</div>
