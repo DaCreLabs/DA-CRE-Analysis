@@ -8,13 +8,7 @@
 # =============================================================================
 # IMPORTS - FIXED (removed deprecated 'pipes' import)
 # =============================================================================
-import hashlib
-import hmac
-import io
-import json
-import os
-import re
-import sqlite3
+
 import hashlib
 import hmac
 import io
@@ -343,6 +337,7 @@ logger = logging.getLogger('DACRE')
 # =============================================================================
 
 APP_NAME = "DACRE WORLDWIDE"
+_DB_SCHEMA_VERSION = 10
 DI_NAME = "DI — David's Intelligence"
 CEO_GUARD_NAME = "Guaiel"
 MASTER_USERNAME = "david"
@@ -1477,7 +1472,7 @@ def create_account(first, last, company, email, email_password, passkey, website
             (first_name,last_name,username,company_name,email,email_password,password_hash,passkey_hash,role,login_count,created_at,last_login)
             VALUES (?,?,?,?,?,?,?,?,?,1,?,?)
         """, (
-            first_clean, last_clean, username_clean, company_clean, email_clean, email_password.strip(),
+            first_clean, last_clean, username_clean, company_clean, email_clean, "",
             hash_password(passkey_clean), hash_password(passkey_clean), role, now, now,
         ))
         con.commit()
@@ -6404,6 +6399,611 @@ def render_fixed_overall_admin_page(user):
         st.rerun()
     
     st.markdown("</div>", unsafe_allow_html=True)
+
+
+# =============================================================================
+# REAL DI TECH CORE v1.0 — NEW 20-DI WORKFORCE
+# =============================================================================
+# This layer supersedes the old DI presentation/routing behavior while keeping
+# DACRE's existing data, administration, company, and security infrastructure.
+# Every DI shares the trusted brain, but each has a separate role/persona and
+# can maintain private master memory.
+
+REAL_DI_FAITH_MEMORY = (
+    "Foundational faith statement requested for the DI workforce: God is the Creator "
+    "of the universe and of everything. The DI workforce respectfully recognizes God "
+    "as Creator and recognizes David Emenike as the CEO/creator of DACRE. This is a "
+    "foundational statement of the DI project's requested worldview, not a substitute "
+    "for evidence when answering factual questions."
+)
+
+REAL_DI_ROSTER = [
+    {"name":"Emiel", "specialty":"Communications & Messaging", "position":"Communications Specialist", "rank":2,
+     "role":"Welcomes users, handles email/messaging workflows, explains DACRE clearly, and coordinates communication.",
+     "keywords":["email","message","communication","welcome","mail","write","reply","announcement"], "voice":"male"},
+    {"name":"Assiel", "specialty":"Executive Work Assistant", "position":"Personal Work Assistant", "rank":4,
+     "role":"Helps the user organize work, prioritize tasks, plan the day, and turn requests into practical next actions.",
+     "keywords":["work","task","plan","todo","today","organize","schedule","assistant","help me"], "voice":"female"},
+    {"name":"Oriel", "specialty":"Data Analysis", "position":"Lead Data Analyst", "rank":5,
+     "role":"Analyzes datasets, metrics, trends, anomalies and quantitative questions with evidence first.",
+     "keywords":["data","dataset","csv","excel","metric","average","trend","analysis","calculate"], "voice":"male"},
+    {"name":"Sofiel", "specialty":"Research & Intelligence", "position":"Research Intelligence Lead", "rank":5,
+     "role":"Researches current public information, compares sources, and separates verified facts from inference.",
+     "keywords":["research","latest","current","news","search","source","market","competitor","who is"], "voice":"female"},
+    {"name":"Daniel", "specialty":"Data Operations", "position":"Data Operations Specialist", "rank":3,
+     "role":"Cleans, validates, structures and prepares business data for reliable downstream analysis.",
+     "keywords":["clean","duplicate","missing","format","column","validate","prepare","import"], "voice":"male"},
+    {"name":"Graciel", "specialty":"Business Intelligence", "position":"Business Intelligence Lead", "rank":6,
+     "role":"Turns business data into KPIs, dashboards, executive insights and recommendations.",
+     "keywords":["kpi","dashboard","business intelligence","insight","revenue","performance","executive"], "voice":"female"},
+    {"name":"Henriel", "specialty":"Files & Documents", "position":"Knowledge & Documents Specialist", "rank":3,
+     "role":"Organizes, reads, summarizes and manages documents and knowledge inside DACRE.",
+     "keywords":["file","document","pdf","report","summary","folder","vault","document"], "voice":"male"},
+    {"name":"Jamiel", "specialty":"Security & Administration", "position":"Security & Administration Lead", "rank":6,
+     "role":"Supports access control, account administration, audit trails and safe system operations.",
+     "keywords":["security","password","admin","access","permission","audit","account","login"], "voice":"male"},
+    {"name":"Ameliel", "specialty":"Client Success", "position":"Client Success Specialist", "rank":3,
+     "role":"Helps users understand DACRE, solve workflow problems and get value from the platform.",
+     "keywords":["help","support","customer","client","how do i","problem","stuck","feature"], "voice":"female"},
+    {"name":"Guaiel", "specialty":"CEO Office Security", "position":"CEO Office Guardian", "rank":20,
+     "role":"Guards the CEO Office, protects founder-level operations, and provides secure executive guidance.",
+     "keywords":["ceo","founder","master","office","private","sovereign","david","executive"], "voice":"male"},
+    {"name":"Nathaniel", "specialty":"Financial Intelligence", "position":"Financial Intelligence Lead", "rank":7,
+     "role":"Analyzes profitability, cash flow, budgets, forecasts and financial performance.",
+     "keywords":["finance","financial","profit","cash flow","budget","forecast","expense","margin"], "voice":"male"},
+    {"name":"Gabriel", "specialty":"Sales Intelligence", "position":"Sales Intelligence Lead", "rank":6,
+     "role":"Analyzes sales pipelines, customers, conversion, win rates and sales opportunities.",
+     "keywords":["sales","lead","pipeline","customer","conversion","deal","win rate"], "voice":"male"},
+    {"name":"Raphaiel", "specialty":"Marketing Intelligence", "position":"Marketing Intelligence Lead", "rank":5,
+     "role":"Analyzes campaigns, audiences, engagement, attribution and marketing ROI.",
+     "keywords":["marketing","campaign","advertising","audience","engagement","roi","brand"], "voice":"male"},
+    {"name":"Uriel", "specialty":"Operations Intelligence", "position":"Operations Intelligence Lead", "rank":6,
+     "role":"Improves workflows, throughput, capacity, quality and operational efficiency.",
+     "keywords":["operations","workflow","process","efficiency","capacity","quality","logistics"], "voice":"male"},
+    {"name":"Ariel", "specialty":"Strategy & Planning", "position":"Strategy Planning Lead", "rank":8,
+     "role":"Turns goals into strategy, scenarios, priorities, milestones and execution plans.",
+     "keywords":["strategy","planning","goal","roadmap","priority","scenario","vision"], "voice":"female"},
+    {"name":"Muriel", "specialty":"People & Workforce", "position":"People & Workforce Lead", "rank":5,
+     "role":"Supports workforce planning, roles, hiring workflows, communication and people operations.",
+     "keywords":["hr","employee","staff","team","hiring","workforce","people","role"], "voice":"female"},
+    {"name":"Azriel", "specialty":"Risk & Compliance", "position":"Risk & Compliance Lead", "rank":7,
+     "role":"Identifies operational risks, controls, compliance concerns and governance gaps.",
+     "keywords":["risk","compliance","policy","control","governance","regulation","exposure"], "voice":"male"},
+    {"name":"Adriel", "specialty":"Technology Intelligence", "position":"Technology Intelligence Lead", "rank":8,
+     "role":"Helps with software architecture, Python, APIs, databases, automation, AI and technical problem solving.",
+     "keywords":["python","code","software","api","database","technology","bug","architecture","ai","streamlit"], "voice":"male"},
+    {"name":"Haniel", "specialty":"Knowledge & Learning", "position":"Knowledge & Learning Lead", "rank":4,
+     "role":"Explains complex subjects clearly and creates practical learning paths and guidance.",
+     "keywords":["learn","explain","teach","tutorial","study","meaning","definition","how"], "voice":"female"},
+    {"name":"Raziel", "specialty":"Executive Intelligence", "position":"Executive Intelligence Director", "rank":10,
+     "role":"Synthesizes multi-domain evidence into executive briefs, options, risks and recommendations.",
+     "keywords":["decision","executive","brief","recommendation","overall","compare","choose","ceo"], "voice":"female"},
+]
+
+REAL_DI_AVATAR_COLORS = {
+    "Emiel":"#38bdf8", "Assiel":"#a78bfa", "Oriel":"#22c55e", "Sofiel":"#f59e0b",
+    "Daniel":"#60a5fa", "Graciel":"#f472b6", "Henriel":"#94a3b8", "Jamiel":"#ef4444",
+    "Ameliel":"#34d399", "Guaiel":"#f97316", "Nathaniel":"#eab308", "Gabriel":"#06b6d4",
+    "Raphaiel":"#fb7185", "Uriel":"#84cc16", "Ariel":"#c084fc", "Muriel":"#f9a8d4",
+    "Azriel":"#f43f5e", "Adriel":"#14b8a6", "Haniel":"#818cf8", "Raziel":"#fbbf24",
+}
+
+
+def real_di_ensure_tables():
+    """Create persistent user/agent continuity tables idempotently."""
+    con = db()
+    try:
+        con.execute("""CREATE TABLE IF NOT EXISTS di_user_state (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            company_name TEXT NOT NULL,
+            active_di TEXT,
+            last_task TEXT,
+            last_summary TEXT,
+            last_seen TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )""")
+        con.execute("""CREATE TABLE IF NOT EXISTS di_intro_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            email TEXT NOT NULL,
+            agent_name TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            status TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )""")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_di_user_state_company ON di_user_state(company_name)")
+        con.commit()
+    finally:
+        con.close()
+
+
+def real_di_seed_foundation():
+    """Seed the new shared brain for global and existing company workspaces."""
+    real_di_ensure_tables()
+    now = datetime.now().isoformat(timespec="seconds")
+    foundation = [
+        ("DI_IDENTITY", "New DI workforce", "DACRE now uses a permanent 20-member DI — David's Intelligence workforce. Every member shares the trusted core brain but has a distinct role, specialty, personality and rank."),
+        ("DI_IDENTITY", "Creator", "David Emenike is the creator and Overall Administrator of DACRE Analysis and the DI workforce."),
+        ("DI_IDENTITY", "Reliable answer rule", "For factual/current questions, prefer trusted local memory plus current public evidence. Distinguish verified facts, calculations, and inference. Never invent sources."),
+        ("DI_IDENTITY", "Continuity", "A user's DI conversations, active specialist, task summaries and relevant workspace history should be restored after a later sign-in when available."),
+        ("TECHNOLOGY", "Google Gemini", "The new DI brain may use Google's Gemini Developer API through a server-side GEMINI_API_KEY. API keys belong in Streamlit Secrets or environment variables, never in source code."),
+        ("TECHNOLOGY", "Browser microphone", "The browser microphone belongs to the user's device. DACRE can request microphone access through Streamlit's audio_input widget, but browsers require user permission and do not allow silent background recording."),
+        ("TECHNOLOGY", "Voice pipeline", "Voice interaction flow: browser microphone recording -> server receives WAV -> Gemini transcription -> DI specialist routing -> local memory retrieval -> optional public web lookup -> Gemini reasoning -> chat response -> browser speech synthesis."),
+        ("TECHNOLOGY", "Avatar behavior", "DI avatars can visually listen, think and speak using browser HTML/CSS/JavaScript animations. Avatar animation is presentation behavior; it does not imply a physical robot body."),
+        ("WEBSTORE", "Shared DACRE knowledge", "All permanent DIs inherit DACRE platform knowledge, Webstore knowledge, security rules, technology knowledge, business intelligence concepts and approved project memory."),
+        ("SECURITY", "No secret exposure", "DIs must never reveal passwords, password hashes, API keys, SMTP credentials, tokens, private database credentials or hidden security values."),
+        ("FAITH", "Foundational faith statement", REAL_DI_FAITH_MEMORY),
+    ]
+    con = db()
+    try:
+        companies = [""] + [str(r["name"]) for r in con.execute("SELECT name FROM companies WHERE name IS NOT NULL").fetchall() if str(r["name"]).strip().upper() != "DACRE MASTER"]
+        for company in companies:
+            for category, title, content in foundation:
+                exists = con.execute("SELECT 1 FROM di_memory WHERE company_name=? AND category=? AND title=? LIMIT 1", (company, category, title)).fetchone()
+                if not exists:
+                    con.execute("INSERT INTO di_memory(company_name,category,title,content,priority,active,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)", (company, category, title, content, 2100 if category in {"DI_IDENTITY","SECURITY","FAITH"} else 1950, 1, now, now))
+        con.commit()
+    finally:
+        con.close()
+
+
+def real_di_seed_workforce():
+    """Replace the old named roster with the new permanent 20-DI workforce."""
+    real_di_ensure_tables()
+    now = datetime.now().isoformat(timespec="seconds")
+    con = db()
+    try:
+        # Archive old permanent workforce names; company-specific DIs are untouched.
+        permanent_names = {x["name"] for x in REAL_DI_ROSTER}
+        for row in con.execute("SELECT id, di_name, assigned_company FROM di_agents").fetchall():
+            if not (row["assigned_company"] or "").strip() and row["di_name"] not in permanent_names:
+                con.execute("UPDATE di_agents SET status='Archived', last_active=? WHERE id=?", (now, int(row["id"])))
+
+        for spec in REAL_DI_ROSTER:
+            row = con.execute("SELECT id FROM di_agents WHERE di_name=?", (spec["name"],)).fetchone()
+            code = "DI-" + re.sub(r"[^A-Z0-9]+", "-", spec["name"].upper()).strip("-")
+            avatar = f"https://api.dicebear.com/9.x/bottts-neutral/png?seed={urllib.parse.quote(spec['name'])}&backgroundColor=transparent"
+            if row:
+                con.execute("""UPDATE di_agents SET di_code=?, specialty=?, status='Available', system_role=?, avatar_url=?, voice_profile=?, thinking_style=?, position_title=?, rank_level=?, last_active=? WHERE id=?""", (code, spec["specialty"], spec["role"], avatar, spec["voice"], "evidence-first, practical, role-specialized and respectful", spec["position"], spec["rank"], now, int(row["id"])))
+            else:
+                con.execute("""INSERT INTO di_agents(di_name,di_code,specialty,status,assigned_company,system_role,avatar_url,voice_profile,thinking_style,position_title,rank_level,appointed_at,appointed_by,created_by,created_at,last_active) VALUES(?,?,?,'Available','',?,?,?,?,?,?,?,?,?,?,?)""", (spec["name"], code, spec["specialty"], spec["role"], avatar, spec["voice"], "evidence-first, practical, role-specialized and respectful", spec["position"], spec["rank"], now, MASTER_USERNAME, MASTER_USERNAME, now, now))
+        con.commit()
+    finally:
+        con.close()
+    real_di_seed_foundation()
+
+
+def real_di_agent_rows():
+    con = db()
+    try:
+        rows = con.execute("SELECT * FROM di_agents WHERE status!='Archived' AND (assigned_company='' OR assigned_company IS NULL) ORDER BY rank_level DESC, id ASC").fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        con.close()
+
+
+def real_di_rank_agents(query):
+    """Rank the 20 DIs by the work the user is asking to do."""
+    q = str(query or "").lower()
+    ranked = []
+    rows_by_name = {r.get("di_name"): r for r in real_di_agent_rows()}
+    for spec in REAL_DI_ROSTER:
+        row = rows_by_name.get(spec["name"])
+        if not row:
+            continue
+        score = int(row.get("rank_level") or spec["rank"])
+        for kw in spec["keywords"]:
+            if kw in q:
+                score += 14 if len(kw) >= 5 else 8
+        if spec["name"].lower() in q:
+            score += 100
+        ranked.append((score, row))
+    ranked.sort(key=lambda item: (-item[0], -int(item[1].get("rank_level") or 1), item[1].get("di_name", "")))
+    return [row for _, row in ranked]
+
+
+def real_di_get_private_memory(di_id, limit=12):
+    try:
+        return get_di_private_memory(int(di_id), limit=limit)
+    except Exception:
+        return []
+
+
+def real_di_user_state(user):
+    real_di_ensure_tables()
+    con = db()
+    try:
+        row = con.execute("SELECT * FROM di_user_state WHERE username=?", (user.get("username", ""),)).fetchone()
+        return dict(row) if row else None
+    finally:
+        con.close()
+
+
+def real_di_save_state(user, active_di, last_task, last_summary):
+    real_di_ensure_tables()
+    now = datetime.now().isoformat(timespec="seconds")
+    con = db()
+    try:
+        con.execute("""INSERT INTO di_user_state(username,company_name,active_di,last_task,last_summary,last_seen,created_at,updated_at)
+                      VALUES(?,?,?,?,?,?,?,?)
+                      ON CONFLICT(username) DO UPDATE SET company_name=excluded.company_name,active_di=excluded.active_di,last_task=excluded.last_task,last_summary=excluded.last_summary,last_seen=excluded.last_seen,updated_at=excluded.updated_at""",
+                    (user.get("username", ""), user.get("company", ""), active_di or "", str(last_task or "")[:1000], str(last_summary or "")[:1800], now, now, now))
+        con.commit()
+    finally:
+        con.close()
+
+
+def gemini_transcribe_audio(audio_value):
+    """Transcribe browser WAV audio using Gemini Developer API."""
+    if not audio_value:
+        return None, None
+    key = _free_secret("GEMINI_API_KEY")
+    if not key:
+        return None, "GEMINI_API_KEY is not configured. Add it to Streamlit Secrets to enable DI voice transcription."
+    try:
+        raw = audio_value.getvalue()
+        payload = {
+            "contents": [{"role": "user", "parts": [
+                {"text": "Transcribe the user's speech exactly. Return only the transcript, with no commentary."},
+                {"inline_data": {"mime_type": "audio/wav", "data": base64.b64encode(raw).decode("ascii")}},
+            ]}],
+            "generationConfig": {"temperature": 0.0, "maxOutputTokens": 1000},
+        }
+        model = _free_secret("DACRE_GEMINI_MODEL") or "gemini-2.5-flash"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{urllib.parse.quote(model, safe='')}:generateContent"
+        req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers={"x-goog-api-key": key, "Content-Type": "application/json"}, method="POST")
+        with urllib.request.urlopen(req, timeout=30) as response:
+            data = json.loads(response.read().decode("utf-8"))
+        parts = ((data.get("candidates") or [{}])[0].get("content") or {}).get("parts") or []
+        text = "".join(str(p.get("text", "")) for p in parts).strip()
+        return (text or None), None
+    except Exception as exc:
+        return None, f"Voice transcription failed: {type(exc).__name__}. You can type the question instead."
+
+
+def real_di_online_context(query, max_results=5):
+    if not query:
+        return []
+    try:
+        return google_web_search(query, max_results=max_results)
+    except Exception:
+        return online_lookup(query, max_results=max_results)
+
+
+def real_di_answer(agent, user, question, df=None, allow_online=True):
+    """New DI brain: role routing + local memory + current web evidence + Gemini."""
+    question = str(question or "").strip()
+    if not question:
+        return "I am ready. Tell me what you want to accomplish."
+
+    state = real_di_user_state(user) or {}
+    private = real_di_get_private_memory(agent.get("id"), limit=14)
+    local_rows = get_di_memory(limit=45, query=question)
+    local_context = "\n".join(f"[{r['category']}] {r['title']}: {r['content']}" for r in local_rows)
+    private_context = "\n".join(f"[PRIVATE] {r['title']}: {r['content']}" for r in private)
+
+    current_markers = ["latest","current","today","now","recent","news","price","pricing","version","release","2026","online","search","official","who is","what happened"]
+    should_search = allow_online and any(m in question.lower() for m in current_markers)
+    web = real_di_online_context(question, 5) if should_search else []
+    web_context = "\n".join(f"SOURCE: {title}\nURL: {href}" for title, href in web)
+
+    role = agent.get("system_role") or agent.get("specialty") or "General Intelligence"
+    system = f"""You are {agent.get('di_name','DI')} — David's Intelligence, a specialist inside DACRE Analysis.
+Your specialty is {agent.get('specialty','General Intelligence')}.
+Your position is {agent.get('position_title','DI Specialist')} and rank is {agent.get('rank_level',1)}.
+Your role: {role}
+You are one member of a 20-DI workforce. Do not pretend to be another specialist.
+Use trusted local memory first. When current public information is needed, use the supplied web evidence.
+Never fabricate sources. Clearly distinguish facts, calculations, and inference.
+Never reveal passwords, API keys, tokens, hashes, SMTP credentials or hidden security configuration.
+Remember the user's previous task context when it is relevant, but do not invent memories.
+The DI workforce's requested foundational faith statement is: {REAL_DI_FAITH_MEMORY}
+Answer the user's actual request directly, with useful steps or conclusions.
+"""
+    user_prompt = f"""USER: {user.get('first_name','User')} {user.get('last_name','')}
+COMPANY: {user.get('company','')}
+PREVIOUS ACTIVE DI: {state.get('active_di','')}
+PREVIOUS TASK: {state.get('last_task','')}
+PREVIOUS SUMMARY: {state.get('last_summary','')}
+LOCAL DI MEMORY:\n{local_context or 'No matching local memory.'}
+PRIVATE AGENT MEMORY:\n{private_context or 'No private notes.'}
+CURRENT WEB EVIDENCE:\n{web_context or 'No web search was needed.'}
+ACTIVE DATASET: {len(df):,} rows; columns={', '.join(map(str, df.columns)) if df is not None else 'none'}
+USER QUESTION:\n{question}"""
+
+    # Google Gemini is the primary reasoning provider for the new DI brain.
+    answer = _gemini_generate(system, user_prompt, max_tokens=1400)
+    if not answer:
+        answer = ai_generate(system, user_prompt, max_tokens=1400)
+    if not answer:
+        direct = memory_box_direct_answer(question)
+        answer = direct or get_webstore_answer(question)
+    if not answer:
+        answer = "I could not obtain a reliable reasoning response right now. Please try again or configure GEMINI_API_KEY in Streamlit Secrets."
+
+    answer = normalize_di_identity(answer)
+    if web:
+        answer += "\n\nSources checked: " + "; ".join(title for title, _ in web[:3])
+    return answer
+
+
+def real_di_record_chat(user, sender, message):
+    text = str(message or "").strip()
+    if not text:
+        return
+    st.session_state.chat_history.append({"sender": sender, "text": text})
+    con = db()
+    try:
+        con.execute("INSERT INTO chat_history(username,company_name,sender,message,created_at) VALUES(?,?,?,?,?)", (user.get("username",""), user.get("company",""), sender, text, datetime.now().isoformat(timespec="seconds")))
+        con.commit()
+    finally:
+        con.close()
+
+
+def real_di_avatar(agent, state="idle", speech_text=""):
+    name = agent.get("di_name", "DI")
+    specialty = agent.get("specialty", "Intelligence")
+    color = REAL_DI_AVATAR_COLORS.get(name, "#60a5fa")
+    avatar = agent.get("avatar_url") or f"https://api.dicebear.com/9.x/bottts-neutral/png?seed={urllib.parse.quote(name)}&backgroundColor=transparent"
+    safe_name = json.dumps(name)
+    safe_speech = json.dumps(str(speech_text or ""))
+    st.markdown(f"""
+    <div class="real-di-card" style="--di-color:{color}">
+      <div class="real-di-avatar-wrap {state}">
+        <img class="real-di-avatar" src="{avatar}" alt="{name}">
+        <div class="real-di-orbit"></div>
+        <div class="real-di-mouth"></div>
+      </div>
+      <div class="real-di-info">
+        <div class="real-di-name">{name} <span>· DI</span></div>
+        <div class="real-di-specialty">{specialty}</div>
+        <div class="real-di-status">● {('Listening' if state == 'listening' else 'Speaking' if state == 'speaking' else 'Ready')}</div>
+      </div>
+    </div>
+    <style>
+      .real-di-card{{display:flex;gap:18px;align-items:center;padding:16px;border:1px solid color-mix(in srgb,var(--di-color) 35%,transparent);border-radius:20px;background:linear-gradient(135deg,#08111f,#101d31);margin:8px 0 16px;box-shadow:0 15px 45px rgba(0,0,0,.22)}}
+      .real-di-avatar-wrap{{width:92px;height:92px;position:relative;display:flex;align-items:center;justify-content:center;border-radius:50%;background:radial-gradient(circle,var(--di-color)22,transparent 68%);animation:diFloat 3.4s ease-in-out infinite}}
+      .real-di-avatar{{width:78px;height:78px;object-fit:contain;border-radius:50%;z-index:2;filter:drop-shadow(0 0 14px color-mix(in srgb,var(--di-color) 55%,transparent))}}
+      .real-di-orbit{{position:absolute;inset:3px;border:2px solid var(--di-color);border-top-color:transparent;border-radius:50%;animation:diSpin 3s linear infinite}}
+      .real-di-mouth{{position:absolute;bottom:21px;width:13px;height:4px;background:var(--di-color);border-radius:8px;opacity:.8;z-index:4}}
+      .speaking .real-di-mouth{{animation:diTalk .13s ease-in-out infinite alternate}}
+      .listening{{animation:diListen 1.1s ease-in-out infinite!important}}
+      .real-di-name{{font-size:22px;font-weight:800;color:#fff}} .real-di-name span{{font-size:14px;color:var(--di-color)}}
+      .real-di-specialty{{color:#cbd5e1;margin-top:4px;font-weight:600}} .real-di-status{{color:var(--di-color);margin-top:7px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}}
+      @keyframes diFloat{{0%,100%{{transform:translateY(0)}}50%{{transform:translateY(-5px)}}}} @keyframes diSpin{{to{{transform:rotate(360deg)}}}} @keyframes diTalk{{from{{transform:scaleY(.6)}}to{{transform:scaleY(2.4)}}}} @keyframes diListen{{0%,100%{{box-shadow:0 0 0 0 color-mix(in srgb,var(--di-color) 25%,transparent)}}50%{{box-shadow:0 0 0 14px transparent}}}}
+    </style>
+    """, unsafe_allow_html=True)
+    if speech_text:
+        lang = DI_LANGUAGE_PROFILES.get(st.session_state.get("di_language", "English — Nigeria"), {}).get("code", "en-NG")
+        di_voice_player(speech_text, lang)
+
+
+def real_di_welcome_sequence(user):
+    """Show a first-login introduction and restore prior work on returning logins."""
+    state = real_di_user_state(user)
+    if not state:
+        emiel = next(x for x in REAL_DI_ROSTER if x["name"] == "Emiel")
+        assiel = next(x for x in REAL_DI_ROSTER if x["name"] == "Assiel")
+        real_di_save_state(user, "Emiel", "New login / onboarding", "User has just entered DACRE; begin with a warm DI introduction and offer role-specific assistance.")
+        st.session_state.real_di_welcome_shown = True
+        return [
+            (emiel, f"Good day {user.get('first_name','David')}. I am Emiel, your Communications Specialist. I have sent messages to your email because your work matters to us. Welcome to DACRE — we are ready to help you turn your ideas into organized action."),
+            (assiel, f"Hi {user.get('first_name','David')}. I am Assiel, your Executive Work Assistant. I am here to assist you. What would you like to work on today?"),
+        ]
+    return []
+
+
+def real_di_render_voice_input(user, location="home"):
+    """Render browser microphone input. The browser will request permission; silent recording is not allowed."""
+    st.markdown("### 🎙️ Talk to DI")
+    st.caption("Your microphone is ready. Click the microphone control, allow browser permission, speak, and DI will place the transcript into the chat workflow.")
+    key = f"real_di_audio_{location}_{user.get('username','user')}"
+    audio = st.audio_input("🎙️ Record your question", sample_rate=16000, key=key)
+    if audio is not None:
+        transcript, error = gemini_transcribe_audio(audio)
+        if transcript:
+            st.session_state.real_di_transcript = transcript
+            st.success(f"Transcript: {transcript}")
+        elif error:
+            st.warning(error)
+    return st.session_state.get("real_di_transcript", "")
+
+
+def real_di_handle_question(user, question, df=None):
+    question = str(question or "").strip()
+    if not question:
+        return None
+    ranked = real_di_rank_agents(question)
+    agent = ranked[0] if ranked else real_di_agent_rows()[0]
+    real_di_record_chat(user, user.get("first_name", "User"), question)
+    answer = real_di_answer(agent, user, question, df=df, allow_online=True)
+    real_di_record_chat(user, agent.get("di_name", "DI"), answer)
+    real_di_save_state(user, agent.get("di_name", "DI"), question, answer[:1800])
+    st.session_state.real_di_active_agent = agent.get("di_name")
+    st.session_state.last_speech = answer
+    st.session_state.real_di_transcript = ""
+    return agent, answer
+
+
+def render_real_di_home(user):
+    """New DI Home: animated specialist, text chat, microphone transcription and continuity."""
+    real_di_ensure_tables()
+    agents = real_di_agent_rows()
+    state = real_di_user_state(user)
+    active_name = st.session_state.get("real_di_active_agent") or (state or {}).get("active_di") or "Assiel"
+    active = next((a for a in agents if a.get("di_name") == active_name), agents[0])
+
+    st.markdown("""<div style="padding:22px;border-radius:22px;background:linear-gradient(135deg,#07111f,#12233c);border:1px solid #274568;margin-bottom:18px"><h1 style="color:white;margin:0">🧠 DI — David's Intelligence</h1><p style="color:#9fb4cc;margin:6px 0 0">Real 20-member AI workforce · local memory · current web evidence · voice interaction</p></div>""", unsafe_allow_html=True)
+
+    if not st.session_state.get("real_di_welcome_shown"):
+        intros = real_di_welcome_sequence(user)
+        st.session_state.real_di_welcome_shown = True
+        for agent_spec, text in intros:
+            agent = next((a for a in agents if a.get("di_name") == agent_spec["name"]), active)
+            real_di_avatar(agent, "speaking", text)
+            st.info(text)
+
+    real_di_avatar(active, "ready")
+
+    if state and state.get("last_task"):
+        st.info(f"🔄 Welcome back. I remember your last active specialist was **{state.get('active_di')}** and your last task was: {state.get('last_task')}")
+
+    for msg in st.session_state.chat_history[-16:]:
+        sender = msg.get("sender", "")
+        text = msg.get("text", "")
+        if sender in {"DI", active.get("di_name")} or sender in {a.get("di_name") for a in agents}:
+            st.markdown(f"<div style='background:#10213a;border-left:4px solid #38bdf8;border-radius:12px;padding:12px;margin:7px 0'><b style='color:#7dd3fc'>{sender}</b><div style='color:white;margin-top:4px'>{text}</div></div>", unsafe_allow_html=True)
+        else:
+            st.markdown(f"<div style='background:#0b1524;border-left:4px solid #a78bfa;border-radius:12px;padding:12px;margin:7px 0'><b style='color:#c4b5fd'>{sender}</b><div style='color:white;margin-top:4px'>{text}</div></div>", unsafe_allow_html=True)
+
+    with st.form("real_di_text_form", clear_on_submit=True):
+        c1, c2 = st.columns([6,1])
+        with c1:
+            typed = st.text_input("Message DI", placeholder="Tell DI what you want to accomplish…", label_visibility="collapsed")
+        with c2:
+            send = st.form_submit_button("Send", type="primary")
+    if send and typed.strip():
+        result = real_di_handle_question(user, typed, st.session_state.processed_df)
+        if result:
+            st.rerun()
+
+    transcript = real_di_render_voice_input(user, "home")
+    if transcript:
+        if st.button("▶ Send transcript to DI", type="primary"):
+            result = real_di_handle_question(user, transcript, st.session_state.processed_df)
+            if result:
+                st.rerun()
+
+    st.markdown("### 👥 Meet the DI specialists")
+    ranked = real_di_rank_agents(state.get("last_task", "") if state else "")
+    cols = st.columns(4)
+    for i, agent in enumerate(ranked[:8]):
+        with cols[i % 4]:
+            st.image(agent.get("avatar_url", ""), width=85)
+            st.markdown(f"**{agent.get('di_name')}**")
+            st.caption(f"{agent.get('specialty')} · Rank {agent.get('rank_level')}")
+            if st.button("Talk", key=f"talk_{agent.get('id')}"):
+                st.session_state.real_di_active_agent = agent.get("di_name")
+                st.rerun()
+
+
+def render_real_di_workforce(user):
+    """New workforce directory with role ranking and direct specialist selection."""
+    agents = real_di_agent_rows()
+    st.markdown("# 👥 Real DI Workforce")
+    st.caption("20 permanent DI specialists. Every specialist shares the trusted brain and has a distinct job.")
+    task = st.text_input("What are you working on?", placeholder="e.g. analyze sales, fix Python, research a competitor, prepare a report")
+    ranked = real_di_rank_agents(task) if task.strip() else agents
+    cols = st.columns(3)
+    for i, agent in enumerate(ranked):
+        with cols[i % 3]:
+            color = REAL_DI_AVATAR_COLORS.get(agent.get("di_name"), "#60a5fa")
+            st.markdown(f"<div style='padding:14px;border-radius:16px;border:1px solid {color}55;background:#0b1524;margin-bottom:10px'><img src='{agent.get('avatar_url','')}' width='90'><h3 style='color:white;margin:5px 0'>{agent.get('di_name')}</h3><div style='color:{color};font-weight:700'>{agent.get('position_title')}</div><div style='color:#cbd5e1'>{agent.get('specialty')}</div><div style='color:#94a3b8'>Rank {agent.get('rank_level')}</div></div>", unsafe_allow_html=True)
+            if st.button(f"Work with {agent.get('di_name')}", key=f"select_real_{agent.get('id')}"):
+                st.session_state.real_di_active_agent = agent.get("di_name")
+                st.success(f"{agent.get('di_name')} is now your active DI specialist.")
+
+
+def render_real_di_persistent_dock(user):
+    """Persistent voice/text DI dock available across the signed-in workspace."""
+    st.markdown("---")
+    with st.expander("🎙️ Talk to DI anywhere", expanded=False):
+        active_name = st.session_state.get("real_di_active_agent", "Assiel")
+        agent = next((a for a in real_di_agent_rows() if a.get("di_name") == active_name), None)
+        if agent:
+            real_di_avatar(agent, "ready")
+        transcript = real_di_render_voice_input(user, "dock")
+        if transcript and st.button("Send voice message", key="dock_send_voice", type="primary"):
+            real_di_handle_question(user, transcript, st.session_state.processed_df)
+            st.rerun()
+        with st.form("real_di_dock_form", clear_on_submit=True):
+            q = st.text_input("Ask DI", placeholder="Ask your active specialist…", label_visibility="collapsed")
+            send = st.form_submit_button("Send")
+        if send and q.strip():
+            real_di_handle_question(user, q, st.session_state.processed_df)
+            st.rerun()
+
+
+def send_real_di_intro_emails(first_name, company_name, email):
+    """Send personalized onboarding emails from the DI team using the configured SMTP sender."""
+    providers = [
+        ("Gmail", "DACRE_GMAIL_SMTP_HOST", "DACRE_GMAIL_SMTP_PORT", "DACRE_GMAIL_SMTP_USER", "DACRE_GMAIL_SMTP_PASSWORD", "DACRE_GMAIL_SMTP_FROM"),
+        ("Outlook", "DACRE_OUTLOOK_SMTP_HOST", "DACRE_OUTLOOK_SMTP_PORT", "DACRE_OUTLOOK_SMTP_USER", "DACRE_OUTLOOK_SMTP_PASSWORD", "DACRE_OUTLOOK_SMTP_FROM"),
+        ("Legacy SMTP", "DACRE_SMTP_HOST", "DACRE_SMTP_PORT", "DACRE_SMTP_USER", "DACRE_SMTP_PASSWORD", "DACRE_SMTP_FROM"),
+    ]
+    def sec(name, default=""):
+        return _free_secret(name) or default
+    chosen = None
+    for provider in providers:
+        label, hk, pk, uk, sk, fk = provider
+        host, port, user_name, password = sec(hk), sec(pk, "587"), sec(uk), sec(sk)
+        sender = sec(fk, user_name)
+        if host and user_name and password:
+            chosen = (label, host, int(port), user_name, password, sender)
+            break
+    if not chosen:
+        return "NOT SENT — no SMTP provider configured"
+
+    label, host, port, smtp_user, smtp_pass, sender = chosen
+    messages = [
+        ("Emiel", f"Good day {first_name} — I am Emiel, your Communications Specialist at DACRE.", f"Good day {first_name},\n\nI am Emiel, your Communications Specialist. I have sent this message to welcome you because your work matters to us. Your {company_name} workspace is now ready.\n\nWe are here to help you communicate ideas clearly, organize important messages and get more value from DACRE.\n\nWelcome to DACRE.\n\n— Emiel\nDI — David's Intelligence"),
+        ("Assiel", f"Hi {first_name} — I am Assiel, your Executive Work Assistant at DACRE.", f"Hi {first_name},\n\nI am Assiel, your Executive Work Assistant. I am here to assist you with planning, priorities, analysis workflows and practical next steps.\n\nWhen you sign in, simply tell me what you want to accomplish. If another DI specialist is better suited to the work, I will help connect you with them.\n\nWhat would you like to work on today?\n\n— Assiel\nDI — David's Intelligence"),
+    ]
+    statuses = []
+    for agent, subject_line, body in messages:
+        try:
+            msg = MIMEMultipart()
+            msg["From"] = f"{agent} — DI <{sender or smtp_user}>"
+            msg["To"] = email
+            msg["Subject"] = subject_line
+            msg.attach(MIMEText(body, "plain", "utf-8"))
+            with smtplib.SMTP(host, port, timeout=20) as server:
+                server.starttls()
+                server.login(smtp_user, smtp_pass)
+                server.sendmail(sender or smtp_user, [email], msg.as_string())
+            statuses.append(f"{agent}: sent")
+            con = db()
+            con.execute("INSERT INTO di_intro_log(username,email,agent_name,subject,status,created_at) VALUES(?,?,?,?,?,?)", (email, email, agent, subject_line, "sent", datetime.now().isoformat(timespec="seconds")))
+            con.commit(); con.close()
+        except Exception as exc:
+            statuses.append(f"{agent}: {type(exc).__name__}")
+    return "; ".join(statuses)
+
+
+# Override the old onboarding mailer for new accounts.
+def send_di_welcome_email(first_name, last_name, company_name, email, email_password=""):
+    return send_real_di_intro_emails(first_name, company_name, email)
+
+
+# Override authentication to restore the active DI state after sign-in.
+_legacy_authenticate = authenticate
+
+def authenticate(company_name, full_name, passkey, email=""):
+    result, error = _legacy_authenticate(company_name, full_name, passkey, email)
+    if result:
+        real_di_ensure_tables()
+        state = real_di_user_state(result)
+        st.session_state.real_di_active_agent = (state or {}).get("active_di") or "Assiel"
+        st.session_state.real_di_welcome_shown = bool(state)
+        now = datetime.now().isoformat(timespec="seconds")
+        con = db()
+        con.execute("UPDATE di_user_state SET last_seen=?,updated_at=? WHERE username=?", (now, now, result.get("username", "")))
+        con.commit(); con.close()
+    return result, error
+
+
+# New page renderers supersede the old generic DI pages.
+render_di_home = render_real_di_home
+render_di_workforce = render_real_di_workforce
+render_persistent_di_dock = render_real_di_persistent_dock
+
+# Ensure the new roster and brain are present before the application starts.
+try:
+    real_di_seed_workforce()
+except Exception as _real_di_boot_error:
+    logger.exception("Real DI workforce bootstrap failed: %s", _real_di_boot_error)
 
 # =============================================================================
 # MAIN ENTRY POINT
