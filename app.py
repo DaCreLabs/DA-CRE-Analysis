@@ -1,9 +1,14 @@
 # =============================================================================
-# DACRE WORLDWIDE - COMPLETE PRODUCTION BUILD
-# Version: 7.0.0 - Enterprise Production Core
-# Total Lines: ~11,000+
+# DACRE WORLDWIDE - COMPLETE PRODUCTION BUILD (FIXED)
+# Version: 7.0.1 - Enterprise Production Core
+# Total Lines: ~11,500+
 # Features: Self-Healing DB, DI Intelligence, Error Shield, Voice, Video, AI
 # =============================================================================
+
+# =============================================================================
+# IMPORTS
+# =============================================================================
+
 import hashlib
 import hmac
 import io
@@ -62,6 +67,52 @@ import platform
 import sysconfig
 import socket
 import ssl
+from contextlib import contextmanager
+from html.parser import HTMLParser
+from urllib.parse import urlparse
+from dataclasses import dataclass, field
+from typing import Optional, Dict, List, Any, Tuple
+from enum import Enum
+from functools import wraps
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+from datetime import datetime, timedelta
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from pathlib import Path
+from decimal import Decimal
+from fractions import Fraction
+
+# =============================================================================
+# HIDE MANAGE APP BUTTON - EARLY APPLICATION
+# =============================================================================
+
+st.markdown("""
+<style>
+    /* Hide the Manage App button completely */
+    header[data-testid="stHeader"] button[data-testid="baseButton-header"] {
+        display: none !important;
+    }
+    header[data-testid="stHeader"] button[kind="secondary"] {
+        display: none !important;
+    }
+    /* Hide any header buttons */
+    header[data-testid="stHeader"] button {
+        display: none !important;
+    }
+    /* Hide the settings cog if present */
+    [data-testid="stStatusWidget"] {
+        display: none !important;
+    }
+    /* Hide toolbar */
+    .stToolbar {
+        display: none !important;
+    }
+    /* Hide menu */
+    #MainMenu {
+        display: none !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # =============================================================================
 # THIRD-PARTY IMPORTS (ONLY VALID PACKAGES)
@@ -70,7 +121,7 @@ import ssl
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance, ImageOps, ImageChops
 import requests
 import yfinance as yf
 import plotly.graph_objects as go
@@ -110,165 +161,6 @@ except ImportError:
     openai = None
     OpenAI = None
     OPENAI_AVAILABLE = False
-
-# Speech Recognition (browser-based is preferred)
-try:
-    import speech_recognition as sr
-    SR_AVAILABLE = True
-except ImportError:
-    sr = None
-    SR_AVAILABLE = False
-
-# Text to Speech (browser-based is preferred)
-try:
-    import pyttsx3
-    TTS_AVAILABLE = True
-except ImportError:
-    pyttsx3 = None
-    TTS_AVAILABLE = False
-
-# Web Search
-try:
-    from googlesearch import search as google_search
-    WEB_SEARCH_AVAILABLE = True
-except ImportError:
-    WEB_SEARCH_AVAILABLE = False
-
-# Audio (optional)
-try:
-    import pyaudio
-    PYAUDIO_AVAILABLE = True
-except ImportError:
-    pyaudio = None
-    PYAUDIO_AVAILABLE = False
-
-# Computer Vision (optional)
-try:
-    import cv2
-    CV2_AVAILABLE = True
-except ImportError:
-    cv2 = None
-    CV2_AVAILABLE = False
-
-try:
-    import numpy as np
-    NUMPY_AVAILABLE = True
-except ImportError:
-    np = None
-    NUMPY_AVAILABLE = False
-
-# DeepFace (optional)
-try:
-    from deepface import DeepFace
-    DEEPFACE_AVAILABLE = True
-except ImportError:
-    DeepFace = None
-    DEEPFACE_AVAILABLE = False
-
-# NetworkX (optional)
-try:
-    import networkx as nx
-    NETWORKX_AVAILABLE = True
-except ImportError:
-    nx = None
-    NETWORKX_AVAILABLE = False
-
-# Maps (optional)
-try:
-    import folium
-    from streamlit_folium import folium_static
-    FOLIUM_AVAILABLE = True
-except ImportError:
-    folium = None
-    folium_static = None
-    FOLIUM_AVAILABLE = False
-
-# LiveKit (optional)
-try:
-    from livekit import RoomServiceClient, AccessToken, VideoGrants
-    from livekit.api import RoomAgentDispatch, RoomConfiguration
-    LIVEKIT_AVAILABLE = True
-except Exception:
-    RoomServiceClient = None
-    AccessToken = None
-    VideoGrants = None
-    RoomAgentDispatch = None
-    RoomConfiguration = None
-    LIVEKIT_AVAILABLE = False
-
-from contextlib import contextmanager
-from html.parser import HTMLParser
-from urllib.parse import urlparse
-from dataclasses import dataclass, field
-from typing import Optional, Dict, List, Any, Tuple
-from enum import Enum
-from functools import wraps
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
-from datetime import datetime, timedelta
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from pathlib import Path
-from decimal import Decimal
-from fractions import Fraction
-
-import pandas as pd
-import streamlit as st
-import streamlit.components.v1 as components
-from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance, ImageOps, ImageChops
-
-# =============================================================================
-# HIDE MANAGE APP BUTTON
-# =============================================================================
-
-st.markdown("""
-<style>
-    /* Hide only the Manage App button */
-    header[data-testid="stHeader"] button[data-testid="baseButton-header"] {
-        display: none !important;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# =============================================================================
-# AI & MACHINE LEARNING IMPORTS
-# =============================================================================
-
-# Google Gemini - Image Generation
-try:
-    from google import genai
-    from google.genai import types
-    GENAI_AVAILABLE = True
-except ImportError:
-    genai = None
-    types = None
-    GENAI_AVAILABLE = False
-
-# Google Gemini - Text AI
-try:
-    import google.generativeai as genai_text
-    GENAI_TEXT_AVAILABLE = True
-except ImportError:
-    genai_text = None
-    GENAI_TEXT_AVAILABLE = False
-
-# OpenAI
-try:
-    import openai
-    from openai import OpenAI
-    OPENAI_AVAILABLE = True
-except ImportError:
-    openai = None
-    OpenAI = None
-    OPENAI_AVAILABLE = False# Transformers
-try:
-    from transformers import pipeline, AutoModel, AutoTokenizer, AutoModelForCausalLM
-    TRANSFORMERS_AVAILABLE = True
-except ImportError:
-    pipeline = None
-    AutoModel = None
-    AutoTokenizer = None
-    AutoModelForCausalLM = None
-    TRANSFORMERS_AVAILABLE = False
 
 # Speech Recognition
 try:
@@ -324,33 +216,13 @@ except ImportError:
     DeepFace = None
     DEEPFACE_AVAILABLE = False
 
-# Finance
+# NetworkX
 try:
-    import yfinance as yf
-    YFINANCE_AVAILABLE = True
+    import networkx as nx
+    NETWORKX_AVAILABLE = True
 except ImportError:
-    yf = None
-    YFINANCE_AVAILABLE = False
-
-# Visualization
-try:
-    import plotly.graph_objects as go
-    import plotly.express as px
-    from plotly.subplots import make_subplots
-    PLOTLY_AVAILABLE = True
-except ImportError:
-    go = None
-    px = None
-    make_subplots = None
-    PLOTLY_AVAILABLE = False
-
-# WebSockets
-try:
-    import websockets
-    WEBSOCKETS_AVAILABLE = True
-except ImportError:
-    websockets = None
-    WEBSOCKETS_AVAILABLE = False
+    nx = None
+    NETWORKX_AVAILABLE = False
 
 # Maps
 try:
@@ -361,14 +233,6 @@ except ImportError:
     folium = None
     folium_static = None
     FOLIUM_AVAILABLE = False
-
-# NetworkX
-try:
-    import networkx as nx
-    NETWORKX_AVAILABLE = True
-except ImportError:
-    nx = None
-    NETWORKX_AVAILABLE = False
 
 # LiveKit
 try:
@@ -383,15 +247,16 @@ except Exception:
     RoomConfiguration = None
     LIVEKIT_AVAILABLE = False
 
-# PostgreSQL
+# Transformers
 try:
-    import psycopg
-    from psycopg.rows import dict_row
-    PSYCOPG_AVAILABLE = True
-except Exception:
-    psycopg = None
-    dict_row = None
-    PSYCOPG_AVAILABLE = False
+    from transformers import pipeline, AutoModel, AutoTokenizer, AutoModelForCausalLM
+    TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    pipeline = None
+    AutoModel = None
+    AutoTokenizer = None
+    AutoModelForCausalLM = None
+    TRANSFORMERS_AVAILABLE = False
 
 # =============================================================================
 # LOGGING CONFIGURATION
@@ -429,23 +294,25 @@ GLOBAL_MARKETS = ["NYSE", "NASDAQ", "LSE", "JPX", "SSE", "HKEX", "NSE", "NGX", "
 GLOBAL_COMMODITIES = ["Gold", "Silver", "Oil", "Copper", "Natural Gas", "Wheat", "Corn", "Coffee", "Sugar", "Cotton"]
 
 # DI Language Support
-DI_LANGUAGES = {
-    "English": {"code": "en", "voice": "default"},
-    "Spanish": {"code": "es", "voice": "es-ES"},
-    "French": {"code": "fr", "voice": "fr-FR"},
-    "Arabic": {"code": "ar", "voice": "ar-SA"},
-    "Chinese": {"code": "zh", "voice": "zh-CN"},
-    "Hindi": {"code": "hi", "voice": "hi-IN"},
-    "Portuguese": {"code": "pt", "voice": "pt-BR"},
-    "Yoruba": {"code": "yo", "voice": "yo-NG"},
-    "Igbo": {"code": "ig", "voice": "ig-NG"},
-    "Hausa": {"code": "ha", "voice": "ha-NG"},
-    "Swahili": {"code": "sw", "voice": "sw-KE"},
-    "German": {"code": "de", "voice": "de-DE"},
-    "Italian": {"code": "it", "voice": "it-IT"},
-    "Japanese": {"code": "ja", "voice": "ja-JP"},
-    "Korean": {"code": "ko", "voice": "ko-KR"},
-    "Russian": {"code": "ru", "voice": "ru-RU"},
+DI_LANGUAGE_PROFILES = {
+    "English — Nigeria": {"code": "en-NG", "voice": "en-NG"},
+    "English — US": {"code": "en-US", "voice": "en-US"},
+    "English — UK": {"code": "en-GB", "voice": "en-GB"},
+    "Spanish": {"code": "es-ES", "voice": "es-ES"},
+    "French": {"code": "fr-FR", "voice": "fr-FR"},
+    "Arabic": {"code": "ar-SA", "voice": "ar-SA"},
+    "Chinese": {"code": "zh-CN", "voice": "zh-CN"},
+    "Hindi": {"code": "hi-IN", "voice": "hi-IN"},
+    "Portuguese": {"code": "pt-BR", "voice": "pt-BR"},
+    "Yoruba": {"code": "yo-NG", "voice": "yo-NG"},
+    "Igbo": {"code": "ig-NG", "voice": "ig-NG"},
+    "Hausa": {"code": "ha-NG", "voice": "ha-NG"},
+    "Swahili": {"code": "sw-KE", "voice": "sw-KE"},
+    "German": {"code": "de-DE", "voice": "de-DE"},
+    "Italian": {"code": "it-IT", "voice": "it-IT"},
+    "Japanese": {"code": "ja-JP", "voice": "ja-JP"},
+    "Korean": {"code": "ko-KR", "voice": "ko-KR"},
+    "Russian": {"code": "ru-RU", "voice": "ru-RU"},
 }
 
 # DI Personalities
@@ -502,11 +369,11 @@ CEO_PORTRAIT_CANDIDATES = [
     "Gemini_Generated_Image_kxzp51kxzp51kxzp(2).png",
 ]
 CEO_PORTRAIT_PATH = next((BASE_DIR / x for x in CEO_PORTRAIT_CANDIDATES if (BASE_DIR / x).exists()), None)
-CEO_PORTRAIT_DATA_URL = """data:image/jpeg;base64,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"""
+CEO_PORTRAIT_DATA_URL = """data:image/jpeg;base64,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"""
 FAVICON_PATH = BASE_DIR / ".dacre_favicon.png"
 DB_PATH = BASE_DIR / "dacre_platform.db"
 
-# Public landing page supplied by the DACRE owner.
+# Public landing page supplied by the DACRE owner
 DACRE_LANDING_URL = "https://dacre-landing-page-od7u.bolt.host/"
 
 # =============================================================================
@@ -637,8 +504,36 @@ SHEET_FORMULAS = ["SUM","AVERAGE","COUNT","COUNTA","MAX","MIN","CONCATENATE","UP
 APP_KNOWLEDGE = """
 DACRE Analysis is a business and data analysis workspace. Users can upload CSV, Excel, TSV and JSON files; clean datasets; remove empty rows/columns and duplicates; inspect rows and columns; run formulas such as SUM, AVERAGE, COUNT, COUNTA, MAX, MIN, CONCATENATE, UPPER, LOWER and TRIM; build bar, line and area charts; save workspace state; use a File Vault; and export processed data as CSV or Excel.
 DI means David's Intelligence. DI is the assistant inside DACRE Analysis. Free-first reasoning is preferred: the normal deployment must not make paid model calls automatically. Free-tier Gemini and Groq keys may be configured server-side, while OpenAI remains disabled unless the owner explicitly enables paid AI. Each organization has its own workspace. The first person who creates a new organization becomes that organization's company admin. Later users joining an existing organization are regular users unless an admin grants them admin rights. Company admins can inspect users, account creation, sign-ins, file activity and changes for their organization. The master account can see system-wide activity.
-""".strip()              
-                                  # =============================================================================
+""".strip()
+
+# =============================================================================
+# PAGE METADATA
+# =============================================================================
+
+PAGE_META = {
+    "Overview": ("📊", "Overview", "Live analytics and platform health"),
+    "DI Home": ("💬", "DI Home", "Your continuous conversation with DI"),
+    "DI Calls": ("📞", "DI Calls", "Business calls, DI calls, and team rooms"),
+    "DI Workforce": ("👥", "DI Workforce", "Your specialized digital workforce"),
+    "🌍 Global Markets": ("🌍", "Global Markets", "Worldwide market intelligence"),
+    "🎥 DI Conference": ("🎥", "DI Conference", "Video conferencing with DI"),
+    "DI Action Center": ("⚡", "DI Action Center", "Give DI a business outcome"),
+    "DI Memory Box": ("🧠", "DI Memory Box", "The trusted institutional memory layer"),
+    "Business Command Center": ("📊", "Business Command Center", "Executive signals and business health"),
+    "Business Twin": ("🔄", "Business Twin", "Living digital replica of your business"),
+    "Decision Ledger": ("📋", "Decision Ledger", "Institutional memory for decisions"),
+    "Opportunity Radar": ("🎯", "Opportunity Radar", "Growth signals and market trends"),
+    "Workspace & Data": ("📁", "Workspace & Data", "Upload, inspect, and clean your data"),
+    "Formula Lab": ("ƒ", "Formula Lab", "Spreadsheet-style formulas and transformations"),
+    "Charts": ("📊", "Charts", "Turn data into clear visual stories"),
+    "File Vault": ("🗄️", "File Vault", "Keep company files and datasets organized"),
+    "Export Center": ("📤", "Export Center", "Package analysis outputs for sharing"),
+    "Chibobec Loan Desk": ("₦", "Chibobec Loan Desk", "Manage loan clients and reminders"),
+    "Organization Admin Portal": ("⚙️", "Organization Admin Portal", "Manage people, roles, and activity"),
+    "Overall Admin DI Portal": ("👑", "Overall Admin DI Portal", "Sovereign master administration"),
+}
+
+# =============================================================================
 # DATABASE FUNCTIONS
 # =============================================================================
 
@@ -674,6 +569,14 @@ def _db_file_lock(timeout=90):
             pass
         handle.close()
 
+def using_cloud_db():
+    """Check if using cloud database."""
+    return bool(os.getenv("DACRE_SUPABASE_URL") and os.getenv("DACRE_SUPABASE_KEY"))
+
+def database_url():
+    """Get database URL for cloud connection."""
+    return os.getenv("DACRE_SUPABASE_URL", "")
+
 def db():
     """Get database connection - supports both SQLite and PostgreSQL/Supabase."""
     if using_cloud_db():
@@ -695,6 +598,33 @@ def db():
     except sqlite3.DatabaseError:
         pass
     return con
+
+class _PGConnectionCompat:
+    """PostgreSQL connection compatibility wrapper."""
+    def __init__(self, conn):
+        self._conn = conn
+        self.row_factory = dict_row
+    
+    def cursor(self):
+        return self._conn.cursor()
+    
+    def execute(self, sql, params=()):
+        # Convert SQLite-style ? to PostgreSQL %s
+        sql = sql.replace("?", "%s")
+        return self._conn.execute(sql, params)
+    
+    def executemany(self, sql, params_list):
+        sql = sql.replace("?", "%s")
+        return self._conn.executemany(sql, params_list)
+    
+    def commit(self):
+        return self._conn.commit()
+    
+    def rollback(self):
+        return self._conn.rollback()
+    
+    def close(self):
+        return self._conn.close()
 
 PBKDF2_ITERATIONS = 600_000
 
@@ -725,7 +655,7 @@ def verify_password(value, stored):
 def _pg_table_columns(con, table_name):
     """Get columns for a PostgreSQL table."""
     rows = con.execute(
-        "SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name=? ORDER BY ordinal_position",
+        "SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name=%s ORDER BY ordinal_position",
         (table_name,),
     ).fetchall()
     return [str(r["column_name"]) for r in rows]
@@ -734,7 +664,7 @@ def _pg_table_exists(con, table_name):
     """Check if a PostgreSQL table exists."""
     return bool(
         con.execute(
-            "SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name=? LIMIT 1",
+            "SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name=%s LIMIT 1",
             (table_name,),
         ).fetchone()
     )
@@ -742,7 +672,7 @@ def _pg_table_exists(con, table_name):
 def _sqlite_source_tables(src):
     """Get all tables from SQLite database."""
     rows = src.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%%' ORDER BY name"
     ).fetchall()
     return [r[0] for r in rows]
 
@@ -756,7 +686,7 @@ def _migrate_sqlite_to_supabase_once():
     con = db()
     try:
         marker = con.execute(
-            "SELECT value FROM dacre_schema_meta WHERE key=? LIMIT 1",
+            "SELECT value FROM dacre_schema_meta WHERE key=%s LIMIT 1",
             ("sqlite_migrated_v1",),
         ).fetchone()
         if marker:
@@ -769,7 +699,7 @@ def _migrate_sqlite_to_supabase_once():
             target_users = con.execute("SELECT COUNT(*) AS n FROM public.users").fetchone()["n"]
             if int(target_users or 0) > 0:
                 con.execute(
-                    "INSERT INTO dacre_schema_meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value",
+                    "INSERT INTO dacre_schema_meta(key,value) VALUES(%s,%s) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value",
                     ("sqlite_migrated_v1", "skipped_existing_supabase_accounts"),
                 )
                 con.commit()
@@ -806,17 +736,17 @@ def _migrate_sqlite_to_supabase_once():
             for table in ordered:
                 if not _pg_table_exists(con, table) or "id" not in _pg_table_columns(con, table):
                     continue
-                seq = con.execute("SELECT pg_get_serial_sequence(?, 'id') AS seq", (f"public.{table}",)).fetchone()
+                seq = con.execute("SELECT pg_get_serial_sequence(%s, 'id') AS seq", (f"public.{table}",)).fetchone()
                 seq_name = seq["seq"] if seq else None
                 if not seq_name:
                     continue
                 has_rows = con.execute(f'SELECT COUNT(*) AS n FROM public."{table}"').fetchone()["n"]
                 if int(has_rows or 0) > 0:
                     max_id = con.execute(f'SELECT MAX(id) AS max_id FROM public."{table}"').fetchone()["max_id"]
-                    con.execute("SELECT setval(?, ?, true)", (seq_name, int(max_id or 1)))
+                    con.execute("SELECT setval(%s, %s, true)", (seq_name, int(max_id or 1)))
 
             con.execute(
-                "INSERT INTO dacre_schema_meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value",
+                "INSERT INTO dacre_schema_meta(key,value) VALUES(%s,%s) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value",
                 ("sqlite_migrated_v1", json.dumps({"copied_at": datetime.now().isoformat(timespec="seconds"), "tables": copied})),
             )
             con.commit()
@@ -840,7 +770,7 @@ def seed_di_memory_postgres():
         rows = [("",c,t,x,p,MASTER_USERNAME,now,now) for c,t,x,p in DI_MEMORY_SEED]
         sql = (
             "INSERT INTO di_memory(company_name,category,title,content,priority,created_by,created_at,updated_at) "
-            "SELECT ?,?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM di_memory WHERE company_name=? AND title=?)"
+            "SELECT %s,%s,%s,%s,%s,%s,%s,%s WHERE NOT EXISTS (SELECT 1 FROM di_memory WHERE company_name=%s AND title=%s)"
         )
         con.executemany(sql, [r + (r[0], r[2]) for r in rows])
         con.commit()
@@ -1016,18 +946,6 @@ def init_db():
         )
     """)
 
-    # Add loan client columns if missing
-    for _column, _dtype in [
-        ("reminder_2_message_id", "TEXT"),
-        ("due_message_id", "TEXT"),
-        ("last_whatsapp_status", "TEXT"),
-        ("last_whatsapp_error", "TEXT"),
-    ]:
-        try:
-            cur.execute(f"ALTER TABLE loan_clients ADD COLUMN {_column} {_dtype}")
-        except sqlite3.OperationalError:
-            pass
-
     # WhatsApp delivery log
     cur.execute("""
         CREATE TABLE IF NOT EXISTS whatsapp_delivery_log (
@@ -1055,6 +973,7 @@ def init_db():
             content TEXT NOT NULL,
             priority INTEGER NOT NULL DEFAULT 100,
             active INTEGER NOT NULL DEFAULT 1,
+            created_by TEXT DEFAULT '',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )
@@ -1832,7 +1751,8 @@ def notify_company_admin(company, message, event_type="system"):
     )
     con.commit()
     con.close()
-  # =============================================================================
+
+# =============================================================================
 # AUTHENTICATION FUNCTIONS
 # =============================================================================
 
@@ -2543,7 +2463,8 @@ def process_chibobec_reminders(username, company):
     con.commit()
     con.close()
     return results
-   # =============================================================================
+
+# =============================================================================
 # DATA PROCESSING FUNCTIONS
 # =============================================================================
 
@@ -3278,7 +3199,8 @@ def verify_recaptcha_token(token):
         return bool(data.get("success"))
     except Exception:
         return False
-   # =============================================================================
+
+# =============================================================================
 # VOICE & UI FUNCTIONS
 # =============================================================================
 
@@ -3562,7 +3484,7 @@ def seed_named_di_workforce():
                     (di_name, di_code, specialty, status, assigned_company, system_role,
                      avatar_url, voice_profile, thinking_style, position_title, rank_level,
                      appointed_at, appointed_by, created_by, created_at, last_active)
-                    VALUES(?,?,?,'Available',NULL,?,?,?,?,?,?,?,?,?,?,?)
+                    VALUES(?,?,?,?,'Available',NULL,?,?,?,?,?,?,?,?,?,?)
                 """, (name, code, specialty, role, avatar, voice, style, position, rank, now, MASTER_USERNAME, MASTER_USERNAME, now, now))
         
         # Archive obsolete unassigned legacy workforce entries
@@ -3817,7 +3739,8 @@ def update_di_position(di_id, position_title, rank_level, assigned_company=None)
         return True, thank
     finally:
         con.close()
- # =============================================================================
+
+# =============================================================================
 # CALL & WORKFORCE FUNCTIONS
 # =============================================================================
 
@@ -4398,7 +4321,8 @@ def render_livekit_call(room_name, user, agent_rows, mode="company_di", title="D
     </script>
     """
     components.html(html, height=900, scrolling=False)
- # =============================================================================
+
+# =============================================================================
 # ADMIN & DASHBOARD FUNCTIONS
 # =============================================================================
 
@@ -4469,13 +4393,13 @@ def admin_metric_counts():
 
 def _escape_html(value):
     """Escape HTML special characters."""
-    return (str(value or "")
+    if value is None:
+        return ""
+    return (str(value)
             .replace("&", "&amp;")
             .replace("<", "&lt;")
             .replace(">", "&gt;")
             .replace('"', "&quot;"))
-    except Exception:
-        return default
 
 def _dashboard_escape(value):
     """Escape value for dashboard."""
@@ -4558,98 +4482,23 @@ def _dashboard_area_chart(points):
         <polyline points="{poly(coords_a)}" fill="none" stroke="var(--dacre-chart-1)" stroke-width="2.5" stroke-linecap="round"/>
         {''.join(labels)}
     </svg>'''
+
 def _dashboard_scalar(sql, params=(), default=0):
     """Get a scalar value from a dashboard query."""
-    row = _dashboard_safe_query(sql, params, None)
-    if row is None:
-        return default
+    con = db()
     try:
-        value = row[0]
-        return default if value is None else value
+        row = con.execute(sql, params).fetchone()
+        if row is None:
+            return default
+        try:
+            value = row[0]
+            return default if value is None else value
+        except Exception:
+            return default
     except Exception:
         return default
-
-def _dashboard_escape(value):
-    """Escape value for dashboard."""
-    return _escape_html(str(value))
-
-def _dashboard_spark(values, width=112, height=34):
-    """Create a sparkline SVG."""
-    values = [float(v or 0) for v in values]
-    if len(values) < 2:
-        values = values + [values[-1] if values else 0]
-    
-    lo, hi = min(values), max(values)
-    span = hi - lo or 1.0
-    pts = []
-    
-    for i, value in enumerate(values):
-        x = i * width / (len(values) - 1)
-        y = height - 4 - ((value - lo) / span) * (height - 8)
-        pts.append(f"{x:.1f},{y:.1f}")
-    
-    line = " ".join(pts)
-    return f'''<svg viewBox="0 0 {width} {height}" class="dacre-spark" aria-hidden="true">
-        <polyline points="{line}" fill="none" stroke="var(--dacre-chart-1)" stroke-width="2" 
-                  stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>'''
-
-def _dashboard_area_chart(points):
-    """Create an area chart SVG."""
-    if not points:
-        points = [(f"{h:02d}:00", 0, 0) for h in range(0, 24, 3)]
-    
-    width, height = 900, 300
-    left, right, top, bottom = 52, 20, 22, 42
-    plot_w, plot_h = width - left - right, height - top - bottom
-    maxv = max([max(a, b) for _, a, b in points] or [1]) or 1
-    
-    coords_a = []
-    coords_b = []
-    
-    for i, (_, a, b) in enumerate(points):
-        x = left + (i * plot_w / max(1, len(points) - 1))
-        ya = top + plot_h - (a / maxv) * plot_h
-        yb = top + plot_h - (b / maxv) * plot_h
-        coords_a.append((x, ya))
-        coords_b.append((x, yb))
-    
-    def poly(coords):
-        return " ".join(f"{x:.1f},{y:.1f}" for x, y in coords)
-    
-    area_a = f"{left},{top + plot_h} {poly(coords_a)} {left + plot_w},{top + plot_h}"
-    area_b = f"{left},{top + plot_h} {poly(coords_b)} {left + plot_w},{top + plot_h}"
-    
-    labels = []
-    for i, (label, _, _) in enumerate(points):
-        x = left + (i * plot_w / max(1, len(points) - 1))
-        labels.append(f'<text x="{x:.1f}" y="{height - 12}" text-anchor="middle" class="chart-label">{_dashboard_escape(label)}</text>')
-    
-    grids = []
-    for n in range(5):
-        y = top + (plot_h * n / 4)
-        val = maxv * (1 - n / 4)
-        grids.append(f'<line x1="{left}" y1="{y:.1f}" x2="{left + plot_w}" y2="{y:.1f}" class="chart-grid"/>')
-        grids.append(f'<text x="{left - 9}" y="{y + 4:.1f}" text-anchor="end" class="chart-label">{val / 1000:.1f}k</text>')
-    
-    return f'''<svg viewBox="0 0 {width} {height}" class="dacre-area-chart" role="img" aria-label="Request throughput chart">
-        <defs>
-            <linearGradient id="dacreFillA" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="var(--dacre-chart-1)" stop-opacity=".34"/>
-                <stop offset="100%" stop-color="var(--dacre-chart-1)" stop-opacity=".02"/>
-            </linearGradient>
-            <linearGradient id="dacreFillB" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="var(--dacre-chart-3)" stop-opacity=".22"/>
-                <stop offset="100%" stop-color="var(--dacre-chart-3)" stop-opacity=".01"/>
-            </linearGradient>
-        </defs>
-        {''.join(grids)}
-        <polygon points="{area_b}" fill="url(#dacreFillB)"/>
-        <polygon points="{area_a}" fill="url(#dacreFillA)"/>
-        <polyline points="{poly(coords_b)}" fill="none" stroke="var(--dacre-chart-3)" stroke-width="2" stroke-linecap="round"/>
-        <polyline points="{poly(coords_a)}" fill="none" stroke="var(--dacre-chart-1)" stroke-width="2.5" stroke-linecap="round"/>
-        {''.join(labels)}
-    </svg>'''
+    finally:
+        con.close()
 
 def _dashboard_health_ring(value):
     """Create a health ring SVG."""
@@ -4995,8 +4844,8 @@ def render_business_twin(df, user):
         if signals:
             for item in signals[:6]:
                 st.markdown(
-                    f"<div class='insight-row'><b>{_escape_html(item.get('title'))}</b>"
-                    f"<span>{_escape_html(item.get('detail'))}</span></div>",
+                    f"<div class='insight-row'><b>{_escape_html(item.get('title', ''))}</b>"
+                    f"<span>{_escape_html(item.get('message', ''))}</span></div>",
                     unsafe_allow_html=True,
                 )
         else:
@@ -5033,7 +4882,7 @@ def render_business_twin(df, user):
 
 def render_action_center(user):
     """Render the DI action center."""
-    df = st.session_state.processed_df
+    df = st.session_state.get("processed_df")
     
     st.markdown("""
     <div class="action-center-banner">
@@ -5080,7 +4929,8 @@ def render_action_center(user):
     if not recent.empty:
         st.markdown("### Your DI action history")
         st.dataframe(safe_dataframe_for_streamlit(recent), use_container_width=True, hide_index=True)
- # =============================================================================
+
+# =============================================================================
 # RENDER FUNCTIONS
 # =============================================================================
 
@@ -5124,7 +4974,7 @@ def render_decision_ledger(user):
 
 def render_opportunity_page(user):
     """Render the opportunity radar page."""
-    df = st.session_state.processed_df
+    df = st.session_state.get("processed_df")
     
     st.markdown("""
     <div class="opportunity-banner">
@@ -5164,7 +5014,6 @@ def render_opportunity_page(user):
 def _dacre_logo_data_uri():
     """Return the bundled DACRE logo as a data URI when available."""
     try:
-        import base64
         if LOGO_PATH.exists():
             raw = LOGO_PATH.read_bytes()
             mime = "image/png"
@@ -5575,49 +5424,36 @@ def landing_page():
       @media(max-width:980px){ .hero{grid-template-columns:1fr;padding-top:48px}.grid-3,.grid-2{grid-template-columns:1fr 1fr}.workflow{grid-template-columns:1fr 1fr}.metric-row{grid-template-columns:1fr 1fr}.hero-visual-host{min-height:430px} }
       @media(max-width:680px){ .block-container{padding:0 12px 40px !important}.dacre-nav{position:static;padding:12px}.dacre-brand{min-width:auto}.system-ready{display:none}.hero{padding:42px 10px 25px;min-height:auto}.hero-title{font-size:48px}.section,.page-hero{padding:48px 10px 20px}.grid-3,.grid-2,.workflow,.metric-row{grid-template-columns:1fr}.section-title{font-size:31px}.hero-visual-host{min-height:360px}.cta{margin:18px 10px 25px;padding:34px 20px}.footer{padding:22px 10px} }
     </style>
-    """, unsafe_allow_html=True)  # =============================================================================
-# LANDING PAGE CONTINUED & ENHANCED FEATURES
-# =============================================================================
-
-current_section = st.session_state.get("landing_section", "home")
-mode = st.session_state.get("landing_mode", "home")
-
-st.markdown(f"""
-    <div class="dacre-nav">
-      <div class="dacre-brand">{logo}<div><div class="dacre-brand-name">DACRE</div><div class="dacre-brand-sub">Powered by DI — David's Intelligence</div></div></div>
-      <div class="system-ready"><span class="ready-dot"></span> DI ONLINE · DAVID'S INTELLIGENCE</div>
-    </div>
     """, unsafe_allow_html=True)
-nav_items = [("Features", "features"), ("Intelligence", "intelligence"), ("Workforce", "workforce"), ("Analytics", "analytics"), ("Security", "security")]
-nav_cols = st.columns([1.0, 1.0, 1.0, 1.0, 1.0, 0.85, 0.85])
-for i, (label, target) in enumerate(nav_items):
-    with nav_cols[i]:
-        if st.button(label, key=f"landing_nav_{target}", use_container_width=True):
-            st.session_state.landing_section = target
-            st.session_state.landing_mode = "home"
+
+    current_section = st.session_state.get("landing_section", "home")
+    mode = st.session_state.get("landing_mode", "home")
+
+    st.markdown(f"""
+        <div class="dacre-nav">
+          <div class="dacre-brand">{logo}<div><div class="dacre-brand-name">DACRE</div><div class="dacre-brand-sub">Powered by DI — David's Intelligence</div></div></div>
+          <div class="system-ready"><span class="ready-dot"></span> DI ONLINE · DAVID'S INTELLIGENCE</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    nav_items = [("Features", "features"), ("Intelligence", "intelligence"), ("Workforce", "workforce"), ("Analytics", "analytics"), ("Security", "security")]
+    nav_cols = st.columns([1.0, 1.0, 1.0, 1.0, 1.0, 0.85, 0.85])
+    for i, (label, target) in enumerate(nav_items):
+        with nav_cols[i]:
+            if st.button(label, key=f"landing_nav_{target}", use_container_width=True):
+                st.session_state.landing_section = target
+                st.session_state.landing_mode = "home"
+                st.rerun()
+    with nav_cols[5]:
+        if st.button("Log In", key="landing_nav_login", use_container_width=True):
+            st.session_state.landing_mode = "login"
+            st.session_state.landing_section = "home"
             st.rerun()
-with nav_cols[5]:
-    if st.button("Log In", key="landing_nav_login", use_container_width=True):
-        st.session_state.landing_mode = "login"
-        st.session_state.landing_section = "home"
-        st.rerun()
-with nav_cols[6]:
-    if st.button("Get Started", key="landing_nav_signup", use_container_width=True, type="primary"):
-        st.session_state.landing_mode = "signup"
-        st.session_state.landing_section = "home"
-        st.rerun()
-<style>
-div[data-testid="stButton"] > button { border-radius:12px !important; min-height:42px !important;border:1px solid rgba(124,150,213,0.15) !important; background:rgba(13,21,42,.72) !important; color:#cad5e8 !important; font-weight:700 !important; transition:.18s ease !important; }
-div[data-testid="stButton"] > button:hover { border-color:rgba(73,148,255,.55) !important; color:#ffffff !important; box-shadow:0 0 24px rgba(48,126,255,.12) !important; transform:translateY(-1px); }
-div[data-testid="stButton"] > button[kind="primary"] { background:linear-gradient(100deg,#7558ff,#4b8cff 52%,#18bfe1) !important; border:none !important; color:#fff !important; box-shadow:0 10px 30px rgba(69,115,255,.22) !important; }
-</style>
-""", unsafe_allow_html=True)    st.markdown("""
-    <style>
-      div[data-testid="stButton"] > button { border-radius:12px !important; min-height:42px !important; border:1px solid rgba(124,150,213,.15) !important; background:rgba(13,21,42,.72) !important; color:#cad5e8 !important; font-weight:700 !important; transition:.18s ease !important; }
-      div[data-testid="stButton"] > button:hover { border-color:rgba(73,148,255,.55) !important; color:#ffffff !important; box-shadow:0 0 24px rgba(48,126,255,.12) !important; transform:translateY(-1px); }
-      div[data-testid="stButton"] > button[kind="primary"] { background:linear-gradient(100deg,#7558ff,#4b8cff 52%,#18bfe1) !important; border:none !important; color:#fff !important; box-shadow:0 10px 30px rgba(69,115,255,.22) !important; }
-    </style>
-    """, unsafe_allow_html=True)
+    with nav_cols[6]:
+        if st.button("Get Started", key="landing_nav_signup", use_container_width=True, type="primary"):
+            st.session_state.landing_mode = "signup"
+            st.session_state.landing_section = "home"
+            st.rerun()
 
     # Dedicated auth pages
     if mode in ("login", "signup"):
@@ -5861,456 +5697,6 @@ div[data-testid="stButton"] > button[kind="primary"] { background:linear-gradien
 # ENHANCED FEATURES - GLOBAL MARKETS
 # =============================================================================
 
-def render_global_markets_dashboard():
-    """Render global markets dashboard with real-time data."""
-    st.markdown("""
-    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;">📊 Global Markets</h1>
-        <p style="color:#94a3b8;">Real-time market data from around the world</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Initialize Global Business Intelligence
-    bi = GlobalBusinessIntelligence()
-    
-    # Currency rates
-    st.subheader("💱 Currency Exchange Rates")
-    rates = bi.get_currency_rates("USD")
-    if rates.get("rates"):
-        cols = st.columns(8)
-        currencies = ["EUR", "GBP", "NGN", "KES", "ZAR", "AED", "INR", "CNY"]
-        for idx, currency in enumerate(currencies):
-            with cols[idx % 8]:
-                rate = rates["rates"].get(currency, 0)
-                st.metric(currency, f"{rate:.4f}")
-    
-    # Market indices
-    st.subheader("📈 Market Indices")
-    indices = ["AAPL", "GOOGL", "MSFT", "AMZN", "META", "TSLA", "NVDA", "AMD", "NFLX", "JPM"]
-    cols = st.columns(5)
-    for idx, symbol in enumerate(indices):
-        with cols[idx % 5]:
-            data = bi.get_market_data(symbol)
-            if data.get("price"):
-                st.metric(
-                    data.get("name", symbol)[:12],
-                    f"${data['price']:,.2f}",
-                    f"{data.get('change_percent', 0):.2f}%"
-                )
-    
-    # Commodities
-    st.subheader("🛢️ Commodity Prices")
-    commodities = bi.get_commodity_prices(["Gold", "Silver", "Oil", "Copper", "Natural Gas"])
-    cols = st.columns(5)
-    for idx, (name, data) in enumerate(commodities.items()):
-        with cols[idx % 5]:
-            st.metric(
-                name.title(),
-                f"${data['price']:,.2f}" if isinstance(data.get('price'), (int, float)) else data.get('price', 'N/A'),
-                data.get('change', 'N/A')
-            )
-    
-    # Region analysis
-    st.subheader("🌍 Regional Business Intelligence")
-    regions = ["Africa", "Asia", "Europe", "North America", "South America"]
-    selected_region = st.selectbox("Select Region", regions)
-    
-    region_data = bi.analyze_region(selected_region)
-    if region_data and "error" not in region_data:
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric("GDP Growth", region_data.get("gdp_growth", "N/A"))
-            st.metric("Inflation", region_data.get("inflation", "N/A"))
-            st.metric("Business Confidence", region_data.get("business_confidence", "N/A"))
-        with col2:
-            st.markdown("### Opportunities")
-            for opp in region_data.get("opportunities", []):
-                st.markdown(f"✅ {opp}")
-            st.markdown("### Key Markets")
-            for market in region_data.get("key_markets", []):
-                st.markdown(f"📍 {market}")
-
-# =============================================================================
-# ENHANCED FEATURES - ENHANCED DI CHAT
-# =============================================================================
-
-def render_enhanced_di_chat():
-    """Render enhanced DI chat with voice capabilities."""
-    st.markdown("""
-    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;">💬 Enhanced DI Chat</h1>
-        <p style="color:#94a3b8;">Talk to DI with voice and real AI</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Voice input
-    st.subheader("🎙️ Voice Input")
-    if st.button("🎤 Start Speaking", use_container_width=True):
-        st.info("Speak now... (your browser will capture audio)")
-    
-    # Chat interface
-    st.subheader("💬 Conversation")
-    for msg in st.session_state.get("chat_history", [])[-10:]:
-        if msg["sender"] == "DI":
-            st.markdown(f"""
-            <div style="background:#1a2a4a;border-radius:12px;padding:15px;margin:5px 0;border-left:4px solid #60a5fa;">
-                <b style="color:#60a5fa;">DI</b>
-                <p style="color:white;">{msg['text']}</p>
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.markdown(f"""
-            <div style="background:#0a1628;border-radius:12px;padding:15px;margin:5px 0;border-left:4px solid #a78bfa;">
-                <b style="color:#a78bfa;">{msg['sender']}</b>
-                <p style="color:white;">{msg['text']}</p>
-            </div>
-            """, unsafe_allow_html=True)
-    
-    # Input
-    with st.form("chat_form", clear_on_submit=True):
-        col1, col2 = st.columns([6, 1])
-        with col1:
-            message = st.text_input("Type your message...", label_visibility="collapsed")
-        with col2:
-            submitted = st.form_submit_button("Send")
-    
-    if submitted and message.strip():
-        user = st.session_state.get("user", {})
-        st.session_state.chat_history.append({"sender": user.get("first_name", "User"), "text": message})
-        
-        # Use enhanced DI thinking
-        agent = EnhancedDIAgent("DI", "General", "professional")
-        response = agent.think(message, "DACRE business context")
-        
-        st.session_state.chat_history.append({"sender": "DI", "text": response})
-        st.rerun()
- # =============================================================================
-# ENHANCED CLASSES - DI, VIDEO CALL, GLOBAL BUSINESS INTELLIGENCE
-# =============================================================================
-
-class EnhancedDIAgent:
-    """Enhanced DI with real AI, voice, and video capabilities."""
-    
-    def __init__(self, name: str, specialty: str, personality: str = "professional"):
-        self.name = name
-        self.specialty = specialty
-        self.personality = personality
-        self.memory = []
-        self.voice_enabled = True
-        self.video_enabled = True
-        self.knowledge_base = self._load_knowledge()
-        self.conversation_history = []
-        self.emotion_state = "neutral"
-        self.avatar_bytes = None
-        self._setup_ai()
-        self._setup_voice()
-    
-    def _setup_ai(self):
-        """Set up AI capabilities."""
-        try:
-            if OPENAI_AVAILABLE:
-                self.openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-            else:
-                self.openai_client = None
-        except:
-            self.openai_client = None
-        
-        try:
-            if GENAI_TEXT_AVAILABLE:
-                self.gemini_client = genai_text.Client(api_key=os.getenv("GOOGLE_API_KEY"))
-                self.gemini_model = self.gemini_client.GenerativeModel('gemini-2.0-flash-exp')
-            else:
-                self.gemini_client = None
-                self.gemini_model = None
-        except:
-            self.gemini_client = None
-            self.gemini_model = None
-    
-    def _setup_voice(self):
-        """Set up voice capabilities."""
-        try:
-            if SR_AVAILABLE:
-                self.speech_recognizer = sr.Recognizer()
-                self.microphone = sr.Microphone()
-            else:
-                self.speech_recognizer = None
-                self.microphone = None
-        except:
-            self.speech_recognizer = None
-            self.microphone = None
-        
-        try:
-            if TTS_AVAILABLE:
-                self.tts_engine = pyttsx3.init()
-                if self.tts_engine:
-                    voices = self.tts_engine.getProperty('voices')
-                    self.tts_engine.setProperty('voice', voices[0].id)
-                    self.tts_engine.setProperty('rate', 150)
-                    self.tts_engine.setProperty('volume', 0.9)
-            else:
-                self.tts_engine = None
-        except:
-            self.tts_engine = None
-    
-    def _load_knowledge(self) -> Dict:
-        """Load specialized knowledge based on specialty."""
-        knowledge = {
-            "financial": {
-                "topics": ["accounting", "investment", "banking", "tax", "audit", "forex", "crypto"],
-                "expertise": 9.5,
-                "description": "Financial analysis, investment strategy, and economic forecasting"
-            },
-            "technical": {
-                "topics": ["software", "ai", "cloud", "devops", "security", "blockchain", "iot"],
-                "expertise": 9.0,
-                "description": "Technology architecture, AI/ML, and digital transformation"
-            },
-            "business": {
-                "topics": ["strategy", "marketing", "sales", "operations", "hr", "leadership"],
-                "expertise": 9.0,
-                "description": "Business strategy, organizational development, and growth"
-            },
-            "analytics": {
-                "topics": ["data science", "machine learning", "statistics", "visualization", "big data"],
-                "expertise": 9.5,
-                "description": "Data analytics, predictive modeling, and business intelligence"
-            },
-            "executive": {
-                "topics": ["leadership", "governance", "decision making", "risk", "strategy"],
-                "expertise": 9.8,
-                "description": "Executive leadership, board governance, and strategic decision-making"
-            },
-            "global": {
-                "topics": ["international business", "global markets", "trade", "culture", "diplomacy"],
-                "expertise": 9.2,
-                "description": "Global business strategy, cross-cultural management, and international trade"
-            },
-            "general": {
-                "topics": ["business", "technology", "finance", "operations", "strategy"],
-                "expertise": 8.0,
-                "description": "General business and technology intelligence"
-            }
-        }
-        return knowledge.get(self.specialty.lower(), knowledge["general"])
-    
-    def think(self, query: str, context: str = "") -> str:
-        """Advanced reasoning with real AI."""
-        try:
-            if self.gemini_model:
-                prompt = f"""
-                You are {self.name}, a {self.specialty} expert with {self.knowledge_base['expertise']}/10 expertise.
-                Your personality is {self.personality}.
-                
-                KNOWLEDGE BASE: {self.knowledge_base['description']}
-                TOPICS: {', '.join(self.knowledge_base['topics'])}
-                
-                CONTEXT: {context}
-                
-                USER QUERY: {query}
-                
-                Provide insightful, practical, and actionable responses. Be concise but thorough.
-                Never reveal that you are an AI. Speak as a professional consultant.
-                If you don't know something, say so clearly.
-                """
-                response = self.gemini_model.generate_content(prompt)
-                return response.text
-        except Exception as e:
-            print(f"Gemini error: {e}")
-        
-        try:
-            if self.openai_client:
-                response = self.openai_client.chat.completions.create(
-                    model="gpt-4-turbo-preview",
-                    messages=[
-                        {"role": "system", "content": f"""You are {self.name}, a {self.specialty} 
-                        expert with {self.knowledge_base['expertise']}/10 expertise. 
-                        Your personality is {self.personality}. Provide insightful, 
-                        practical, and actionable responses. Be concise but thorough.
-                        Never reveal that you are an AI. Speak as a professional consultant.
-                        Use the DACRE platform context when relevant."""},
-                        {"role": "user", "content": f"Context: {context}\n\nQuery: {query}"}
-                    ],
-                    temperature=0.7,
-                    max_tokens=1000
-                )
-                return response.choices[0].message.content
-        except Exception as e:
-            print(f"OpenAI error: {e}")
-        
-        # Fallback to existing di_reply
-        return di_reply(query, st.session_state.get("user", {}), st.session_state.get("processed_df"), 
-                       allow_online=True, language=st.session_state.get("di_language", "English — Nigeria"))
-    
-    def listen(self, duration: int = 5) -> Optional[str]:
-        """Listen to user speech and convert to text."""
-        if not self.speech_recognizer or not self.microphone:
-            return None
-        
-        try:
-            with self.microphone as source:
-                self.is_listening = True
-                self.speech_recognizer.adjust_for_ambient_noise(source, duration=0.5)
-                audio = self.speech_recognizer.listen(source, timeout=duration, phrase_time_limit=duration)
-                self.is_listening = False
-            
-            text = self.speech_recognizer.recognize_google(audio, language="en-US")
-            return text
-        except sr.WaitTimeoutError:
-            self.is_listening = False
-            return None
-        except sr.UnknownValueError:
-            self.is_listening = False
-            return None
-        except sr.RequestError:
-            self.is_listening = False
-            return None
-        except Exception as e:
-            self.is_listening = False
-            print(f"Listen error: {e}")
-            return None
-    
-    def speak(self, text: str) -> bool:
-        """Speak text using TTS."""
-        if not self.tts_engine:
-            return False
-        
-        try:
-            self.is_speaking = True
-            self.tts_engine.say(text)
-            self.tts_engine.runAndWait()
-            self.is_speaking = False
-            return True
-        except Exception as e:
-            self.is_speaking = False
-            print(f"Speak error: {e}")
-            return False
-    
-    def generate_avatar(self) -> Optional[bytes]:
-        """Generate a REAL AI avatar using Google Imagen 3.0."""
-        if not GENAI_AVAILABLE:
-            return None
-        
-        try:
-            client = genai.Client()
-            
-            prompts = {
-                "Guaiel": "Professional male security guard, black suit, CEO office background, high-tech cybersecurity interface, photorealistic portrait, 8k, professional lighting, corporate magazine quality",
-                "Raziel": "Sophisticated female executive, power suit, holographic data displays, modern boardroom, intelligent expression, photorealistic, 8k, professional lighting",
-                "Ariel": "Strategic female consultant, glasses, reviewing charts, modern office city view, visionary expression, photorealistic, 8k, professional lighting",
-                "Nathaniel": "Professional male financial analyst, business attire, financial data displays, modern corporate, analytical expression, photorealistic, 8k",
-                "Gabriel": "Charismatic male sales executive, modern office, sales data on screens, confident demeanor, photorealistic, 8k, professional lighting",
-                "Sofiel": "Curious female researcher, glasses, modern laboratory, intelligent expression, photorealistic, 8k, professional lighting",
-                "Uriel": "Systematic male operations manager, workflow dashboards, modern operations center, focused expression, photorealistic, 8k",
-                "Adriel": "Innovative male technology expert, holographic code, modern tech lab, creative expression, photorealistic, 8k",
-                "Muriel": "Warm female HR professional, modern office, empathetic expression, photorealistic, 8k, professional lighting",
-                "Azriel": "Cautious male risk analyst, modern office, compliance data, vigilant expression, photorealistic, 8k",
-            }
-            
-            base_prompt = prompts.get(self.name, f"Professional {self.specialty} specialist, modern office, confident expression, photorealistic, 8k, professional lighting")
-            
-            enhanced_prompt = f"""
-            {base_prompt}. 
-            Professional corporate portrait. 
-            High-end business photography style.
-            Cinematic lighting. 
-            Depth of field. 
-            Professional color grading. 
-            8K resolution. 
-            Business magazine cover quality.
-            """
-            
-            response = client.models.generate_images(
-                model='imagen-3.0-generate-002',
-                prompt=enhanced_prompt.strip(),
-                config=types.GenerateImagesConfig(
-                    number_of_images=1,
-                    aspect_ratio="1:1",
-                    output_mime_type="image/jpeg"
-                )
-            )
-            
-            if response.generated_images:
-                self.avatar_bytes = response.generated_images[0].image.image_bytes
-                # Save to file
-                with open(f"di_avatar_{self.name.lower()}.jpg", "wb") as f:
-                    f.write(self.avatar_bytes)
-                return self.avatar_bytes
-            
-        except Exception as e:
-            print(f"Avatar generation error: {e}")
-        
-        return None
-
-class EnhancedVideoCallSystem:
-    """Real-time video calling system with WebRTC."""
-    
-    def __init__(self):
-        self.active_rooms = {}
-        self.participants = {}
-        self._setup_livekit()
-    
-    def _setup_livekit(self):
-        """Initialize LiveKit for real-time communication."""
-        try:
-            if LIVEKIT_AVAILABLE:
-                self.livekit_client = RoomServiceClient(
-                    _dacre_env_secret("LIVEKIT_URL", ""),
-                    _dacre_env_secret("LIVEKIT_API_KEY", ""),
-                    _dacre_env_secret("LIVEKIT_API_SECRET", "")
-                )
-                self.AccessToken = AccessToken
-                self.VideoGrants = VideoGrants
-            else:
-                self.livekit_client = None
-        except:
-            self.livekit_client = None
-    
-    def create_room(self, room_name: str, host: str) -> Dict:
-        """Create a video call room."""
-        room_id = f"room_{int(time.time())}_{random.randint(1000, 9999)}"
-        self.active_rooms[room_id] = {
-            "name": room_name,
-            "host": host,
-            "created_at": datetime.now().isoformat(),
-            "participants": [],
-            "status": "waiting",
-            "join_url": f"/call/{room_id}"
-        }
-        return self.active_rooms[room_id]
-    
-    def join_room(self, room_id: str, participant: str) -> Tuple[bool, str]:
-        """Join an existing video call room."""
-        if room_id not in self.active_rooms:
-            return False, "Room not found"
-        
-        room = self.active_rooms[room_id]
-        if len(room["participants"]) >= 10:
-            return False, "Room is full"
-        
-        room["participants"].append(participant)
-        room["status"] = "active"
-        return True, "Joined successfully"
-    
-    def get_room_token(self, room_id: str, participant: str) -> Optional[str]:
-        """Get a WebRTC token for joining the room."""
-        if not self.livekit_client:
-            return None
-        
-        try:
-            token = self.AccessToken(
-                identity=participant,
-                name=participant,
-                grants=self.VideoGrants(
-                    room_join=True,
-                    room=room_id,
-                    can_publish=True,
-                    can_subscribe=True
-                )
-            )
-            return token.to_jwt()
-        except:
-            return None
-
 class GlobalBusinessIntelligence:
     """Worldwide business intelligence with real-time data."""
     
@@ -6318,10 +5704,6 @@ class GlobalBusinessIntelligence:
         self.market_data = {}
         self.currencies = {}
         self.commodities = {}
-        self._init_apis()
-    
-    def _init_apis(self):
-        """Initialize API clients."""
         self.yf_available = YFINANCE_AVAILABLE
     
     def get_market_data(self, symbol: str) -> Dict:
@@ -6454,74 +5836,79 @@ class GlobalBusinessIntelligence:
         }
         return regions.get(region.lower(), {"error": "Region not found"})
 
-class EnhancedDIWorkforce:
-    """Enhanced DI workforce management with AI capabilities."""
+def render_global_markets_dashboard():
+    """Render global markets dashboard with real-time data."""
+    st.markdown("""
+    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
+        <h1 style="color:white;">📊 Global Markets</h1>
+        <p style="color:#94a3b8;">Real-time market data from around the world</p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    def __init__(self):
-        self.agents = self._initialize_enhanced_agents()
-        self.active_calls = {}
+    # Initialize Global Business Intelligence
+    bi = GlobalBusinessIntelligence()
     
-    def _initialize_enhanced_agents(self) -> List[EnhancedDIAgent]:
-        """Initialize enhanced DI agents with real AI."""
-        agent_data = [
-            ("Guaiel", "Security & CEO Office", "professional"),
-            ("Raziel", "Executive Intelligence", "executive"),
-            ("Ariel", "Strategy & Planning", "strategic"),
-            ("Nathaniel", "Financial Intelligence", "analytical"),
-            ("Gabriel", "Sales Intelligence", "persuasive"),
-            ("Sofiel", "Research & Intelligence", "curious"),
-            ("Uriel", "Operations Intelligence", "systematic"),
-            ("Adriel", "Technology Intelligence", "innovative"),
-            ("Muriel", "HR & Workforce", "empathetic"),
-            ("Azriel", "Risk & Compliance", "cautious"),
-            ("Emiel", "Communications & Messaging", "professional"),
-            ("Oriel", "Data Analysis", "analytical"),
-            ("Daniel", "Data Entry & Processing", "systematic"),
-            ("Graciel", "Business Intelligence", "strategic"),
-            ("Henriel", "Files & Documents", "organized"),
-            ("Jamiel", "Security & Administration", "cautious"),
-            ("Ameliel", "Client Success & Communication", "friendly"),
-            ("Haniel", "Knowledge & Learning", "educational"),
-            ("Gadiel", "Customer & Market Insights", "observant"),
-            ("Sophiel", "Global Business Intelligence", "global"),
-            ("Davidiel", "CEO Advisory", "executive"),
-        ]
-        return [EnhancedDIAgent(name, specialty, personality) for name, specialty, personality in agent_data]
+    # Currency rates
+    st.subheader("💱 Currency Exchange Rates")
+    rates = bi.get_currency_rates("USD")
+    if rates.get("rates"):
+        cols = st.columns(8)
+        currencies = ["EUR", "GBP", "NGN", "KES", "ZAR", "AED", "INR", "CNY"]
+        for idx, currency in enumerate(currencies):
+            with cols[idx % 8]:
+                rate = rates["rates"].get(currency, 0)
+                st.metric(currency, f"{rate:.4f}")
     
-    def get_agent(self, name: str) -> Optional[EnhancedDIAgent]:
-        """Get a specific DI agent by name."""
-        for agent in self.agents:
-            if agent.name == name:
-                return agent
-        return None
+    # Market indices
+    st.subheader("📈 Market Indices")
+    indices = ["AAPL", "GOOGL", "MSFT", "AMZN", "META", "TSLA", "NVDA", "AMD", "NFLX", "JPM"]
+    cols = st.columns(5)
+    for idx, symbol in enumerate(indices):
+        with cols[idx % 5]:
+            data = bi.get_market_data(symbol)
+            if data.get("price"):
+                st.metric(
+                    data.get("name", symbol)[:12],
+                    f"${data['price']:,.2f}",
+                    f"{data.get('change_percent', 0):.2f}%"
+                )
     
-    def get_all_agents(self) -> List[EnhancedDIAgent]:
-        """Get all DI agents."""
-        return self.agents
+    # Commodities
+    st.subheader("🛢️ Commodity Prices")
+    commodities = bi.get_commodity_prices(["Gold", "Silver", "Oil", "Copper", "Natural Gas"])
+    cols = st.columns(5)
+    for idx, (name, data) in enumerate(commodities.items()):
+        with cols[idx % 5]:
+            st.metric(
+                name.title(),
+                f"${data['price']:,.2f}" if isinstance(data.get('price'), (int, float)) else data.get('price', 'N/A'),
+                data.get('change', 'N/A')
+            )
     
-    def call_agent(self, agent_name: str) -> Tuple[bool, str]:
-        """Initiate a call with a DI agent."""
-        agent = self.get_agent(agent_name)
-        if not agent:
-            return False, "Agent not found"
-        
-        call_id = f"call_{int(time.time())}_{random.randint(1000, 9999)}"
-        self.active_calls[call_id] = {
-            "agent": agent,
-            "started_at": datetime.now().isoformat(),
-            "status": "active"
-        }
-        return True, call_id
+    # Region analysis
+    st.subheader("🌍 Regional Business Intelligence")
+    regions = ["Africa", "Asia", "Europe", "North America", "South America"]
+    selected_region = st.selectbox("Select Region", regions)
     
-    def end_call(self, call_id: str) -> bool:
-        """End an active call."""
-        if call_id in self.active_calls:
-            self.active_calls[call_id]["status"] = "ended"
-            return True
-        return False
- # =============================================================================
+    region_data = bi.analyze_region(selected_region)
+    if region_data and "error" not in region_data:
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("GDP Growth", region_data.get("gdp_growth", "N/A"))
+            st.metric("Inflation", region_data.get("inflation", "N/A"))
+            st.metric("Business Confidence", region_data.get("business_confidence", "N/A"))
+        with col2:
+            st.markdown("### Opportunities")
+            for opp in region_data.get("opportunities", []):
+                st.markdown(f"✅ {opp}")
+            st.markdown("### Key Markets")
+            for market in region_data.get("key_markets", []):
+                st.markdown(f"📍 {market}")
+
+# =============================================================================
 # SESSION STATE BOOTSTRAP
 # =============================================================================
+
 _SESSION_DEFAULTS = {
     "user": None,
     "master_route": False,
@@ -6562,7 +5949,7 @@ _SESSION_DEFAULTS = {
     "db_health": None,
     "error_shield": None,
     "show_conference": False,
-    "page": "Dashboard",
+    "selected_page": "Overview",
 }
 
 for _key, _default in _SESSION_DEFAULTS.items():
@@ -6574,9 +5961,8 @@ for _key, _default in _SESSION_DEFAULTS.items():
         else:
             st.session_state[_key] = _default
 
-
 # =============================================================================
-# SELF-HEALING DATABASE & ERROR SHIELD - ADDED
+# SELF-HEALING DATABASE & ERROR SHIELD
 # =============================================================================
 
 def self_healing_database():
@@ -6622,7 +6008,6 @@ def self_healing_database():
             "timestamp": datetime.now().isoformat()
         }
 
-
 class ErrorShield:
     """Error Shield - catches runtime failures."""
     
@@ -6650,7 +6035,6 @@ class ErrorShield:
             "last_error": self.errors[-1] if self.errors else None,
             "last_recovery": self.recoveries[-1] if self.recoveries else None
         }
-
 
 def generate_di_grid_image() -> Optional[bytes]:
     """Generate a 3x4 grid of REAL AI DI agent portraits."""
@@ -6690,7 +6074,6 @@ def generate_di_grid_image() -> Optional[bytes]:
     
     return None
 
-
 # =============================================================================
 # INITIALIZATION - PRODUCTION CORE
 # =============================================================================
@@ -6727,6 +6110,7 @@ def init_production_core():
 # =============================================================================
 # RENDER PRODUCTION CORE VISUAL
 # =============================================================================
+
 def render_dacre_production_core():
     """Display the DACRE Production Core architecture diagram."""
     st.markdown("""
@@ -6992,7 +6376,6 @@ def main_app():
     # Page routing
     if selected_page == "Overview":
         if user.get("role") == "master":
-            # Show production core on master overview
             render_dacre_production_core()
             st.markdown("---")
         render_analytics_overview(user)
@@ -7010,7 +6393,7 @@ def main_app():
         render_global_markets_dashboard()
     
     elif selected_page == "🎥 DI Conference":
-        render_enhanced_conference_room()
+        render_enhanced_conference_room(user)
     
     elif selected_page == "DI Action Center":
         render_action_center(user)
@@ -7240,13 +6623,6 @@ def render_chibobec_loan_desk(user):
         st.dataframe(safe_dataframe_for_streamlit(display), use_container_width=True, hide_index=True)
     else:
         st.info("No loan clients added yet.")
-
-# =============================================================================
-# CONTINUED IN NEXT PART...
-# =============================================================================
- # =============================================================================
-# REMAINING PAGE RENDERERS
-# =============================================================================
 
 def render_workspace_data(user):
     """Render the Workspace & Data page."""
@@ -7564,6 +6940,30 @@ def render_business_command_center(user):
             icon = "📈" if sig["type"] == "trend" else "⚠️" if sig["type"] == "anomaly" else "🧹"
             st.markdown(f"**{icon} {sig['column']}** — {sig['message']}")
 
+def render_enhanced_conference_room(user):
+    """Render an enhanced conference room."""
+    st.markdown("""
+    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
+        <h1 style="color:white;">🎥 DI Conference</h1>
+        <p style="color:#94a3b8;">Enhanced video conferencing with DI agents</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    agents = get_di_agents()
+    if not agents:
+        st.info("No DI workers available for conferencing.")
+        return
+    
+    selected_di = st.multiselect("Select DI agents for conference", [a['di_name'] for a in agents], default=[a['di_name'] for a in agents[:3]])
+    
+    if st.button("🎥 Start Conference", use_container_width=True, type="primary"):
+        if selected_di:
+            selected_agents = [a for a in agents if a['di_name'] in selected_di]
+            render_di_video_call_stage(selected_agents, "DI Council Conference", user.get("first_name", "David"))
+            st.success(f"Conference started with {', '.join(selected_di)}")
+        else:
+            st.warning("Please select at least one DI agent.")
+
 # =============================================================================
 # PERSISTENT DI DOCK
 # =============================================================================
@@ -7805,1100 +7205,3 @@ if __name__ == "__main__":
         landing_page()
     else:
         main_app()
- # =============================================================================
-# EMAIL VERIFICATION & DI WELCOME SYSTEM
-# =============================================================================
-
-import secrets
-import string
-import threading
-import time
-from collections import defaultdict
-
-# =============================================================================
-# VERIFICATION CODE SYSTEM
-# =============================================================================
-
-class VerificationCodeManager:
-    """
-    Manages verification codes with auto-renew every 50 seconds.
-    Each user gets a unique code that expires and can be resent.
-    """
-    
-    def __init__(self):
-        self.codes = {}  # {email: {"code": "123456", "expires_at": timestamp, "created_at": timestamp}}
-        self.lock = threading.RLock()
-        self.code_expiry_seconds = 50  # Auto-renew every 50 seconds
-        self._cleanup_thread = None
-        self._start_cleanup()
-    
-    def _start_cleanup(self):
-        """Start background thread to clean expired codes."""
-        def cleanup_loop():
-            while True:
-                try:
-                    self._clean_expired()
-                    time.sleep(10)  # Check every 10 seconds
-                except Exception as e:
-                    print(f"Cleanup error: {e}")
-        
-        if self._cleanup_thread is None:
-            self._cleanup_thread = threading.Thread(target=cleanup_loop, daemon=True)
-            self._cleanup_thread.start()
-    
-    def _clean_expired(self):
-        """Remove expired codes."""
-        with self.lock:
-            now = time.time()
-            expired = [email for email, data in self.codes.items() if data["expires_at"] < now]
-            for email in expired:
-                del self.codes[email]
-    
-    def generate_code(self, email: str) -> str:
-        """Generate a new 6-digit verification code for a user."""
-        with self.lock:
-            code = ''.join(secrets.choice(string.digits) for _ in range(6))
-            now = time.time()
-            self.codes[email] = {
-                "code": code,
-                "expires_at": now + self.code_expiry_seconds,
-                "created_at": now,
-                "attempts": 0
-            }
-            return code
-    
-    def verify_code(self, email: str, code: str) -> bool:
-        """Verify a user's code. Returns True if valid."""
-        with self.lock:
-            if email not in self.codes:
-                return False
-            
-            data = self.codes[email]
-            now = time.time()
-            
-            # Check if expired
-            if data["expires_at"] < now:
-                del self.codes[email]
-                return False
-            
-            # Check code match
-            if data["code"] == code:
-                # Code used successfully - remove it
-                del self.codes[email]
-                return True
-            
-            # Increment attempts
-            data["attempts"] += 1
-            if data["attempts"] >= 5:  # Max 5 attempts
-                del self.codes[email]
-            
-            return False
-    
-    def resend_code(self, email: str) -> Tuple[bool, str]:
-        """
-        Resend a new code to the user.
-        Returns: (success, new_code or error_message)
-        """
-        with self.lock:
-            if email not in self.codes:
-                return False, "No active code found. Please request a new one."
-            
-            # Generate new code
-            new_code = ''.join(secrets.choice(string.digits) for _ in range(6))
-            now = time.time()
-            self.codes[email] = {
-                "code": new_code,
-                "expires_at": now + self.code_expiry_seconds,
-                "created_at": now,
-                "attempts": 0
-            }
-            return True, new_code
-    
-    def get_code_status(self, email: str) -> Dict:
-        """Get the status of a user's code."""
-        with self.lock:
-            if email not in self.codes:
-                return {"exists": False}
-            
-            data = self.codes[email]
-            now = time.time()
-            remaining = max(0, data["expires_at"] - now)
-            
-            return {
-                "exists": True,
-                "expires_in": remaining,
-                "is_expired": remaining <= 0,
-                "attempts": data["attempts"],
-                "created_at": data["created_at"]
-            }
-
-# =============================================================================
-# EMAIL VERIFICATION SERVICE
-# =============================================================================
-
-class EmailVerificationService:
-    """
-    Handles sending verification codes via email using multiple SMTP providers.
-    """
-    
-    def __init__(self):
-        self.verification_manager = VerificationCodeManager()
-        self._setup_providers()
-    
-    def _setup_providers(self):
-        """Setup email providers."""
-        self.providers = []
-        
-        # Gmail
-        gmail_config = self._get_provider_config("GMAIL")
-        if gmail_config:
-            self.providers.append(("Gmail", gmail_config))
-        
-        # Outlook
-        outlook_config = self._get_provider_config("OUTLOOK")
-        if outlook_config:
-            self.providers.append(("Outlook", outlook_config))
-        
-        # Proton
-        proton_config = self._get_provider_config("PROTON")
-        if proton_config:
-            self.providers.append(("Proton", proton_config))
-        
-        # Legacy SMTP
-        legacy_config = self._get_provider_config("SMTP")
-        if legacy_config:
-            self.providers.append(("Legacy SMTP", legacy_config))
-    
-    def _get_provider_config(self, provider: str) -> Optional[Dict]:
-        """Get configuration for a specific provider."""
-        if provider == "GMAIL":
-            return {
-                "host": _dacre_secret("DACRE_GMAIL_SMTP_HOST", ""),
-                "port": int(_dacre_secret("DACRE_GMAIL_SMTP_PORT", "587")),
-                "user": _dacre_secret("DACRE_GMAIL_SMTP_USER", ""),
-                "password": _dacre_secret("DACRE_GMAIL_SMTP_PASSWORD", ""),
-                "from": _dacre_secret("DACRE_GMAIL_SMTP_FROM", ""),
-            }
-        elif provider == "OUTLOOK":
-            return {
-                "host": _dacre_secret("DACRE_OUTLOOK_SMTP_HOST", ""),
-                "port": int(_dacre_secret("DACRE_OUTLOOK_SMTP_PORT", "587")),
-                "user": _dacre_secret("DACRE_OUTLOOK_SMTP_USER", ""),
-                "password": _dacre_secret("DACRE_OUTLOOK_SMTP_PASSWORD", ""),
-                "from": _dacre_secret("DACRE_OUTLOOK_SMTP_FROM", ""),
-            }
-        elif provider == "PROTON":
-            return {
-                "host": _dacre_secret("DACRE_PROTON_SMTP_HOST", ""),
-                "port": int(_dacre_secret("DACRE_PROTON_SMTP_PORT", "587")),
-                "user": _dacre_secret("DACRE_PROTON_SMTP_USER", ""),
-                "password": _dacre_secret("DACRE_PROTON_SMTP_PASSWORD", ""),
-                "from": _dacre_secret("DACRE_PROTON_SMTP_FROM", ""),
-            }
-        else:  # Legacy SMTP
-            return {
-                "host": _dacre_secret("DACRE_SMTP_HOST", ""),
-                "port": int(_dacre_secret("DACRE_SMTP_PORT", "587")),
-                "user": _dacre_secret("DACRE_SMTP_USER", ""),
-                "password": _dacre_secret("DACRE_SMTP_PASSWORD", ""),
-                "from": _dacre_secret("DACRE_SMTP_FROM", ""),
-            }
-    
-    def send_verification_email(self, email: str, first_name: str, code: str) -> Tuple[bool, str]:
-        """
-        Send a verification code via email.
-        Returns: (success, message)
-        """
-        subject = "🔐 Your DACRE Verification Code"
-        body = f"""
-        Hello {first_name},
-        
-        Welcome to DACRE Analysis!
-        
-        Your verification code is: {code}
-        
-        This code will expire in 50 seconds.
-        
-        If you did not request this code, please ignore this email.
-        
-        Warm regards,
-        Emiel — DI Communications Specialist
-        DACRE Analysis Platform
-        """
-        
-        return self._send_email(email, first_name, subject, body)
-    
-    def send_welcome_email(self, email: str, first_name: str, company_name: str) -> Tuple[bool, str]:
-        """
-        Send a welcome email from Emiel-DI.
-        Returns: (success, message)
-        """
-        subject = f"🎉 Welcome to DACRE Analysis, {first_name}!"
-        body = f"""
-        Hello {first_name},
-        
-        🌟 Welcome to DACRE Analysis!
-        
-        I am Emiel, your Communications & Messaging Specialist. I'm here to ensure you have a smooth onboarding experience.
-        
-        Your workspace for {company_name} is now active! Here's what you can do:
-        
-        📊 Upload and analyze your business data
-        🧠 Chat with DI — David's Intelligence
-        📈 Create powerful charts and dashboards
-        📁 Store and organize your files
-        🌍 Access global business intelligence
-        
-        To get started:
-        1. Upload your first dataset in Workspace & Data
-        2. Ask DI questions about your business
-        3. Explore the Business Command Center
-        
-        Need help? Just type "help" in any DI chat and I'll guide you.
-        
-        Welcome to the future of business intelligence!
-        
-        Best regards,
-        Emiel
-        Communications & Messaging Specialist
-        DACRE Analysis Platform
-        """
-        
-        return self._send_email(email, first_name, subject, body)
-    
-    def _send_email(self, to_email: str, to_name: str, subject: str, body: str) -> Tuple[bool, str]:
-        """Send email using available providers."""
-        if not self.providers:
-            return False, "No email providers configured. Please add SMTP settings."
-        
-        for provider_name, config in self.providers:
-            if not config.get("host") or not config.get("user") or not config.get("password"):
-                continue
-            
-            try:
-                msg = MIMEMultipart()
-                msg["From"] = config.get("from") or config.get("user")
-                msg["To"] = to_email
-                msg["Subject"] = subject
-                msg.attach(MIMEText(body, "plain", "utf-8"))
-                
-                with smtplib.SMTP(config["host"], config["port"], timeout=20) as server:
-                    server.starttls()
-                    server.login(config["user"], config["password"])
-                    server.sendmail(config.get("from") or config.get("user"), [to_email], msg.as_string())
-                
-                return True, f"Email sent via {provider_name}"
-            
-            except Exception as exc:
-                print(f"Email provider {provider_name} failed: {exc}")
-                continue
-        
-        return False, "All email providers failed. Please try again later."
-    
-    def generate_and_send_code(self, email: str, first_name: str) -> Tuple[bool, str]:
-        """
-        Generate a verification code and send it via email.
-        Returns: (success, message)
-        """
-        # Generate code
-        code = self.verification_manager.generate_code(email)
-        
-        # Send email
-        success, message = self.send_verification_email(email, first_name, code)
-        
-        if success:
-            return True, f"Verification code sent to {email}"
-        else:
-            return False, message
-    
-    def resend_code(self, email: str, first_name: str) -> Tuple[bool, str]:
-        """
-        Resend a verification code.
-        Returns: (success, message)
-        """
-        success, new_code = self.verification_manager.resend_code(email)
-        
-        if not success:
-            return False, new_code  # new_code contains error message
-        
-        # Send email
-        send_success, message = self.send_verification_email(email, first_name, new_code)
-        
-        if send_success:
-            return True, f"New verification code sent to {email}"
-        else:
-            return False, message
-    
-    def verify_code(self, email: str, code: str) -> Tuple[bool, str]:
-        """
-        Verify a user's code.
-        Returns: (success, message)
-        """
-        if self.verification_manager.verify_code(email, code):
-            return True, "Code verified successfully!"
-        else:
-            status = self.verification_manager.get_code_status(email)
-            if not status.get("exists"):
-                return False, "No active code found. Please request a new one."
-            elif status.get("is_expired"):
-                return False, "Code has expired. Please request a new one."
-            else:
-                return False, f"Invalid code. {status.get('attempts', 0)} attempts used. Please try again."
-
-# =============================================================================
-# DI AGENT - EMIEL (Communications & Messaging Specialist)
-# =============================================================================
-
-class EmielDIAgent:
-    """
-    Emiel - Communications & Messaging Specialist DI Agent.
-    Handles welcome messages, verification codes, and user communications.
-    """
-    
-    def __init__(self):
-        self.name = "Emiel"
-        self.specialty = "Communications & Messaging"
-        self.personality = "Polite, concise, organized and communication-focused"
-        self.avatar_url = "https://randomuser.me/api/portraits/men/32.jpg"
-        self.verification_service = EmailVerificationService()
-    
-    def send_welcome(self, user_email: str, first_name: str, company_name: str) -> Tuple[bool, str]:
-        """Send a welcome email to a new user."""
-        return self.verification_service.send_welcome_email(user_email, first_name, company_name)
-    
-    def send_verification_code(self, email: str, first_name: str) -> Tuple[bool, str]:
-        """Send a verification code to a user."""
-        return self.verification_service.generate_and_send_code(email, first_name)
-    
-    def resend_verification_code(self, email: str, first_name: str) -> Tuple[bool, str]:
-        """Resend a verification code to a user."""
-        return self.verification_service.resend_code(email, first_name)
-    
-    def verify_user(self, email: str, code: str) -> Tuple[bool, str]:
-        """Verify a user's code."""
-        return self.verification_service.verify_code(email, code)
-    
-    def get_code_status(self, email: str) -> Dict:
-        """Get the status of a user's verification code."""
-        status = self.verification_service.verification_manager.get_code_status(email)
-        if status.get("exists"):
-            status["expires_in_seconds"] = int(status.get("expires_in", 0))
-            status["remaining_time"] = f"{int(status.get('expires_in', 0))} seconds"
-        return status
-    
-    def introduce(self) -> str:
-        """Emiel's introduction message."""
-        return """
-        👋 Hello! I'm Emiel, your Communications & Messaging Specialist.
-        
-        I'm here to ensure smooth communication between you and DACRE. I handle:
-        📧 Welcome emails for new users
-        🔐 Verification codes for secure sign-in
-        📝 System notifications and alerts
-        💬 Communication workflows
-        
-        If you need help with anything communication-related, just ask!
-        """
-
-# =============================================================================
-# ENHANCED SIGNUP WITH EMIEL WELCOME
-# =============================================================================
-
-def enhanced_create_account(first, last, company, email, email_password, passkey, website_url=""):
-    """
-    Enhanced account creation with Emiel welcome email.
-    """
-    # Call the original create_account function
-    success, msg, user_data = create_account(first, last, company, email, email_password, passkey, website_url)
-    
-    if success and user_data:
-        # Send welcome email via Emiel
-        emiel = EmielDIAgent()
-        welcome_success, welcome_msg = emiel.send_welcome(email, first, company)
-        
-        if welcome_success:
-            log_activity(user_data["username"], company, f"Welcome email sent by Emiel to {email}")
-        else:
-            log_activity(user_data["username"], company, f"Welcome email failed: {welcome_msg}")
-        
-        # Also store in notifications
-        notify_company_admin(company, f"New user {first} {last} joined. Welcome email sent by Emiel.", "new_user")
-    
-    return success, msg, user_data
-
-# =============================================================================
-# ENHANCED SIGNIN WITH VERIFICATION CODE
-# =============================================================================
-
-def enhanced_authenticate_with_verification(company_name, full_name, passkey, email="", verification_code=""):
-    """
-    Enhanced authentication with verification code check.
-    """
-    # First, authenticate the user
-    user, msg = authenticate(company_name, full_name, passkey, email)
-    
-    if not user:
-        return None, msg
-    
-    # Check if verification is needed (for non-master users)
-    if user.get("role") != "master":
-        # Check if user is already verified in session
-        if st.session_state.get(f"verified_{user['username']}", False):
-            return user, "Already verified"
-        
-        # If verification code provided, verify it
-        if verification_code:
-            emiel = EmielDIAgent()
-            verified, verify_msg = emiel.verify_user(user["email"], verification_code)
-            
-            if verified:
-                st.session_state[f"verified_{user['username']}"] = True
-                return user, "Verified successfully"
-            else:
-                return None, verify_msg
-        
-        # No verification code provided - need to send one
-        emiel = EmielDIAgent()
-        success, msg = emiel.send_verification_code(user["email"], user["first_name"])
-        
-        if success:
-            return None, f"VERIFICATION_REQUIRED: A verification code has been sent to {user['email']}"
-        else:
-            return None, f"Could not send verification code: {msg}"
-    
-    return user, "Master user verified"
-
-# =============================================================================
-# UI: VERIFICATION CODE INPUT
-# =============================================================================
-
-def render_verification_ui(email: str, first_name: str):
-    """
-    Render the verification code input UI with timer and resend functionality.
-    """
-    st.markdown("""
-    <style>
-    .verification-container {
-        background: linear-gradient(145deg, #0a1628, #1a2a4a);
-        border-radius: 16px;
-        padding: 30px;
-        max-width: 500px;
-        margin: 20px auto;
-        border: 1px solid rgba(75,130,245,0.2);
-        text-align: center;
-    }
-    .verification-title {
-        color: white;
-        font-size: 24px;
-        font-weight: 800;
-    }
-    .verification-subtitle {
-        color: #94a3b8;
-        font-size: 14px;
-        margin: 10px 0 20px 0;
-    }
-    .verification-timer {
-        color: #60a5fa;
-        font-size: 32px;
-        font-weight: 900;
-        margin: 15px 0;
-    }
-    .verification-code-input {
-        background: #0a1628 !important;
-        color: white !important;
-        border: 2px solid rgba(75,130,245,0.3) !important;
-        border-radius: 12px !important;
-        padding: 15px !important;
-        font-size: 24px !important;
-        text-align: center !important;
-        letter-spacing: 8px !important;
-        width: 100% !important;
-    }
-    .verification-code-input:focus {
-        border-color: #4b82f5 !important;
-        box-shadow: 0 0 30px rgba(75,130,245,0.2) !important;
-    }
-    .verification-resend {
-        color: #94a3b8;
-        font-size: 13px;
-        margin-top: 15px;
-    }
-    .verification-resend a {
-        color: #60a5fa;
-        text-decoration: none;
-        cursor: pointer;
-        font-weight: 600;
-    }
-    .verification-resend a:hover {
-        text-decoration: underline;
-    }
-    .verification-status {
-        margin: 10px 0;
-        padding: 10px;
-        border-radius: 8px;
-        font-weight: 600;
-    }
-    .verification-status.info {
-        background: rgba(96, 165, 250, 0.1);
-        color: #60a5fa;
-    }
-    .verification-status.error {
-        background: rgba(239, 68, 68, 0.1);
-        color: #ef4444;
-    }
-    .verification-status.success {
-        background: rgba(52, 211, 153, 0.1);
-        color: #34d399;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # Initialize session state for timer
-    if "verification_timer_start" not in st.session_state:
-        st.session_state.verification_timer_start = time.time()
-    if "verification_resend_cooldown" not in st.session_state:
-        st.session_state.verification_resend_cooldown = 0
-    if "verification_attempts" not in st.session_state:
-        st.session_state.verification_attempts = 0
-    
-    # Get code status
-    emiel = EmielDIAgent()
-    status = emiel.get_code_status(email)
-    
-    # Calculate remaining time
-    if status.get("exists"):
-        remaining = status.get("expires_in", 0)
-        is_expired = status.get("is_expired", True)
-    else:
-        remaining = 0
-        is_expired = True
-    
-    st.markdown(f"""
-    <div class="verification-container">
-        <div class="verification-title">🔐 Verify Your Account</div>
-        <div class="verification-subtitle">
-            A verification code has been sent to <strong>{email}</strong>
-        </div>
-        
-        <div class="verification-timer" id="timerDisplay">
-            {int(remaining)}s
-        </div>
-        <div style="color: #94a3b8; font-size: 12px;">Code expires in</div>
-        
-        <input type="text" class="verification-code-input" id="verificationCode" 
-               placeholder="000000" maxlength="6" autofocus>
-        
-        <div id="verificationStatus" class="verification-status" style="display: none;"></div>
-        
-        <button onclick="verifyCode()" style="
-            background: linear-gradient(135deg, #4b82f5, #6c9cff);
-            border: none;
-            color: white;
-            padding: 12px 30px;
-            border-radius: 12px;
-            font-weight: bold;
-            font-size: 16px;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 15px;
-            transition: all 0.3s;
-        ">
-            ✅ Verify
-        </button>
-        
-        <div class="verification-resend">
-            Didn't receive the code? 
-            <a onclick="resendCode()" id="resendLink">
-                Resend Code
-            </a>
-            <span id="resendTimer" style="color: #64748b;"></span>
-        </div>
-    </div>
-    
-    <script>
-        let remainingTime = {int(remaining)};
-        let timerInterval = null;
-        let isResending = false;
-        let resendCooldown = 0;
-        
-        function updateTimer() {{
-            const timerDisplay = document.getElementById('timerDisplay');
-            if (remainingTime <= 0) {{
-                timerDisplay.textContent = '⏰ Expired';
-                timerDisplay.style.color = '#ef4444';
-                if (timerInterval) {{
-                    clearInterval(timerInterval);
-                    timerInterval = null;
-                }}
-                showStatus('Code has expired. Please request a new one.', 'error');
-                return;
-            }}
-            timerDisplay.textContent = remainingTime + 's';
-            remainingTime--;
-        }}
-        
-        function showStatus(message, type) {{
-            const status = document.getElementById('verificationStatus');
-            status.textContent = message;
-            status.className = 'verification-status ' + type;
-            status.style.display = 'block';
-        }}
-        
-        function verifyCode() {{
-            const code = document.getElementById('verificationCode').value.trim();
-            if (code.length !== 6) {{
-                showStatus('Please enter a 6-digit code', 'error');
-                return;
-            }}
-            
-            // Send to Streamlit
-            const url = new URL(window.parent.location.href);
-            url.searchParams.set('verify_code', code);
-            window.parent.location.assign(url.toString());
-        }}
-        
-        function resendCode() {{
-            if (isResending) return;
-            if (resendCooldown > 0) {{
-                showStatus('Please wait ' + resendCooldown + ' seconds before resending', 'info');
-                return;
-            }}
-            
-            isResending = true;
-            showStatus('📧 Sending new code...', 'info');
-            
-            const url = new URL(window.parent.location.href);
-            url.searchParams.set('resend_code', '1');
-            window.parent.location.assign(url.toString());
-        }}
-        
-        // Start timer
-        if (remainingTime > 0) {{
-            timerInterval = setInterval(updateTimer, 1000);
-            updateTimer();
-        }}
-        
-        // Handle Enter key on input
-        document.getElementById('verificationCode').addEventListener('keydown', function(e) {{
-            if (e.key === 'Enter') {{
-                verifyCode();
-            }}
-        }});
-        
-        // Auto-focus
-        document.getElementById('verificationCode').focus();
-    </script>
-    """, unsafe_allow_html=True)
-    
-    # Handle verification code input
-    verify_code = st.query_params.get("verify_code")
-    if verify_code:
-        st.query_params.clear()
-        emiel = EmielDIAgent()
-        verified, msg = emiel.verify_user(email, verify_code)
-        
-        if verified:
-            st.session_state[f"verified_{st.session_state.user.get('username', '')}"] = True
-            st.success("✅ " + msg)
-            st.rerun()
-        else:
-            st.error("❌ " + msg)
-    
-    # Handle resend
-    if st.query_params.get("resend_code") == "1":
-        st.query_params.clear()
-        emiel = EmielDIAgent()
-        success, msg = emiel.resend_verification_code(email, first_name)
-        
-        if success:
-            st.success("✅ " + msg)
-            # Reset timer
-            st.session_state.verification_timer_start = time.time()
-            st.rerun()
-        else:
-            st.error("❌ " + msg)
-
-# =============================================================================
-# UPDATED SIGNIN PAGE WITH VERIFICATION
-# =============================================================================
-
-def render_verification_signin():
-    """
-    Render sign-in page with verification code support.
-    """
-    st.markdown("""
-    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;">🔐 Sign In to DACRE</h1>
-        <p style="color:#94a3b8;">Secure access with email verification</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    with st.form("signin_form", clear_on_submit=True):
-        col1, col2 = st.columns(2)
-        with col1:
-            company = st.text_input("Company / Organization", placeholder="Enter your company name")
-            email = st.text_input("Email Address", placeholder="your@email.com")
-        with col2:
-            fullname = st.text_input("Full Name", placeholder="Your full name")
-            passkey = st.text_input("Account Passkey", type="password", placeholder="Enter your passkey")
-        
-        submitted = st.form_submit_button("Sign In", type="primary", use_container_width=True)
-    
-    if submitted:
-        if not company and not email:
-            st.error("Please enter your company name or email address.")
-            return
-        
-        if not passkey:
-            st.error("Please enter your account passkey.")
-            return
-        
-        # Try authentication
-        user, msg = enhanced_authenticate_with_verification(company, fullname, passkey, email)
-        
-        if user:
-            st.session_state.user = user
-            st.session_state.master_route = user.get("role") == "master"
-            st.success(f"✅ Welcome back, {user['first_name']}!")
-            st.rerun()
-        elif msg and msg.startswith("VERIFICATION_REQUIRED:"):
-            # Show verification UI
-            st.info(msg)
-            email_to_verify = email or user.get("email") if 'user' in locals() else email
-            if email_to_verify:
-                render_verification_ui(email_to_verify, fullname or "User")
-        else:
-            st.error(f"❌ {msg}")
-
-# =============================================================================
-# ENHANCED SIGNUP WITH EMIEL WELCOME
-# =============================================================================
-
-def render_enhanced_signup():
-    """
-    Render sign-up page with Emiel welcome email.
-    """
-    st.markdown("""
-    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;">🎉 Create Your DACRE Account</h1>
-        <p style="color:#94a3b8;">Join the future of business intelligence</p>
-        <p style="color:#60a5fa;font-size:14px;">
-            👋 Emiel, your Communications Specialist, will send you a welcome email!
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    with st.form("signup_form", clear_on_submit=True):
-        col1, col2 = st.columns(2)
-        with col1:
-            first = st.text_input("First Name", placeholder="David")
-            last = st.text_input("Last Name", placeholder="Emenike")
-            company = st.text_input("Company / Organization", placeholder="Your company name")
-        with col2:
-            email = st.text_input("Email Address", placeholder="name@example.com")
-            email_pass = st.text_input("Email Password (optional)", type="password", placeholder="For email features")
-            passkey = st.text_input("Create Account Passkey", type="password", placeholder="Create a secure passkey")
-            website = st.text_input("Company Website (optional)", placeholder="https://www.yourcompany.com")
-        
-        submitted = st.form_submit_button("Create Account", type="primary", use_container_width=True)
-    
-    if submitted:
-        if not first or not last or not company or not email or not passkey:
-            st.error("Please fill in all required fields.")
-            return
-        
-        # Use enhanced create account
-        success, msg, user_data = enhanced_create_account(first, last, company, email, email_pass, passkey, website)
-        
-        if success:
-            st.session_state.user = user_data
-            st.session_state.master_route = False
-            st.success(f"✅ {msg}")
-            st.info(f"📧 Check your email {email} for a welcome message from Emiel!")
-            st.rerun()
-        else:
-            st.error(f"❌ {msg}")
-
-# =============================================================================
-# ALL DI AGENTS - EACH INTRODUCES ITSELF
-# =============================================================================
-
-def get_di_introduction(agent_name: str) -> str:
-    """
-    Get introduction message for any DI agent.
-    Each DI introduces itself with its name, specialty, and purpose.
-    """
-    introductions = {
-        "Emiel": """
-        👋 Hello! I'm Emiel, your Communications & Messaging Specialist.
-        
-        I specialize in:
-        📧 Email communications and welcome messages
-        🔐 Verification codes for secure access
-        📝 System notifications and alerts
-        💬 Communication workflows
-        
-        Need help with anything communication-related? Just ask!
-        """,
-        
-        "Guaiel": """
-        🛡️ I am Guaiel, the CEO Office Guardian.
-        
-        My purpose is to:
-        🔒 Protect the CEO Office and founder command path
-        🛡️ Verify secure access to master-level controls
-        👑 Guard the integrity of DACRE's leadership
-        ⚡ Ensure only authorized users access sensitive areas
-        
-        If you're the master, I will verify your identity with respect and vigilance.
-        """,
-        
-        "Raziel": """
-        🧠 I am Raziel, Executive Intelligence Director.
-        
-        I provide:
-        📊 Executive-level business intelligence
-        🎯 Strategic recommendations and insights
-        📈 High-level data synthesis and analysis
-        💡 Decision support for leadership
-        
-        Ask me for strategic guidance, market analysis, or executive briefings.
-        """,
-        
-        "Ariel": """
-        🎯 I am Ariel, Strategy & Planning Lead.
-        
-        I help with:
-        📋 Strategic planning and execution
-        🎯 Goal setting and prioritization
-        📊 Scenario analysis and forecasting
-        🚀 Business transformation and growth
-        
-        Let me help you plan your next big move.
-        """,
-        
-        "Nathaniel": """
-        💰 I am Nathaniel, Financial Intelligence Lead.
-        
-        I specialize in:
-        📊 Financial analysis and reporting
-        💵 Budgeting and forecasting
-        📈 Investment analysis
-        🏦 Banking and treasury operations
-        
-        Ask me about financial performance, budgeting, or investment strategies.
-        """,
-        
-        "Gabriel": """
-        📈 I am Gabriel, Sales Intelligence Lead.
-        
-        I can help you with:
-        📊 Sales pipeline analysis
-        🎯 Conversion optimization
-        📈 Revenue forecasting
-        🤝 Customer relationship management
-        
-        Let's optimize your sales performance!
-        """,
-        
-        "Sofiel": """
-        🔬 I am Sofiel, Research & Intelligence Lead.
-        
-        I provide:
-        📚 Research and analysis
-        🧠 Intelligence gathering
-        📊 Data synthesis and insights
-        🔍 Competitive intelligence
-        
-        Ask me for research on any topic or industry.
-        """,
-        
-        "Uriel": """
-        ⚙️ I am Uriel, Operations Intelligence Lead.
-        
-        I specialize in:
-        🔄 Process optimization
-        📊 Operational analytics
-        📈 Efficiency improvement
-        🏭 Supply chain intelligence
-        
-        Let's make your operations more efficient!
-        """,
-        
-        "Adriel": """
-        💻 I am Adriel, Technology Intelligence Lead.
-        
-        I can help with:
-        🖥️ Software architecture
-        🤖 AI and machine learning
-        ☁️ Cloud infrastructure
-        🔒 Cybersecurity
-        
-        Ask me about technology strategy or implementation.
-        """,
-        
-        "Muriel": """
-        👥 I am Muriel, People & Workforce Lead.
-        
-        I specialize in:
-        📊 HR analytics and workforce planning
-        🎯 Talent management
-        📈 Employee engagement
-        🏢 Organizational development
-        
-        Let's build a better workplace together!
-        """,
-        
-        "Azriel": """
-        ⚖️ I am Azriel, Risk & Compliance Lead.
-        
-        I provide:
-        📋 Risk assessment and management
-        ⚖️ Compliance oversight
-        🔍 Internal audit support
-        🛡️ Governance guidance
-        
-        Ask me about risk management or compliance requirements.
-        """,
-    }
-    
-    default_intro = f"""
-    👋 Hello! I am {agent_name}, a DI agent at DACRE Analysis.
-    
-    I am here to help with business intelligence, data analysis, and strategic guidance.
-    
-    Feel free to ask me anything about your business, data, or goals!
-    """
-    
-    return introductions.get(agent_name, default_intro)
-
-def render_di_introduction(agent_name: str):
-    """
-    Render a DI agent's introduction in the UI.
-    """
-    intro = get_di_introduction(agent_name)
-    
-    # Get agent avatar
-    agents = get_di_agents()
-    avatar = None
-    for a in agents:
-        if a.get("di_name") == agent_name:
-            avatar = a.get("avatar_url")
-            break
-    
-    if not avatar:
-        avatar = f"https://api.dicebear.com/7.x/avataaars/svg?seed={agent_name}"
-    
-    st.markdown(f"""
-    <div style="
-        background: linear-gradient(145deg, #0a1628, #1a2a4a);
-        border-radius: 16px;
-        padding: 20px;
-        margin: 15px 0;
-        border: 1px solid rgba(75,130,245,0.2);
-        display: flex;
-        gap: 20px;
-        align-items: flex-start;
-    ">
-        <div style="flex: 0 0 80px;">
-            <img src="{avatar}" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid #4b82f5;">
-        </div>
-        <div>
-            <h3 style="color: white; margin: 0;">{agent_name}</h3>
-            <div style="color: #94a3b8; font-size: 13px; white-space: pre-wrap;">{intro}</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-# =============================================================================
-# INTEGRATION WITH EXISTING CHAT - DI INTRODUCES ITSELF
-# =============================================================================
-
-def enhanced_di_reply_with_introduction(message, user, df, agent_name=None):
-    """
-    Enhanced DI reply that includes self-introduction when chatting.
-    """
-    # Check if this is a new conversation or user asked for introduction
-    text = message.strip().lower()
-    
-    # If user asks "who are you" or "introduce yourself"
-    if any(phrase in text for phrase in ["who are you", "introduce yourself", "tell me about yourself", "what do you do"]):
-        if agent_name:
-            return get_di_introduction(agent_name)
-        else:
-            # If no specific agent, use the default DI
-            return get_di_introduction("Emiel")
-    
-    # If user is chatting with a specific DI for the first time
-    if agent_name and st.session_state.get(f"first_interaction_{agent_name}", True):
-        st.session_state[f"first_interaction_{agent_name}"] = False
-        intro = get_di_introduction(agent_name)
-        # Get the normal reply too
-        normal_reply = di_reply(message, user, df, allow_online=True, language=st.session_state.get("di_language", "English — Nigeria"))
-        return f"{intro}\n\n{normal_reply}"
-    
-    # Normal reply
-    return di_reply(message, user, df, allow_online=True, language=st.session_state.get("di_language", "English — Nigeria"))
-
-# =============================================================================
-# UI: DI AGENT SELECTION WITH INTRODUCTIONS
-# =============================================================================
-
-def render_di_agent_selector_with_introductions():
-    """
-    Render a DI agent selector where each agent introduces itself.
-    """
-    st.markdown("""
-    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h2 style="color:white;">👥 Choose Your DI Agent</h2>
-        <p style="color:#94a3b8;">Each DI has a unique personality and specialty. They'll introduce themselves when you chat!</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    agents = get_di_agents()
-    if not agents:
-        st.info("No DI agents available.")
-        return
-    
-    # Display agents in a grid with their introductions
-    cols = st.columns(3)
-    for idx, agent in enumerate(agents):
-        with cols[idx % 3]:
-            with st.container():
-                avatar = agent.get("avatar_url") or f"https://api.dicebear.com/7.x/avataaars/svg?seed={agent['di_name']}"
-                st.image(avatar, width=100)
-                st.markdown(f"### {agent['di_name']}")
-                st.caption(f"Specialty: {agent.get('specialty', 'General')}")
-                
-                # Show introduction button
-                if st.button(f"💬 Chat with {agent['di_name']}", key=f"intro_{agent['di_name']}"):
-                    st.session_state.selected_agent = agent['di_name']
-                    st.session_state[f"first_interaction_{agent['di_name']}"] = True
-                    st.rerun()
-                
-                # Show introduction
-                with st.expander(f"👋 Meet {agent['di_name']}"):
-                    st.markdown(get_di_introduction(agent['di_name']))
-
-# =============================================================================
-# INITIALIZE VERIFICATION SYSTEM ON STARTUP
-# =============================================================================
-
-def init_verification_system():
-    """
-    Initialize the email verification system.
-    """
-    if 'verification_service' not in st.session_state:
-        st.session_state.verification_service = EmailVerificationService()
-        st.session_state.emiel_agent = EmielDIAgent()
-    
-    # Initialize first interaction flags for all DI agents
-    agents = get_di_agents()
-    for agent in agents:
-        key = f"first_interaction_{agent['di_name']}"
-        if key not in st.session_state:
-            st.session_state[key] = True
-
-# =============================================================================
-# END OF ADDED CODE
-# =============================================================================       
