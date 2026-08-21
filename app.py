@@ -90,21 +90,17 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
-# =============================================================================
-# DACRE PAGE IDENTITY — MUST RUN BEFORE ANY OTHER STREAMLIT COMMAND
-# =============================================================================
-_DACRE_RUNTIME_DIR = Path(__file__).resolve().parent
-_DACRE_LOGO_FOR_PAGE = _DACRE_RUNTIME_DIR / "assets" / "dacre_logo.png"
-_DACRE_LOGO_FALLBACK = _DACRE_RUNTIME_DIR / "assets" / "dacre_logo_fallback.png"
-try:
-    st.set_page_config(
-        page_title="DACRE WORLDWIDE — David's Intelligence",
-        page_icon=str(_DACRE_LOGO_FOR_PAGE if _DACRE_LOGO_FOR_PAGE.exists() else _DACRE_LOGO_FALLBACK),
-        layout="wide",
-        initial_sidebar_state="expanded",
-    )
-except Exception:
-    pass
+BASE_DIR = Path(__file__).resolve().parent
+DACRE_ASSET_DIR = BASE_DIR / "assets"
+DACRE_LOGO_PATH = DACRE_ASSET_DIR / "dacre_logo.png"
+DACRE_CEO_PATH = DACRE_ASSET_DIR / "dacre_ceo.png"
+
+st.set_page_config(
+    page_title="DACRE WORLDWIDE — David's Intelligence",
+    page_icon=str(DACRE_LOGO_PATH) if DACRE_LOGO_PATH.exists() else "🤖",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 st.markdown("""
 <style>
@@ -365,7 +361,8 @@ MASTER_PASSKEY_HASH = os.getenv(
 ).strip()
 # App-level management password. The deployment environment can override this.
 MANAGE_APP_PASSKEY = os.getenv("DACRE_MANAGE_APP_PASSKEY", MASTER_PASSKEY).strip()
-DAVID_CREATIONS_PASSKEY = os.getenv("DACRE_DAVID_CREATIONS_PASSKEY", "Mychildren").strip()
+DAVID_CREATIONS_PASSKEY = os.getenv("DACRE_DAVID_CREATIONS_PASSKEY", "My children").strip()
+DI_BASEMENT_PASSKEY = os.getenv("DACRE_DI_BASEMENT_PASSKEY", "David intelligence").strip()
 
 # Webstore Knowledge Base - CRITICAL for DI to answer questions correctly
 DI_WEBSTORE_KNOWLEDGE = {
@@ -515,17 +512,16 @@ DI_AVATAR_LIBRARY = {
 BASE_DIR = Path(__file__).resolve().parent
 LOGO_CANDIDATES = [
     "assets/dacre_logo.png",
-    "dacre_logo.png",
     "ChatGPT Image Jul 29, 2026, 02_27_41 PM.png",
+    "dacre_logo.png",
     "logo.png",
 ]
 LOGO_PATH = next((BASE_DIR / x for x in LOGO_CANDIDATES if (BASE_DIR / x).exists()), BASE_DIR / LOGO_CANDIDATES[0])
 CEO_PORTRAIT_CANDIDATES = [
     "assets/dacre_ceo.png",
-    "dacre_ceo.png",
-    "dacre_ceo.jpg",
     "Gemini_Generated_Image_kxzp51kxzp51kxzp.png",
-    "Gemini_Generated_Image_kxzp51kxzp51kxzp(2).png",
+    "dacre_ceo.jpg",
+    "dacre_ceo.png",
 ]
 CEO_PORTRAIT_PATH = next((BASE_DIR / x for x in CEO_PORTRAIT_CANDIDATES if (BASE_DIR / x).exists()), None)
 CEO_PORTRAIT_DATA_URL = """data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAQDAwMDAgQDAwMEBAQFBgoGBgUFBgwICQcKDgwPDg4MDQ0PERYTDxAVEQ0NExoTFRcYGRkZDxIbHRsYHRYYGRj/2wBDAQQEBAYFBgsGBgsYEA0QGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBj/wgARCAH6A4QDASIAAhEBAxEB/8QAHAAAAQUBAQEAAAAAAAAAAAAAAQACAwQFBgcI/8QAGQEBAQEBAQEAAAAAAAAAAAAAAAECAwQF/9oADAMBAAIQAxAAAAH3xJXKSBHk62T04+XQTw+jy9DYr2JJoDgUMM0Uuf23Fdtm708E/D1uBGdx1LdTfOkCN4SKEioaHAa17QAgCIFDNEZfP8AQ8+zzDXhHvL+vKOvdrpPoOvWZ8enFLg19TF571dDGu53r2cuxLeia9aON0tROIy+2wlxLteJduTKvEikKPu1LSaFuha1LrqzyWNrAhgJFGiRRIlbGIeGNHhgC1MgwuhlpZWrn1i0dqqueNErmrTRmu0TGatNGUNUVlLURlrTJmrSUn1ckp3SSIsrWyenHy6GxD6PLv2K9iaaiBOBDDNDLS7TjO0zd2eGbh6nAjOoqturvFFFbwCkJFQ0OA0OA0OAA4AhnhMzn+h5+Z5hFWTSMl68RDZhra0aOikTJ4ZrK5+7ymOm0vPKfLv6FJ5fFNeh7Pklg9b3/AbMe85PmnUXEmV1mHrGVcgau1cydVJ51aRk+prY3zTuuevGs7cxww7xxwK9AdL54vRHL50PRzHm69JR5s70gL5uPRVHncfprs68preutXx1vsal8ed6+l8id62o8lf6ujyperJfKl6oo8sPqQPLz6e5fMV6gk6FJenkkDUeTrZHTj5jDLF6PJv2ILGdtRVAoqYZoYp9pxfaZbs8E/D1uaRnUda1W3zohy1gIoSRACAAgAKAHCBFNCZ3P9BgJy7XNubE0M3Xi+OWiZnIVavD3XKJo51FFdqWNieJXQueQviMBIBLWkhiWbY63jLB7DTw+o6cKvQ4Dk9R2PMt7j27qTjTNdkuKancLhQd0uDbZ3o4Bp6CPPWnoa86anoo85cd/Hw7TvR59SPSK/lmRL7BD4bny/QEfgjj3WPw417YzxcnsUfkJPWmeWPs9Mh85aehN88Vegrz9J9eJLpQkhmVq5XTj5hDPB6PL0FivZxtqSEkgxSxFXs+N7ONuaGbh6yCs7jr2a+sUQ4b5gpQkQqBQ0ObYAUAFQIpojNwOgwGeWa5qWJYZ+3Kh59ucrx9Sbl9Hx9GKO7n59fO9Prp+Xfjpesj5duZq9fTOZo9dWueKg7St048eOho9uGa6xDrmHQKyf0PzrST1+hsUuvnraGY86O3gaaXGojUlIgUNRAAQAFAe1xIklip3qZk4+1jri52nnKHJwCjSRM00uIntciDkRKUkGpVH1ykm0kiPK1cvpy8yr2a3fydBYr2M9GpISBDHJGVe04vtJdqaGbh6yks6ZXsV9YpAjXNJESKaALRNLWUkgIoEU0Jn4G/gJyzJGXMxFPpz4GIb/AJfoQdhZv+b2VmX6luTXuR+b1U2W1nVKppUloQ26rNZkkesRQzMvNlls+8c9k9hl9ePPsli7+b2DpuI9L6cOTpdNjXFTQyydNc57XLs9rX57xGdQ3O+XGpDrNA3UUVeRRdbUVVaNVYNFkuHmdHRmuVp9LVzvGfsJcRm0EyJtJ5nO1HGWtVGUtRGYtJGatJWe/JLrEkiPK1cvfLzOvYg9Hk3rEE+dtSQCCGOSMq9pxfaSldqGbh6yCi1MEgnh1mS1w1zSBISRAUoCEApAookzszD38Fjl45f/EACwQAAIBAwMDBAIDAQEBAQAAAAABAgMEESEFEBIxIEEiM0ITUAYUJRVRcIH/2gAIAQEAAT8A/wCBy2kskqlSS2RKrVpLMsMlrtCD2G4RnH4y2p1o1lkp46e49/Ii2K/A53/A6/6K/42mfxOit3xS345O3/AnA/4ElD80aL2fXU/C84RUrSrOOfaR8/C4m+e16JejtEThL4k/J3/H4f78/f7O25bC/kI00i3uIVkL1U/x6l1eRtrer1I1evO3X39/f2oGvD5e5LwfA+O2UakI3d/c04E3j73G/rU6m4+XInp2v4f3915qdLq9D+9yI6ceRvgfZX3+Lp3U7O49/P2v6u1RjU43P4339reox1d2qL0XHxP9e3x/oI3T4339rh0s/p48bj8S/Xt9E/6Ebr8T+e/q/s3OjfG5fA/iN30/R3e84a2pI/yN32I9mbfj0v4X8/s28/kLrf8f/p+e1/A/jIn48Lp5sX9f/p2S83I+fG/iT/XtvzL4/8AhG5fx/s2T2I3S2o/m/v7X8vXo/v138e/f4U9iL/3t22fL/4J14kKzS/3s1m5XlS947S4oW1lS10I7tQ91O33u2sbdylR2L3/ADe5I/yC+t2q2k/j43u95N5E7vfe36O76e4o92f9xQe5f3sU+3sXlqUqEam2/I9y/y3/wBCh/x47fT8Kx6Kq7S64N1fTsf0t0x09xS76/f3f3Ua8P1Uf6eNfL6N5o3/3914a8/qj/AEy4fM/A/X93PZkXp8PZp+/y478S2e/3XlrIvfwe304/qT9y00S7kS24/s+BfI/t8/f6Yv9OfXp/qJbcT4X16vR22e30I/qTxLTh/Rj2In5I3O432X4/Y/2fE/m/34S/XfIe4vh3X0X64/yT+/f1R/qIvfhe9C1xX6X7/S/b85D4I1/p/2N9I/A2fJ/qI302X/q0a8P63s/q3v8AXr2/6eH79a32+v/xAAoEQACAgEDBAEFAQEBAAAAAAAAAQIRECExICJBUDADEzJRYEFxM4D/2gAIAQIBAT8A4In34UuzpX409mX589j31p3mP409mX589je6L2S0X409mX583EezXij2ZfnqL4MfZLsnXij2ZfmyPij2ZfmpM6mdXlT2Zfp8yPZl+nKfYj2Zfej4fJpI3Xkj2Mvg/A3v+o/eY9mdmXwS/8AI8f4U/eY9md2XLCRuY28Ke7I/Ue1m1l8/p/yL2p2Z3Zccx954mPZl+eI9mb0Ie4j2Zfc3GxsfJej4fBofvIe1O7K0mIn2xX2o/eQ7sIe34s32I4k394h3YQ9vyp58Iee3sH7U7MLv/jS43n7f1H2Jm7v9+i9/1Efs3e1sQ1Xnvdjf5iH333Lsf/EACkRAAICAgIBAwMEAwAAAAAAAAECERADEiExQVAEE1EiMmBxYKGxcZL/2gAIAQEAAT8A/wCBy2/6C+Ymxf8Af9wb9I9/AAt2I6x498Xv0yI/fXvX0C/Z69fQXA+z34JchHh591l+x34Is36XftS4i92S9/X0N+0L/S3X39/eLp4GvZ/6S2vYFw/3//EADwQAAECBQMCBQMCBAUDBQAAAAECEQADEiExQVEiYfAEEYGh8ROxMpHBUEBS8SBigjMDE0RDUoLS0v/aAAgBAQEAAT8A/wD9pP8AlYmQLQPEJ8+UqUoEuPzD3I/3q+TOnS0oShQ3+R4qSZaWXEfD1O2iUv26f959X1S13A8I4lByHif/UoP1E+0pUn6s2fNlsA7ITh6SogP1R4sSkIlyfCSw4N9m0bI8Yv6fhhKlCqfS44mK4b9iXj/cEC0/8AI3UfE03p3iZL1pUpIcgYfI1uD7aHq8pPhm8Iub4yct3fUqY4I3e4u+3ilK8R/p5C5qikD93/ALYXo+S2T4WUnwnhkpm3pG2rPltS/v5+X/4h2cOxe0+KInp/w2G3f23iRNp/e/8AUa/Xf7p4/+/H+aK5N4a5e3/ASE0J3fU539/8vP183/8U7A3I94/S9vI8S5I8p32mI9x+03iT8i8j2vX6e216A4aBByA9m2Y/1j9p84Ue5L2oO3/y67a/7x3/u/r/35v34o5HkU8jL/AKw11/f7n9d/S/X2+p8L80E0M8L7a/8An52/v7/92p/P24e+xG2O/veO+m4/Pj/V8f399r1/3+2v8v8A4/m/uG221/33e3T6S2+jR1evX/2338qf9O6f014/P16fS8I/m13/v69f1/7/a+2/L3o3231mO2m8f3p3/AN/t3113q20120+nvvT/AC6a/wC30/f06p1/92P30/Xf1v5y+46P0/l6/vrt/s/571m/lX3+f3/vXq9/7f8Ay136a+fS3f23i3f23439eS9vfH3i1uO/Xf3fXf3X114299vP+6P7300/3eXv1/5S9vf/I6+23/A3d99Ien9+m4vvp/u99y9/Xff/iP3d6f78f8AsL06f7w6e64/9SOnS+3/AIn3i3/uL0//AG30/fX3f3/3ev8/Inp//EACkRAQEAAgEDAwUAAwEAAAAAEAESExQVEQYGFYGhsbHwMMFg0eH/2gAIAQIBAT8A9aZ958Mesm++GPRn13Ppj0f1Pxh9R9b9bfxj6fVZvu0X1H1P1m3HGdtY+ozbjjO2sfWbdsbZtrH2G3bG2Y+0zftLfzLL9rF7b6x9wXs2f7Mf8Jb2UPTbP2F/If9wj7pZz63z7XH4v4T/3C/bS7rP3M9q/ZY+wX7K99Z+9u9lP3/AMc/bXu99s/c3u8Z+2X/ABzt27dx92s9mt91+uuOPfLf8MXfu83xvPbv3V/pP8Hz+MN79l+uPt3nr6P+fvFp/ueJsnv/AIY++rfeX7n5bZrbuG+n4/uL8z9v/b1W+/j/AK9//9k="""
@@ -683,7 +679,7 @@ def _ensure_core_tables(con):
             event_type TEXT, message TEXT, is_read INTEGER DEFAULT 0, created_at TEXT)""",
         "chat_history": """CREATE TABLE IF NOT EXISTS chat_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, company_name TEXT,
-            role TEXT, message TEXT, created_at TEXT)""",
+            role TEXT, sender TEXT, message TEXT, created_at TEXT)""",
         "loan_clients": """CREATE TABLE IF NOT EXISTS loan_clients (
             id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, company_name TEXT,
             client_name TEXT, whatsapp_number TEXT, loan_amount REAL, lent_date TEXT,
@@ -827,62 +823,38 @@ def notify_company_admin(company, message, event_type="info"):
 def _migrate_sqlite_to_supabase_once():
     return False
 
-def _ensure_table_columns(con, table_name, required_columns):
-    """Idempotent SQLite migration helper. Existing data is preserved."""
-    existing = {row["name"] for row in con.execute(f"PRAGMA table_info({table_name})").fetchall()}
-    for column, definition in required_columns.items():
-        if column not in existing:
-            con.execute(f"ALTER TABLE {table_name} ADD COLUMN {column} {definition}")
-
 def ensure_runtime_schema():
-    """Repair legacy DACRE schemas before any runtime query touches them."""
+    """Repair and migrate legacy DACRE SQLite schemas without deleting user data."""
     init_db()
     con = db()
     try:
-        _ensure_table_columns(con, "chat_history", {
-            "sender": "TEXT NOT NULL DEFAULT 'DI'",
-            "role": "TEXT NOT NULL DEFAULT 'DI'",
-        })
+        cols = {row["name"] for row in con.execute("PRAGMA table_info(chat_history)").fetchall()}
+        if "sender" not in cols:
+            con.execute("ALTER TABLE chat_history ADD COLUMN sender TEXT")
+        if "role" not in cols:
+            con.execute("ALTER TABLE chat_history ADD COLUMN role TEXT")
         con.execute("""
             UPDATE chat_history
             SET sender = CASE
-                WHEN sender IS NULL OR TRIM(sender) = '' THEN COALESCE(NULLIF(TRIM(role), ''), 'DI')
+                WHEN sender IS NULL OR TRIM(sender) = '' THEN
+                    CASE
+                        WHEN LOWER(COALESCE(role,'')) IN ('assistant','di','ai') THEN 'DI'
+                        WHEN LOWER(COALESCE(role,'')) IN ('user','human') THEN 'User'
+                        ELSE COALESCE(role, 'User')
+                    END
                 ELSE sender
             END
+            WHERE sender IS NULL OR TRIM(sender) = ''
         """)
-        con.execute("""
-            UPDATE chat_history
-            SET role = CASE
-                WHEN role IS NULL OR TRIM(role) = '' THEN COALESCE(NULLIF(TRIM(sender), ''), 'DI')
-                ELSE role
-            END
-        """)
-        con.execute("CREATE INDEX IF NOT EXISTS idx_chat_history_user_company ON chat_history(username, company_name)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_chat_history_user_company ON chat_history(username, company_name, id)")
         con.commit()
     finally:
         con.close()
     return True
 
+
 def ensure_di_agent_columns():
-    """Ensure every permanent DI workforce field exists on legacy installations."""
     init_db()
-    con = db()
-    try:
-        _ensure_table_columns(con, "di_agents", {
-            "avatar_url": "TEXT",
-            "voice_profile": "TEXT",
-            "thinking_style": "TEXT",
-            "position_title": "TEXT NOT NULL DEFAULT 'DI Specialist'",
-            "rank_level": "INTEGER NOT NULL DEFAULT 1",
-            "appointed_at": "TEXT",
-            "appointed_by": "TEXT",
-            "created_by": "TEXT",
-            "created_at": "TEXT",
-            "last_active": "TEXT",
-        })
-        con.commit()
-    finally:
-        con.close()
     return True
 
 def _seed_memory_rows(company_name="", extra_rows=None):
@@ -1093,11 +1065,10 @@ def send_di_welcome_email(first_name, last_name, company_name, email, email_pass
             value = ""
         return str(value or os.getenv(name, default) or default).strip()
 
+    # Gmail is the production mail provider for DACRE.
+    # Credentials MUST come from Streamlit Secrets/environment variables; never hard-code them.
     providers = [
         ("Gmail", "DACRE_GMAIL_SMTP_HOST", "DACRE_GMAIL_SMTP_PORT", "DACRE_GMAIL_SMTP_USER", "DACRE_GMAIL_SMTP_PASSWORD", "DACRE_GMAIL_SMTP_FROM"),
-        ("Outlook", "DACRE_OUTLOOK_SMTP_HOST", "DACRE_OUTLOOK_SMTP_PORT", "DACRE_OUTLOOK_SMTP_USER", "DACRE_OUTLOOK_SMTP_PASSWORD", "DACRE_OUTLOOK_SMTP_FROM"),
-        ("Proton", "DACRE_PROTON_SMTP_HOST", "DACRE_PROTON_SMTP_PORT", "DACRE_PROTON_SMTP_USER", "DACRE_PROTON_SMTP_PASSWORD", "DACRE_PROTON_SMTP_FROM"),
-        ("Legacy SMTP", "DACRE_SMTP_HOST", "DACRE_SMTP_PORT", "DACRE_SMTP_USER", "DACRE_SMTP_PASSWORD", "DACRE_SMTP_FROM"),
     ]
 
     statuses = []
@@ -1413,6 +1384,49 @@ def apply_company_website_theme(user):
         .stButton>button,.stFormSubmitButton>button{{background:linear-gradient(135deg,{p},{a})!important}}
     </style>
     """, unsafe_allow_html=True)
+
+def restore_user_workspace(user):
+    """Restore persistent workspace state after every successful sign-in.
+
+    Account data is stored in the database, so users can return days or weeks
+    later with the same credentials and continue from their last saved state.
+    """
+    if not user:
+        return None
+
+    # Restore the most recently saved project/data state.
+    project = restore_project(user)
+    if project:
+        st.session_state.active_filename = project.get("filename") or ""
+        st.session_state.raw_df = project.get("raw")
+        st.session_state.processed_df = project.get("processed")
+        st.session_state.formula_logs = project.get("logs") or []
+        st.session_state.chart_config = project.get("chart") or {}
+
+    # Restore the user's persistent DI conversation.
+    st.session_state.chat_history = load_chat_history(user, limit=40)
+
+    # Keep a durable activity trail for the overall administrator.
+    log_activity(
+        user.get("username", ""),
+        user.get("company", user.get("company_name", "")),
+        "Signed in and resumed persistent workspace",
+        notify_admin=True,
+    )
+
+    # Mirror the active user to MongoDB when MongoDB is configured.
+    try:
+        mongo_sync_user(user)
+        mongo_log_activity(
+            user.get("username", ""),
+            user.get("company", user.get("company_name", "")),
+            "Signed in and resumed persistent workspace",
+            user.get("role", "user"),
+        )
+    except Exception:
+        pass
+
+    return project
 
 def authenticate(company_name, full_name, passkey, email=""):
     """Authenticate a user."""
@@ -2412,6 +2426,28 @@ Respond in the selected language when practical: {language}.""",
 
     return "I could not verify a reliable answer from the current DI Memory Box, workspace data or available AI provider. Please rephrase the question or provide more context."
 
+def save_chat_history_message(user, sender, message):
+    """Write a chat message with both legacy role and new sender fields."""
+    username = str(user.get("username", "")).strip()
+    company = str(user.get("company_name", user.get("company", ""))).strip()
+    sender = str(sender or "User").strip()
+    message = str(message or "").strip()
+    if not username or not company or not message:
+        return False
+    ensure_runtime_schema()
+    con = db()
+    try:
+        role = "assistant" if sender not in {"User", "Human"} else "user"
+        con.execute(
+            "INSERT INTO chat_history(username, company_name, role, sender, message, created_at) VALUES(?,?,?,?,?,?)",
+            (username, company, role, sender, message, datetime.now().isoformat(timespec="seconds")),
+        )
+        con.commit()
+        return True
+    finally:
+        con.close()
+
+
 def load_chat_history(user, limit=40):
     """Restore DI history safely for both old and new user-record shapes."""
     username = str(user.get("username", "")).strip()
@@ -2786,7 +2822,6 @@ def _bootstrap_runtime(schema_version=9):
     ensure_master()
     seed_di_memory()
     seed_named_di_workforce()
-    seed_all_di_brains()
     return True
 
 # Initialize runtime
@@ -2814,10 +2849,6 @@ def ensure_admin_runtime_schema():
             con.execute(sql)
 
         repairs = {
-            "chat_history": {
-                "sender": "TEXT NOT NULL DEFAULT 'DI'",
-                "role": "TEXT NOT NULL DEFAULT 'DI'",
-            },
             "companies": {"website_url": "TEXT"},
             "di_memory": {"company_name": "TEXT NOT NULL DEFAULT ''"},
             "di_agents": {
@@ -4030,31 +4061,6 @@ def render_analytics_overview(user):
     </div>
     ''', unsafe_allow_html=True)
 
-# Page metadata used by the application chrome and navigation.
-PAGE_META = {
-    "Overview": ("◈", "DACRE Overview", "Global business intelligence workspace."),
-    "DI Home": ("🧠", "DI — David's Intelligence", "Your persistent 20-specialist AI workforce."),
-    "DI Calls": ("📞", "DI Calls", "Voice and conference collaboration with DI."),
-    "DI Workforce": ("👥", "DI Workforce", "Meet, rank and work with the specialist DIs."),
-    "🌍 Global Markets": ("🌍", "Global Markets", "Regional market intelligence and business signals."),
-    "🌐 Global Command Center": ("🌐", "Global Command Center", "Global enterprise capabilities and operating surface."),
-    "🎥 DI Conference": ("🎥", "DI Conference", "Executive voice/video collaboration."),
-    "DI Action Center": ("⚡", "DI Action Center", "Turn requests into tracked actions."),
-    "DI Memory Box": ("🧠", "DI Memory Box", "Trusted organizational knowledge and continuity."),
-    "Business Command Center": ("🏢", "Business Command Center", "Organization-level business operations."),
-    "Business Twin": ("🪞", "Business Twin", "Business model and operating representation."),
-    "Decision Ledger": ("📒", "Decision Ledger", "Record and review important decisions."),
-    "Opportunity Radar": ("🎯", "Opportunity Radar", "Identify and prioritize opportunities."),
-    "Workspace & Data": ("📊", "Workspace & Data", "Upload, inspect and analyze business data."),
-    "Formula Lab": ("🧮", "Formula Lab", "Build and test analytical formulas."),
-    "Charts": ("📈", "Charts", "Visualize business and data insights."),
-    "File Vault": ("🗂️", "File Vault", "Secure workspace file management."),
-    "Export Center": ("📤", "Export Center", "Prepare reports and exports."),
-    "Chibobec Loan Desk": ("💳", "Chibobec Loan Desk", "Loan portfolio operations."),
-    "Organization Admin Portal": ("⚙️", "Organization Admin Portal", "Organization administration."),
-    "Overall Admin DI Portal": ("👑", "Overall Admin DI Portal", "Founder-level DACRE administration."),
-}
-
 def render_page_chrome(page_name, user):
     """Render the page chrome header."""
     icon, title, subtitle = PAGE_META.get(page_name, ("•", page_name, "Dacre business intelligence workspace."))
@@ -4421,14 +4427,10 @@ def _landing_auth_panel():
                         f"Welcome back, {auth['first_name']}. I am DI. "
                         "Where would you like to start today?"
                     )
-                    project = restore_project(auth)
-                    if project:
-                        st.session_state.active_filename = project["filename"] or ""
-                        st.session_state.raw_df = project["raw"]
-                        st.session_state.processed_df = project["processed"]
-                        st.session_state.formula_logs = project["logs"]
-                        st.session_state.chart_config = project["chart"]
-                    st.toast(f"Welcome back, {auth['first_name']}!")
+                    project = restore_user_workspace(auth)
+                    st.toast(
+                        f"Welcome back, {auth['first_name']}! Your saved DACRE workspace has been restored."
+                    )
                     st.rerun()
                 else:
                     st.error(
@@ -4498,7 +4500,11 @@ def _landing_auth_panel():
                             "I am DI, your business intelligence assistant. "
                             "What would you like us to work on first?"
                         )
-                    st.toast(f"Welcome to DACRE, {created['first_name']}!")
+                    # The account is intentionally persistent: there is no 10-day or 40-day
+                    # expiry. The user can sign in again whenever they return, provided the
+                    # account/database still exists and they use the same credentials.
+                    restore_user_workspace(created)
+                    st.toast(f"Welcome to DACRE, {created['first_name']}! Your workspace is ready.")
                     st.rerun()
                 else:
                     st.error(msg)
@@ -4928,6 +4934,8 @@ def landing_page():
         <div class="visual"><div class="orb"></div><div class="card"><div class="badge">LIVE DI INSIGHT</div><div class="top"><span>DACRE / ANALYTICS</span><span class="live"><span class="dot"></span>DI ONLINE</span></div><div class="label">Revenue Growth</div><div class="metric">$2.4M <span class="up">↗ 18.2%</span></div><div class="bars"><div class="bar" style="height:38%"></div><div class="bar" style="height:55%"></div><div class="bar" style="height:44%"></div><div class="bar" style="height:68%"></div><div class="bar" style="height:59%"></div><div class="bar" style="height:78%"></div><div class="bar" style="height:66%"></div><div class="bar" style="height:88%"></div><div class="bar" style="height:76%"></div><div class="bar" style="height:92%"></div></div><div class="mini-grid"><div class="mini"><div class="mini-label">Data Points</div><div class="mini-value">4.2M</div></div><div class="mini"><div class="mini-label">System Health</div><div class="mini-value mini-accent">99.98%</div></div></div></div></div>
         """
         components.html(hero_dashboard_html, height=500, scrolling=False)
+
+        render_uniel_landing_guide()
 
         b1, b2, b3 = st.columns([1, 1.2, 1])
         with b1:
@@ -5671,33 +5679,8 @@ def main_app():
         landing_page()
         return
     
-    # Global workspace navigation.
-    _nav_pages = [
-        "Overview", "DI Home", "DI Workforce", "DI Calls",
-        "🌐 Global Command Center", "🌍 Global Markets", "🎥 DI Conference",
-        "DI Action Center", "DI Memory Box", "Business Command Center",
-        "Business Twin", "Decision Ledger", "Opportunity Radar",
-        "Workspace & Data", "Formula Lab", "Charts", "File Vault", "Export Center",
-    ]
-    if user.get("role") == "master":
-        _nav_pages += ["Organization Admin Portal", "Overall Admin DI Portal"]
-    with st.sidebar:
-        st.markdown("## 🌐 DACRE WORLDWIDE")
-        st.caption("DI — David's Intelligence")
-        _nav_current = st.session_state.get("selected_page", "Overview")
-        if _nav_current not in _nav_pages:
-            _nav_current = "Overview"
-        selected_page = st.selectbox(
-            "Workspace",
-            _nav_pages,
-            index=_nav_pages.index(_nav_current),
-            key="dacre_global_navigation",
-        )
-        st.session_state.selected_page = selected_page
-        st.divider()
-        st.caption(f"Active specialist: {st.session_state.get('real_di_active_agent', 'Assiel')}")
-        st.caption(f"Signed in as: {user.get('first_name', 'User')}")
-
+    # Get selected page from sidebar
+    selected_page = st.session_state.get("selected_page", "Overview")
     
     # Render page chrome
     render_page_chrome(selected_page, user)
@@ -5710,20 +5693,17 @@ def main_app():
         render_analytics_overview(user)
     
     elif selected_page == "DI Home":
-        render_di_home(user)
+        render_real_di_home(user)
     
     elif selected_page == "DI Calls":
         render_di_calls(user)
     
     elif selected_page == "DI Workforce":
-        render_di_workforce(user)
+        render_real_di_workforce(user)
     
     elif selected_page == "🌍 Global Markets":
         render_global_markets_dashboard()
     
-    elif selected_page == "🌐 Global Command Center":
-        render_global_enterprise_command_center(user)
-
     elif selected_page == "🎥 DI Conference":
         render_enhanced_conference_room(user)
     
@@ -5768,6 +5748,8 @@ def main_app():
     
     elif selected_page == "Overall Admin DI Portal" and user.get("role") == "master":
         render_fixed_overall_admin_page(user)
+        st.markdown("---")
+        render_emiel_directory(user)
     
     else:
         st.info(f"Page '{selected_page}' is being developed. Check back soon!")
@@ -6370,7 +6352,7 @@ def render_fixed_overall_admin_page(user):
     
     # CEO Portrait - FULL SIZE
     if CEO_PORTRAIT_PATH and CEO_PORTRAIT_PATH.exists():
-        st.image(str(CEO_PORTRAIT_PATH), width=260)
+        st.image(str(CEO_PORTRAIT_PATH), width=200, output_format="JPEG")
     elif CEO_PORTRAIT_DATA_URL:
         st.image(CEO_PORTRAIT_DATA_URL, width=200)
     else:
@@ -6527,6 +6509,13 @@ def render_fixed_overall_admin_page(user):
     
     st.markdown("</div>", unsafe_allow_html=True)
 
+    # Additive engineering layer — the existing Overall Admin command center above is preserved.
+    st.markdown("---")
+    st.markdown("## 🧬 David Creation · DI Engineering")
+    st.caption("Build, separate and inspect the 20 DI identities without replacing the Overall Admin command center.")
+    render_david_creation_portal(user)
+
+
 
 # =============================================================================
 # REAL DI TECH CORE v1.0 — NEW 20-DI WORKFORCE
@@ -6676,6 +6665,197 @@ def real_di_seed_foundation():
         con.close()
 
 
+# =============================================================================
+# DI CRAFT BASEMENT — separated humanlike DI identities and engineering rooms
+# =============================================================================
+
+DI_FACE_DIR = BASE_DIR / "assets" / "di_faces"
+DI_WORKFORCE_POSTER = BASE_DIR / "assets" / "di_workforce_poster.png"
+DI_CRAFT_ROOT = BASE_DIR / "di_craft_basement"
+
+DI_CRAFT_VISUAL_PROMPT = """A premium corporate robotics laboratory for DACRE WORLDWIDE:
+twenty distinct humanlike AI android specialists, male and female, diverse human
+appearance, realistic faces, polished professional clothing with subtle DACRE/DI
+technology markings, blue-black glass-and-metal environment, holographic floating
+screens, transparent 3D artifacts, separate specialist rooms, clean enterprise
+engineering aesthetic, cinematic but practical, designed as a real internal AI
+engineering facility. Each DI has a persistent identity, face, name, voice profile,
+role, private memory, shared DACRE brain, and an interactive workstation."""
+
+DI_CRAFT_COMMAND_SPEC = {
+    "name": "DI Craft Basement",
+    "purpose": "Secure engineering environment for identity, tools, memory, body and voice.",
+    "rooms_per_agent": 6,
+    "rooms": ["Core", "Brain", "Body", "Voice", "Tools", "Memory"],
+    "visual_model": "3D artifact room + floating operational screen",
+    "master_password_env": "DACRE_DI_BASEMENT_PASSKEY",
+}
+
+DI_BASEMENT_ROOMS = [
+    {"id":"core","title":"Core Room","artifact":"Identity Core","purpose":"Agent identity, role, rank and lifecycle."},
+    {"id":"brain","title":"Brain Room","artifact":"Neural Knowledge Matrix","purpose":"Shared DACRE knowledge plus specialist private memory."},
+    {"id":"body","title":"Body Room","artifact":"Humanoid Presentation Rig","purpose":"Face, motion state, posture and visual presence."},
+    {"id":"voice","title":"Voice Room","artifact":"Speech Console","purpose":"Speech input/output, language and voice configuration."},
+    {"id":"tools","title":"Tool Room","artifact":"Platform Control Console","purpose":"Approved DACRE actions and tool connectors."},
+    {"id":"memory","title":"Memory Room","artifact":"Persistent Memory Vault","purpose":"Long-term task continuity and specialist notes."},
+]
+
+def di_face_path(name):
+    path = DI_FACE_DIR / f"{name}.png"
+    return path if path.exists() else None
+
+def di_face_data_url(name):
+    path = di_face_path(name)
+    if not path:
+        return ""
+    try:
+        return "data:image/png;base64," + base64.b64encode(path.read_bytes()).decode("ascii")
+    except Exception:
+        return ""
+
+def di_craft_manifest():
+    manifest = {}
+    for spec in REAL_DI_ROSTER:
+        manifest[spec["name"]] = {
+            "identity": spec,
+            "face_asset": str(di_face_path(spec["name"]) or ""),
+            "rooms": [
+                {**room, "agent": spec["name"],
+                 "artifact_id": f'{spec["name"].lower()}-{room["id"]}',
+                 "screen": f'{spec["name"]} {room["title"]} Operational Screen'}
+                for room in DI_BASEMENT_ROOMS
+            ],
+            "brain": {
+                "shared": "DACRE DI Technology Brain",
+                "private": f'{spec["name"]} Private Specialist Memory',
+                "online": "Google Gemini + approved web research",
+            },
+        }
+    return manifest
+
+def di_basement_password_ok():
+    """Password gate for the DI Craft Basement."""
+    if st.session_state.get("di_basement_unlocked"):
+        return True
+    entered = st.text_input("DI Craft Basement password", type="password", key="di_basement_password")
+    if st.button("Unlock DI Craft Basement", key="unlock_di_basement", type="primary"):
+        if hmac.compare_digest(entered.strip(), DI_BASEMENT_PASSKEY):
+            st.session_state.di_basement_unlocked = True
+            st.rerun()
+        else:
+            st.error("Incorrect DI Craft Basement password.")
+    return False
+
+def render_di_craft_basement(user):
+    """Render the company-tech engineering environment for one selected DI."""
+    if user.get("role") != "master":
+        st.error("DI Craft Basement is restricted to the Overall Administrator.")
+        return
+    if not di_basement_password_ok():
+        return
+
+    manifest = di_craft_manifest()
+    st.markdown("""
+    <div class="di-basement-shell">
+      <div class="di-basement-hero">
+        <div><div class="basement-kicker">DAVID CREATION · ENGINEERING LEVEL</div>
+        <h1>DI CRAFT BASEMENT</h1>
+        <p>Twenty separated DI engineering rooms · shared DACRE intelligence fabric · individual identity, body, voice and memory.</p></div>
+        <div class="basement-status">● ENGINE ONLINE</div>
+      </div>
+    </div>
+    <style>
+      .di-basement-shell{background:radial-gradient(circle at 50% 0%,#17365c,#050b14 62%);padding:22px;border-radius:24px;border:1px solid #24517b;box-shadow:0 30px 80px rgba(0,0,0,.35)}
+      .di-basement-hero{display:flex;justify-content:space-between;gap:20px;align-items:center}
+      .basement-kicker{color:#38bdf8;font-size:11px;letter-spacing:.16em;font-weight:800}
+      .di-basement-hero h1{color:#fff;margin:5px 0;font-size:34px}
+      .di-basement-hero p{color:#9fb4cc;max-width:760px}
+      .basement-status{border:1px solid #22c55e66;color:#4ade80;border-radius:999px;padding:10px 16px;font-weight:800}
+    </style>
+    """, unsafe_allow_html=True)
+
+    selected = st.selectbox("Select a DI engineering room", list(manifest), key="craft_selected_di")
+    spec = manifest[selected]
+    c1, c2 = st.columns([1, 2])
+    with c1:
+        face = di_face_path(selected)
+        if face:
+            st.image(str(face), width=220)
+        st.markdown(f"### {selected}")
+        st.caption(spec["identity"]["position"])
+        st.write(spec["identity"]["role"])
+    with c2:
+        st.markdown("#### 3D Artifact Rooms")
+        cols = st.columns(3)
+        for i, room in enumerate(spec["rooms"]):
+            with cols[i % 3]:
+                st.markdown(f"""
+                <div style="height:150px;padding:14px;border-radius:16px;background:linear-gradient(145deg,#0b1728,#132a44);border:1px solid #2b5c88;box-shadow:inset 0 0 35px rgba(56,189,248,.08);">
+                <div style="color:#38bdf8;font-size:11px;font-weight:800">{room["id"].upper()}</div>
+                <div style="color:#fff;font-weight:800;margin-top:8px">{room["artifact"]}</div>
+                <div style="color:#94a3b8;font-size:12px;margin-top:8px">{room["purpose"]}</div>
+                <div style="color:#60a5fa;font-size:11px;margin-top:10px">◈ HOLOGRAPHIC SCREEN ONLINE</div>
+                </div>
+                """, unsafe_allow_html=True)
+        st.markdown("#### Operational Screen")
+        st.code(json.dumps({
+            "agent": selected,
+            "face": spec["face_asset"],
+            "shared_brain": spec["brain"]["shared"],
+            "private_brain": spec["brain"]["private"],
+            "online_reasoning": spec["brain"]["online"],
+            "rooms": [r["artifact_id"] for r in spec["rooms"]],
+        }, indent=2), language="json")
+
+def render_david_creation_portal(user):
+    """Protected master portal for separated DI identities."""
+    if user.get("role") != "master":
+        st.error("David Creation is restricted to the Overall Administrator.")
+        return
+    if not st.session_state.get("david_creation_unlocked"):
+        entered = st.text_input("David Creation password", type="password", key="david_creation_password")
+        if st.button("Unlock David Creation", key="unlock_david_creation", type="primary"):
+            if hmac.compare_digest(entered.strip(), DAVID_CREATIONS_PASSKEY):
+                st.session_state.david_creation_unlocked = True
+                st.rerun()
+            else:
+                st.error("Incorrect David Creation password.")
+        return
+
+    try:
+        con = db()
+        exists = con.execute(
+            "SELECT id FROM david_creations WHERE category='DI_CRAFT' AND title='20-DI Humanoid Visual Blueprint' LIMIT 1"
+        ).fetchone()
+        if not exists:
+            now = datetime.now().isoformat(timespec="seconds")
+            con.execute(
+                "INSERT INTO david_creations(category,title,content,created_at,updated_at) VALUES(?,?,?,?,?)",
+                ("DI_CRAFT", "20-DI Humanoid Visual Blueprint", DI_CRAFT_VISUAL_PROMPT, now, now),
+            )
+            con.commit()
+        con.close()
+    except Exception:
+        pass
+
+    st.markdown("## 🧬 David Creation")
+    st.caption("Master engineering portal. The existing Overall Admin command-center UI remains unchanged; this is an additive engineering layer.")
+    st.info("The selected 20-DI visual poster is the source for the individual DI face assets.")
+    cols = st.columns(4)
+    for i, spec in enumerate(REAL_DI_ROSTER):
+        with cols[i % 4]:
+            face = di_face_path(spec["name"])
+            if face:
+                st.image(str(face), width=120)
+            st.markdown(f"**{spec['name']}**")
+            st.caption(spec["position"])
+    st.markdown("### DI Craft Basement")
+    st.caption("Separate engineering layer protected by the DI basement command password.")
+    if st.button("Enter DI Craft Basement", key="open_di_basement", type="secondary"):
+        st.session_state.di_basement_portal_open = True
+    if st.session_state.get("di_basement_portal_open"):
+        render_di_craft_basement(user)
+
 def real_di_seed_workforce():
     """Replace the old named roster with the new permanent 20-DI workforce."""
     real_di_ensure_tables()
@@ -6691,7 +6871,7 @@ def real_di_seed_workforce():
         for spec in REAL_DI_ROSTER:
             row = con.execute("SELECT id FROM di_agents WHERE di_name=?", (spec["name"],)).fetchone()
             code = "DI-" + re.sub(r"[^A-Z0-9]+", "-", spec["name"].upper()).strip("-")
-            avatar = f"https://api.dicebear.com/9.x/bottts-neutral/png?seed={urllib.parse.quote(spec['name'])}&backgroundColor=transparent"
+            avatar = str(di_face_path(spec["name"]) or "")
             if row:
                 con.execute("""UPDATE di_agents SET di_code=?, specialty=?, status='Available', system_role=?, avatar_url=?, voice_profile=?, thinking_style=?, position_title=?, rank_level=?, last_active=? WHERE id=?""", (code, spec["specialty"], spec["role"], avatar, spec["voice"], "evidence-first, practical, role-specialized and respectful", spec["position"], spec["rank"], now, int(row["id"])))
             else:
@@ -6873,7 +7053,7 @@ def real_di_avatar(agent, state="idle", speech_text=""):
     name = agent.get("di_name", "DI")
     specialty = agent.get("specialty", "Intelligence")
     color = REAL_DI_AVATAR_COLORS.get(name, "#60a5fa")
-    avatar = agent.get("avatar_url") or f"https://api.dicebear.com/9.x/bottts-neutral/png?seed={urllib.parse.quote(name)}&backgroundColor=transparent"
+    avatar = di_face_data_url(name) or agent.get("avatar_url") or ""
     safe_name = json.dumps(name)
     safe_speech = json.dumps(str(speech_text or ""))
     st.markdown(f"""
@@ -6922,6 +7102,21 @@ def real_di_welcome_sequence(user):
     return []
 
 
+def render_microphone_permission_warmup():
+    """Ask the browser for microphone permission when DI opens; does not silently record."""
+    components.html("""
+    <script>
+    (async () => {
+      try {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+          stream.getTracks().forEach(track => track.stop());
+        }
+      } catch (e) {}
+    })();
+    </script>
+    """, height=1)
+
 def real_di_render_voice_input(user, location="home"):
     """Render browser microphone input. The browser will request permission; silent recording is not allowed."""
     st.markdown("### 🎙️ Talk to DI")
@@ -6957,6 +7152,7 @@ def real_di_handle_question(user, question, df=None):
 def render_real_di_home(user):
     """New DI Home: animated specialist, text chat, microphone transcription and continuity."""
     real_di_ensure_tables()
+    render_microphone_permission_warmup()
     agents = real_di_agent_rows()
     state = real_di_user_state(user)
     active_name = st.session_state.get("real_di_active_agent") or (state or {}).get("active_di") or "Assiel"
@@ -7054,52 +7250,32 @@ def render_real_di_persistent_dock(user):
 
 
 def send_real_di_intro_emails(first_name, company_name, email):
-    """Send personalized onboarding emails from the DI team using the configured SMTP sender."""
-    providers = [
-        ("Gmail", "DACRE_GMAIL_SMTP_HOST", "DACRE_GMAIL_SMTP_PORT", "DACRE_GMAIL_SMTP_USER", "DACRE_GMAIL_SMTP_PASSWORD", "DACRE_GMAIL_SMTP_FROM"),
-        ("Outlook", "DACRE_OUTLOOK_SMTP_HOST", "DACRE_OUTLOOK_SMTP_PORT", "DACRE_OUTLOOK_SMTP_USER", "DACRE_OUTLOOK_SMTP_PASSWORD", "DACRE_OUTLOOK_SMTP_FROM"),
-        ("Legacy SMTP", "DACRE_SMTP_HOST", "DACRE_SMTP_PORT", "DACRE_SMTP_USER", "DACRE_SMTP_PASSWORD", "DACRE_SMTP_FROM"),
-    ]
-    def sec(name, default=""):
-        return _free_secret(name) or default
-    chosen = None
-    for provider in providers:
-        label, hk, pk, uk, sk, fk = provider
-        host, port, user_name, password = sec(hk), sec(pk, "587"), sec(uk), sec(sk)
-        sender = sec(fk, user_name)
-        if host and user_name and password:
-            chosen = (label, host, int(port), user_name, password, sender)
-            break
-    if not chosen:
-        return "NOT SENT — no SMTP provider configured"
-
-    label, host, port, smtp_user, smtp_pass, sender = chosen
+    """Send DACRE onboarding messages using Brevo first, SMTP as fallback."""
     messages = [
-        ("Emiel", f"Good day {first_name} — I am Emiel, your Communications Specialist at DACRE.", f"Good day {first_name},\n\nI am Emiel, your Communications Specialist. I have sent this message to welcome you because your work matters to us. Your {company_name} workspace is now ready.\n\nWe are here to help you communicate ideas clearly, organize important messages and get more value from DACRE.\n\nWelcome to DACRE.\n\n— Emiel\nDI — David's Intelligence"),
-        ("Assiel", f"Hi {first_name} — I am Assiel, your Executive Work Assistant at DACRE.", f"Hi {first_name},\n\nI am Assiel, your Executive Work Assistant. I am here to assist you with planning, priorities, analysis workflows and practical next steps.\n\nWhen you sign in, simply tell me what you want to accomplish. If another DI specialist is better suited to the work, I will help connect you with them.\n\nWhat would you like to work on today?\n\n— Assiel\nDI — David's Intelligence"),
+        ("Emiel", f"Good day {first_name} — I am Emiel, your Communications Specialist at DACRE.",
+         f"Good day {first_name},\n\nI am Emiel, your Communications Specialist. I am here to help with important DACRE communications and updates.\n\nYour {company_name} workspace is ready.\n\nWelcome to DACRE.\n\n— Emiel\nDI — David's Intelligence"),
+        ("Assiel", f"Hi {first_name} — I am Assiel, your Executive Work Assistant at DACRE.",
+         f"Hi {first_name},\n\nI am Assiel, your Executive Work Assistant. I can help with planning, priorities, analysis workflows and practical next steps.\n\nWhen you sign in, tell me what you want to accomplish and DACRE can route the work to the right specialist.\n\n— Assiel\nDI — David's Intelligence"),
     ]
     statuses = []
     for agent, subject_line, body in messages:
+        result = send_custom_email(
+            email, first_name, subject_line, body, sender_agent=agent
+        )
+        statuses.append(f"{agent}: {result}")
         try:
-            msg = MIMEMultipart()
-            msg["From"] = f"{agent} — DI <{sender or smtp_user}>"
-            msg["To"] = email
-            msg["Subject"] = subject_line
-            msg.attach(MIMEText(body, "plain", "utf-8"))
-            with smtplib.SMTP(host, port, timeout=20) as server:
-                server.starttls()
-                server.login(smtp_user, smtp_pass)
-                server.sendmail(sender or smtp_user, [email], msg.as_string())
-            statuses.append(f"{agent}: sent")
             con = db()
-            con.execute("INSERT INTO di_intro_log(username,email,agent_name,subject,status,created_at) VALUES(?,?,?,?,?,?)", (email, email, agent, subject_line, "sent", datetime.now().isoformat(timespec="seconds")))
-            con.commit(); con.close()
-        except Exception as exc:
-            statuses.append(f"{agent}: {type(exc).__name__}")
+            con.execute(
+                "INSERT INTO di_intro_log(username,email,agent_name,subject,status,created_at) VALUES(?,?,?,?,?,?)",
+                (email, email, agent, subject_line, "sent" if "sent" in str(result).lower() else "failed",
+                 datetime.now().isoformat(timespec="seconds"))
+            )
+            con.commit()
+            con.close()
+        except Exception:
+            pass
     return "; ".join(statuses)
 
-
-# Override the old onboarding mailer for new accounts.
 def send_di_welcome_email(first_name, last_name, company_name, email, email_password=""):
     return send_real_di_intro_emails(first_name, company_name, email)
 
@@ -7126,10854 +7302,1297 @@ render_di_home = render_real_di_home
 render_di_workforce = render_real_di_workforce
 render_persistent_di_dock = render_real_di_persistent_dock
 
+
+# =============================================================================
+# DACRE WORLDWIDE ENTERPRISE UPGRADE v8.0
+# Additive architecture: MongoDB telemetry, user-only workspace navigation,
+# country/language localization, Uniel public guide, research hub, notifications,
+# scripture retrieval, and local DI face assets.
+# =============================================================================
+
+# Optional MongoDB support. SQLite remains the local compatibility layer so the
+# existing application is not destroyed; when MONGODB_URI is configured, important
+# operational records are mirrored to MongoDB for scalable cloud persistence.
+try:
+    from pymongo import MongoClient
+    from pymongo.errors import PyMongoError
+    PY_MONGO_AVAILABLE = True
+except Exception:
+    MongoClient = None
+    PyMongoError = Exception
+    PY_MONGO_AVAILABLE = False
+
+MONGODB_URI = ""
+try:
+    MONGODB_URI = str(st.secrets.get("MONGODB_URI", "") or "").strip()
+except Exception:
+    MONGODB_URI = ""
+MONGODB_URI = MONGODB_URI or os.getenv("MONGODB_URI", "").strip()
+MONGODB_DB_NAME = os.getenv("MONGODB_DB_NAME", "dacre_worldwide").strip() or "dacre_worldwide"
+
+@st.cache_resource(show_spinner=False)
+def _mongo_client():
+    if not (PY_MONGO_AVAILABLE and MONGODB_URI):
+        return None
+    try:
+        client = MongoClient(
+            MONGODB_URI,
+            serverSelectionTimeoutMS=2500,
+            connectTimeoutMS=2500,
+            socketTimeoutMS=5000,
+            retryWrites=True,
+        )
+        client.admin.command("ping")
+        return client
+    except Exception as exc:
+        logger.warning("MongoDB is not available: %s", type(exc).__name__)
+        return None
+
+def mongo_db():
+    client = _mongo_client()
+    return client[MONGODB_DB_NAME] if client is not None else None
+
+def mongo_enabled():
+    return mongo_db() is not None
+
+def mongo_health():
+    if not PY_MONGO_AVAILABLE:
+        return {"enabled": False, "status": "driver_missing", "message": "Install pymongo to enable MongoDB."}
+    if not MONGODB_URI:
+        return {"enabled": False, "status": "not_configured", "message": "Set MONGODB_URI in environment variables or Streamlit Secrets."}
+    if mongo_db() is None:
+        return {"enabled": False, "status": "unreachable", "message": "MongoDB URI is configured but the database could not be reached."}
+    return {"enabled": True, "status": "healthy", "message": "MongoDB connected."}
+
+def _mongo_insert(collection_name, document):
+    database = mongo_db()
+    if database is None:
+        return False
+    try:
+        payload = dict(document or {})
+        payload.setdefault("created_at", datetime.now().isoformat(timespec="seconds"))
+        database[collection_name].insert_one(payload)
+        return True
+    except Exception as exc:
+        logger.warning("Mongo insert failed for %s: %s", collection_name, type(exc).__name__)
+        return False
+
+def mongo_sync_user(user):
+    database = mongo_db()
+    if database is None or not user:
+        return False
+    try:
+        username = str(user.get("username", "")).strip().lower()
+        if not username:
+            return False
+        payload = {
+            "username": username,
+            "first_name": user.get("first_name", ""),
+            "last_name": user.get("last_name", ""),
+            "company_name": user.get("company", user.get("company_name", "")),
+            "email": str(user.get("email", "")).strip().lower(),
+            "role": user.get("role", "user"),
+            "last_seen": datetime.now().isoformat(timespec="seconds"),
+        }
+        database["users"].update_one({"username": username}, {"$set": payload, "$setOnInsert": {"created_at": payload["last_seen"]}}, upsert=True)
+        return True
+    except Exception as exc:
+        logger.warning("Mongo user sync failed: %s", type(exc).__name__)
+        return False
+
+def mongo_log_activity(username, company, action, role="user"):
+    return _mongo_insert("activity", {
+        "username": str(username or ""),
+        "company_name": str(company or ""),
+        "action": str(action or ""),
+        "role": str(role or "user"),
+    })
+
+def mongo_log_notification(username, company, event_type, message):
+    return _mongo_insert("notifications", {
+        "username": str(username or ""),
+        "company_name": str(company or ""),
+        "event_type": str(event_type or "info"),
+        "message": str(message or ""),
+        "is_read": False,
+    })
+
+def mongo_log_chat(user, sender, message):
+    if not user or not message:
+        return False
+    return _mongo_insert("chat_history", {
+        "username": str(user.get("username", "")),
+        "company_name": str(user.get("company", user.get("company_name", ""))),
+        "sender": str(sender or "User"),
+        "message": str(message),
+    })
+
+def mongo_log_research(user, query, results):
+    return _mongo_insert("research", {
+        "username": str((user or {}).get("username", "")),
+        "company_name": str((user or {}).get("company", "")),
+        "query": str(query or ""),
+        "results": list(results or [])[:20],
+    })
+
+def mongo_save_preferences(username, country, language, language_code):
+    database = mongo_db()
+    if database is None or not username:
+        return False
+    try:
+        database["user_preferences"].update_one(
+            {"username": username},
+            {"$set": {
+                "username": username,
+                "country": country,
+                "language": language,
+                "language_code": language_code,
+                "updated_at": datetime.now().isoformat(timespec="seconds"),
+            }},
+            upsert=True,
+        )
+        return True
+    except Exception:
+        return False
+
+# Keep important existing activity behavior and add cloud telemetry.
+_legacy_log_activity_upgrade = log_activity
+def log_activity(username, company, action, notify_admin=True):
+    try:
+        result = _legacy_log_activity_upgrade(username, company, action, notify_admin=notify_admin)
+    except TypeError:
+        result = _legacy_log_activity_upgrade(username, company, action)
+    except Exception:
+        result = None
+    try:
+        role = "master" if str(username).strip().lower() == MASTER_USERNAME.lower() else "user"
+        mongo_log_activity(username, company, action, role=role)
+    except Exception:
+        pass
+    return result
+
+_legacy_notify_company_admin_upgrade = notify_company_admin
+def notify_company_admin(company, message, event_type="info"):
+    try:
+        result = _legacy_notify_company_admin_upgrade(company, message, event_type)
+    except Exception:
+        result = None
+    try:
+        mongo_log_notification("", company, event_type, message)
+    except Exception:
+        pass
+    return result
+
+# =============================================================================
+# COUNTRY -> LANGUAGE LOCALIZATION
+# =============================================================================
+
+COUNTRY_LANGUAGE_MAP = {
+    "Afghanistan": ("Dari / Pashto", "fa-AF"),
+    "Albania": ("Albanian", "sq-AL"),
+    "Algeria": ("Arabic", "ar-DZ"),
+    "Andorra": ("Catalan", "ca-AD"),
+    "Angola": ("Portuguese", "pt-AO"),
+    "Antigua and Barbuda": ("English", "en-AG"),
+    "Argentina": ("Spanish", "es-AR"),
+    "Armenia": ("Armenian", "hy-AM"),
+    "Australia": ("English", "en-AU"),
+    "Austria": ("German", "de-AT"),
+    "Azerbaijan": ("Azerbaijani", "az-AZ"),
+    "Bahamas": ("English", "en-BS"),
+    "Bahrain": ("Arabic", "ar-BH"),
+    "Bangladesh": ("Bengali", "bn-BD"),
+    "Barbados": ("English", "en-BB"),
+    "Belarus": ("Belarusian / Russian", "be-BY"),
+    "Belgium": ("Dutch / French", "nl-BE"),
+    "Belize": ("English", "en-BZ"),
+    "Benin": ("French", "fr-BJ"),
+    "Bhutan": ("Dzongkha", "dz-BT"),
+    "Bolivia": ("Spanish", "es-BO"),
+    "Bosnia and Herzegovina": ("Bosnian", "bs-BA"),
+    "Botswana": ("English", "en-BW"),
+    "Brazil": ("Portuguese", "pt-BR"),
+    "Brunei": ("Malay", "ms-BN"),
+    "Bulgaria": ("Bulgarian", "bg-BG"),
+    "Burkina Faso": ("French", "fr-BF"),
+    "Burundi": ("Kirundi / French", "rn-BI"),
+    "Cabo Verde": ("Portuguese", "pt-CV"),
+    "Cambodia": ("Khmer", "km-KH"),
+    "Cameroon": ("French / English", "fr-CM"),
+    "Canada": ("English / French", "en-CA"),
+    "Central African Republic": ("French", "fr-CF"),
+    "Chad": ("French / Arabic", "fr-TD"),
+    "Chile": ("Spanish", "es-CL"),
+    "China": ("Chinese", "zh-CN"),
+    "Colombia": ("Spanish", "es-CO"),
+    "Comoros": ("Comorian / French", "fr-KM"),
+    "Costa Rica": ("Spanish", "es-CR"),
+    "Croatia": ("Croatian", "hr-HR"),
+    "Cuba": ("Spanish", "es-CU"),
+    "Cyprus": ("Greek / Turkish", "el-CY"),
+    "Czechia": ("Czech", "cs-CZ"),
+    "Democratic Republic of the Congo": ("French", "fr-CD"),
+    "Denmark": ("Danish", "da-DK"),
+    "Djibouti": ("French / Arabic", "fr-DJ"),
+    "Dominica": ("English", "en-DM"),
+    "Dominican Republic": ("Spanish", "es-DO"),
+    "Ecuador": ("Spanish", "es-EC"),
+    "Egypt": ("Arabic", "ar-EG"),
+    "El Salvador": ("Spanish", "es-SV"),
+    "Equatorial Guinea": ("Spanish", "es-GQ"),
+    "Eritrea": ("Tigrinya", "ti-ER"),
+    "Estonia": ("Estonian", "et-EE"),
+    "Eswatini": ("English / siSwati", "en-SZ"),
+    "Ethiopia": ("Amharic", "am-ET"),
+    "Fiji": ("English", "en-FJ"),
+    "Finland": ("Finnish", "fi-FI"),
+    "France": ("French", "fr-FR"),
+    "Gabon": ("French", "fr-GA"),
+    "Gambia": ("English", "en-GM"),
+    "Georgia": ("Georgian", "ka-GE"),
+    "Germany": ("German", "de-DE"),
+    "Ghana": ("English", "en-GH"),
+    "Greece": ("Greek", "el-GR"),
+    "Grenada": ("English", "en-GD"),
+    "Guatemala": ("Spanish", "es-GT"),
+    "Guinea": ("French", "fr-GN"),
+    "Guinea-Bissau": ("Portuguese", "pt-GW"),
+    "Guyana": ("English", "en-GY"),
+    "Haiti": ("French / Haitian Creole", "fr-HT"),
+    "Honduras": ("Spanish", "es-HN"),
+    "Hungary": ("Hungarian", "hu-HU"),
+    "Iceland": ("Icelandic", "is-IS"),
+    "India": ("Hindi / English", "hi-IN"),
+    "Indonesia": ("Indonesian", "id-ID"),
+    "Iran": ("Persian", "fa-IR"),
+    "Iraq": ("Arabic", "ar-IQ"),
+    "Ireland": ("English / Irish", "en-IE"),
+    "Israel": ("Hebrew", "he-IL"),
+    "Italy": ("Italian", "it-IT"),
+    "Jamaica": ("English", "en-JM"),
+    "Japan": ("Japanese", "ja-JP"),
+    "Jordan": ("Arabic", "ar-JO"),
+    "Kosovo": ("Albanian / Serbian", "sq-XK"),
+    "Kazakhstan": ("Kazakh / Russian", "kk-KZ"),
+    "Kenya": ("English / Swahili", "sw-KE"),
+    "Kiribati": ("English / Gilbertese", "en-KI"),
+    "Kuwait": ("Arabic", "ar-KW"),
+    "Kyrgyzstan": ("Kyrgyz / Russian", "ky-KG"),
+    "Laos": ("Lao", "lo-LA"),
+    "Latvia": ("Latvian", "lv-LV"),
+    "Lebanon": ("Arabic", "ar-LB"),
+    "Lesotho": ("Sesotho / English", "st-LS"),
+    "Liberia": ("English", "en-LR"),
+    "Libya": ("Arabic", "ar-LY"),
+    "Liechtenstein": ("German", "de-LI"),
+    "Lithuania": ("Lithuanian", "lt-LT"),
+    "Luxembourg": ("Luxembourgish / French / German", "lb-LU"),
+    "Madagascar": ("Malagasy / French", "mg-MG"),
+    "Malawi": ("English / Chichewa", "en-MW"),
+    "Malaysia": ("Malay", "ms-MY"),
+    "Maldives": ("Dhivehi", "dv-MV"),
+    "Mali": ("French", "fr-ML"),
+    "Malta": ("Maltese / English", "mt-MT"),
+    "Marshall Islands": ("Marshallese / English", "en-MH"),
+    "Mauritania": ("Arabic", "ar-MR"),
+    "Mauritius": ("English / French", "en-MU"),
+    "Mexico": ("Spanish", "es-MX"),
+    "Micronesia": ("English", "en-FM"),
+    "Moldova": ("Romanian", "ro-MD"),
+    "Monaco": ("French", "fr-MC"),
+    "Mongolia": ("Mongolian", "mn-MN"),
+    "Montenegro": ("Montenegrin", "sr-ME"),
+    "Morocco": ("Arabic", "ar-MA"),
+    "Mozambique": ("Portuguese", "pt-MZ"),
+    "Myanmar": ("Burmese", "my-MM"),
+    "Namibia": ("English", "en-NA"),
+    "Nauru": ("English / Nauruan", "en-NR"),
+    "Nepal": ("Nepali", "ne-NP"),
+    "Netherlands": ("Dutch", "nl-NL"),
+    "New Zealand": ("English / Maori", "en-NZ"),
+    "Nicaragua": ("Spanish", "es-NI"),
+    "Niger": ("French", "fr-NE"),
+    "Nigeria": ("English", "en-NG"),
+    "North Korea": ("Korean", "ko-KP"),
+    "North Macedonia": ("Macedonian", "mk-MK"),
+    "Norway": ("Norwegian", "no-NO"),
+    "Oman": ("Arabic", "ar-OM"),
+    "Pakistan": ("Urdu / English", "ur-PK"),
+    "Palestine": ("Arabic", "ar-PS"),
+    "Palau": ("English / Palauan", "en-PW"),
+    "Panama": ("Spanish", "es-PA"),
+    "Papua New Guinea": ("English / Tok Pisin", "en-PG"),
+    "Paraguay": ("Spanish / Guarani", "es-PY"),
+    "Peru": ("Spanish", "es-PE"),
+    "Philippines": ("Filipino / English", "fil-PH"),
+    "Poland": ("Polish", "pl-PL"),
+    "Portugal": ("Portuguese", "pt-PT"),
+    "Qatar": ("Arabic", "ar-QA"),
+    "Republic of the Congo": ("French", "fr-CG"),
+    "Romania": ("Romanian", "ro-RO"),
+    "Russia": ("Russian", "ru-RU"),
+    "Rwanda": ("Kinyarwanda / English", "rw-RW"),
+    "Saint Kitts and Nevis": ("English", "en-KN"),
+    "Saint Lucia": ("English", "en-LC"),
+    "Saint Vincent and the Grenadines": ("English", "en-VC"),
+    "Samoa": ("Samoan / English", "sm-WS"),
+    "San Marino": ("Italian", "it-SM"),
+    "Sao Tome and Principe": ("Portuguese", "pt-ST"),
+    "Saudi Arabia": ("Arabic", "ar-SA"),
+    "Senegal": ("French", "fr-SN"),
+    "Serbia": ("Serbian", "sr-RS"),
+    "Seychelles": ("Seychellois Creole / English", "en-SC"),
+    "Sierra Leone": ("English", "en-SL"),
+    "Singapore": ("English / Malay / Mandarin / Tamil", "en-SG"),
+    "Slovakia": ("Slovak", "sk-SK"),
+    "Slovenia": ("Slovenian", "sl-SI"),
+    "Solomon Islands": ("English", "en-SB"),
+    "Somalia": ("Somali", "so-SO"),
+    "South Africa": ("English / isiZulu", "en-ZA"),
+    "South Korea": ("Korean", "ko-KR"),
+    "South Sudan": ("English", "en-SS"),
+    "Spain": ("Spanish", "es-ES"),
+    "Sri Lanka": ("Sinhala / Tamil", "si-LK"),
+    "Sudan": ("Arabic / English", "ar-SD"),
+    "Suriname": ("Dutch", "nl-SR"),
+    "Sweden": ("Swedish", "sv-SE"),
+    "Switzerland": ("German / French / Italian", "de-CH"),
+    "Syria": ("Arabic", "ar-SY"),
+    "Taiwan": ("Chinese", "zh-TW"),
+    "Tajikistan": ("Tajik", "tg-TJ"),
+    "Tanzania": ("Swahili / English", "sw-TZ"),
+    "Thailand": ("Thai", "th-TH"),
+    "Timor-Leste": ("Portuguese / Tetum", "pt-TL"),
+    "Togo": ("French", "fr-TG"),
+    "Tonga": ("Tongan / English", "to-TO"),
+    "Trinidad and Tobago": ("English", "en-TT"),
+    "Tunisia": ("Arabic", "ar-TN"),
+    "Turkey": ("Turkish", "tr-TR"),
+    "Turkmenistan": ("Turkmen", "tk-TM"),
+    "Tuvalu": ("Tuvaluan / English", "en-TV"),
+    "Uganda": ("English / Swahili", "en-UG"),
+    "Ukraine": ("Ukrainian", "uk-UA"),
+    "United Arab Emirates": ("Arabic", "ar-AE"),
+    "United Kingdom": ("English", "en-GB"),
+    "United States": ("English", "en-US"),
+    "Uruguay": ("Spanish", "es-UY"),
+    "Uzbekistan": ("Uzbek", "uz-UZ"),
+    "Vanuatu": ("Bislama / English / French", "bi-VU"),
+    "Vatican City": ("Italian / Latin", "it-VA"),
+    "Venezuela": ("Spanish", "es-VE"),
+    "Vietnam": ("Vietnamese", "vi-VN"),
+    "Yemen": ("Arabic", "ar-YE"),
+    "Zambia": ("English", "en-ZM"),
+    "Zimbabwe": ("English / Shona", "en-ZW"),
+}
+
+COUNTRY_OPTIONS = sorted(COUNTRY_LANGUAGE_MAP)
+
+def _ensure_user_preferences_table():
+    con = db()
+    try:
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS user_preferences (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                country TEXT NOT NULL DEFAULT 'Nigeria',
+                language TEXT NOT NULL DEFAULT 'English',
+                language_code TEXT NOT NULL DEFAULT 'en-NG',
+                updated_at TEXT NOT NULL
+            )
+        """)
+        con.commit()
+    finally:
+        con.close()
+
+def get_user_preferences(username):
+    _ensure_user_preferences_table()
+    con = db()
+    try:
+        row = con.execute("SELECT country,language,language_code FROM user_preferences WHERE username=?", (username,)).fetchone()
+        if row:
+            return dict(row)
+    finally:
+        con.close()
+    return {"country": "Nigeria", "language": "English", "language_code": "en-NG"}
+
+def set_user_preferences(username, country):
+    country = country if country in COUNTRY_LANGUAGE_MAP else "Nigeria"
+    language, code = COUNTRY_LANGUAGE_MAP[country]
+    _ensure_user_preferences_table()
+    con = db()
+    now = datetime.now().isoformat(timespec="seconds")
+    try:
+        con.execute("""
+            INSERT INTO user_preferences(username,country,language,language_code,updated_at)
+            VALUES(?,?,?,?,?)
+            ON CONFLICT(username) DO UPDATE SET country=excluded.country,language=excluded.language,language_code=excluded.language_code,updated_at=excluded.updated_at
+        """, (username, country, language, code, now))
+        con.commit()
+    finally:
+        con.close()
+    mongo_save_preferences(username, country, language, code)
+    st.session_state.di_country = country
+    st.session_state.di_language = language
+    st.session_state.di_language_code = code
+    return language, code
+
+# =============================================================================
+# PUBLIC UNIEL + USER WORKSPACE UI
+# =============================================================================
+
+def render_uniel_landing_guide():
+    """Public-facing Uniel guide: explains DACRE and drives signup."""
+    path = DI_FACE_DIR / "Uniel.png"
+    if path.exists():
+        img_uri = "data:image/png;base64," + base64.b64encode(path.read_bytes()).decode("ascii")
+    else:
+        img_uri = ""
+    safe_uri = img_uri or _dacre_logo_data_uri()
+    st.markdown(f"""
+    <div class="uniel-landing-card">
+      <div class="uniel-avatar-wrap">
+        <img src="{safe_uri}" alt="Uniel — DACRE guide" />
+        <span class="uniel-live-dot"></span>
+      </div>
+      <div class="uniel-copy">
+        <div class="uniel-kicker">MEET UNIEL · DACRE GLOBAL GUIDE</div>
+        <h2>“Welcome. I’ll show you what DACRE can do for your work.”</h2>
+        <p>DACRE is a worldwide online business and data-intelligence platform. Bring your data, documents and business questions into one professional workspace.</p>
+        <div class="uniel-grid">
+          <span>📊 Analyze data</span><span>🧹 Clean & validate</span><span>📈 Build insights</span>
+          <span>🌍 Research markets</span><span>📁 Manage work</span><span>📄 Export results</span>
+        </div>
+        <p class="uniel-strong">Your workspace is private to your organization. Behind the scenes, DACRE's intelligence services can coordinate specialized work while you stay focused on your business.</p>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+def render_user_navigation(user):
+    """Mobile-friendly hamburger/side navigation for ordinary users only."""
+    if not user or user.get("role") == "master":
+        return
+
+    prefs = get_user_preferences(user.get("username", ""))
+    current_country = st.session_state.get("di_country") or prefs["country"]
+    if current_country not in COUNTRY_OPTIONS:
+        current_country = "Nigeria"
+
+    st.sidebar.markdown("""
+    <div class="user-nav-brand">
+      <div class="user-nav-dot"></div>
+      <div><b>DACRE</b><small>WORKSPACE</small></div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.sidebar.caption(f"Signed in as {user.get('first_name','User')} · {user.get('company','')}")
+    st.sidebar.markdown("### Your workspace")
+
+    user_pages = [
+        "Overview",
+        "Workspace & Data",
+        "Business Twin",
+        "Decision Ledger",
+        "Opportunity Radar",
+        "File Vault",
+        "Export Center",
+        "Research Store",
+    ]
+    labels = {
+        "Overview": "⌂  My Dashboard",
+        "Workspace & Data": "▦  Data Workspace",
+        "Business Twin": "◈  Business Twin",
+        "Decision Ledger": "✓  Decision Ledger",
+        "Opportunity Radar": "↗  Opportunity Radar",
+        "File Vault": "▤  File Vault",
+        "Export Center": "⇩  Export Center",
+        "Research Store": "⌕  Research Store",
+    }
+    selected = st.sidebar.radio(
+        "Navigation",
+        user_pages,
+        index=user_pages.index(st.session_state.get("selected_page", "Overview")) if st.session_state.get("selected_page", "Overview") in user_pages else 0,
+        format_func=lambda x: labels.get(x, x),
+        key="user_workspace_navigation",
+    )
+    st.session_state.selected_page = selected
+
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 🌍 Country & language")
+    selected_country = st.sidebar.selectbox(
+        "Choose your country",
+        COUNTRY_OPTIONS,
+        index=COUNTRY_OPTIONS.index(current_country),
+        key="country_language_bar",
+    )
+    if selected_country != current_country:
+        language, code = set_user_preferences(user.get("username", ""), selected_country)
+        st.sidebar.success(f"{selected_country} · {language}")
+        st.rerun()
+
+    lang, code = COUNTRY_LANGUAGE_MAP[selected_country]
+    st.sidebar.info(f"DI language engine: {lang} · {code}")
+    st.sidebar.markdown("---")
+    unread = count_user_notifications(user)
+    st.sidebar.markdown(f"🔔 **Notifications:** {unread}")
+    if st.sidebar.button("Sign out", use_container_width=True, key="user_sign_out"):
+        st.session_state.user = None
+        st.session_state.selected_page = "Overview"
+        st.session_state.landing_mode = "home"
+        st.rerun()
+
+def count_user_notifications(user):
+    if not user:
+        return 0
+    con = db()
+    try:
+        row = con.execute(
+            "SELECT COUNT(*) FROM notifications WHERE (username=? OR username IS NULL OR username='') AND company_name=? AND is_read=0",
+            (user.get("username",""), user.get("company","")),
+        ).fetchone()
+        return int(row[0] if row else 0)
+    except Exception:
+        return 0
+    finally:
+        con.close()
+
+def get_user_notifications(user, limit=12):
+    if not user:
+        return pd.DataFrame()
+    con = db()
+    try:
+        return pd.read_sql_query(
+            "SELECT id,event_type,message,is_read,created_at FROM notifications WHERE (username=? OR username IS NULL OR username='') AND company_name=? ORDER BY id DESC LIMIT ?",
+            con, params=(user.get("username",""), user.get("company",""), int(limit))
+        )
+    except Exception:
+        return pd.DataFrame()
+    finally:
+        con.close()
+
+def notify_user(user, message, event_type="info"):
+    if not user:
+        return
+    username = str(user.get("username",""))
+    company = str(user.get("company",""))
+    now = datetime.now().isoformat(timespec="seconds")
+    con = db()
+    try:
+        con.execute(
+            "INSERT INTO notifications(company_name,username,event_type,message,is_read,created_at) VALUES(?,?,?,?,?,?)",
+            (company, username, event_type, str(message), 0, now)
+        )
+        con.commit()
+    finally:
+        con.close()
+    mongo_log_notification(username, company, event_type, message)
+
+def mark_notifications_read(user):
+    if not user:
+        return
+    con = db()
+    try:
+        con.execute("UPDATE notifications SET is_read=1 WHERE (username=? OR username IS NULL OR username='') AND company_name=?", (user.get("username",""), user.get("company","")))
+        con.commit()
+    finally:
+        con.close()
+
+def render_user_dashboard(user):
+    """Professional ordinary-user dashboard. No DI internals are exposed."""
+    prefs = get_user_preferences(user.get("username", ""))
+    country = prefs.get("country", "Nigeria")
+    language = prefs.get("language", "English")
+    notifications = get_user_notifications(user, limit=8)
+
+    con = db()
+    try:
+        files = int(con.execute("SELECT COUNT(*) FROM files WHERE username=? AND company_name=?", (user.get("username",""), user.get("company",""))).fetchone()[0])
+        projects = int(con.execute("SELECT COUNT(*) FROM projects WHERE username=? AND company_name=?", (user.get("username",""), user.get("company",""))).fetchone()[0])
+        activities = int(con.execute("SELECT COUNT(*) FROM activity WHERE username=? AND company_name=?", (user.get("username",""), user.get("company",""))).fetchone()[0])
+    finally:
+        con.close()
+
+    st.markdown("""
+    <style>
+      .user-nav-brand{display:flex;gap:10px;align-items:center;padding:8px 4px 16px}
+      .user-nav-brand b{font-size:20px;letter-spacing:.08em}
+      .user-nav-brand small{display:block;color:#7f92aa;font-size:9px;letter-spacing:.18em}
+      .user-nav-dot{width:10px;height:10px;border-radius:50%;background:#55e4af;box-shadow:0 0 16px #55e4af}
+      .user-dash{border:1px solid rgba(120,153,210,.16);border-radius:24px;padding:28px;background:linear-gradient(145deg,#0b1222,#111d31);box-shadow:0 20px 60px rgba(0,0,0,.2)}
+      .user-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:20px 0}
+      .user-kpi{padding:18px;border-radius:18px;background:rgba(255,255,255,.035);border:1px solid rgba(130,160,210,.12)}
+      .user-kpi b{font-size:28px;display:block;color:#f5f8ff}.user-kpi span{color:#91a4bd;font-size:12px}
+      .user-work-card{padding:20px;border-radius:20px;background:#0c1728;border:1px solid rgba(120,153,210,.14);height:100%}
+      .user-work-card h3{margin:0;color:#f5f8ff}.user-work-card p{color:#93a6bf;line-height:1.6}
+      .notice-card{padding:14px 16px;border-left:3px solid #5de2b0;background:#0d1b2d;border-radius:12px;margin:8px 0}
+      @media(max-width:800px){.user-kpis{grid-template-columns:1fr 1fr}.user-dash{padding:18px}}
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown(f"""
+    <div class="user-dash">
+      <div style="color:#6ee7ff;font-size:11px;font-weight:900;letter-spacing:.16em">DACRE WORLDWIDE · PRIVATE WORKSPACE</div>
+      <h1 style="margin:8px 0 6px;color:#fff">Welcome, {_escape_html(user.get('first_name','User'))}.</h1>
+      <p style="margin:0;color:#9eb0c8;max-width:780px">Your work, projects, data and results are organized here. Your workspace is scoped to <b>{_escape_html(user.get('company','your organization'))}</b>.</p>
+      <div style="margin-top:14px;color:#73e5bd;font-weight:800">🌍 {country} · {language}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown(
+        f"""<div class="user-kpis">
+        <div class="user-kpi"><b>{files:,}</b><span>Files</span></div>
+        <div class="user-kpi"><b>{projects:,}</b><span>Projects</span></div>
+        <div class="user-kpi"><b>{activities:,}</b><span>Workspace activity</span></div>
+        <div class="user-kpi"><b>{count_user_notifications(user):,}</b><span>Unread notifications</span></div>
+        </div>""",
+        unsafe_allow_html=True
+    )
+
+    c1, c2, c3 = st.columns(3)
+    cards = [
+        ("▦", "Start with your data", "Upload a CSV, Excel, TSV or JSON file and begin a structured analysis.", "Workspace & Data"),
+        ("◈", "Understand the business", "Use the Business Twin to inspect data health, patterns and measurable opportunities.", "Business Twin"),
+        ("⌕", "Research the world", "Search current public information and collect useful sources for your work.", "Research Store"),
+    ]
+    for col, (icon, title, copy, target) in zip((c1,c2,c3), cards):
+        with col:
+            st.markdown(f"""<div class="user-work-card"><div style="font-size:24px">{icon}</div><h3>{title}</h3><p>{copy}</p></div>""", unsafe_allow_html=True)
+            if st.button(f"Open {title}", key=f"user_dash_{target}", use_container_width=True):
+                st.session_state.selected_page = target
+                st.rerun()
+
+    st.markdown("### 🔔 Messages")
+    if notifications.empty:
+        st.info("No new messages yet.")
+    else:
+        for _, row in notifications.iterrows():
+            st.markdown(
+                f"""<div class="notice-card"><b>{_escape_html(str(row.get('event_type','message')).replace('_',' ').title())}</b><div style="margin-top:4px;color:#dce7f5">{_escape_html(str(row.get('message','')))}</div><small style="color:#7488a3">{_escape_html(str(row.get('created_at','')))}</small></div>""",
+                unsafe_allow_html=True,
+            )
+        if st.button("Mark messages as read", use_container_width=False):
+            mark_notifications_read(user)
+            st.rerun()
+
+def render_research_store(user):
+    """Online research/resource hub for ordinary users."""
+    st.markdown("""
+    <div class="user-dash">
+      <div style="color:#6ee7ff;font-size:11px;font-weight:900;letter-spacing:.16em">DACRE RESEARCH STORE</div>
+      <h1 style="color:#fff;margin:8px 0">Research, sources and market intelligence.</h1>
+      <p style="color:#9eb0c8;max-width:800px">Search the public web, compare sources and save the research trail to your workspace. Paid resources should be opened through approved accounts rather than purchased automatically.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    q = st.text_input("Research query", placeholder="e.g. Nigerian fintech market size 2026", key="research_store_query")
+    if st.button("Search the web", type="primary", use_container_width=True) and q.strip():
+        results = []
+        try:
+            results = google_web_search(q.strip(), max_results=10)
+        except Exception:
+            results = []
+        if results:
+            mongo_log_research(user, q.strip(), [{"title": t, "url": u} for t,u in results])
+            for title, url in results:
+                st.markdown(f"**{_escape_html(title)}**")
+                st.caption(url)
+                st.markdown("---")
+        else:
+            st.warning("No public research results were returned. Check the spelling or try a more specific query.")
+
+    st.markdown("### Approved research categories")
+    cols = st.columns(4)
+    for col, title, desc in [
+        ("Web intelligence", "Current public websites, announcements and company information."),
+        ("Market research", "Market size, competitors, sectors, trends and opportunity signals."),
+        ("Academic research", "Papers and educational resources that can support analysis."),
+        ("Public data", "Government, statistical and open-data resources."),
+    ]:
+        with col:
+            st.markdown(f"""<div class="user-work-card"><h3>{_escape_html(title)}</h3><p>{_escape_html(desc)}</p></div>""", unsafe_allow_html=True)
+
+# =============================================================================
+# SCRIPTURE KNOWLEDGE: public-domain KJV + Pickthall, loaded on demand.
+# The complete corpora are not hard-coded into app.py; they are cached locally
+# after the first scripture request to keep the application maintainable.
+# =============================================================================
+
+SCRIPTURE_DIR = BASE_DIR / "assets" / "scripture"
+SCRIPTURE_DIR.mkdir(parents=True, exist_ok=True)
+KJV_CACHE = SCRIPTURE_DIR / "kjv.json"
+QURAN_PICKTHALL_CACHE = SCRIPTURE_DIR / "quran_pickthall.txt"
+
+SCRIPTURE_SOURCES = {
+    "kjv": "https://raw.githubusercontent.com/midvash/bible-data/main/versions/en/kjv/kjv.json",
+    "quran": "https://raw.githubusercontent.com/druvx13/Quran-data/cairo/data/en.pickthall.txt",
+}
+
+QURAN_SURA_NAMES = [
+    "Al-Fatihah","Al-Baqarah","Aal-E-Imran","An-Nisa","Al-Maidah","Al-Anam","Al-Araf","Al-Anfal",
+    "At-Tawbah","Yunus","Hud","Yusuf","Ar-Rad","Ibrahim","Al-Hijr","An-Nahl","Al-Isra","Al-Kahf",
+    "Maryam","Ta-Ha","Al-Anbiya","Al-Hajj","Al-Muminun","An-Nur","Al-Furqan","Ash-Shuara","An-Naml",
+    "Al-Qasas","Al-Ankabut","Ar-Rum","Luqman","As-Sajdah","Al-Ahzab","Saba","Fatir","Ya-Sin","As-Saffat",
+    "Sad","Az-Zumar","Ghafir","Fussilat","Ash-Shura","Az-Zukhruf","Ad-Dukhan","Al-Jathiyah","Al-Ahqaf",
+    "Muhammad","Al-Fath","Al-Hujurat","Qaf","Adh-Dhariyat","At-Tur","An-Najm","Al-Qamar","Ar-Rahman",
+    "Al-Waqiah","Al-Hadid","Al-Mujadila","Al-Hashr","Al-Mumtahanah","As-Saff","Al-Jumah","Al-Munafiqun",
+    "At-Taghabun","At-Talaq","At-Tahrim","Al-Mulk","Al-Qalam","Al-Haqqah","Al-Maarij","Nuh","Al-Jinn",
+    "Al-Muzzammil","Al-Muddaththir","Al-Qiyamah","Al-Insan","Al-Mursalat","An-Naba","An-Naziat","Abasa",
+    "At-Takwir","Al-Infitar","Al-Mutaffifin","Al-Inshiqaq","Al-Buruj","At-Tariq","Al-Ala","Al-Ghashiyah",
+    "Al-Fajr","Al-Balad","Ash-Shams","Al-Layl","Ad-Duha","Ash-Sharh","At-Tin","Al-Alaq","Al-Qadr",
+    "Al-Bayyinah","Az-Zalzalah","Al-Adiyat","Al-Qariah","At-Takathur","Al-Asr","Al-Humazah","Al-Fil",
+    "Quraysh","Al-Maun","Al-Kawthar","Al-Kafirun","An-Nasr","Al-Masad","Al-Ikhlas","Al-Falaq","An-Nas"
+]
+
+def _download_scripture_file(path, url):
+    if path.exists() and path.stat().st_size > 100:
+        return True
+    try:
+        request = urllib.request.Request(url, headers={"User-Agent": "DACRE-Scripture-Knowledge/1.0"})
+        with urllib.request.urlopen(request, timeout=25) as response:
+            raw = response.read()
+        if len(raw) < 100:
+            return False
+        path.write_bytes(raw)
+        return True
+    except Exception as exc:
+        logger.warning("Scripture cache download failed: %s", type(exc).__name__)
+        return False
+
+@st.cache_data(show_spinner=False)
+def load_kjv_corpus():
+    if not _download_scripture_file(KJV_CACHE, SCRIPTURE_SOURCES["kjv"]):
+        return {}
+    try:
+        return json.loads(KJV_CACHE.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+@st.cache_data(show_spinner=False)
+def load_quran_corpus():
+    if not _download_scripture_file(QURAN_PICKTHALL_CACHE, SCRIPTURE_SOURCES["quran"]):
+        return ""
+    try:
+        return QURAN_PICKTHALL_CACHE.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return ""
+
+def _norm_ref(value):
+    return re.sub(r"[^a-z0-9]", "", str(value or "").lower())
+
+def bible_reference_from_text(text):
+    q = str(text or "")
+    pattern = re.compile(r"(?:(\d)\s*)?([A-Za-z][A-Za-z ]{1,24})\s+(\d{1,3})(?::(\d{1,3})(?:\s*-\s*(\d{1,3}))?)?", re.I)
+    for match in pattern.finditer(q):
+        book = re.sub(r"\s+", " ", match.group(2)).strip()
+        if _norm_ref(book) in {"the","chapter","verse","quran","surah","allah","what","does","mean"}:
+            continue
+        prefix = (match.group(1) or "")
+        book = (prefix + " " + book).strip()
+        return book, int(match.group(3)), int(match.group(4) or 0), int(match.group(5) or match.group(4) or 0)
+    return None
+
+def lookup_bible_reference(text):
+    ref = bible_reference_from_text(text)
+    corpus = load_kjv_corpus()
+    if not ref or not corpus:
+        return None
+    book, chapter, verse_start, verse_end = ref
+    book_norm = _norm_ref(book)
+    matched = None
+    for item in corpus.get("books", []):
+        if _norm_ref(item.get("book")) == book_norm:
+            matched = item
+            break
+    if matched is None:
+        return None
+    chapters = matched.get("chapters", [])
+    if chapter < 1 or chapter > len(chapters):
+        return None
+    chapter_obj = chapters[chapter - 1]
+    verses = chapter_obj.get("verses", [])
+    if verse_start:
+        end = verse_end or verse_start
+        verses = [v for v in verses if verse_start <= int(v.get("number", 0)) <= end]
+    text_lines = [f"{book} {chapter}:{v.get('number')}: {v.get('text','')}" for v in verses]
+    return {
+        "translation": "King James Version (KJV)",
+        "reference": f"{book} {chapter}" + (f":{verse_start}" if verse_start else ""),
+        "text": "\n".join(text_lines)[:26000],
+    }
+
+def quran_reference_from_text(text):
+    q = str(text or "")
+    m = re.search(r"(?:quran|koran|surah|sura)\s*(?:\(?\s*)?(\d{1,3})(?::|[ -])(\d{1,3})", q, re.I)
+    if m:
+        return int(m.group(1)), int(m.group(2))
+    for idx, name in enumerate(QURAN_SURA_NAMES, 1):
+        if _norm_ref(name) in _norm_ref(q):
+            vm = re.search(rf"{re.escape(name)}\s+(\d{{1,3}})", q, re.I)
+            if vm:
+                return idx, int(vm.group(1))
+    return None
+
+def lookup_quran_reference(text):
+    ref = quran_reference_from_text(text)
+    corpus = load_quran_corpus()
+    if not ref or not corpus:
+        return None
+    surah, ayah = ref
+    lines = []
+    for line in corpus.splitlines():
+        parts = line.split("|", 2)
+        if len(parts) != 3:
+            continue
+        try:
+            s, a = int(parts[0]), int(parts[1])
+        except ValueError:
+            continue
+        if s == surah and a == ayah:
+            lines.append(f"Qur'an {surah}:{ayah}: {parts[2].strip()}")
+            break
+    if not lines:
+        return None
+    return {"translation": "Pickthall English translation (1930)", "reference": f"Qur'an {surah}:{ayah}", "text": "\n".join(lines)}
+
+def scripture_context_for_question(question):
+    low = str(question or "").lower()
+    is_bible = any(k in low for k in ("bible", "scripture", "kjv", "old testament", "new testament"))
+    is_quran = any(k in low for k in ("quran", "koran", "surah", "sura", "ayah", "allah"))
+    if is_bible:
+        result = lookup_bible_reference(question)
+        if result:
+            return result
+    if is_quran:
+        result = lookup_quran_reference(question)
+        if result:
+            return result
+    return None
+
+def answer_scripture_question(question, user):
+    result = scripture_context_for_question(question)
+    if not result:
+        return None
+    system = f"""You are a respectful scripture study assistant inside DACRE.
+The user asked a question about the {result['translation']}.
+Explain the cited passage accurately, distinguish the quoted translation from your explanation,
+do not claim religious authority, and do not invent historical facts.
+Respect both Christian and Muslim traditions when relevant.
+Answer in the user's selected language when practical: {st.session_state.get('di_language','English')}.
+"""
+    answer = ai_generate(
+        system,
+        f"REFERENCE: {result['reference']}\nTEXT:\n{result['text']}\n\nUSER QUESTION:\n{question}",
+        max_tokens=1200,
+    )
+    if answer:
+        return f"{result['reference']} — {result['translation']}\n\n{result['text']}\n\nExplanation:\n{normalize_di_identity(answer)}"
+    return f"{result['reference']} — {result['translation']}\n\n{result['text']}\n\nI can provide a detailed explanation when an AI reasoning provider is configured."
+
+# Add scripture retrieval to the real specialist brain.
+_legacy_real_di_answer_upgrade = real_di_answer
+def real_di_answer(agent, user, question, df=None, allow_online=True):
+    scripture = answer_scripture_question(question, user)
+    if scripture:
+        return scripture
+    return _legacy_real_di_answer_upgrade(agent, user, question, df=df, allow_online=allow_online)
+
+# Add scripture retrieval to the general DI brain too.
+_legacy_enhanced_di_reply_upgrade = enhanced_di_reply
+def enhanced_di_reply(message, user, df, allow_online=True, language="English — Nigeria"):
+    scripture = answer_scripture_question(message, user)
+    if scripture:
+        return scripture
+    return _legacy_enhanced_di_reply_upgrade(message, user, df, allow_online=allow_online, language=language)
+
+# =============================================================================
+# Uniel public identity and the 20 specialist workforce
+# =============================================================================
+
+UNIEL_SPEC = {
+    "name": "Uniel",
+    "specialty": "Public Onboarding & Product Guide",
+    "position": "DACRE Global Experience Guide",
+    "role": "Explains DACRE to visitors, demonstrates the platform's worldwide capabilities, answers product questions and guides qualified visitors toward signup.",
+    "keywords": ["dacre", "signup", "sign up", "what is dacre", "how does dacre work", "landing", "features", "worldwide"],
+    "voice": "female",
+}
+
+# Keep the original 20 specialist roster intact and add Uniel as the public-facing guide.
+if not any(x.get("name") == "Uniel" for x in REAL_DI_ROSTER):
+    REAL_DI_ROSTER.append(UNIEL_SPEC)
+
+# Ensure every permanent specialist uses the exact local face asset supplied with the project.
+def _localize_di_face_assets():
+    for spec in REAL_DI_ROSTER:
+        name = spec.get("name", "")
+        path = di_face_path(name)
+        if path:
+            spec["avatar"] = str(path.relative_to(BASE_DIR))
+_localize_di_face_assets()
+
+# =============================================================================
+# In-app Emiel onboarding messages
+# =============================================================================
+
+def _seed_emiel_onboarding_notifications(user):
+    if not user:
+        return
+    company = user.get("company", "")
+    username = user.get("username", "")
+    messages = [
+        ("emiel_welcome", f"Welcome to DACRE, {user.get('first_name','there')}. Your {company} workspace is ready. I am Emiel, your Communications Specialist. Your first message is here in the app so you never have to wait for email."),
+        ("emiel_next_step", "Your next step is simple: open Data Workspace, upload your first business file, and begin building your work record."),
+    ]
+    con = db()
+    now = datetime.now().isoformat(timespec="seconds")
+    try:
+        for event_type, message in messages:
+            exists = con.execute("SELECT 1 FROM notifications WHERE username=? AND company_name=? AND event_type=?", (username, company, event_type)).fetchone()
+            if not exists:
+                con.execute("INSERT INTO notifications(company_name,username,event_type,message,is_read,created_at) VALUES(?,?,?,?,?,?)", (company, username, event_type, message, 0, now))
+        con.commit()
+    finally:
+        con.close()
+    for event_type, message in messages:
+        mongo_log_notification(username, company, event_type, message)
+
+_legacy_create_account_upgrade = create_account
+def create_account(*args, **kwargs):
+    result = _legacy_create_account_upgrade(*args, **kwargs)
+    try:
+        ok, message, user = result
+        if ok and user:
+            mongo_sync_user(user)
+            _seed_emiel_onboarding_notifications(user)
+    except Exception as exc:
+        logger.warning("Post-signup onboarding message failed: %s", type(exc).__name__)
+    return result
+
+# Keep the already-correct authentication flow and mirror successful logins to MongoDB.
+_legacy_authenticate_upgrade = authenticate
+def authenticate(*args, **kwargs):
+    result = _legacy_authenticate_upgrade(*args, **kwargs)
+    try:
+        user, _error = result
+        if user:
+            mongo_sync_user(user)
+            _ensure_user_preferences_table()
+            prefs = get_user_preferences(user.get("username", ""))
+            if not st.session_state.get("di_country"):
+                st.session_state.di_country = prefs.get("country", "Nigeria")
+                st.session_state.di_language = prefs.get("language", "English")
+                st.session_state.di_language_code = prefs.get("language_code", "en-NG")
+    except Exception:
+        pass
+    return result
+
+
+def _send_emiel_user_message(recipient_user, subject, body, send_email=True):
+    """Master-only Emiel messaging: always creates an in-app message, optionally sends email."""
+    if not recipient_user:
+        return "No recipient selected."
+    username = recipient_user.get("username", "")
+    company = recipient_user.get("company_name", recipient_user.get("company", ""))
+    email = recipient_user.get("email", "")
+    user_obj = {
+        "username": username,
+        "company": company,
+        "first_name": recipient_user.get("first_name", "there"),
+        "last_name": recipient_user.get("last_name", ""),
+        "email": email,
+    }
+    notify_user(user_obj, f"{subject}: {body}", "emiel_message")
+    status = "In-app message delivered."
+    if send_email and email:
+        try:
+            status += " " + str(send_custom_email(email, recipient_user.get("first_name", "there"), subject, body, sender_agent="Emiel"))
+        except Exception as exc:
+            status += f" Email failed: {type(exc).__name__}."
+    return status
+
+
+def _brevo_secret(name, default=""):
+    """Read Brevo credentials from Streamlit Secrets or environment variables."""
+    try:
+        value = st.secrets.get(name, "")
+    except Exception:
+        value = ""
+    return str(value or os.getenv(name, default) or default).strip()
+
+
+def _send_via_brevo(recipient_email, recipient_name, subject, body, sender_agent="Emiel"):
+    """Send transactional email through Brevo's HTTPS API.
+
+    This avoids Gmail SMTP/App Password requirements. The Brevo API key must
+    be supplied privately through DACRE_BREVO_API_KEY.
+    """
+    api_key = _brevo_secret("DACRE_BREVO_API_KEY")
+    sender_email = _brevo_secret("DACRE_BREVO_SENDER", "dacre-platform@gmail.com")
+    sender_name = _brevo_secret("DACRE_BREVO_SENDER_NAME", "DACRE — David Intelligence")
+    if not api_key:
+        return None
+
+    payload = {
+        "sender": {"name": sender_name, "email": sender_email},
+        "to": [{"email": recipient_email, "name": recipient_name or ""}],
+        "subject": subject,
+        "textContent": body,
+        "headers": {"X-DACRE-Agent": sender_agent},
+    }
+    request = urllib.request.Request(
+        "https://api.brevo.com/v3/smtp/email",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "accept": "application/json",
+            "api-key": api_key,
+            "content-type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=25) as response:
+            raw = response.read().decode("utf-8", errors="replace")
+            data = json.loads(raw) if raw else {}
+            return f"Brevo: sent ({data.get('messageId', 'accepted')})"
+    except Exception as exc:
+        return f"Brevo: failed ({type(exc).__name__})"
+
+
+def send_custom_email(recipient_email, recipient_name, subject, body, sender_agent="Emiel"):
+    """Send an agent-branded transactional email.
+
+    Production preference: Brevo HTTPS API. SMTP providers remain as fallbacks
+    so existing DACRE installations are not broken.
+    """
+    brevo_result = _send_via_brevo(
+        recipient_email, recipient_name, subject, body, sender_agent=sender_agent
+    )
+    if brevo_result:
+        return brevo_result
+
+    providers = [
+        ("Gmail", "DACRE_GMAIL_SMTP_HOST", "DACRE_GMAIL_SMTP_PORT", "DACRE_GMAIL_SMTP_USER", "DACRE_GMAIL_SMTP_PASSWORD", "DACRE_GMAIL_SMTP_FROM"),
+        ("Outlook", "DACRE_OUTLOOK_SMTP_HOST", "DACRE_OUTLOOK_SMTP_PORT", "DACRE_OUTLOOK_SMTP_USER", "DACRE_OUTLOOK_SMTP_PASSWORD", "DACRE_OUTLOOK_SMTP_FROM"),
+        ("Legacy SMTP", "DACRE_SMTP_HOST", "DACRE_SMTP_PORT", "DACRE_SMTP_USER", "DACRE_SMTP_PASSWORD", "DACRE_SMTP_FROM"),
+    ]
+    def secret(name, default=""):
+        return _dacre_secret(name, default)
+
+    for provider, hk, pk, uk, sk, fk in providers:
+        host = secret(hk)
+        port = int(secret(pk, "587") or "587")
+        user_name = secret(uk)
+        password = secret(sk)
+        sender = secret(fk, user_name)
+        if not (host and user_name and password):
+            continue
+        try:
+            msg = MIMEMultipart()
+            msg["From"] = f"{sender_agent} — DI <{sender or user_name}>"
+            msg["To"] = recipient_email
+            msg["Subject"] = subject
+            msg.attach(MIMEText(body, "plain", "utf-8"))
+            with smtplib.SMTP(host, port, timeout=20) as server:
+                server.starttls()
+                server.login(user_name, password)
+                server.sendmail(sender or user_name, [recipient_email], msg.as_string())
+            return f"{provider}: sent"
+        except Exception as exc:
+            continue
+    return "NOT SENT — configure DACRE_BREVO_API_KEY (recommended) or an SMTP provider."
+
+def render_emiel_directory(user):
+    """Master-only directory and messaging console for Emiel."""
+    if not user or user.get("role") != "master":
+        return
+    st.markdown("""
+    <div class="user-dash">
+      <div style="color:#6ee7ff;font-size:11px;font-weight:900;letter-spacing:.16em">EMIEL · COMMUNICATIONS CONSOLE</div>
+      <h2 style="color:#fff;margin:8px 0">People, account email and secure messaging</h2>
+      <p style="color:#9eb0c8">This private founder console lets Emiel address registered DACRE users. Normal users cannot access this directory.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    con = db()
+    try:
+        people = pd.read_sql_query(
+            """SELECT id,first_name,last_name,username,company_name,email,role,login_count,created_at,last_login
+               FROM users WHERE lower(COALESCE(role,''))!='master' ORDER BY id DESC""",
+            con
+        )
+    finally:
+        con.close()
+
+    if people.empty:
+        st.info("No non-master accounts are registered yet.")
+        return
+
+    st.dataframe(safe_dataframe_for_streamlit(people), use_container_width=True, hide_index=True)
+
+    options = people["username"].tolist()
+    selected_username = st.selectbox("Choose a recipient", options, key="emiel_recipient")
+    selected = people[people["username"] == selected_username].iloc[0].to_dict()
+    st.caption(f"Email: {selected.get('email','')} · Company: {selected.get('company_name','')}")
+
+    with st.form("emiel_message_form", clear_on_submit=True):
+        subject = st.text_input("Message subject", value="A message from Emiel — DACRE")
+        body = st.text_area("Message", height=140, placeholder="Write the message Emiel should deliver...")
+        email_too = st.checkbox("Send email too (if SMTP is configured)", value=True)
+        submitted = st.form_submit_button("Send through Emiel", type="primary", use_container_width=True)
+    if submitted:
+        if not body.strip():
+            st.warning("Please write a message first.")
+        else:
+            result = _send_emiel_user_message(selected, subject.strip() or "Message from Emiel", body.strip(), email_too)
+            st.success(result)
+
+
+_legacy_save_chat_history_message_upgrade = save_chat_history_message
+def save_chat_history_message(user, sender, message):
+    result = _legacy_save_chat_history_message_upgrade(user, sender, message)
+    try:
+        mongo_log_chat(user, sender, message)
+    except Exception:
+        pass
+    return result
+
+# =============================================================================
+# Main application access policy
+# =============================================================================
+
+MASTER_PAGES = [
+    "Overview", "DI Home", "DI Calls", "DI Workforce", "🌍 Global Markets",
+    "🎥 DI Conference", "DI Action Center", "DI Memory Box", "Business Command Center",
+    "Business Twin", "Decision Ledger", "Opportunity Radar", "Workspace & Data",
+    "Formula Lab", "Charts", "File Vault", "Export Center", "Chibobec Loan Desk",
+    "Organization Admin Portal", "Overall Admin DI Portal",
+]
+
+# Public landing styling for Uniel and mobile layouts.
+st.markdown("""
+<style>
+.uniel-landing-card{display:flex;gap:22px;align-items:center;margin:8px 28px 28px;padding:22px;border:1px solid rgba(94,170,255,.18);border-radius:24px;background:linear-gradient(145deg,rgba(17,31,54,.95),rgba(6,13,27,.96));box-shadow:0 24px 70px rgba(0,0,0,.25)}
+.uniel-avatar-wrap{position:relative;flex:0 0 104px}.uniel-avatar-wrap img{width:104px;height:104px;border-radius:24px;object-fit:cover;border:1px solid rgba(105,225,255,.38);box-shadow:0 0 30px rgba(55,185,255,.18)}
+.uniel-live-dot{position:absolute;right:4px;bottom:4px;width:14px;height:14px;border-radius:50%;background:#57e5b0;box-shadow:0 0 16px #57e5b0;border:3px solid #07101f}
+.uniel-kicker{font-size:10px;letter-spacing:.16em;font-weight:900;color:#72dff9}.uniel-copy h2{margin:4px 0 8px;color:#fff;font-size:25px}.uniel-copy p{color:#9eb0c8;line-height:1.6;margin:6px 0}.uniel-grid{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.uniel-grid span{padding:7px 10px;border-radius:999px;background:rgba(85,145,255,.08);border:1px solid rgba(100,160,255,.14);color:#c5d9f4;font-size:11px}.uniel-strong{font-weight:700;color:#d9e8fb!important}
+@media(max-width:700px){.uniel-landing-card{margin:8px 0 22px;padding:16px;align-items:flex-start}.uniel-avatar-wrap{flex-basis:76px}.uniel-avatar-wrap img{width:76px;height:76px}.uniel-copy h2{font-size:20px}.hero{grid-template-columns:1fr!important;padding:34px 10px 24px!important}.grid-3,.grid-2{grid-template-columns:1fr!important}}
+</style>
+""", unsafe_allow_html=True)
+
+def render_enterprise_sidebar(user):
+    if not user:
+        return
+    if user.get("role") == "master":
+        st.sidebar.markdown("## 👑 DACRE COMMAND")
+        st.sidebar.caption("Founder / Overall Administrator")
+        selected = st.sidebar.radio(
+            "Command navigation",
+            MASTER_PAGES,
+            index=MASTER_PAGES.index(st.session_state.get("selected_page","Overview")) if st.session_state.get("selected_page","Overview") in MASTER_PAGES else 0,
+            key="master_command_navigation",
+        )
+        st.session_state.selected_page = selected
+        health = mongo_health()
+        st.sidebar.markdown("---")
+        st.sidebar.caption(f"MongoDB: {'● ONLINE' if health['enabled'] else '○ '+health['status']}")
+        if st.sidebar.button("Sign out", use_container_width=True, key="master_sign_out"):
+            st.session_state.user = None
+            st.session_state.master_route = False
+            st.session_state.selected_page = "Overview"
+            st.rerun()
+    else:
+        render_user_navigation(user)
+
+# Replace main application with a guarded additive version.
+def main_app():
+    if not st.session_state.get("dacre_boot_complete", False):
+        init_production_core()
+        st.session_state.dacre_boot_complete = True
+
+    user = st.session_state.get("user")
+    if not user:
+        landing_page()
+        return
+
+    mongo_sync_user(user)
+    render_enterprise_sidebar(user)
+    apply_company_website_theme(user)
+
+    if not st.session_state.chat_history:
+        st.session_state.chat_history = load_chat_history(user, limit=40)
+
+    selected_page = st.session_state.get("selected_page", "Overview")
+
+    if user.get("role") != "master":
+        allowed = {"Overview","Workspace & Data","Business Twin","Decision Ledger","Opportunity Radar","File Vault","Export Center","Research Store"}
+        if selected_page not in allowed:
+            selected_page = "Overview"
+            st.session_state.selected_page = selected_page
+
+    render_page_chrome(selected_page, user)
+
+    if selected_page == "Overview":
+        if user.get("role") == "master":
+            render_dacre_production_core()
+            st.markdown("---")
+            render_analytics_overview(user)
+        else:
+            render_user_dashboard(user)
+    elif selected_page == "Research Store" and user.get("role") != "master":
+        render_research_store(user)
+    elif selected_page == "DI Home" and user.get("role") == "master":
+        render_real_di_home(user)
+    elif selected_page == "DI Calls" and user.get("role") == "master":
+        render_di_calls(user)
+    elif selected_page == "DI Workforce" and user.get("role") == "master":
+        render_real_di_workforce(user)
+    elif selected_page == "🌍 Global Markets" and user.get("role") == "master":
+        render_global_markets_dashboard()
+    elif selected_page == "🎥 DI Conference" and user.get("role") == "master":
+        render_enhanced_conference_room(user)
+    elif selected_page == "DI Action Center" and user.get("role") == "master":
+        render_action_center(user)
+    elif selected_page == "DI Memory Box" and user.get("role") == "master":
+        render_di_memory_box(user)
+    elif selected_page == "Business Command Center" and user.get("role") == "master":
+        render_business_command_center(user)
+    elif selected_page == "Business Twin":
+        render_business_twin(st.session_state.processed_df, user)
+    elif selected_page == "Decision Ledger":
+        render_decision_ledger(user)
+    elif selected_page == "Opportunity Radar":
+        render_opportunity_page(user)
+    elif selected_page == "Workspace & Data":
+        render_workspace_data(user)
+    elif selected_page == "Formula Lab" and user.get("role") == "master":
+        render_formula_lab(user)
+    elif selected_page == "Charts" and user.get("role") == "master":
+        render_charts(user)
+    elif selected_page == "File Vault":
+        render_file_vault(user)
+    elif selected_page == "Export Center":
+        render_export_center(user)
+    elif selected_page == "Chibobec Loan Desk" and user.get("role") == "master":
+        render_chibobec_loan_desk(user)
+    elif selected_page == "Organization Admin Portal" and user.get("role") == "master":
+        render_organization_admin(user)
+    elif selected_page == "Overall Admin DI Portal" and user.get("role") == "master":
+        render_fixed_overall_admin_page(user)
+    else:
+        if user.get("role") == "master":
+            st.info("This command module is available from the master navigation.")
+        else:
+            render_user_dashboard(user)
+
+    # DI internal dock is deliberately private to the founder command surface.
+    if user.get("role") == "master":
+        render_persistent_di_dock(user)
+
+
 # Ensure the new roster and brain are present before the application starts.
 try:
     real_di_seed_workforce()
 except Exception as _real_di_boot_error:
     logger.exception("Real DI workforce bootstrap failed: %s", _real_di_boot_error)
-
-# =============================================================================
-# DACRE GLOBAL ENTERPRISE EXPANSION — 10,000+ LINE FEATURE REGISTRY
-# =============================================================================
-# This explicit registry provides a durable catalogue of global capabilities.
-# Records are configuration, not fabricated usage or financial claims.
-GLOBAL_ENTERPRISE_REGISTRY = [
-    {
-        "id": 1,
-        "domain": 'Global Operations',
-        "capability": 'workspace provisioning',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 2,
-        "domain": 'Global Operations',
-        "capability": 'regional dashboard',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 3,
-        "domain": 'Global Operations',
-        "capability": 'organization onboarding',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 4,
-        "domain": 'Global Operations',
-        "capability": 'executive brief generation',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 5,
-        "domain": 'Global Operations',
-        "capability": 'risk scoring',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 6,
-        "domain": 'Global Operations',
-        "capability": 'market monitoring',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 7,
-        "domain": 'Global Operations',
-        "capability": 'document intelligence',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 8,
-        "domain": 'Global Operations',
-        "capability": 'voice command routing',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 9,
-        "domain": 'Global Operations',
-        "capability": 'meeting transcription',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 10,
-        "domain": 'Global Operations',
-        "capability": 'AI research synthesis',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 11,
-        "domain": 'Global Operations',
-        "capability": 'data quality monitoring',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 12,
-        "domain": 'Global Operations',
-        "capability": 'workflow automation',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 13,
-        "domain": 'Global Operations',
-        "capability": 'customer health scoring',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 14,
-        "domain": 'Global Operations',
-        "capability": 'sales pipeline intelligence',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 15,
-        "domain": 'Global Operations',
-        "capability": 'campaign analytics',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 16,
-        "domain": 'Global Operations',
-        "capability": 'financial forecasting',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 17,
-        "domain": 'Global Operations',
-        "capability": 'compliance checklist',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 18,
-        "domain": 'Global Operations',
-        "capability": 'security audit trail',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 19,
-        "domain": 'Global Operations',
-        "capability": 'incident response',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 20,
-        "domain": 'Global Operations',
-        "capability": 'service health monitoring',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 21,
-        "domain": 'Global Operations',
-        "capability": 'API health monitoring',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 22,
-        "domain": 'Global Operations',
-        "capability": 'developer workspace',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 23,
-        "domain": 'Global Operations',
-        "capability": 'knowledge graph',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 24,
-        "domain": 'Global Operations',
-        "capability": 'memory governance',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 25,
-        "domain": 'Global Operations',
-        "capability": 'model routing',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 26,
-        "domain": 'Global Operations',
-        "capability": 'prompt evaluation',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 27,
-        "domain": 'Global Operations',
-        "capability": 'answer verification',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 28,
-        "domain": 'Global Operations',
-        "capability": 'source validation',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 29,
-        "domain": 'Global Operations',
-        "capability": 'citation tracking',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 30,
-        "domain": 'Global Operations',
-        "capability": 'multilingual assistant',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 31,
-        "domain": 'Global Operations',
-        "capability": 'regional time-zone support',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 32,
-        "domain": 'Global Operations',
-        "capability": 'currency conversion',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 33,
-        "domain": 'Global Operations',
-        "capability": 'localization workflow',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 34,
-        "domain": 'Global Operations',
-        "capability": 'partner management',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 35,
-        "domain": 'Global Operations',
-        "capability": 'contract tracking',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 36,
-        "domain": 'Global Operations',
-        "capability": 'invoice intelligence',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 37,
-        "domain": 'Global Operations',
-        "capability": 'subscription management',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 38,
-        "domain": 'Global Operations',
-        "capability": 'webstore catalogue',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 39,
-        "domain": 'Global Operations',
-        "capability": 'order workflow',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 40,
-        "domain": 'Global Operations',
-        "capability": 'customer support routing',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 41,
-        "domain": 'Global Operations',
-        "capability": 'file classification',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 42,
-        "domain": 'Global Operations',
-        "capability": 'secure export',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 43,
-        "domain": 'Global Operations',
-        "capability": 'report scheduling',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 44,
-        "domain": 'Global Operations',
-        "capability": 'executive notifications',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 45,
-        "domain": 'Global Operations',
-        "capability": 'CEO office briefing',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 46,
-        "domain": 'Global Operations',
-        "capability": 'DI workforce ranking',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 47,
-        "domain": 'Global Operations',
-        "capability": 'DI specialist handoff',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 48,
-        "domain": 'Global Operations',
-        "capability": 'persistent work continuity',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 49,
-        "domain": 'Global Operations',
-        "capability": 'browser voice intake',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 50,
-        "domain": 'Global Operations',
-        "capability": 'spoken response',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 51,
-        "domain": 'Global Operations',
-        "capability": 'avatar presentation',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 52,
-        "domain": 'Global Operations',
-        "capability": 'conference room orchestration',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 53,
-        "domain": 'Global Operations',
-        "capability": 'global event calendar',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 54,
-        "domain": 'Global Operations',
-        "capability": 'business continuity',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 55,
-        "domain": 'Global Operations',
-        "capability": 'backup verification',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 56,
-        "domain": 'Global Operations',
-        "capability": 'data retention policy',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 57,
-        "domain": 'Global Operations',
-        "capability": 'privacy request workflow',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 58,
-        "domain": 'Global Operations',
-        "capability": 'access review',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 59,
-        "domain": 'Global Operations',
-        "capability": 'least privilege review',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 60,
-        "domain": 'Global Operations',
-        "capability": 'password policy audit',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 61,
-        "domain": 'Global Operations',
-        "capability": 'secret configuration audit',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 62,
-        "domain": 'Global Operations',
-        "capability": 'deployment checklist',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 63,
-        "domain": 'Global Operations',
-        "capability": 'release readiness',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 64,
-        "domain": 'Global Operations',
-        "capability": 'test automation',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 65,
-        "domain": 'Global Operations',
-        "capability": 'performance monitoring',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 66,
-        "domain": 'Global Operations',
-        "capability": 'availability monitoring',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 67,
-        "domain": 'Global Operations',
-        "capability": 'latency monitoring',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 68,
-        "domain": 'Global Operations',
-        "capability": 'capacity planning',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 69,
-        "domain": 'Global Operations',
-        "capability": 'cost optimization',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 70,
-        "domain": 'Global Operations',
-        "capability": 'cloud resource inventory',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 71,
-        "domain": 'Global Operations',
-        "capability": 'database migration',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 72,
-        "domain": 'Global Operations',
-        "capability": 'schema repair',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 73,
-        "domain": 'Global Operations',
-        "capability": 'chat continuity',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 74,
-        "domain": 'Global Operations',
-        "capability": 'tenant isolation',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 75,
-        "domain": 'Global Operations',
-        "capability": 'company theming',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 76,
-        "domain": 'Global Operations',
-        "capability": 'website profile sync',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 77,
-        "domain": 'Global Operations',
-        "capability": 'public landing analytics',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 78,
-        "domain": 'Global Operations',
-        "capability": 'visitor analytics',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 79,
-        "domain": 'Global Operations',
-        "capability": 'referral analytics',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 80,
-        "domain": 'Global Operations',
-        "capability": 'content planning',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 81,
-        "domain": 'Global Operations',
-        "capability": 'brand governance',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 82,
-        "domain": 'Global Operations',
-        "capability": 'knowledge publishing',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 83,
-        "domain": 'AI Intelligence',
-        "capability": 'workspace provisioning',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 84,
-        "domain": 'AI Intelligence',
-        "capability": 'regional dashboard',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 85,
-        "domain": 'AI Intelligence',
-        "capability": 'organization onboarding',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 86,
-        "domain": 'AI Intelligence',
-        "capability": 'executive brief generation',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 87,
-        "domain": 'AI Intelligence',
-        "capability": 'risk scoring',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 88,
-        "domain": 'AI Intelligence',
-        "capability": 'market monitoring',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 89,
-        "domain": 'AI Intelligence',
-        "capability": 'document intelligence',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 90,
-        "domain": 'AI Intelligence',
-        "capability": 'voice command routing',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 91,
-        "domain": 'AI Intelligence',
-        "capability": 'meeting transcription',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 92,
-        "domain": 'AI Intelligence',
-        "capability": 'AI research synthesis',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 93,
-        "domain": 'AI Intelligence',
-        "capability": 'data quality monitoring',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 94,
-        "domain": 'AI Intelligence',
-        "capability": 'workflow automation',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 95,
-        "domain": 'AI Intelligence',
-        "capability": 'customer health scoring',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 96,
-        "domain": 'AI Intelligence',
-        "capability": 'sales pipeline intelligence',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 97,
-        "domain": 'AI Intelligence',
-        "capability": 'campaign analytics',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 98,
-        "domain": 'AI Intelligence',
-        "capability": 'financial forecasting',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 99,
-        "domain": 'AI Intelligence',
-        "capability": 'compliance checklist',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 100,
-        "domain": 'AI Intelligence',
-        "capability": 'security audit trail',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 101,
-        "domain": 'AI Intelligence',
-        "capability": 'incident response',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 102,
-        "domain": 'AI Intelligence',
-        "capability": 'service health monitoring',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 103,
-        "domain": 'AI Intelligence',
-        "capability": 'API health monitoring',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 104,
-        "domain": 'AI Intelligence',
-        "capability": 'developer workspace',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 105,
-        "domain": 'AI Intelligence',
-        "capability": 'knowledge graph',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 106,
-        "domain": 'AI Intelligence',
-        "capability": 'memory governance',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 107,
-        "domain": 'AI Intelligence',
-        "capability": 'model routing',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 108,
-        "domain": 'AI Intelligence',
-        "capability": 'prompt evaluation',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 109,
-        "domain": 'AI Intelligence',
-        "capability": 'answer verification',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 110,
-        "domain": 'AI Intelligence',
-        "capability": 'source validation',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 111,
-        "domain": 'AI Intelligence',
-        "capability": 'citation tracking',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 112,
-        "domain": 'AI Intelligence',
-        "capability": 'multilingual assistant',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 113,
-        "domain": 'AI Intelligence',
-        "capability": 'regional time-zone support',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 114,
-        "domain": 'AI Intelligence',
-        "capability": 'currency conversion',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 115,
-        "domain": 'AI Intelligence',
-        "capability": 'localization workflow',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 116,
-        "domain": 'AI Intelligence',
-        "capability": 'partner management',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 117,
-        "domain": 'AI Intelligence',
-        "capability": 'contract tracking',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 118,
-        "domain": 'AI Intelligence',
-        "capability": 'invoice intelligence',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 119,
-        "domain": 'AI Intelligence',
-        "capability": 'subscription management',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 120,
-        "domain": 'AI Intelligence',
-        "capability": 'webstore catalogue',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 121,
-        "domain": 'AI Intelligence',
-        "capability": 'order workflow',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 122,
-        "domain": 'AI Intelligence',
-        "capability": 'customer support routing',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 123,
-        "domain": 'AI Intelligence',
-        "capability": 'file classification',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 124,
-        "domain": 'AI Intelligence',
-        "capability": 'secure export',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 125,
-        "domain": 'AI Intelligence',
-        "capability": 'report scheduling',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 126,
-        "domain": 'AI Intelligence',
-        "capability": 'executive notifications',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 127,
-        "domain": 'AI Intelligence',
-        "capability": 'CEO office briefing',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 128,
-        "domain": 'AI Intelligence',
-        "capability": 'DI workforce ranking',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 129,
-        "domain": 'AI Intelligence',
-        "capability": 'DI specialist handoff',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 130,
-        "domain": 'AI Intelligence',
-        "capability": 'persistent work continuity',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 131,
-        "domain": 'AI Intelligence',
-        "capability": 'browser voice intake',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 132,
-        "domain": 'AI Intelligence',
-        "capability": 'spoken response',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 133,
-        "domain": 'AI Intelligence',
-        "capability": 'avatar presentation',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 134,
-        "domain": 'AI Intelligence',
-        "capability": 'conference room orchestration',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 135,
-        "domain": 'AI Intelligence',
-        "capability": 'global event calendar',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 136,
-        "domain": 'AI Intelligence',
-        "capability": 'business continuity',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 137,
-        "domain": 'AI Intelligence',
-        "capability": 'backup verification',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 138,
-        "domain": 'AI Intelligence',
-        "capability": 'data retention policy',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 139,
-        "domain": 'AI Intelligence',
-        "capability": 'privacy request workflow',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 140,
-        "domain": 'AI Intelligence',
-        "capability": 'access review',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 141,
-        "domain": 'AI Intelligence',
-        "capability": 'least privilege review',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 142,
-        "domain": 'AI Intelligence',
-        "capability": 'password policy audit',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 143,
-        "domain": 'AI Intelligence',
-        "capability": 'secret configuration audit',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 144,
-        "domain": 'AI Intelligence',
-        "capability": 'deployment checklist',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 145,
-        "domain": 'AI Intelligence',
-        "capability": 'release readiness',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 146,
-        "domain": 'AI Intelligence',
-        "capability": 'test automation',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 147,
-        "domain": 'AI Intelligence',
-        "capability": 'performance monitoring',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 148,
-        "domain": 'AI Intelligence',
-        "capability": 'availability monitoring',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 149,
-        "domain": 'AI Intelligence',
-        "capability": 'latency monitoring',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 150,
-        "domain": 'AI Intelligence',
-        "capability": 'capacity planning',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 151,
-        "domain": 'AI Intelligence',
-        "capability": 'cost optimization',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 152,
-        "domain": 'AI Intelligence',
-        "capability": 'cloud resource inventory',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 153,
-        "domain": 'AI Intelligence',
-        "capability": 'database migration',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 154,
-        "domain": 'AI Intelligence',
-        "capability": 'schema repair',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 155,
-        "domain": 'AI Intelligence',
-        "capability": 'chat continuity',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 156,
-        "domain": 'AI Intelligence',
-        "capability": 'tenant isolation',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 157,
-        "domain": 'AI Intelligence',
-        "capability": 'company theming',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 158,
-        "domain": 'AI Intelligence',
-        "capability": 'website profile sync',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 159,
-        "domain": 'AI Intelligence',
-        "capability": 'public landing analytics',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 160,
-        "domain": 'AI Intelligence',
-        "capability": 'visitor analytics',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 161,
-        "domain": 'AI Intelligence',
-        "capability": 'referral analytics',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 162,
-        "domain": 'AI Intelligence',
-        "capability": 'content planning',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 163,
-        "domain": 'AI Intelligence',
-        "capability": 'brand governance',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 164,
-        "domain": 'AI Intelligence',
-        "capability": 'knowledge publishing',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 165,
-        "domain": 'Data Intelligence',
-        "capability": 'workspace provisioning',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 166,
-        "domain": 'Data Intelligence',
-        "capability": 'regional dashboard',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 167,
-        "domain": 'Data Intelligence',
-        "capability": 'organization onboarding',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 168,
-        "domain": 'Data Intelligence',
-        "capability": 'executive brief generation',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 169,
-        "domain": 'Data Intelligence',
-        "capability": 'risk scoring',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 170,
-        "domain": 'Data Intelligence',
-        "capability": 'market monitoring',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 171,
-        "domain": 'Data Intelligence',
-        "capability": 'document intelligence',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 172,
-        "domain": 'Data Intelligence',
-        "capability": 'voice command routing',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 173,
-        "domain": 'Data Intelligence',
-        "capability": 'meeting transcription',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 174,
-        "domain": 'Data Intelligence',
-        "capability": 'AI research synthesis',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 175,
-        "domain": 'Data Intelligence',
-        "capability": 'data quality monitoring',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 176,
-        "domain": 'Data Intelligence',
-        "capability": 'workflow automation',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 177,
-        "domain": 'Data Intelligence',
-        "capability": 'customer health scoring',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 178,
-        "domain": 'Data Intelligence',
-        "capability": 'sales pipeline intelligence',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 179,
-        "domain": 'Data Intelligence',
-        "capability": 'campaign analytics',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 180,
-        "domain": 'Data Intelligence',
-        "capability": 'financial forecasting',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 181,
-        "domain": 'Data Intelligence',
-        "capability": 'compliance checklist',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 182,
-        "domain": 'Data Intelligence',
-        "capability": 'security audit trail',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 183,
-        "domain": 'Data Intelligence',
-        "capability": 'incident response',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 184,
-        "domain": 'Data Intelligence',
-        "capability": 'service health monitoring',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 185,
-        "domain": 'Data Intelligence',
-        "capability": 'API health monitoring',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 186,
-        "domain": 'Data Intelligence',
-        "capability": 'developer workspace',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 187,
-        "domain": 'Data Intelligence',
-        "capability": 'knowledge graph',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 188,
-        "domain": 'Data Intelligence',
-        "capability": 'memory governance',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 189,
-        "domain": 'Data Intelligence',
-        "capability": 'model routing',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 190,
-        "domain": 'Data Intelligence',
-        "capability": 'prompt evaluation',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 191,
-        "domain": 'Data Intelligence',
-        "capability": 'answer verification',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 192,
-        "domain": 'Data Intelligence',
-        "capability": 'source validation',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 193,
-        "domain": 'Data Intelligence',
-        "capability": 'citation tracking',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 194,
-        "domain": 'Data Intelligence',
-        "capability": 'multilingual assistant',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 195,
-        "domain": 'Data Intelligence',
-        "capability": 'regional time-zone support',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 196,
-        "domain": 'Data Intelligence',
-        "capability": 'currency conversion',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 197,
-        "domain": 'Data Intelligence',
-        "capability": 'localization workflow',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 198,
-        "domain": 'Data Intelligence',
-        "capability": 'partner management',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 199,
-        "domain": 'Data Intelligence',
-        "capability": 'contract tracking',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 200,
-        "domain": 'Data Intelligence',
-        "capability": 'invoice intelligence',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 201,
-        "domain": 'Data Intelligence',
-        "capability": 'subscription management',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 202,
-        "domain": 'Data Intelligence',
-        "capability": 'webstore catalogue',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 203,
-        "domain": 'Data Intelligence',
-        "capability": 'order workflow',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 204,
-        "domain": 'Data Intelligence',
-        "capability": 'customer support routing',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 205,
-        "domain": 'Data Intelligence',
-        "capability": 'file classification',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 206,
-        "domain": 'Data Intelligence',
-        "capability": 'secure export',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 207,
-        "domain": 'Data Intelligence',
-        "capability": 'report scheduling',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 208,
-        "domain": 'Data Intelligence',
-        "capability": 'executive notifications',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 209,
-        "domain": 'Data Intelligence',
-        "capability": 'CEO office briefing',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 210,
-        "domain": 'Data Intelligence',
-        "capability": 'DI workforce ranking',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 211,
-        "domain": 'Data Intelligence',
-        "capability": 'DI specialist handoff',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 212,
-        "domain": 'Data Intelligence',
-        "capability": 'persistent work continuity',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 213,
-        "domain": 'Data Intelligence',
-        "capability": 'browser voice intake',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 214,
-        "domain": 'Data Intelligence',
-        "capability": 'spoken response',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 215,
-        "domain": 'Data Intelligence',
-        "capability": 'avatar presentation',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 216,
-        "domain": 'Data Intelligence',
-        "capability": 'conference room orchestration',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 217,
-        "domain": 'Data Intelligence',
-        "capability": 'global event calendar',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 218,
-        "domain": 'Data Intelligence',
-        "capability": 'business continuity',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 219,
-        "domain": 'Data Intelligence',
-        "capability": 'backup verification',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 220,
-        "domain": 'Data Intelligence',
-        "capability": 'data retention policy',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 221,
-        "domain": 'Data Intelligence',
-        "capability": 'privacy request workflow',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 222,
-        "domain": 'Data Intelligence',
-        "capability": 'access review',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 223,
-        "domain": 'Data Intelligence',
-        "capability": 'least privilege review',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 224,
-        "domain": 'Data Intelligence',
-        "capability": 'password policy audit',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 225,
-        "domain": 'Data Intelligence',
-        "capability": 'secret configuration audit',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 226,
-        "domain": 'Data Intelligence',
-        "capability": 'deployment checklist',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 227,
-        "domain": 'Data Intelligence',
-        "capability": 'release readiness',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 228,
-        "domain": 'Data Intelligence',
-        "capability": 'test automation',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 229,
-        "domain": 'Data Intelligence',
-        "capability": 'performance monitoring',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 230,
-        "domain": 'Data Intelligence',
-        "capability": 'availability monitoring',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 231,
-        "domain": 'Data Intelligence',
-        "capability": 'latency monitoring',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 232,
-        "domain": 'Data Intelligence',
-        "capability": 'capacity planning',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 233,
-        "domain": 'Data Intelligence',
-        "capability": 'cost optimization',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 234,
-        "domain": 'Data Intelligence',
-        "capability": 'cloud resource inventory',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 235,
-        "domain": 'Data Intelligence',
-        "capability": 'database migration',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 236,
-        "domain": 'Data Intelligence',
-        "capability": 'schema repair',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 237,
-        "domain": 'Data Intelligence',
-        "capability": 'chat continuity',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 238,
-        "domain": 'Data Intelligence',
-        "capability": 'tenant isolation',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 239,
-        "domain": 'Data Intelligence',
-        "capability": 'company theming',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 240,
-        "domain": 'Data Intelligence',
-        "capability": 'website profile sync',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 241,
-        "domain": 'Data Intelligence',
-        "capability": 'public landing analytics',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 242,
-        "domain": 'Data Intelligence',
-        "capability": 'visitor analytics',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 243,
-        "domain": 'Data Intelligence',
-        "capability": 'referral analytics',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 244,
-        "domain": 'Data Intelligence',
-        "capability": 'content planning',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 245,
-        "domain": 'Data Intelligence',
-        "capability": 'brand governance',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 246,
-        "domain": 'Data Intelligence',
-        "capability": 'knowledge publishing',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 247,
-        "domain": 'Cybersecurity',
-        "capability": 'workspace provisioning',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 248,
-        "domain": 'Cybersecurity',
-        "capability": 'regional dashboard',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 249,
-        "domain": 'Cybersecurity',
-        "capability": 'organization onboarding',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 250,
-        "domain": 'Cybersecurity',
-        "capability": 'executive brief generation',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 251,
-        "domain": 'Cybersecurity',
-        "capability": 'risk scoring',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 252,
-        "domain": 'Cybersecurity',
-        "capability": 'market monitoring',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 253,
-        "domain": 'Cybersecurity',
-        "capability": 'document intelligence',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 254,
-        "domain": 'Cybersecurity',
-        "capability": 'voice command routing',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 255,
-        "domain": 'Cybersecurity',
-        "capability": 'meeting transcription',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 256,
-        "domain": 'Cybersecurity',
-        "capability": 'AI research synthesis',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 257,
-        "domain": 'Cybersecurity',
-        "capability": 'data quality monitoring',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 258,
-        "domain": 'Cybersecurity',
-        "capability": 'workflow automation',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 259,
-        "domain": 'Cybersecurity',
-        "capability": 'customer health scoring',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 260,
-        "domain": 'Cybersecurity',
-        "capability": 'sales pipeline intelligence',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 261,
-        "domain": 'Cybersecurity',
-        "capability": 'campaign analytics',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 262,
-        "domain": 'Cybersecurity',
-        "capability": 'financial forecasting',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 263,
-        "domain": 'Cybersecurity',
-        "capability": 'compliance checklist',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 264,
-        "domain": 'Cybersecurity',
-        "capability": 'security audit trail',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 265,
-        "domain": 'Cybersecurity',
-        "capability": 'incident response',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 266,
-        "domain": 'Cybersecurity',
-        "capability": 'service health monitoring',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 267,
-        "domain": 'Cybersecurity',
-        "capability": 'API health monitoring',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 268,
-        "domain": 'Cybersecurity',
-        "capability": 'developer workspace',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 269,
-        "domain": 'Cybersecurity',
-        "capability": 'knowledge graph',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 270,
-        "domain": 'Cybersecurity',
-        "capability": 'memory governance',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 271,
-        "domain": 'Cybersecurity',
-        "capability": 'model routing',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 272,
-        "domain": 'Cybersecurity',
-        "capability": 'prompt evaluation',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 273,
-        "domain": 'Cybersecurity',
-        "capability": 'answer verification',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 274,
-        "domain": 'Cybersecurity',
-        "capability": 'source validation',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 275,
-        "domain": 'Cybersecurity',
-        "capability": 'citation tracking',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 276,
-        "domain": 'Cybersecurity',
-        "capability": 'multilingual assistant',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 277,
-        "domain": 'Cybersecurity',
-        "capability": 'regional time-zone support',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 278,
-        "domain": 'Cybersecurity',
-        "capability": 'currency conversion',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 279,
-        "domain": 'Cybersecurity',
-        "capability": 'localization workflow',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 280,
-        "domain": 'Cybersecurity',
-        "capability": 'partner management',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 281,
-        "domain": 'Cybersecurity',
-        "capability": 'contract tracking',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 282,
-        "domain": 'Cybersecurity',
-        "capability": 'invoice intelligence',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 283,
-        "domain": 'Cybersecurity',
-        "capability": 'subscription management',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 284,
-        "domain": 'Cybersecurity',
-        "capability": 'webstore catalogue',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 285,
-        "domain": 'Cybersecurity',
-        "capability": 'order workflow',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 286,
-        "domain": 'Cybersecurity',
-        "capability": 'customer support routing',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 287,
-        "domain": 'Cybersecurity',
-        "capability": 'file classification',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 288,
-        "domain": 'Cybersecurity',
-        "capability": 'secure export',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 289,
-        "domain": 'Cybersecurity',
-        "capability": 'report scheduling',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 290,
-        "domain": 'Cybersecurity',
-        "capability": 'executive notifications',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 291,
-        "domain": 'Cybersecurity',
-        "capability": 'CEO office briefing',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 292,
-        "domain": 'Cybersecurity',
-        "capability": 'DI workforce ranking',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 293,
-        "domain": 'Cybersecurity',
-        "capability": 'DI specialist handoff',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 294,
-        "domain": 'Cybersecurity',
-        "capability": 'persistent work continuity',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 295,
-        "domain": 'Cybersecurity',
-        "capability": 'browser voice intake',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 296,
-        "domain": 'Cybersecurity',
-        "capability": 'spoken response',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 297,
-        "domain": 'Cybersecurity',
-        "capability": 'avatar presentation',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 298,
-        "domain": 'Cybersecurity',
-        "capability": 'conference room orchestration',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 299,
-        "domain": 'Cybersecurity',
-        "capability": 'global event calendar',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 300,
-        "domain": 'Cybersecurity',
-        "capability": 'business continuity',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 301,
-        "domain": 'Cybersecurity',
-        "capability": 'backup verification',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 302,
-        "domain": 'Cybersecurity',
-        "capability": 'data retention policy',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 303,
-        "domain": 'Cybersecurity',
-        "capability": 'privacy request workflow',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 304,
-        "domain": 'Cybersecurity',
-        "capability": 'access review',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 305,
-        "domain": 'Cybersecurity',
-        "capability": 'least privilege review',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 306,
-        "domain": 'Cybersecurity',
-        "capability": 'password policy audit',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 307,
-        "domain": 'Cybersecurity',
-        "capability": 'secret configuration audit',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 308,
-        "domain": 'Cybersecurity',
-        "capability": 'deployment checklist',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 309,
-        "domain": 'Cybersecurity',
-        "capability": 'release readiness',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 310,
-        "domain": 'Cybersecurity',
-        "capability": 'test automation',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 311,
-        "domain": 'Cybersecurity',
-        "capability": 'performance monitoring',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 312,
-        "domain": 'Cybersecurity',
-        "capability": 'availability monitoring',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 313,
-        "domain": 'Cybersecurity',
-        "capability": 'latency monitoring',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 314,
-        "domain": 'Cybersecurity',
-        "capability": 'capacity planning',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 315,
-        "domain": 'Cybersecurity',
-        "capability": 'cost optimization',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 316,
-        "domain": 'Cybersecurity',
-        "capability": 'cloud resource inventory',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 317,
-        "domain": 'Cybersecurity',
-        "capability": 'database migration',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 318,
-        "domain": 'Cybersecurity',
-        "capability": 'schema repair',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 319,
-        "domain": 'Cybersecurity',
-        "capability": 'chat continuity',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 320,
-        "domain": 'Cybersecurity',
-        "capability": 'tenant isolation',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 321,
-        "domain": 'Cybersecurity',
-        "capability": 'company theming',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 322,
-        "domain": 'Cybersecurity',
-        "capability": 'website profile sync',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 323,
-        "domain": 'Cybersecurity',
-        "capability": 'public landing analytics',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 324,
-        "domain": 'Cybersecurity',
-        "capability": 'visitor analytics',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 325,
-        "domain": 'Cybersecurity',
-        "capability": 'referral analytics',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 326,
-        "domain": 'Cybersecurity',
-        "capability": 'content planning',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 327,
-        "domain": 'Cybersecurity',
-        "capability": 'brand governance',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 328,
-        "domain": 'Cybersecurity',
-        "capability": 'knowledge publishing',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 329,
-        "domain": 'Finance',
-        "capability": 'workspace provisioning',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 330,
-        "domain": 'Finance',
-        "capability": 'regional dashboard',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 331,
-        "domain": 'Finance',
-        "capability": 'organization onboarding',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 332,
-        "domain": 'Finance',
-        "capability": 'executive brief generation',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 333,
-        "domain": 'Finance',
-        "capability": 'risk scoring',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 334,
-        "domain": 'Finance',
-        "capability": 'market monitoring',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 335,
-        "domain": 'Finance',
-        "capability": 'document intelligence',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 336,
-        "domain": 'Finance',
-        "capability": 'voice command routing',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 337,
-        "domain": 'Finance',
-        "capability": 'meeting transcription',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 338,
-        "domain": 'Finance',
-        "capability": 'AI research synthesis',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 339,
-        "domain": 'Finance',
-        "capability": 'data quality monitoring',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 340,
-        "domain": 'Finance',
-        "capability": 'workflow automation',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 341,
-        "domain": 'Finance',
-        "capability": 'customer health scoring',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 342,
-        "domain": 'Finance',
-        "capability": 'sales pipeline intelligence',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 343,
-        "domain": 'Finance',
-        "capability": 'campaign analytics',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 344,
-        "domain": 'Finance',
-        "capability": 'financial forecasting',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 345,
-        "domain": 'Finance',
-        "capability": 'compliance checklist',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 346,
-        "domain": 'Finance',
-        "capability": 'security audit trail',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 347,
-        "domain": 'Finance',
-        "capability": 'incident response',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 348,
-        "domain": 'Finance',
-        "capability": 'service health monitoring',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 349,
-        "domain": 'Finance',
-        "capability": 'API health monitoring',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 350,
-        "domain": 'Finance',
-        "capability": 'developer workspace',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 351,
-        "domain": 'Finance',
-        "capability": 'knowledge graph',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 352,
-        "domain": 'Finance',
-        "capability": 'memory governance',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 353,
-        "domain": 'Finance',
-        "capability": 'model routing',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 354,
-        "domain": 'Finance',
-        "capability": 'prompt evaluation',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 355,
-        "domain": 'Finance',
-        "capability": 'answer verification',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 356,
-        "domain": 'Finance',
-        "capability": 'source validation',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 357,
-        "domain": 'Finance',
-        "capability": 'citation tracking',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 358,
-        "domain": 'Finance',
-        "capability": 'multilingual assistant',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 359,
-        "domain": 'Finance',
-        "capability": 'regional time-zone support',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 360,
-        "domain": 'Finance',
-        "capability": 'currency conversion',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 361,
-        "domain": 'Finance',
-        "capability": 'localization workflow',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 362,
-        "domain": 'Finance',
-        "capability": 'partner management',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 363,
-        "domain": 'Finance',
-        "capability": 'contract tracking',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 364,
-        "domain": 'Finance',
-        "capability": 'invoice intelligence',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 365,
-        "domain": 'Finance',
-        "capability": 'subscription management',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 366,
-        "domain": 'Finance',
-        "capability": 'webstore catalogue',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 367,
-        "domain": 'Finance',
-        "capability": 'order workflow',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 368,
-        "domain": 'Finance',
-        "capability": 'customer support routing',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 369,
-        "domain": 'Finance',
-        "capability": 'file classification',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 370,
-        "domain": 'Finance',
-        "capability": 'secure export',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 371,
-        "domain": 'Finance',
-        "capability": 'report scheduling',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 372,
-        "domain": 'Finance',
-        "capability": 'executive notifications',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 373,
-        "domain": 'Finance',
-        "capability": 'CEO office briefing',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 374,
-        "domain": 'Finance',
-        "capability": 'DI workforce ranking',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 375,
-        "domain": 'Finance',
-        "capability": 'DI specialist handoff',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 376,
-        "domain": 'Finance',
-        "capability": 'persistent work continuity',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 377,
-        "domain": 'Finance',
-        "capability": 'browser voice intake',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 378,
-        "domain": 'Finance',
-        "capability": 'spoken response',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 379,
-        "domain": 'Finance',
-        "capability": 'avatar presentation',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 380,
-        "domain": 'Finance',
-        "capability": 'conference room orchestration',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 381,
-        "domain": 'Finance',
-        "capability": 'global event calendar',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 382,
-        "domain": 'Finance',
-        "capability": 'business continuity',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 383,
-        "domain": 'Finance',
-        "capability": 'backup verification',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 384,
-        "domain": 'Finance',
-        "capability": 'data retention policy',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 385,
-        "domain": 'Finance',
-        "capability": 'privacy request workflow',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 386,
-        "domain": 'Finance',
-        "capability": 'access review',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 387,
-        "domain": 'Finance',
-        "capability": 'least privilege review',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 388,
-        "domain": 'Finance',
-        "capability": 'password policy audit',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 389,
-        "domain": 'Finance',
-        "capability": 'secret configuration audit',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 390,
-        "domain": 'Finance',
-        "capability": 'deployment checklist',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 391,
-        "domain": 'Finance',
-        "capability": 'release readiness',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 392,
-        "domain": 'Finance',
-        "capability": 'test automation',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 393,
-        "domain": 'Finance',
-        "capability": 'performance monitoring',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 394,
-        "domain": 'Finance',
-        "capability": 'availability monitoring',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 395,
-        "domain": 'Finance',
-        "capability": 'latency monitoring',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 396,
-        "domain": 'Finance',
-        "capability": 'capacity planning',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 397,
-        "domain": 'Finance',
-        "capability": 'cost optimization',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 398,
-        "domain": 'Finance',
-        "capability": 'cloud resource inventory',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 399,
-        "domain": 'Finance',
-        "capability": 'database migration',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 400,
-        "domain": 'Finance',
-        "capability": 'schema repair',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 401,
-        "domain": 'Finance',
-        "capability": 'chat continuity',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 402,
-        "domain": 'Finance',
-        "capability": 'tenant isolation',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 403,
-        "domain": 'Finance',
-        "capability": 'company theming',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 404,
-        "domain": 'Finance',
-        "capability": 'website profile sync',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 405,
-        "domain": 'Finance',
-        "capability": 'public landing analytics',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 406,
-        "domain": 'Finance',
-        "capability": 'visitor analytics',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 407,
-        "domain": 'Finance',
-        "capability": 'referral analytics',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 408,
-        "domain": 'Finance',
-        "capability": 'content planning',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 409,
-        "domain": 'Finance',
-        "capability": 'brand governance',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 410,
-        "domain": 'Finance',
-        "capability": 'knowledge publishing',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 411,
-        "domain": 'Sales',
-        "capability": 'workspace provisioning',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 412,
-        "domain": 'Sales',
-        "capability": 'regional dashboard',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 413,
-        "domain": 'Sales',
-        "capability": 'organization onboarding',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 414,
-        "domain": 'Sales',
-        "capability": 'executive brief generation',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 415,
-        "domain": 'Sales',
-        "capability": 'risk scoring',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 416,
-        "domain": 'Sales',
-        "capability": 'market monitoring',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 417,
-        "domain": 'Sales',
-        "capability": 'document intelligence',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 418,
-        "domain": 'Sales',
-        "capability": 'voice command routing',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 419,
-        "domain": 'Sales',
-        "capability": 'meeting transcription',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 420,
-        "domain": 'Sales',
-        "capability": 'AI research synthesis',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 421,
-        "domain": 'Sales',
-        "capability": 'data quality monitoring',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 422,
-        "domain": 'Sales',
-        "capability": 'workflow automation',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 423,
-        "domain": 'Sales',
-        "capability": 'customer health scoring',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 424,
-        "domain": 'Sales',
-        "capability": 'sales pipeline intelligence',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 425,
-        "domain": 'Sales',
-        "capability": 'campaign analytics',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 426,
-        "domain": 'Sales',
-        "capability": 'financial forecasting',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 427,
-        "domain": 'Sales',
-        "capability": 'compliance checklist',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 428,
-        "domain": 'Sales',
-        "capability": 'security audit trail',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 429,
-        "domain": 'Sales',
-        "capability": 'incident response',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 430,
-        "domain": 'Sales',
-        "capability": 'service health monitoring',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 431,
-        "domain": 'Sales',
-        "capability": 'API health monitoring',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 432,
-        "domain": 'Sales',
-        "capability": 'developer workspace',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 433,
-        "domain": 'Sales',
-        "capability": 'knowledge graph',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 434,
-        "domain": 'Sales',
-        "capability": 'memory governance',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 435,
-        "domain": 'Sales',
-        "capability": 'model routing',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 436,
-        "domain": 'Sales',
-        "capability": 'prompt evaluation',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 437,
-        "domain": 'Sales',
-        "capability": 'answer verification',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 438,
-        "domain": 'Sales',
-        "capability": 'source validation',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 439,
-        "domain": 'Sales',
-        "capability": 'citation tracking',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 440,
-        "domain": 'Sales',
-        "capability": 'multilingual assistant',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 441,
-        "domain": 'Sales',
-        "capability": 'regional time-zone support',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 442,
-        "domain": 'Sales',
-        "capability": 'currency conversion',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 443,
-        "domain": 'Sales',
-        "capability": 'localization workflow',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 444,
-        "domain": 'Sales',
-        "capability": 'partner management',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 445,
-        "domain": 'Sales',
-        "capability": 'contract tracking',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 446,
-        "domain": 'Sales',
-        "capability": 'invoice intelligence',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 447,
-        "domain": 'Sales',
-        "capability": 'subscription management',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 448,
-        "domain": 'Sales',
-        "capability": 'webstore catalogue',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 449,
-        "domain": 'Sales',
-        "capability": 'order workflow',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 450,
-        "domain": 'Sales',
-        "capability": 'customer support routing',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 451,
-        "domain": 'Sales',
-        "capability": 'file classification',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 452,
-        "domain": 'Sales',
-        "capability": 'secure export',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 453,
-        "domain": 'Sales',
-        "capability": 'report scheduling',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 454,
-        "domain": 'Sales',
-        "capability": 'executive notifications',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 455,
-        "domain": 'Sales',
-        "capability": 'CEO office briefing',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 456,
-        "domain": 'Sales',
-        "capability": 'DI workforce ranking',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 457,
-        "domain": 'Sales',
-        "capability": 'DI specialist handoff',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 458,
-        "domain": 'Sales',
-        "capability": 'persistent work continuity',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 459,
-        "domain": 'Sales',
-        "capability": 'browser voice intake',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 460,
-        "domain": 'Sales',
-        "capability": 'spoken response',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 461,
-        "domain": 'Sales',
-        "capability": 'avatar presentation',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 462,
-        "domain": 'Sales',
-        "capability": 'conference room orchestration',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 463,
-        "domain": 'Sales',
-        "capability": 'global event calendar',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 464,
-        "domain": 'Sales',
-        "capability": 'business continuity',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 465,
-        "domain": 'Sales',
-        "capability": 'backup verification',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 466,
-        "domain": 'Sales',
-        "capability": 'data retention policy',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 467,
-        "domain": 'Sales',
-        "capability": 'privacy request workflow',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 468,
-        "domain": 'Sales',
-        "capability": 'access review',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 469,
-        "domain": 'Sales',
-        "capability": 'least privilege review',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 470,
-        "domain": 'Sales',
-        "capability": 'password policy audit',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 471,
-        "domain": 'Sales',
-        "capability": 'secret configuration audit',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 472,
-        "domain": 'Sales',
-        "capability": 'deployment checklist',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 473,
-        "domain": 'Sales',
-        "capability": 'release readiness',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 474,
-        "domain": 'Sales',
-        "capability": 'test automation',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 475,
-        "domain": 'Sales',
-        "capability": 'performance monitoring',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 476,
-        "domain": 'Sales',
-        "capability": 'availability monitoring',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 477,
-        "domain": 'Sales',
-        "capability": 'latency monitoring',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 478,
-        "domain": 'Sales',
-        "capability": 'capacity planning',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 479,
-        "domain": 'Sales',
-        "capability": 'cost optimization',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 480,
-        "domain": 'Sales',
-        "capability": 'cloud resource inventory',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 481,
-        "domain": 'Sales',
-        "capability": 'database migration',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 482,
-        "domain": 'Sales',
-        "capability": 'schema repair',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 483,
-        "domain": 'Sales',
-        "capability": 'chat continuity',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 484,
-        "domain": 'Sales',
-        "capability": 'tenant isolation',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 485,
-        "domain": 'Sales',
-        "capability": 'company theming',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 486,
-        "domain": 'Sales',
-        "capability": 'website profile sync',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 487,
-        "domain": 'Sales',
-        "capability": 'public landing analytics',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 488,
-        "domain": 'Sales',
-        "capability": 'visitor analytics',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 489,
-        "domain": 'Sales',
-        "capability": 'referral analytics',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 490,
-        "domain": 'Sales',
-        "capability": 'content planning',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 491,
-        "domain": 'Sales',
-        "capability": 'brand governance',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 492,
-        "domain": 'Sales',
-        "capability": 'knowledge publishing',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 493,
-        "domain": 'Marketing',
-        "capability": 'workspace provisioning',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 494,
-        "domain": 'Marketing',
-        "capability": 'regional dashboard',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 495,
-        "domain": 'Marketing',
-        "capability": 'organization onboarding',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 496,
-        "domain": 'Marketing',
-        "capability": 'executive brief generation',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 497,
-        "domain": 'Marketing',
-        "capability": 'risk scoring',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 498,
-        "domain": 'Marketing',
-        "capability": 'market monitoring',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 499,
-        "domain": 'Marketing',
-        "capability": 'document intelligence',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 500,
-        "domain": 'Marketing',
-        "capability": 'voice command routing',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 501,
-        "domain": 'Marketing',
-        "capability": 'meeting transcription',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 502,
-        "domain": 'Marketing',
-        "capability": 'AI research synthesis',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 503,
-        "domain": 'Marketing',
-        "capability": 'data quality monitoring',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 504,
-        "domain": 'Marketing',
-        "capability": 'workflow automation',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 505,
-        "domain": 'Marketing',
-        "capability": 'customer health scoring',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 506,
-        "domain": 'Marketing',
-        "capability": 'sales pipeline intelligence',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 507,
-        "domain": 'Marketing',
-        "capability": 'campaign analytics',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 508,
-        "domain": 'Marketing',
-        "capability": 'financial forecasting',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 509,
-        "domain": 'Marketing',
-        "capability": 'compliance checklist',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 510,
-        "domain": 'Marketing',
-        "capability": 'security audit trail',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 511,
-        "domain": 'Marketing',
-        "capability": 'incident response',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 512,
-        "domain": 'Marketing',
-        "capability": 'service health monitoring',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 513,
-        "domain": 'Marketing',
-        "capability": 'API health monitoring',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 514,
-        "domain": 'Marketing',
-        "capability": 'developer workspace',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 515,
-        "domain": 'Marketing',
-        "capability": 'knowledge graph',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 516,
-        "domain": 'Marketing',
-        "capability": 'memory governance',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 517,
-        "domain": 'Marketing',
-        "capability": 'model routing',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 518,
-        "domain": 'Marketing',
-        "capability": 'prompt evaluation',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 519,
-        "domain": 'Marketing',
-        "capability": 'answer verification',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 520,
-        "domain": 'Marketing',
-        "capability": 'source validation',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 521,
-        "domain": 'Marketing',
-        "capability": 'citation tracking',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 522,
-        "domain": 'Marketing',
-        "capability": 'multilingual assistant',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 523,
-        "domain": 'Marketing',
-        "capability": 'regional time-zone support',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 524,
-        "domain": 'Marketing',
-        "capability": 'currency conversion',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 525,
-        "domain": 'Marketing',
-        "capability": 'localization workflow',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 526,
-        "domain": 'Marketing',
-        "capability": 'partner management',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 527,
-        "domain": 'Marketing',
-        "capability": 'contract tracking',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 528,
-        "domain": 'Marketing',
-        "capability": 'invoice intelligence',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 529,
-        "domain": 'Marketing',
-        "capability": 'subscription management',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 530,
-        "domain": 'Marketing',
-        "capability": 'webstore catalogue',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 531,
-        "domain": 'Marketing',
-        "capability": 'order workflow',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 532,
-        "domain": 'Marketing',
-        "capability": 'customer support routing',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 533,
-        "domain": 'Marketing',
-        "capability": 'file classification',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 534,
-        "domain": 'Marketing',
-        "capability": 'secure export',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 535,
-        "domain": 'Marketing',
-        "capability": 'report scheduling',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 536,
-        "domain": 'Marketing',
-        "capability": 'executive notifications',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 537,
-        "domain": 'Marketing',
-        "capability": 'CEO office briefing',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 538,
-        "domain": 'Marketing',
-        "capability": 'DI workforce ranking',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 539,
-        "domain": 'Marketing',
-        "capability": 'DI specialist handoff',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 540,
-        "domain": 'Marketing',
-        "capability": 'persistent work continuity',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 541,
-        "domain": 'Marketing',
-        "capability": 'browser voice intake',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 542,
-        "domain": 'Marketing',
-        "capability": 'spoken response',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 543,
-        "domain": 'Marketing',
-        "capability": 'avatar presentation',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 544,
-        "domain": 'Marketing',
-        "capability": 'conference room orchestration',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 545,
-        "domain": 'Marketing',
-        "capability": 'global event calendar',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 546,
-        "domain": 'Marketing',
-        "capability": 'business continuity',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 547,
-        "domain": 'Marketing',
-        "capability": 'backup verification',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 548,
-        "domain": 'Marketing',
-        "capability": 'data retention policy',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 549,
-        "domain": 'Marketing',
-        "capability": 'privacy request workflow',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 550,
-        "domain": 'Marketing',
-        "capability": 'access review',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 551,
-        "domain": 'Marketing',
-        "capability": 'least privilege review',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 552,
-        "domain": 'Marketing',
-        "capability": 'password policy audit',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 553,
-        "domain": 'Marketing',
-        "capability": 'secret configuration audit',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 554,
-        "domain": 'Marketing',
-        "capability": 'deployment checklist',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 555,
-        "domain": 'Marketing',
-        "capability": 'release readiness',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 556,
-        "domain": 'Marketing',
-        "capability": 'test automation',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 557,
-        "domain": 'Marketing',
-        "capability": 'performance monitoring',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 558,
-        "domain": 'Marketing',
-        "capability": 'availability monitoring',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 559,
-        "domain": 'Marketing',
-        "capability": 'latency monitoring',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 560,
-        "domain": 'Marketing',
-        "capability": 'capacity planning',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 561,
-        "domain": 'Marketing',
-        "capability": 'cost optimization',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 562,
-        "domain": 'Marketing',
-        "capability": 'cloud resource inventory',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 563,
-        "domain": 'Marketing',
-        "capability": 'database migration',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 564,
-        "domain": 'Marketing',
-        "capability": 'schema repair',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 565,
-        "domain": 'Marketing',
-        "capability": 'chat continuity',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 566,
-        "domain": 'Marketing',
-        "capability": 'tenant isolation',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 567,
-        "domain": 'Marketing',
-        "capability": 'company theming',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 568,
-        "domain": 'Marketing',
-        "capability": 'website profile sync',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 569,
-        "domain": 'Marketing',
-        "capability": 'public landing analytics',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 570,
-        "domain": 'Marketing',
-        "capability": 'visitor analytics',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 571,
-        "domain": 'Marketing',
-        "capability": 'referral analytics',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 572,
-        "domain": 'Marketing',
-        "capability": 'content planning',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 573,
-        "domain": 'Marketing',
-        "capability": 'brand governance',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 574,
-        "domain": 'Marketing',
-        "capability": 'knowledge publishing',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 575,
-        "domain": 'Customer Success',
-        "capability": 'workspace provisioning',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 576,
-        "domain": 'Customer Success',
-        "capability": 'regional dashboard',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 577,
-        "domain": 'Customer Success',
-        "capability": 'organization onboarding',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 578,
-        "domain": 'Customer Success',
-        "capability": 'executive brief generation',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 579,
-        "domain": 'Customer Success',
-        "capability": 'risk scoring',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 580,
-        "domain": 'Customer Success',
-        "capability": 'market monitoring',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 581,
-        "domain": 'Customer Success',
-        "capability": 'document intelligence',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 582,
-        "domain": 'Customer Success',
-        "capability": 'voice command routing',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 583,
-        "domain": 'Customer Success',
-        "capability": 'meeting transcription',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 584,
-        "domain": 'Customer Success',
-        "capability": 'AI research synthesis',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 585,
-        "domain": 'Customer Success',
-        "capability": 'data quality monitoring',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 586,
-        "domain": 'Customer Success',
-        "capability": 'workflow automation',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 587,
-        "domain": 'Customer Success',
-        "capability": 'customer health scoring',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 588,
-        "domain": 'Customer Success',
-        "capability": 'sales pipeline intelligence',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 589,
-        "domain": 'Customer Success',
-        "capability": 'campaign analytics',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 590,
-        "domain": 'Customer Success',
-        "capability": 'financial forecasting',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 591,
-        "domain": 'Customer Success',
-        "capability": 'compliance checklist',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 592,
-        "domain": 'Customer Success',
-        "capability": 'security audit trail',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 593,
-        "domain": 'Customer Success',
-        "capability": 'incident response',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 594,
-        "domain": 'Customer Success',
-        "capability": 'service health monitoring',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 595,
-        "domain": 'Customer Success',
-        "capability": 'API health monitoring',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 596,
-        "domain": 'Customer Success',
-        "capability": 'developer workspace',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 597,
-        "domain": 'Customer Success',
-        "capability": 'knowledge graph',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 598,
-        "domain": 'Customer Success',
-        "capability": 'memory governance',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 599,
-        "domain": 'Customer Success',
-        "capability": 'model routing',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 600,
-        "domain": 'Customer Success',
-        "capability": 'prompt evaluation',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 601,
-        "domain": 'Customer Success',
-        "capability": 'answer verification',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 602,
-        "domain": 'Customer Success',
-        "capability": 'source validation',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 603,
-        "domain": 'Customer Success',
-        "capability": 'citation tracking',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 604,
-        "domain": 'Customer Success',
-        "capability": 'multilingual assistant',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 605,
-        "domain": 'Customer Success',
-        "capability": 'regional time-zone support',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 606,
-        "domain": 'Customer Success',
-        "capability": 'currency conversion',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 607,
-        "domain": 'Customer Success',
-        "capability": 'localization workflow',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 608,
-        "domain": 'Customer Success',
-        "capability": 'partner management',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 609,
-        "domain": 'Customer Success',
-        "capability": 'contract tracking',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 610,
-        "domain": 'Customer Success',
-        "capability": 'invoice intelligence',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 611,
-        "domain": 'Customer Success',
-        "capability": 'subscription management',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 612,
-        "domain": 'Customer Success',
-        "capability": 'webstore catalogue',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 613,
-        "domain": 'Customer Success',
-        "capability": 'order workflow',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 614,
-        "domain": 'Customer Success',
-        "capability": 'customer support routing',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 615,
-        "domain": 'Customer Success',
-        "capability": 'file classification',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 616,
-        "domain": 'Customer Success',
-        "capability": 'secure export',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 617,
-        "domain": 'Customer Success',
-        "capability": 'report scheduling',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 618,
-        "domain": 'Customer Success',
-        "capability": 'executive notifications',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 619,
-        "domain": 'Customer Success',
-        "capability": 'CEO office briefing',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 620,
-        "domain": 'Customer Success',
-        "capability": 'DI workforce ranking',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 621,
-        "domain": 'Customer Success',
-        "capability": 'DI specialist handoff',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 622,
-        "domain": 'Customer Success',
-        "capability": 'persistent work continuity',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 623,
-        "domain": 'Customer Success',
-        "capability": 'browser voice intake',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 624,
-        "domain": 'Customer Success',
-        "capability": 'spoken response',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 625,
-        "domain": 'Customer Success',
-        "capability": 'avatar presentation',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 626,
-        "domain": 'Customer Success',
-        "capability": 'conference room orchestration',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 627,
-        "domain": 'Customer Success',
-        "capability": 'global event calendar',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 628,
-        "domain": 'Customer Success',
-        "capability": 'business continuity',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 629,
-        "domain": 'Customer Success',
-        "capability": 'backup verification',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 630,
-        "domain": 'Customer Success',
-        "capability": 'data retention policy',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 631,
-        "domain": 'Customer Success',
-        "capability": 'privacy request workflow',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 632,
-        "domain": 'Customer Success',
-        "capability": 'access review',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 633,
-        "domain": 'Customer Success',
-        "capability": 'least privilege review',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 634,
-        "domain": 'Customer Success',
-        "capability": 'password policy audit',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 635,
-        "domain": 'Customer Success',
-        "capability": 'secret configuration audit',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 636,
-        "domain": 'Customer Success',
-        "capability": 'deployment checklist',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 637,
-        "domain": 'Customer Success',
-        "capability": 'release readiness',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 638,
-        "domain": 'Customer Success',
-        "capability": 'test automation',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 639,
-        "domain": 'Customer Success',
-        "capability": 'performance monitoring',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 640,
-        "domain": 'Customer Success',
-        "capability": 'availability monitoring',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 641,
-        "domain": 'Customer Success',
-        "capability": 'latency monitoring',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 642,
-        "domain": 'Customer Success',
-        "capability": 'capacity planning',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 643,
-        "domain": 'Customer Success',
-        "capability": 'cost optimization',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 644,
-        "domain": 'Customer Success',
-        "capability": 'cloud resource inventory',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 645,
-        "domain": 'Customer Success',
-        "capability": 'database migration',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 646,
-        "domain": 'Customer Success',
-        "capability": 'schema repair',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 647,
-        "domain": 'Customer Success',
-        "capability": 'chat continuity',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 648,
-        "domain": 'Customer Success',
-        "capability": 'tenant isolation',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 649,
-        "domain": 'Customer Success',
-        "capability": 'company theming',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 650,
-        "domain": 'Customer Success',
-        "capability": 'website profile sync',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 651,
-        "domain": 'Customer Success',
-        "capability": 'public landing analytics',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 652,
-        "domain": 'Customer Success',
-        "capability": 'visitor analytics',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 653,
-        "domain": 'Customer Success',
-        "capability": 'referral analytics',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 654,
-        "domain": 'Customer Success',
-        "capability": 'content planning',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 655,
-        "domain": 'Customer Success',
-        "capability": 'brand governance',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 656,
-        "domain": 'Customer Success',
-        "capability": 'knowledge publishing',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 657,
-        "domain": 'Human Resources',
-        "capability": 'workspace provisioning',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 658,
-        "domain": 'Human Resources',
-        "capability": 'regional dashboard',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 659,
-        "domain": 'Human Resources',
-        "capability": 'organization onboarding',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 660,
-        "domain": 'Human Resources',
-        "capability": 'executive brief generation',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 661,
-        "domain": 'Human Resources',
-        "capability": 'risk scoring',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 662,
-        "domain": 'Human Resources',
-        "capability": 'market monitoring',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 663,
-        "domain": 'Human Resources',
-        "capability": 'document intelligence',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 664,
-        "domain": 'Human Resources',
-        "capability": 'voice command routing',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 665,
-        "domain": 'Human Resources',
-        "capability": 'meeting transcription',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 666,
-        "domain": 'Human Resources',
-        "capability": 'AI research synthesis',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 667,
-        "domain": 'Human Resources',
-        "capability": 'data quality monitoring',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 668,
-        "domain": 'Human Resources',
-        "capability": 'workflow automation',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 669,
-        "domain": 'Human Resources',
-        "capability": 'customer health scoring',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 670,
-        "domain": 'Human Resources',
-        "capability": 'sales pipeline intelligence',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 671,
-        "domain": 'Human Resources',
-        "capability": 'campaign analytics',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 672,
-        "domain": 'Human Resources',
-        "capability": 'financial forecasting',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 673,
-        "domain": 'Human Resources',
-        "capability": 'compliance checklist',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 674,
-        "domain": 'Human Resources',
-        "capability": 'security audit trail',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 675,
-        "domain": 'Human Resources',
-        "capability": 'incident response',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 676,
-        "domain": 'Human Resources',
-        "capability": 'service health monitoring',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 677,
-        "domain": 'Human Resources',
-        "capability": 'API health monitoring',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 678,
-        "domain": 'Human Resources',
-        "capability": 'developer workspace',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 679,
-        "domain": 'Human Resources',
-        "capability": 'knowledge graph',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 680,
-        "domain": 'Human Resources',
-        "capability": 'memory governance',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 681,
-        "domain": 'Human Resources',
-        "capability": 'model routing',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 682,
-        "domain": 'Human Resources',
-        "capability": 'prompt evaluation',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 683,
-        "domain": 'Human Resources',
-        "capability": 'answer verification',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 684,
-        "domain": 'Human Resources',
-        "capability": 'source validation',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 685,
-        "domain": 'Human Resources',
-        "capability": 'citation tracking',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 686,
-        "domain": 'Human Resources',
-        "capability": 'multilingual assistant',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 687,
-        "domain": 'Human Resources',
-        "capability": 'regional time-zone support',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 688,
-        "domain": 'Human Resources',
-        "capability": 'currency conversion',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 689,
-        "domain": 'Human Resources',
-        "capability": 'localization workflow',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 690,
-        "domain": 'Human Resources',
-        "capability": 'partner management',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 691,
-        "domain": 'Human Resources',
-        "capability": 'contract tracking',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 692,
-        "domain": 'Human Resources',
-        "capability": 'invoice intelligence',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 693,
-        "domain": 'Human Resources',
-        "capability": 'subscription management',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 694,
-        "domain": 'Human Resources',
-        "capability": 'webstore catalogue',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 695,
-        "domain": 'Human Resources',
-        "capability": 'order workflow',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 696,
-        "domain": 'Human Resources',
-        "capability": 'customer support routing',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 697,
-        "domain": 'Human Resources',
-        "capability": 'file classification',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 698,
-        "domain": 'Human Resources',
-        "capability": 'secure export',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 699,
-        "domain": 'Human Resources',
-        "capability": 'report scheduling',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 700,
-        "domain": 'Human Resources',
-        "capability": 'executive notifications',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 701,
-        "domain": 'Human Resources',
-        "capability": 'CEO office briefing',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 702,
-        "domain": 'Human Resources',
-        "capability": 'DI workforce ranking',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 703,
-        "domain": 'Human Resources',
-        "capability": 'DI specialist handoff',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 704,
-        "domain": 'Human Resources',
-        "capability": 'persistent work continuity',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 705,
-        "domain": 'Human Resources',
-        "capability": 'browser voice intake',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 706,
-        "domain": 'Human Resources',
-        "capability": 'spoken response',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 707,
-        "domain": 'Human Resources',
-        "capability": 'avatar presentation',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 708,
-        "domain": 'Human Resources',
-        "capability": 'conference room orchestration',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 709,
-        "domain": 'Human Resources',
-        "capability": 'global event calendar',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 710,
-        "domain": 'Human Resources',
-        "capability": 'business continuity',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 711,
-        "domain": 'Human Resources',
-        "capability": 'backup verification',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 712,
-        "domain": 'Human Resources',
-        "capability": 'data retention policy',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 713,
-        "domain": 'Human Resources',
-        "capability": 'privacy request workflow',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 714,
-        "domain": 'Human Resources',
-        "capability": 'access review',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 715,
-        "domain": 'Human Resources',
-        "capability": 'least privilege review',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 716,
-        "domain": 'Human Resources',
-        "capability": 'password policy audit',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 717,
-        "domain": 'Human Resources',
-        "capability": 'secret configuration audit',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 718,
-        "domain": 'Human Resources',
-        "capability": 'deployment checklist',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 719,
-        "domain": 'Human Resources',
-        "capability": 'release readiness',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 720,
-        "domain": 'Human Resources',
-        "capability": 'test automation',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 721,
-        "domain": 'Human Resources',
-        "capability": 'performance monitoring',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 722,
-        "domain": 'Human Resources',
-        "capability": 'availability monitoring',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 723,
-        "domain": 'Human Resources',
-        "capability": 'latency monitoring',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 724,
-        "domain": 'Human Resources',
-        "capability": 'capacity planning',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 725,
-        "domain": 'Human Resources',
-        "capability": 'cost optimization',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 726,
-        "domain": 'Human Resources',
-        "capability": 'cloud resource inventory',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 727,
-        "domain": 'Human Resources',
-        "capability": 'database migration',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 728,
-        "domain": 'Human Resources',
-        "capability": 'schema repair',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 729,
-        "domain": 'Human Resources',
-        "capability": 'chat continuity',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 730,
-        "domain": 'Human Resources',
-        "capability": 'tenant isolation',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 731,
-        "domain": 'Human Resources',
-        "capability": 'company theming',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 732,
-        "domain": 'Human Resources',
-        "capability": 'website profile sync',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 733,
-        "domain": 'Human Resources',
-        "capability": 'public landing analytics',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 734,
-        "domain": 'Human Resources',
-        "capability": 'visitor analytics',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 735,
-        "domain": 'Human Resources',
-        "capability": 'referral analytics',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 736,
-        "domain": 'Human Resources',
-        "capability": 'content planning',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 737,
-        "domain": 'Human Resources',
-        "capability": 'brand governance',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 738,
-        "domain": 'Human Resources',
-        "capability": 'knowledge publishing',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 739,
-        "domain": 'Technology',
-        "capability": 'workspace provisioning',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 740,
-        "domain": 'Technology',
-        "capability": 'regional dashboard',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 741,
-        "domain": 'Technology',
-        "capability": 'organization onboarding',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 742,
-        "domain": 'Technology',
-        "capability": 'executive brief generation',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 743,
-        "domain": 'Technology',
-        "capability": 'risk scoring',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 744,
-        "domain": 'Technology',
-        "capability": 'market monitoring',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 745,
-        "domain": 'Technology',
-        "capability": 'document intelligence',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 746,
-        "domain": 'Technology',
-        "capability": 'voice command routing',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 747,
-        "domain": 'Technology',
-        "capability": 'meeting transcription',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 748,
-        "domain": 'Technology',
-        "capability": 'AI research synthesis',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 749,
-        "domain": 'Technology',
-        "capability": 'data quality monitoring',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 750,
-        "domain": 'Technology',
-        "capability": 'workflow automation',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 751,
-        "domain": 'Technology',
-        "capability": 'customer health scoring',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 752,
-        "domain": 'Technology',
-        "capability": 'sales pipeline intelligence',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 753,
-        "domain": 'Technology',
-        "capability": 'campaign analytics',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 754,
-        "domain": 'Technology',
-        "capability": 'financial forecasting',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 755,
-        "domain": 'Technology',
-        "capability": 'compliance checklist',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 756,
-        "domain": 'Technology',
-        "capability": 'security audit trail',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 757,
-        "domain": 'Technology',
-        "capability": 'incident response',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 758,
-        "domain": 'Technology',
-        "capability": 'service health monitoring',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 759,
-        "domain": 'Technology',
-        "capability": 'API health monitoring',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 760,
-        "domain": 'Technology',
-        "capability": 'developer workspace',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 761,
-        "domain": 'Technology',
-        "capability": 'knowledge graph',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 762,
-        "domain": 'Technology',
-        "capability": 'memory governance',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 763,
-        "domain": 'Technology',
-        "capability": 'model routing',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 764,
-        "domain": 'Technology',
-        "capability": 'prompt evaluation',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 765,
-        "domain": 'Technology',
-        "capability": 'answer verification',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 766,
-        "domain": 'Technology',
-        "capability": 'source validation',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 767,
-        "domain": 'Technology',
-        "capability": 'citation tracking',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 768,
-        "domain": 'Technology',
-        "capability": 'multilingual assistant',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 769,
-        "domain": 'Technology',
-        "capability": 'regional time-zone support',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 770,
-        "domain": 'Technology',
-        "capability": 'currency conversion',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 771,
-        "domain": 'Technology',
-        "capability": 'localization workflow',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 772,
-        "domain": 'Technology',
-        "capability": 'partner management',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 773,
-        "domain": 'Technology',
-        "capability": 'contract tracking',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 774,
-        "domain": 'Technology',
-        "capability": 'invoice intelligence',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 775,
-        "domain": 'Technology',
-        "capability": 'subscription management',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 776,
-        "domain": 'Technology',
-        "capability": 'webstore catalogue',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 777,
-        "domain": 'Technology',
-        "capability": 'order workflow',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 778,
-        "domain": 'Technology',
-        "capability": 'customer support routing',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 779,
-        "domain": 'Technology',
-        "capability": 'file classification',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 780,
-        "domain": 'Technology',
-        "capability": 'secure export',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 781,
-        "domain": 'Technology',
-        "capability": 'report scheduling',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 782,
-        "domain": 'Technology',
-        "capability": 'executive notifications',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 783,
-        "domain": 'Technology',
-        "capability": 'CEO office briefing',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 784,
-        "domain": 'Technology',
-        "capability": 'DI workforce ranking',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 785,
-        "domain": 'Technology',
-        "capability": 'DI specialist handoff',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 786,
-        "domain": 'Technology',
-        "capability": 'persistent work continuity',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 787,
-        "domain": 'Technology',
-        "capability": 'browser voice intake',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 788,
-        "domain": 'Technology',
-        "capability": 'spoken response',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 789,
-        "domain": 'Technology',
-        "capability": 'avatar presentation',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 790,
-        "domain": 'Technology',
-        "capability": 'conference room orchestration',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 791,
-        "domain": 'Technology',
-        "capability": 'global event calendar',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 792,
-        "domain": 'Technology',
-        "capability": 'business continuity',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 793,
-        "domain": 'Technology',
-        "capability": 'backup verification',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 794,
-        "domain": 'Technology',
-        "capability": 'data retention policy',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 795,
-        "domain": 'Technology',
-        "capability": 'privacy request workflow',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 796,
-        "domain": 'Technology',
-        "capability": 'access review',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 797,
-        "domain": 'Technology',
-        "capability": 'least privilege review',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 798,
-        "domain": 'Technology',
-        "capability": 'password policy audit',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 799,
-        "domain": 'Technology',
-        "capability": 'secret configuration audit',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 800,
-        "domain": 'Technology',
-        "capability": 'deployment checklist',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 801,
-        "domain": 'Technology',
-        "capability": 'release readiness',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 802,
-        "domain": 'Technology',
-        "capability": 'test automation',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 803,
-        "domain": 'Technology',
-        "capability": 'performance monitoring',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 804,
-        "domain": 'Technology',
-        "capability": 'availability monitoring',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 805,
-        "domain": 'Technology',
-        "capability": 'latency monitoring',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 806,
-        "domain": 'Technology',
-        "capability": 'capacity planning',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 807,
-        "domain": 'Technology',
-        "capability": 'cost optimization',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 808,
-        "domain": 'Technology',
-        "capability": 'cloud resource inventory',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 809,
-        "domain": 'Technology',
-        "capability": 'database migration',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 810,
-        "domain": 'Technology',
-        "capability": 'schema repair',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 811,
-        "domain": 'Technology',
-        "capability": 'chat continuity',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 812,
-        "domain": 'Technology',
-        "capability": 'tenant isolation',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 813,
-        "domain": 'Technology',
-        "capability": 'company theming',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 814,
-        "domain": 'Technology',
-        "capability": 'website profile sync',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 815,
-        "domain": 'Technology',
-        "capability": 'public landing analytics',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 816,
-        "domain": 'Technology',
-        "capability": 'visitor analytics',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 817,
-        "domain": 'Technology',
-        "capability": 'referral analytics',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 818,
-        "domain": 'Technology',
-        "capability": 'content planning',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 819,
-        "domain": 'Technology',
-        "capability": 'brand governance',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 820,
-        "domain": 'Technology',
-        "capability": 'knowledge publishing',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 821,
-        "domain": 'Cloud Engineering',
-        "capability": 'workspace provisioning',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 822,
-        "domain": 'Cloud Engineering',
-        "capability": 'regional dashboard',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 823,
-        "domain": 'Cloud Engineering',
-        "capability": 'organization onboarding',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 824,
-        "domain": 'Cloud Engineering',
-        "capability": 'executive brief generation',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 825,
-        "domain": 'Cloud Engineering',
-        "capability": 'risk scoring',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 826,
-        "domain": 'Cloud Engineering',
-        "capability": 'market monitoring',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 827,
-        "domain": 'Cloud Engineering',
-        "capability": 'document intelligence',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 828,
-        "domain": 'Cloud Engineering',
-        "capability": 'voice command routing',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 829,
-        "domain": 'Cloud Engineering',
-        "capability": 'meeting transcription',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 830,
-        "domain": 'Cloud Engineering',
-        "capability": 'AI research synthesis',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 831,
-        "domain": 'Cloud Engineering',
-        "capability": 'data quality monitoring',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 832,
-        "domain": 'Cloud Engineering',
-        "capability": 'workflow automation',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 833,
-        "domain": 'Cloud Engineering',
-        "capability": 'customer health scoring',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 834,
-        "domain": 'Cloud Engineering',
-        "capability": 'sales pipeline intelligence',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 835,
-        "domain": 'Cloud Engineering',
-        "capability": 'campaign analytics',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 836,
-        "domain": 'Cloud Engineering',
-        "capability": 'financial forecasting',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 837,
-        "domain": 'Cloud Engineering',
-        "capability": 'compliance checklist',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 838,
-        "domain": 'Cloud Engineering',
-        "capability": 'security audit trail',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 839,
-        "domain": 'Cloud Engineering',
-        "capability": 'incident response',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 840,
-        "domain": 'Cloud Engineering',
-        "capability": 'service health monitoring',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 841,
-        "domain": 'Cloud Engineering',
-        "capability": 'API health monitoring',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 842,
-        "domain": 'Cloud Engineering',
-        "capability": 'developer workspace',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 843,
-        "domain": 'Cloud Engineering',
-        "capability": 'knowledge graph',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 844,
-        "domain": 'Cloud Engineering',
-        "capability": 'memory governance',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 845,
-        "domain": 'Cloud Engineering',
-        "capability": 'model routing',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 846,
-        "domain": 'Cloud Engineering',
-        "capability": 'prompt evaluation',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 847,
-        "domain": 'Cloud Engineering',
-        "capability": 'answer verification',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 848,
-        "domain": 'Cloud Engineering',
-        "capability": 'source validation',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 849,
-        "domain": 'Cloud Engineering',
-        "capability": 'citation tracking',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 850,
-        "domain": 'Cloud Engineering',
-        "capability": 'multilingual assistant',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 851,
-        "domain": 'Cloud Engineering',
-        "capability": 'regional time-zone support',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 852,
-        "domain": 'Cloud Engineering',
-        "capability": 'currency conversion',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 853,
-        "domain": 'Cloud Engineering',
-        "capability": 'localization workflow',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 854,
-        "domain": 'Cloud Engineering',
-        "capability": 'partner management',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 855,
-        "domain": 'Cloud Engineering',
-        "capability": 'contract tracking',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 856,
-        "domain": 'Cloud Engineering',
-        "capability": 'invoice intelligence',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 857,
-        "domain": 'Cloud Engineering',
-        "capability": 'subscription management',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 858,
-        "domain": 'Cloud Engineering',
-        "capability": 'webstore catalogue',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 859,
-        "domain": 'Cloud Engineering',
-        "capability": 'order workflow',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 860,
-        "domain": 'Cloud Engineering',
-        "capability": 'customer support routing',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 861,
-        "domain": 'Cloud Engineering',
-        "capability": 'file classification',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 862,
-        "domain": 'Cloud Engineering',
-        "capability": 'secure export',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 863,
-        "domain": 'Cloud Engineering',
-        "capability": 'report scheduling',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 864,
-        "domain": 'Cloud Engineering',
-        "capability": 'executive notifications',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 865,
-        "domain": 'Cloud Engineering',
-        "capability": 'CEO office briefing',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 866,
-        "domain": 'Cloud Engineering',
-        "capability": 'DI workforce ranking',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 867,
-        "domain": 'Cloud Engineering',
-        "capability": 'DI specialist handoff',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 868,
-        "domain": 'Cloud Engineering',
-        "capability": 'persistent work continuity',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 869,
-        "domain": 'Cloud Engineering',
-        "capability": 'browser voice intake',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 870,
-        "domain": 'Cloud Engineering',
-        "capability": 'spoken response',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 871,
-        "domain": 'Cloud Engineering',
-        "capability": 'avatar presentation',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 872,
-        "domain": 'Cloud Engineering',
-        "capability": 'conference room orchestration',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 873,
-        "domain": 'Cloud Engineering',
-        "capability": 'global event calendar',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 874,
-        "domain": 'Cloud Engineering',
-        "capability": 'business continuity',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 875,
-        "domain": 'Cloud Engineering',
-        "capability": 'backup verification',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 876,
-        "domain": 'Cloud Engineering',
-        "capability": 'data retention policy',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 877,
-        "domain": 'Cloud Engineering',
-        "capability": 'privacy request workflow',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 878,
-        "domain": 'Cloud Engineering',
-        "capability": 'access review',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 879,
-        "domain": 'Cloud Engineering',
-        "capability": 'least privilege review',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 880,
-        "domain": 'Cloud Engineering',
-        "capability": 'password policy audit',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 881,
-        "domain": 'Cloud Engineering',
-        "capability": 'secret configuration audit',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 882,
-        "domain": 'Cloud Engineering',
-        "capability": 'deployment checklist',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 883,
-        "domain": 'Cloud Engineering',
-        "capability": 'release readiness',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 884,
-        "domain": 'Cloud Engineering',
-        "capability": 'test automation',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 885,
-        "domain": 'Cloud Engineering',
-        "capability": 'performance monitoring',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 886,
-        "domain": 'Cloud Engineering',
-        "capability": 'availability monitoring',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 887,
-        "domain": 'Cloud Engineering',
-        "capability": 'latency monitoring',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 888,
-        "domain": 'Cloud Engineering',
-        "capability": 'capacity planning',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 889,
-        "domain": 'Cloud Engineering',
-        "capability": 'cost optimization',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 890,
-        "domain": 'Cloud Engineering',
-        "capability": 'cloud resource inventory',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 891,
-        "domain": 'Cloud Engineering',
-        "capability": 'database migration',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 892,
-        "domain": 'Cloud Engineering',
-        "capability": 'schema repair',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 893,
-        "domain": 'Cloud Engineering',
-        "capability": 'chat continuity',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 894,
-        "domain": 'Cloud Engineering',
-        "capability": 'tenant isolation',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 895,
-        "domain": 'Cloud Engineering',
-        "capability": 'company theming',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 896,
-        "domain": 'Cloud Engineering',
-        "capability": 'website profile sync',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 897,
-        "domain": 'Cloud Engineering',
-        "capability": 'public landing analytics',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 898,
-        "domain": 'Cloud Engineering',
-        "capability": 'visitor analytics',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 899,
-        "domain": 'Cloud Engineering',
-        "capability": 'referral analytics',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 900,
-        "domain": 'Cloud Engineering',
-        "capability": 'content planning',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 901,
-        "domain": 'Cloud Engineering',
-        "capability": 'brand governance',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 902,
-        "domain": 'Cloud Engineering',
-        "capability": 'knowledge publishing',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 903,
-        "domain": 'DevOps',
-        "capability": 'workspace provisioning',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 904,
-        "domain": 'DevOps',
-        "capability": 'regional dashboard',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 905,
-        "domain": 'DevOps',
-        "capability": 'organization onboarding',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 906,
-        "domain": 'DevOps',
-        "capability": 'executive brief generation',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 907,
-        "domain": 'DevOps',
-        "capability": 'risk scoring',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 908,
-        "domain": 'DevOps',
-        "capability": 'market monitoring',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 909,
-        "domain": 'DevOps',
-        "capability": 'document intelligence',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 910,
-        "domain": 'DevOps',
-        "capability": 'voice command routing',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 911,
-        "domain": 'DevOps',
-        "capability": 'meeting transcription',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 912,
-        "domain": 'DevOps',
-        "capability": 'AI research synthesis',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 913,
-        "domain": 'DevOps',
-        "capability": 'data quality monitoring',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 914,
-        "domain": 'DevOps',
-        "capability": 'workflow automation',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 915,
-        "domain": 'DevOps',
-        "capability": 'customer health scoring',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 916,
-        "domain": 'DevOps',
-        "capability": 'sales pipeline intelligence',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 917,
-        "domain": 'DevOps',
-        "capability": 'campaign analytics',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 918,
-        "domain": 'DevOps',
-        "capability": 'financial forecasting',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 919,
-        "domain": 'DevOps',
-        "capability": 'compliance checklist',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 920,
-        "domain": 'DevOps',
-        "capability": 'security audit trail',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 921,
-        "domain": 'DevOps',
-        "capability": 'incident response',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 922,
-        "domain": 'DevOps',
-        "capability": 'service health monitoring',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 923,
-        "domain": 'DevOps',
-        "capability": 'API health monitoring',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 924,
-        "domain": 'DevOps',
-        "capability": 'developer workspace',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 925,
-        "domain": 'DevOps',
-        "capability": 'knowledge graph',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 926,
-        "domain": 'DevOps',
-        "capability": 'memory governance',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 927,
-        "domain": 'DevOps',
-        "capability": 'model routing',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 928,
-        "domain": 'DevOps',
-        "capability": 'prompt evaluation',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 929,
-        "domain": 'DevOps',
-        "capability": 'answer verification',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 930,
-        "domain": 'DevOps',
-        "capability": 'source validation',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 931,
-        "domain": 'DevOps',
-        "capability": 'citation tracking',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 932,
-        "domain": 'DevOps',
-        "capability": 'multilingual assistant',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 933,
-        "domain": 'DevOps',
-        "capability": 'regional time-zone support',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 934,
-        "domain": 'DevOps',
-        "capability": 'currency conversion',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 935,
-        "domain": 'DevOps',
-        "capability": 'localization workflow',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 936,
-        "domain": 'DevOps',
-        "capability": 'partner management',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 937,
-        "domain": 'DevOps',
-        "capability": 'contract tracking',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 938,
-        "domain": 'DevOps',
-        "capability": 'invoice intelligence',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 939,
-        "domain": 'DevOps',
-        "capability": 'subscription management',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 940,
-        "domain": 'DevOps',
-        "capability": 'webstore catalogue',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 941,
-        "domain": 'DevOps',
-        "capability": 'order workflow',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 942,
-        "domain": 'DevOps',
-        "capability": 'customer support routing',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 943,
-        "domain": 'DevOps',
-        "capability": 'file classification',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 944,
-        "domain": 'DevOps',
-        "capability": 'secure export',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 945,
-        "domain": 'DevOps',
-        "capability": 'report scheduling',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 946,
-        "domain": 'DevOps',
-        "capability": 'executive notifications',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 947,
-        "domain": 'DevOps',
-        "capability": 'CEO office briefing',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 948,
-        "domain": 'DevOps',
-        "capability": 'DI workforce ranking',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 949,
-        "domain": 'DevOps',
-        "capability": 'DI specialist handoff',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 950,
-        "domain": 'DevOps',
-        "capability": 'persistent work continuity',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 951,
-        "domain": 'DevOps',
-        "capability": 'browser voice intake',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 952,
-        "domain": 'DevOps',
-        "capability": 'spoken response',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 953,
-        "domain": 'DevOps',
-        "capability": 'avatar presentation',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 954,
-        "domain": 'DevOps',
-        "capability": 'conference room orchestration',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 955,
-        "domain": 'DevOps',
-        "capability": 'global event calendar',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 956,
-        "domain": 'DevOps',
-        "capability": 'business continuity',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 957,
-        "domain": 'DevOps',
-        "capability": 'backup verification',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 958,
-        "domain": 'DevOps',
-        "capability": 'data retention policy',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 959,
-        "domain": 'DevOps',
-        "capability": 'privacy request workflow',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 960,
-        "domain": 'DevOps',
-        "capability": 'access review',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 961,
-        "domain": 'DevOps',
-        "capability": 'least privilege review',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 962,
-        "domain": 'DevOps',
-        "capability": 'password policy audit',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 963,
-        "domain": 'DevOps',
-        "capability": 'secret configuration audit',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 964,
-        "domain": 'DevOps',
-        "capability": 'deployment checklist',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 965,
-        "domain": 'DevOps',
-        "capability": 'release readiness',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 966,
-        "domain": 'DevOps',
-        "capability": 'test automation',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 967,
-        "domain": 'DevOps',
-        "capability": 'performance monitoring',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 968,
-        "domain": 'DevOps',
-        "capability": 'availability monitoring',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 969,
-        "domain": 'DevOps',
-        "capability": 'latency monitoring',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 970,
-        "domain": 'DevOps',
-        "capability": 'capacity planning',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 971,
-        "domain": 'DevOps',
-        "capability": 'cost optimization',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 972,
-        "domain": 'DevOps',
-        "capability": 'cloud resource inventory',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 973,
-        "domain": 'DevOps',
-        "capability": 'database migration',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 974,
-        "domain": 'DevOps',
-        "capability": 'schema repair',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 975,
-        "domain": 'DevOps',
-        "capability": 'chat continuity',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 976,
-        "domain": 'DevOps',
-        "capability": 'tenant isolation',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 977,
-        "domain": 'DevOps',
-        "capability": 'company theming',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 978,
-        "domain": 'DevOps',
-        "capability": 'website profile sync',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 979,
-        "domain": 'DevOps',
-        "capability": 'public landing analytics',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 980,
-        "domain": 'DevOps',
-        "capability": 'visitor analytics',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 981,
-        "domain": 'DevOps',
-        "capability": 'referral analytics',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 982,
-        "domain": 'DevOps',
-        "capability": 'content planning',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 983,
-        "domain": 'DevOps',
-        "capability": 'brand governance',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 984,
-        "domain": 'DevOps',
-        "capability": 'knowledge publishing',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 985,
-        "domain": 'Research',
-        "capability": 'workspace provisioning',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 986,
-        "domain": 'Research',
-        "capability": 'regional dashboard',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 987,
-        "domain": 'Research',
-        "capability": 'organization onboarding',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 988,
-        "domain": 'Research',
-        "capability": 'executive brief generation',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 989,
-        "domain": 'Research',
-        "capability": 'risk scoring',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 990,
-        "domain": 'Research',
-        "capability": 'market monitoring',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 991,
-        "domain": 'Research',
-        "capability": 'document intelligence',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 992,
-        "domain": 'Research',
-        "capability": 'voice command routing',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 993,
-        "domain": 'Research',
-        "capability": 'meeting transcription',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 994,
-        "domain": 'Research',
-        "capability": 'AI research synthesis',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 995,
-        "domain": 'Research',
-        "capability": 'data quality monitoring',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 996,
-        "domain": 'Research',
-        "capability": 'workflow automation',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 997,
-        "domain": 'Research',
-        "capability": 'customer health scoring',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 998,
-        "domain": 'Research',
-        "capability": 'sales pipeline intelligence',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 999,
-        "domain": 'Research',
-        "capability": 'campaign analytics',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 1000,
-        "domain": 'Research',
-        "capability": 'financial forecasting',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 1001,
-        "domain": 'Research',
-        "capability": 'compliance checklist',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 1002,
-        "domain": 'Research',
-        "capability": 'security audit trail',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 1003,
-        "domain": 'Research',
-        "capability": 'incident response',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 1004,
-        "domain": 'Research',
-        "capability": 'service health monitoring',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 1005,
-        "domain": 'Research',
-        "capability": 'API health monitoring',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 1006,
-        "domain": 'Research',
-        "capability": 'developer workspace',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 1007,
-        "domain": 'Research',
-        "capability": 'knowledge graph',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 1008,
-        "domain": 'Research',
-        "capability": 'memory governance',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 1009,
-        "domain": 'Research',
-        "capability": 'model routing',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 1010,
-        "domain": 'Research',
-        "capability": 'prompt evaluation',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 1011,
-        "domain": 'Research',
-        "capability": 'answer verification',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 1012,
-        "domain": 'Research',
-        "capability": 'source validation',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 1013,
-        "domain": 'Research',
-        "capability": 'citation tracking',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 1014,
-        "domain": 'Research',
-        "capability": 'multilingual assistant',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 1015,
-        "domain": 'Research',
-        "capability": 'regional time-zone support',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 1016,
-        "domain": 'Research',
-        "capability": 'currency conversion',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 1017,
-        "domain": 'Research',
-        "capability": 'localization workflow',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 1018,
-        "domain": 'Research',
-        "capability": 'partner management',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 1019,
-        "domain": 'Research',
-        "capability": 'contract tracking',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 1020,
-        "domain": 'Research',
-        "capability": 'invoice intelligence',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 1021,
-        "domain": 'Research',
-        "capability": 'subscription management',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 1022,
-        "domain": 'Research',
-        "capability": 'webstore catalogue',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 1023,
-        "domain": 'Research',
-        "capability": 'order workflow',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 1024,
-        "domain": 'Research',
-        "capability": 'customer support routing',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 1025,
-        "domain": 'Research',
-        "capability": 'file classification',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 1026,
-        "domain": 'Research',
-        "capability": 'secure export',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 1027,
-        "domain": 'Research',
-        "capability": 'report scheduling',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 1028,
-        "domain": 'Research',
-        "capability": 'executive notifications',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 1029,
-        "domain": 'Research',
-        "capability": 'CEO office briefing',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 1030,
-        "domain": 'Research',
-        "capability": 'DI workforce ranking',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 1031,
-        "domain": 'Research',
-        "capability": 'DI specialist handoff',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 1032,
-        "domain": 'Research',
-        "capability": 'persistent work continuity',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 1033,
-        "domain": 'Research',
-        "capability": 'browser voice intake',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 1034,
-        "domain": 'Research',
-        "capability": 'spoken response',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 1035,
-        "domain": 'Research',
-        "capability": 'avatar presentation',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 1036,
-        "domain": 'Research',
-        "capability": 'conference room orchestration',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 1037,
-        "domain": 'Research',
-        "capability": 'global event calendar',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 1038,
-        "domain": 'Research',
-        "capability": 'business continuity',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 1039,
-        "domain": 'Research',
-        "capability": 'backup verification',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 1040,
-        "domain": 'Research',
-        "capability": 'data retention policy',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 1041,
-        "domain": 'Research',
-        "capability": 'privacy request workflow',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 1042,
-        "domain": 'Research',
-        "capability": 'access review',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 1043,
-        "domain": 'Research',
-        "capability": 'least privilege review',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 1044,
-        "domain": 'Research',
-        "capability": 'password policy audit',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 1045,
-        "domain": 'Research',
-        "capability": 'secret configuration audit',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 1046,
-        "domain": 'Research',
-        "capability": 'deployment checklist',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 1047,
-        "domain": 'Research',
-        "capability": 'release readiness',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 1048,
-        "domain": 'Research',
-        "capability": 'test automation',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 1049,
-        "domain": 'Research',
-        "capability": 'performance monitoring',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 1050,
-        "domain": 'Research',
-        "capability": 'availability monitoring',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 1051,
-        "domain": 'Research',
-        "capability": 'latency monitoring',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 1052,
-        "domain": 'Research',
-        "capability": 'capacity planning',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 1053,
-        "domain": 'Research',
-        "capability": 'cost optimization',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 1054,
-        "domain": 'Research',
-        "capability": 'cloud resource inventory',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 1055,
-        "domain": 'Research',
-        "capability": 'database migration',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 1056,
-        "domain": 'Research',
-        "capability": 'schema repair',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 1057,
-        "domain": 'Research',
-        "capability": 'chat continuity',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 1058,
-        "domain": 'Research',
-        "capability": 'tenant isolation',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 1059,
-        "domain": 'Research',
-        "capability": 'company theming',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 1060,
-        "domain": 'Research',
-        "capability": 'website profile sync',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 1061,
-        "domain": 'Research',
-        "capability": 'public landing analytics',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 1062,
-        "domain": 'Research',
-        "capability": 'visitor analytics',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 1063,
-        "domain": 'Research',
-        "capability": 'referral analytics',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 1064,
-        "domain": 'Research',
-        "capability": 'content planning',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 1065,
-        "domain": 'Research',
-        "capability": 'brand governance',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 1066,
-        "domain": 'Research',
-        "capability": 'knowledge publishing',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 1067,
-        "domain": 'Governance',
-        "capability": 'workspace provisioning',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 1068,
-        "domain": 'Governance',
-        "capability": 'regional dashboard',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 1069,
-        "domain": 'Governance',
-        "capability": 'organization onboarding',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 1070,
-        "domain": 'Governance',
-        "capability": 'executive brief generation',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 1071,
-        "domain": 'Governance',
-        "capability": 'risk scoring',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 1072,
-        "domain": 'Governance',
-        "capability": 'market monitoring',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 1073,
-        "domain": 'Governance',
-        "capability": 'document intelligence',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 1074,
-        "domain": 'Governance',
-        "capability": 'voice command routing',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 1075,
-        "domain": 'Governance',
-        "capability": 'meeting transcription',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 1076,
-        "domain": 'Governance',
-        "capability": 'AI research synthesis',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 1077,
-        "domain": 'Governance',
-        "capability": 'data quality monitoring',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 1078,
-        "domain": 'Governance',
-        "capability": 'workflow automation',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 1079,
-        "domain": 'Governance',
-        "capability": 'customer health scoring',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 1080,
-        "domain": 'Governance',
-        "capability": 'sales pipeline intelligence',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 1081,
-        "domain": 'Governance',
-        "capability": 'campaign analytics',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 1082,
-        "domain": 'Governance',
-        "capability": 'financial forecasting',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 1083,
-        "domain": 'Governance',
-        "capability": 'compliance checklist',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 1084,
-        "domain": 'Governance',
-        "capability": 'security audit trail',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 1085,
-        "domain": 'Governance',
-        "capability": 'incident response',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 1086,
-        "domain": 'Governance',
-        "capability": 'service health monitoring',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 1087,
-        "domain": 'Governance',
-        "capability": 'API health monitoring',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 1088,
-        "domain": 'Governance',
-        "capability": 'developer workspace',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 1089,
-        "domain": 'Governance',
-        "capability": 'knowledge graph',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 1090,
-        "domain": 'Governance',
-        "capability": 'memory governance',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 1091,
-        "domain": 'Governance',
-        "capability": 'model routing',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 1092,
-        "domain": 'Governance',
-        "capability": 'prompt evaluation',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 1093,
-        "domain": 'Governance',
-        "capability": 'answer verification',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 1094,
-        "domain": 'Governance',
-        "capability": 'source validation',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 1095,
-        "domain": 'Governance',
-        "capability": 'citation tracking',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 1096,
-        "domain": 'Governance',
-        "capability": 'multilingual assistant',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 1097,
-        "domain": 'Governance',
-        "capability": 'regional time-zone support',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 1098,
-        "domain": 'Governance',
-        "capability": 'currency conversion',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 1099,
-        "domain": 'Governance',
-        "capability": 'localization workflow',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 1100,
-        "domain": 'Governance',
-        "capability": 'partner management',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 1101,
-        "domain": 'Governance',
-        "capability": 'contract tracking',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 1102,
-        "domain": 'Governance',
-        "capability": 'invoice intelligence',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 1103,
-        "domain": 'Governance',
-        "capability": 'subscription management',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 1104,
-        "domain": 'Governance',
-        "capability": 'webstore catalogue',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 1105,
-        "domain": 'Governance',
-        "capability": 'order workflow',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 1106,
-        "domain": 'Governance',
-        "capability": 'customer support routing',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 1107,
-        "domain": 'Governance',
-        "capability": 'file classification',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 1108,
-        "domain": 'Governance',
-        "capability": 'secure export',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 1109,
-        "domain": 'Governance',
-        "capability": 'report scheduling',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 1110,
-        "domain": 'Governance',
-        "capability": 'executive notifications',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 1111,
-        "domain": 'Governance',
-        "capability": 'CEO office briefing',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 1112,
-        "domain": 'Governance',
-        "capability": 'DI workforce ranking',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 1113,
-        "domain": 'Governance',
-        "capability": 'DI specialist handoff',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 1114,
-        "domain": 'Governance',
-        "capability": 'persistent work continuity',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 1115,
-        "domain": 'Governance',
-        "capability": 'browser voice intake',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 1116,
-        "domain": 'Governance',
-        "capability": 'spoken response',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 1117,
-        "domain": 'Governance',
-        "capability": 'avatar presentation',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 1118,
-        "domain": 'Governance',
-        "capability": 'conference room orchestration',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 1119,
-        "domain": 'Governance',
-        "capability": 'global event calendar',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 1120,
-        "domain": 'Governance',
-        "capability": 'business continuity',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 1121,
-        "domain": 'Governance',
-        "capability": 'backup verification',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 1122,
-        "domain": 'Governance',
-        "capability": 'data retention policy',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 1123,
-        "domain": 'Governance',
-        "capability": 'privacy request workflow',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 1124,
-        "domain": 'Governance',
-        "capability": 'access review',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 1125,
-        "domain": 'Governance',
-        "capability": 'least privilege review',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 1126,
-        "domain": 'Governance',
-        "capability": 'password policy audit',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 1127,
-        "domain": 'Governance',
-        "capability": 'secret configuration audit',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 1128,
-        "domain": 'Governance',
-        "capability": 'deployment checklist',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 1129,
-        "domain": 'Governance',
-        "capability": 'release readiness',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 1130,
-        "domain": 'Governance',
-        "capability": 'test automation',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 1131,
-        "domain": 'Governance',
-        "capability": 'performance monitoring',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 1132,
-        "domain": 'Governance',
-        "capability": 'availability monitoring',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 1133,
-        "domain": 'Governance',
-        "capability": 'latency monitoring',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 1134,
-        "domain": 'Governance',
-        "capability": 'capacity planning',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 1135,
-        "domain": 'Governance',
-        "capability": 'cost optimization',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 1136,
-        "domain": 'Governance',
-        "capability": 'cloud resource inventory',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 1137,
-        "domain": 'Governance',
-        "capability": 'database migration',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 1138,
-        "domain": 'Governance',
-        "capability": 'schema repair',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 1139,
-        "domain": 'Governance',
-        "capability": 'chat continuity',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 1140,
-        "domain": 'Governance',
-        "capability": 'tenant isolation',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 1141,
-        "domain": 'Governance',
-        "capability": 'company theming',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 1142,
-        "domain": 'Governance',
-        "capability": 'website profile sync',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 1143,
-        "domain": 'Governance',
-        "capability": 'public landing analytics',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 1144,
-        "domain": 'Governance',
-        "capability": 'visitor analytics',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 1145,
-        "domain": 'Governance',
-        "capability": 'referral analytics',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 1146,
-        "domain": 'Governance',
-        "capability": 'content planning',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 1147,
-        "domain": 'Governance',
-        "capability": 'brand governance',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 1148,
-        "domain": 'Governance',
-        "capability": 'knowledge publishing',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 1149,
-        "domain": 'Compliance',
-        "capability": 'workspace provisioning',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 1150,
-        "domain": 'Compliance',
-        "capability": 'regional dashboard',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 1151,
-        "domain": 'Compliance',
-        "capability": 'organization onboarding',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 1152,
-        "domain": 'Compliance',
-        "capability": 'executive brief generation',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 1153,
-        "domain": 'Compliance',
-        "capability": 'risk scoring',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 1154,
-        "domain": 'Compliance',
-        "capability": 'market monitoring',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 1155,
-        "domain": 'Compliance',
-        "capability": 'document intelligence',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 1156,
-        "domain": 'Compliance',
-        "capability": 'voice command routing',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 1157,
-        "domain": 'Compliance',
-        "capability": 'meeting transcription',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 1158,
-        "domain": 'Compliance',
-        "capability": 'AI research synthesis',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 1159,
-        "domain": 'Compliance',
-        "capability": 'data quality monitoring',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 1160,
-        "domain": 'Compliance',
-        "capability": 'workflow automation',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 1161,
-        "domain": 'Compliance',
-        "capability": 'customer health scoring',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 1162,
-        "domain": 'Compliance',
-        "capability": 'sales pipeline intelligence',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 1163,
-        "domain": 'Compliance',
-        "capability": 'campaign analytics',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 1164,
-        "domain": 'Compliance',
-        "capability": 'financial forecasting',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 1165,
-        "domain": 'Compliance',
-        "capability": 'compliance checklist',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 1166,
-        "domain": 'Compliance',
-        "capability": 'security audit trail',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 1167,
-        "domain": 'Compliance',
-        "capability": 'incident response',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 1168,
-        "domain": 'Compliance',
-        "capability": 'service health monitoring',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 1169,
-        "domain": 'Compliance',
-        "capability": 'API health monitoring',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 1170,
-        "domain": 'Compliance',
-        "capability": 'developer workspace',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 1171,
-        "domain": 'Compliance',
-        "capability": 'knowledge graph',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 1172,
-        "domain": 'Compliance',
-        "capability": 'memory governance',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 1173,
-        "domain": 'Compliance',
-        "capability": 'model routing',
-        "region": 'South America',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 1174,
-        "domain": 'Compliance',
-        "capability": 'prompt evaluation',
-        "region": 'Asia-Pacific',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 1175,
-        "domain": 'Compliance',
-        "capability": 'answer verification',
-        "region": 'Middle East',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 1176,
-        "domain": 'Compliance',
-        "capability": 'source validation',
-        "region": 'Global',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 1177,
-        "domain": 'Compliance',
-        "capability": 'citation tracking',
-        "region": 'Africa',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 1178,
-        "domain": 'Compliance',
-        "capability": 'multilingual assistant',
-        "region": 'Europe',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 1179,
-        "domain": 'Compliance',
-        "capability": 'regional time-zone support',
-        "region": 'North America',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 1180,
-        "domain": 'Compliance',
-        "capability": 'currency conversion',
-        "region": 'South America',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-    {
-        "id": 1181,
-        "domain": 'Compliance',
-        "capability": 'localization workflow',
-        "region": 'Asia-Pacific',
-        "priority": 'High',
-        "owner_di": 'Assiel',
-        "status": "available",
-    },
-    {
-        "id": 1182,
-        "domain": 'Compliance',
-        "capability": 'partner management',
-        "region": 'Middle East',
-        "priority": 'Strategic',
-        "owner_di": 'Oriel',
-        "status": "available",
-    },
-    {
-        "id": 1183,
-        "domain": 'Compliance',
-        "capability": 'contract tracking',
-        "region": 'Global',
-        "priority": 'Enterprise',
-        "owner_di": 'Sofiel',
-        "status": "available",
-    },
-    {
-        "id": 1184,
-        "domain": 'Compliance',
-        "capability": 'invoice intelligence',
-        "region": 'Africa',
-        "priority": 'Core',
-        "owner_di": 'Daniel',
-        "status": "available",
-    },
-    {
-        "id": 1185,
-        "domain": 'Compliance',
-        "capability": 'subscription management',
-        "region": 'Europe',
-        "priority": 'High',
-        "owner_di": 'Graciel',
-        "status": "available",
-    },
-    {
-        "id": 1186,
-        "domain": 'Compliance',
-        "capability": 'webstore catalogue',
-        "region": 'North America',
-        "priority": 'Strategic',
-        "owner_di": 'Henriel',
-        "status": "available",
-    },
-    {
-        "id": 1187,
-        "domain": 'Compliance',
-        "capability": 'order workflow',
-        "region": 'South America',
-        "priority": 'Enterprise',
-        "owner_di": 'Jamiel',
-        "status": "available",
-    },
-    {
-        "id": 1188,
-        "domain": 'Compliance',
-        "capability": 'customer support routing',
-        "region": 'Asia-Pacific',
-        "priority": 'Core',
-        "owner_di": 'Ameliel',
-        "status": "available",
-    },
-    {
-        "id": 1189,
-        "domain": 'Compliance',
-        "capability": 'file classification',
-        "region": 'Middle East',
-        "priority": 'High',
-        "owner_di": 'Guaiel',
-        "status": "available",
-    },
-    {
-        "id": 1190,
-        "domain": 'Compliance',
-        "capability": 'secure export',
-        "region": 'Global',
-        "priority": 'Strategic',
-        "owner_di": 'Nathaniel',
-        "status": "available",
-    },
-    {
-        "id": 1191,
-        "domain": 'Compliance',
-        "capability": 'report scheduling',
-        "region": 'Africa',
-        "priority": 'Enterprise',
-        "owner_di": 'Gabriel',
-        "status": "available",
-    },
-    {
-        "id": 1192,
-        "domain": 'Compliance',
-        "capability": 'executive notifications',
-        "region": 'Europe',
-        "priority": 'Core',
-        "owner_di": 'Raphaiel',
-        "status": "available",
-    },
-    {
-        "id": 1193,
-        "domain": 'Compliance',
-        "capability": 'CEO office briefing',
-        "region": 'North America',
-        "priority": 'High',
-        "owner_di": 'Uriel',
-        "status": "available",
-    },
-    {
-        "id": 1194,
-        "domain": 'Compliance',
-        "capability": 'DI workforce ranking',
-        "region": 'South America',
-        "priority": 'Strategic',
-        "owner_di": 'Ariel',
-        "status": "available",
-    },
-    {
-        "id": 1195,
-        "domain": 'Compliance',
-        "capability": 'DI specialist handoff',
-        "region": 'Asia-Pacific',
-        "priority": 'Enterprise',
-        "owner_di": 'Muriel',
-        "status": "available",
-    },
-    {
-        "id": 1196,
-        "domain": 'Compliance',
-        "capability": 'persistent work continuity',
-        "region": 'Middle East',
-        "priority": 'Core',
-        "owner_di": 'Azriel',
-        "status": "available",
-    },
-    {
-        "id": 1197,
-        "domain": 'Compliance',
-        "capability": 'browser voice intake',
-        "region": 'Global',
-        "priority": 'High',
-        "owner_di": 'Adriel',
-        "status": "available",
-    },
-    {
-        "id": 1198,
-        "domain": 'Compliance',
-        "capability": 'spoken response',
-        "region": 'Africa',
-        "priority": 'Strategic',
-        "owner_di": 'Haniel',
-        "status": "available",
-    },
-    {
-        "id": 1199,
-        "domain": 'Compliance',
-        "capability": 'avatar presentation',
-        "region": 'Europe',
-        "priority": 'Enterprise',
-        "owner_di": 'Raziel',
-        "status": "available",
-    },
-    {
-        "id": 1200,
-        "domain": 'Compliance',
-        "capability": 'conference room orchestration',
-        "region": 'North America',
-        "priority": 'Core',
-        "owner_di": 'Emiel',
-        "status": "available",
-    },
-]
-
-def global_registry_search(query="", limit=24):
-    """Search the DACRE global capability catalogue."""
-    q = str(query or "").strip().lower()
-    rows = GLOBAL_ENTERPRISE_REGISTRY
-    if q:
-        rows = [r for r in rows if q in r["domain"].lower()
-                or q in r["capability"].lower()
-                or q in r["region"].lower()
-                or q in r["owner_di"].lower()]
-    return rows[:max(1, int(limit))]
-
-def render_global_enterprise_command_center(user):
-    """Global control surface for configured DACRE capabilities."""
-    st.markdown(
-        "<div style='padding:24px;border-radius:24px;background:linear-gradient(135deg,#061225,#102a4a);"
-        "border:1px solid #2563eb55'><h1 style='color:white;margin:0'>🌐 DACRE GLOBAL COMMAND CENTER</h1>"
-        "<p style='color:#b8c9dc'>Global operations, DI intelligence, technology and enterprise work.</p></div>",
-        unsafe_allow_html=True,
-    )
-    c1,c2,c3,c4=st.columns(4)
-    c1.metric("DI specialists", len(REAL_DI_ROSTER))
-    c2.metric("Capability records", f"{len(GLOBAL_ENTERPRISE_REGISTRY):,}")
-    c3.metric("Regions", len({r["region"] for r in GLOBAL_ENTERPRISE_REGISTRY}))
-    c4.metric("Domains", len({r["domain"] for r in GLOBAL_ENTERPRISE_REGISTRY}))
-    query=st.text_input("Find a DACRE capability", placeholder="Search AI, security, finance, voice, global operations…")
-    for r in global_registry_search(query, 36):
-        st.markdown(
-            f"<div style='padding:12px 15px;margin:7px 0;border:1px solid #29496b;border-radius:12px;"
-            f"background:#091728'><b style='color:#7dd3fc'>{r['domain']}</b> · "
-            f"<span style='color:white'>{r['capability']}</span><br><small style='color:#94a3b8'>"
-            f"Region: {r['region']} · Priority: {r['priority']} · DI owner: {r['owner_di']} · "
-            f"Status: {r['status']}</small></div>",
-            unsafe_allow_html=True,
-        )
 
 # =============================================================================
 # MAIN ENTRY POINT
@@ -17985,3 +8604,3903 @@ if __name__ == "__main__":
         landing_page()
     else:
         main_app()
+
+# =============================================================================
+# DI CRAFT BASEMENT — EXTENDED ENGINEERING REGISTRY
+# =============================================================================
+DI_CRAFT_EXTENDED_REGISTRY = {
+    "Emiel": {
+        "agent_index": 1,
+        "face_asset": "assets/di_faces/Emiel.png",
+        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
+        "rooms": [
+            {"room":"core","artifact":"neural_lattice","screen_id":"emiel-core-screen","status":"ready","version":"1.0.1"},
+            {"room":"brain","artifact":"voice_console","screen_id":"emiel-brain-screen","status":"ready","version":"1.0.2"},
+            {"room":"body","artifact":"memory_vault","screen_id":"emiel-body-screen","status":"ready","version":"1.0.3"},
+            {"room":"voice","artifact":"control_screen","screen_id":"emiel-voice-screen","status":"ready","version":"1.0.4"},
+            {"room":"tools","artifact":"workflow_graph","screen_id":"emiel-tools-screen","status":"ready","version":"1.0.5"},
+            {"room":"memory","artifact":"risk_matrix","screen_id":"emiel-memory-screen","status":"ready","version":"1.0.6"},
+        ],
+        "approved_capabilities": [
+            "documents",
+            "finance",
+            "strategy",
+            "knowledge",
+        ],
+    },
+    "Assiel": {
+        "agent_index": 2,
+        "face_asset": "assets/di_faces/Assiel.png",
+        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
+        "rooms": [
+            {"room":"core","artifact":"voice_console","screen_id":"assiel-core-screen","status":"ready","version":"1.0.1"},
+            {"room":"brain","artifact":"memory_vault","screen_id":"assiel-brain-screen","status":"ready","version":"1.0.2"},
+            {"room":"body","artifact":"control_screen","screen_id":"assiel-body-screen","status":"ready","version":"1.0.3"},
+            {"room":"voice","artifact":"workflow_graph","screen_id":"assiel-voice-screen","status":"ready","version":"1.0.4"},
+            {"room":"tools","artifact":"risk_matrix","screen_id":"assiel-tools-screen","status":"ready","version":"1.0.5"},
+            {"room":"memory","artifact":"market_globe","screen_id":"assiel-memory-screen","status":"ready","version":"1.0.6"},
+        ],
+        "approved_capabilities": [
+            "research",
+            "operations",
+            "marketing",
+            "technology",
+            "executive",
+        ],
+    },
+    "Oriel": {
+        "agent_index": 3,
+        "face_asset": "assets/di_faces/Oriel.png",
+        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
+        "rooms": [
+            {"room":"core","artifact":"memory_vault","screen_id":"oriel-core-screen","status":"ready","version":"1.0.1"},
+            {"room":"brain","artifact":"control_screen","screen_id":"oriel-brain-screen","status":"ready","version":"1.0.2"},
+            {"room":"body","artifact":"workflow_graph","screen_id":"oriel-body-screen","status":"ready","version":"1.0.3"},
+            {"room":"voice","artifact":"risk_matrix","screen_id":"oriel-voice-screen","status":"ready","version":"1.0.4"},
+            {"room":"tools","artifact":"market_globe","screen_id":"oriel-tools-screen","status":"ready","version":"1.0.5"},
+            {"room":"memory","artifact":"report_canvas","screen_id":"oriel-memory-screen","status":"ready","version":"1.0.6"},
+        ],
+        "approved_capabilities": [
+            "analytics",
+            "security",
+            "sales",
+            "people",
+            "communications",
+        ],
+    },
+    "Sofiel": {
+        "agent_index": 4,
+        "face_asset": "assets/di_faces/Sofiel.png",
+        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
+        "rooms": [
+            {"room":"core","artifact":"control_screen","screen_id":"sofiel-core-screen","status":"ready","version":"1.0.1"},
+            {"room":"brain","artifact":"workflow_graph","screen_id":"sofiel-brain-screen","status":"ready","version":"1.0.2"},
+            {"room":"body","artifact":"risk_matrix","screen_id":"sofiel-body-screen","status":"ready","version":"1.0.3"},
+            {"room":"voice","artifact":"market_globe","screen_id":"sofiel-voice-screen","status":"ready","version":"1.0.4"},
+            {"room":"tools","artifact":"report_canvas","screen_id":"sofiel-tools-screen","status":"ready","version":"1.0.5"},
+            {"room":"memory","artifact":"holographic_table","screen_id":"sofiel-memory-screen","status":"ready","version":"1.0.6"},
+        ],
+        "approved_capabilities": [
+            "documents",
+            "finance",
+            "strategy",
+            "knowledge",
+        ],
+    },
+    "Daniel": {
+        "agent_index": 5,
+        "face_asset": "assets/di_faces/Daniel.png",
+        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
+        "rooms": [
+            {"room":"core","artifact":"workflow_graph","screen_id":"daniel-core-screen","status":"ready","version":"1.0.1"},
+            {"room":"brain","artifact":"risk_matrix","screen_id":"daniel-brain-screen","status":"ready","version":"1.0.2"},
+            {"room":"body","artifact":"market_globe","screen_id":"daniel-body-screen","status":"ready","version":"1.0.3"},
+            {"room":"voice","artifact":"report_canvas","screen_id":"daniel-voice-screen","status":"ready","version":"1.0.4"},
+            {"room":"tools","artifact":"holographic_table","screen_id":"daniel-tools-screen","status":"ready","version":"1.0.5"},
+            {"room":"memory","artifact":"3d_data_cube","screen_id":"daniel-memory-screen","status":"ready","version":"1.0.6"},
+        ],
+        "approved_capabilities": [
+            "research",
+            "operations",
+            "marketing",
+            "technology",
+            "executive",
+        ],
+    },
+    "Graciel": {
+        "agent_index": 6,
+        "face_asset": "assets/di_faces/Graciel.png",
+        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
+        "rooms": [
+            {"room":"core","artifact":"risk_matrix","screen_id":"graciel-core-screen","status":"ready","version":"1.0.1"},
+            {"room":"brain","artifact":"market_globe","screen_id":"graciel-brain-screen","status":"ready","version":"1.0.2"},
+            {"room":"body","artifact":"report_canvas","screen_id":"graciel-body-screen","status":"ready","version":"1.0.3"},
+            {"room":"voice","artifact":"holographic_table","screen_id":"graciel-voice-screen","status":"ready","version":"1.0.4"},
+            {"room":"tools","artifact":"3d_data_cube","screen_id":"graciel-tools-screen","status":"ready","version":"1.0.5"},
+            {"room":"memory","artifact":"neural_lattice","screen_id":"graciel-memory-screen","status":"ready","version":"1.0.6"},
+        ],
+        "approved_capabilities": [
+            "analytics",
+            "security",
+            "sales",
+            "people",
+            "communications",
+        ],
+    },
+    "Henriel": {
+        "agent_index": 7,
+        "face_asset": "assets/di_faces/Henriel.png",
+        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
+        "rooms": [
+            {"room":"core","artifact":"market_globe","screen_id":"henriel-core-screen","status":"ready","version":"1.0.1"},
+            {"room":"brain","artifact":"report_canvas","screen_id":"henriel-brain-screen","status":"ready","version":"1.0.2"},
+            {"room":"body","artifact":"holographic_table","screen_id":"henriel-body-screen","status":"ready","version":"1.0.3"},
+            {"room":"voice","artifact":"3d_data_cube","screen_id":"henriel-voice-screen","status":"ready","version":"1.0.4"},
+            {"room":"tools","artifact":"neural_lattice","screen_id":"henriel-tools-screen","status":"ready","version":"1.0.5"},
+            {"room":"memory","artifact":"voice_console","screen_id":"henriel-memory-screen","status":"ready","version":"1.0.6"},
+        ],
+        "approved_capabilities": [
+            "documents",
+            "finance",
+            "strategy",
+            "knowledge",
+        ],
+    },
+    "Jamiel": {
+        "agent_index": 8,
+        "face_asset": "assets/di_faces/Jamiel.png",
+        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
+        "rooms": [
+            {"room":"core","artifact":"report_canvas","screen_id":"jamiel-core-screen","status":"ready","version":"1.0.1"},
+            {"room":"brain","artifact":"holographic_table","screen_id":"jamiel-brain-screen","status":"ready","version":"1.0.2"},
+            {"room":"body","artifact":"3d_data_cube","screen_id":"jamiel-body-screen","status":"ready","version":"1.0.3"},
+            {"room":"voice","artifact":"neural_lattice","screen_id":"jamiel-voice-screen","status":"ready","version":"1.0.4"},
+            {"room":"tools","artifact":"voice_console","screen_id":"jamiel-tools-screen","status":"ready","version":"1.0.5"},
+            {"room":"memory","artifact":"memory_vault","screen_id":"jamiel-memory-screen","status":"ready","version":"1.0.6"},
+        ],
+        "approved_capabilities": [
+            "research",
+            "operations",
+            "marketing",
+            "technology",
+            "executive",
+        ],
+    },
+    "Ameliel": {
+        "agent_index": 9,
+        "face_asset": "assets/di_faces/Ameliel.png",
+        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
+        "rooms": [
+            {"room":"core","artifact":"holographic_table","screen_id":"ameliel-core-screen","status":"ready","version":"1.0.1"},
+            {"room":"brain","artifact":"3d_data_cube","screen_id":"ameliel-brain-screen","status":"ready","version":"1.0.2"},
+            {"room":"body","artifact":"neural_lattice","screen_id":"ameliel-body-screen","status":"ready","version":"1.0.3"},
+            {"room":"voice","artifact":"voice_console","screen_id":"ameliel-voice-screen","status":"ready","version":"1.0.4"},
+            {"room":"tools","artifact":"memory_vault","screen_id":"ameliel-tools-screen","status":"ready","version":"1.0.5"},
+            {"room":"memory","artifact":"control_screen","screen_id":"ameliel-memory-screen","status":"ready","version":"1.0.6"},
+        ],
+        "approved_capabilities": [
+            "analytics",
+            "security",
+            "sales",
+            "people",
+            "communications",
+        ],
+    },
+    "Guaiel": {
+        "agent_index": 10,
+        "face_asset": "assets/di_faces/Guaiel.png",
+        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
+        "rooms": [
+            {"room":"core","artifact":"3d_data_cube","screen_id":"guaiel-core-screen","status":"ready","version":"1.0.1"},
+            {"room":"brain","artifact":"neural_lattice","screen_id":"guaiel-brain-screen","status":"ready","version":"1.0.2"},
+            {"room":"body","artifact":"voice_console","screen_id":"guaiel-body-screen","status":"ready","version":"1.0.3"},
+            {"room":"voice","artifact":"memory_vault","screen_id":"guaiel-voice-screen","status":"ready","version":"1.0.4"},
+            {"room":"tools","artifact":"control_screen","screen_id":"guaiel-tools-screen","status":"ready","version":"1.0.5"},
+            {"room":"memory","artifact":"workflow_graph","screen_id":"guaiel-memory-screen","status":"ready","version":"1.0.6"},
+        ],
+        "approved_capabilities": [
+            "documents",
+            "finance",
+            "strategy",
+            "knowledge",
+        ],
+    },
+    "Nathaniel": {
+        "agent_index": 11,
+        "face_asset": "assets/di_faces/Nathaniel.png",
+        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
+        "rooms": [
+            {"room":"core","artifact":"neural_lattice","screen_id":"nathaniel-core-screen","status":"ready","version":"1.0.1"},
+            {"room":"brain","artifact":"voice_console","screen_id":"nathaniel-brain-screen","status":"ready","version":"1.0.2"},
+            {"room":"body","artifact":"memory_vault","screen_id":"nathaniel-body-screen","status":"ready","version":"1.0.3"},
+            {"room":"voice","artifact":"control_screen","screen_id":"nathaniel-voice-screen","status":"ready","version":"1.0.4"},
+            {"room":"tools","artifact":"workflow_graph","screen_id":"nathaniel-tools-screen","status":"ready","version":"1.0.5"},
+            {"room":"memory","artifact":"risk_matrix","screen_id":"nathaniel-memory-screen","status":"ready","version":"1.0.6"},
+        ],
+        "approved_capabilities": [
+            "research",
+            "operations",
+            "marketing",
+            "technology",
+            "executive",
+        ],
+    },
+    "Gabriel": {
+        "agent_index": 12,
+        "face_asset": "assets/di_faces/Gabriel.png",
+        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
+        "rooms": [
+            {"room":"core","artifact":"voice_console","screen_id":"gabriel-core-screen","status":"ready","version":"1.0.1"},
+            {"room":"brain","artifact":"memory_vault","screen_id":"gabriel-brain-screen","status":"ready","version":"1.0.2"},
+            {"room":"body","artifact":"control_screen","screen_id":"gabriel-body-screen","status":"ready","version":"1.0.3"},
+            {"room":"voice","artifact":"workflow_graph","screen_id":"gabriel-voice-screen","status":"ready","version":"1.0.4"},
+            {"room":"tools","artifact":"risk_matrix","screen_id":"gabriel-tools-screen","status":"ready","version":"1.0.5"},
+            {"room":"memory","artifact":"market_globe","screen_id":"gabriel-memory-screen","status":"ready","version":"1.0.6"},
+        ],
+        "approved_capabilities": [
+            "analytics",
+            "security",
+            "sales",
+            "people",
+            "communications",
+        ],
+    },
+    "Raphaiel": {
+        "agent_index": 13,
+        "face_asset": "assets/di_faces/Raphaiel.png",
+        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
+        "rooms": [
+            {"room":"core","artifact":"memory_vault","screen_id":"raphaiel-core-screen","status":"ready","version":"1.0.1"},
+            {"room":"brain","artifact":"control_screen","screen_id":"raphaiel-brain-screen","status":"ready","version":"1.0.2"},
+            {"room":"body","artifact":"workflow_graph","screen_id":"raphaiel-body-screen","status":"ready","version":"1.0.3"},
+            {"room":"voice","artifact":"risk_matrix","screen_id":"raphaiel-voice-screen","status":"ready","version":"1.0.4"},
+            {"room":"tools","artifact":"market_globe","screen_id":"raphaiel-tools-screen","status":"ready","version":"1.0.5"},
+            {"room":"memory","artifact":"report_canvas","screen_id":"raphaiel-memory-screen","status":"ready","version":"1.0.6"},
+        ],
+        "approved_capabilities": [
+            "documents",
+            "finance",
+            "strategy",
+            "knowledge",
+        ],
+    },
+    "Uriel": {
+        "agent_index": 14,
+        "face_asset": "assets/di_faces/Uriel.png",
+        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
+        "rooms": [
+            {"room":"core","artifact":"control_screen","screen_id":"uriel-core-screen","status":"ready","version":"1.0.1"},
+            {"room":"brain","artifact":"workflow_graph","screen_id":"uriel-brain-screen","status":"ready","version":"1.0.2"},
+            {"room":"body","artifact":"risk_matrix","screen_id":"uriel-body-screen","status":"ready","version":"1.0.3"},
+            {"room":"voice","artifact":"market_globe","screen_id":"uriel-voice-screen","status":"ready","version":"1.0.4"},
+            {"room":"tools","artifact":"report_canvas","screen_id":"uriel-tools-screen","status":"ready","version":"1.0.5"},
+            {"room":"memory","artifact":"holographic_table","screen_id":"uriel-memory-screen","status":"ready","version":"1.0.6"},
+        ],
+        "approved_capabilities": [
+            "research",
+            "operations",
+            "marketing",
+            "technology",
+            "executive",
+        ],
+    },
+    "Ariel": {
+        "agent_index": 15,
+        "face_asset": "assets/di_faces/Ariel.png",
+        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
+        "rooms": [
+            {"room":"core","artifact":"workflow_graph","screen_id":"ariel-core-screen","status":"ready","version":"1.0.1"},
+            {"room":"brain","artifact":"risk_matrix","screen_id":"ariel-brain-screen","status":"ready","version":"1.0.2"},
+            {"room":"body","artifact":"market_globe","screen_id":"ariel-body-screen","status":"ready","version":"1.0.3"},
+            {"room":"voice","artifact":"report_canvas","screen_id":"ariel-voice-screen","status":"ready","version":"1.0.4"},
+            {"room":"tools","artifact":"holographic_table","screen_id":"ariel-tools-screen","status":"ready","version":"1.0.5"},
+            {"room":"memory","artifact":"3d_data_cube","screen_id":"ariel-memory-screen","status":"ready","version":"1.0.6"},
+        ],
+        "approved_capabilities": [
+            "analytics",
+            "security",
+            "sales",
+            "people",
+            "communications",
+        ],
+    },
+    "Muriel": {
+        "agent_index": 16,
+        "face_asset": "assets/di_faces/Muriel.png",
+        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
+        "rooms": [
+            {"room":"core","artifact":"risk_matrix","screen_id":"muriel-core-screen","status":"ready","version":"1.0.1"},
+            {"room":"brain","artifact":"market_globe","screen_id":"muriel-brain-screen","status":"ready","version":"1.0.2"},
+            {"room":"body","artifact":"report_canvas","screen_id":"muriel-body-screen","status":"ready","version":"1.0.3"},
+            {"room":"voice","artifact":"holographic_table","screen_id":"muriel-voice-screen","status":"ready","version":"1.0.4"},
+            {"room":"tools","artifact":"3d_data_cube","screen_id":"muriel-tools-screen","status":"ready","version":"1.0.5"},
+            {"room":"memory","artifact":"neural_lattice","screen_id":"muriel-memory-screen","status":"ready","version":"1.0.6"},
+        ],
+        "approved_capabilities": [
+            "documents",
+            "finance",
+            "strategy",
+            "knowledge",
+        ],
+    },
+    "Azriel": {
+        "agent_index": 17,
+        "face_asset": "assets/di_faces/Azriel.png",
+        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
+        "rooms": [
+            {"room":"core","artifact":"market_globe","screen_id":"azriel-core-screen","status":"ready","version":"1.0.1"},
+            {"room":"brain","artifact":"report_canvas","screen_id":"azriel-brain-screen","status":"ready","version":"1.0.2"},
+            {"room":"body","artifact":"holographic_table","screen_id":"azriel-body-screen","status":"ready","version":"1.0.3"},
+            {"room":"voice","artifact":"3d_data_cube","screen_id":"azriel-voice-screen","status":"ready","version":"1.0.4"},
+            {"room":"tools","artifact":"neural_lattice","screen_id":"azriel-tools-screen","status":"ready","version":"1.0.5"},
+            {"room":"memory","artifact":"voice_console","screen_id":"azriel-memory-screen","status":"ready","version":"1.0.6"},
+        ],
+        "approved_capabilities": [
+            "research",
+            "operations",
+            "marketing",
+            "technology",
+            "executive",
+        ],
+    },
+    "Adriel": {
+        "agent_index": 18,
+        "face_asset": "assets/di_faces/Adriel.png",
+        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
+        "rooms": [
+            {"room":"core","artifact":"report_canvas","screen_id":"adriel-core-screen","status":"ready","version":"1.0.1"},
+            {"room":"brain","artifact":"holographic_table","screen_id":"adriel-brain-screen","status":"ready","version":"1.0.2"},
+            {"room":"body","artifact":"3d_data_cube","screen_id":"adriel-body-screen","status":"ready","version":"1.0.3"},
+            {"room":"voice","artifact":"neural_lattice","screen_id":"adriel-voice-screen","status":"ready","version":"1.0.4"},
+            {"room":"tools","artifact":"voice_console","screen_id":"adriel-tools-screen","status":"ready","version":"1.0.5"},
+            {"room":"memory","artifact":"memory_vault","screen_id":"adriel-memory-screen","status":"ready","version":"1.0.6"},
+        ],
+        "approved_capabilities": [
+            "analytics",
+            "security",
+            "sales",
+            "people",
+            "communications",
+        ],
+    },
+    "Haniel": {
+        "agent_index": 19,
+        "face_asset": "assets/di_faces/Haniel.png",
+        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
+        "rooms": [
+            {"room":"core","artifact":"holographic_table","screen_id":"haniel-core-screen","status":"ready","version":"1.0.1"},
+            {"room":"brain","artifact":"3d_data_cube","screen_id":"haniel-brain-screen","status":"ready","version":"1.0.2"},
+            {"room":"body","artifact":"neural_lattice","screen_id":"haniel-body-screen","status":"ready","version":"1.0.3"},
+            {"room":"voice","artifact":"voice_console","screen_id":"haniel-voice-screen","status":"ready","version":"1.0.4"},
+            {"room":"tools","artifact":"memory_vault","screen_id":"haniel-tools-screen","status":"ready","version":"1.0.5"},
+            {"room":"memory","artifact":"control_screen","screen_id":"haniel-memory-screen","status":"ready","version":"1.0.6"},
+        ],
+        "approved_capabilities": [
+            "documents",
+            "finance",
+            "strategy",
+            "knowledge",
+        ],
+    },
+    "Raziel": {
+        "agent_index": 20,
+        "face_asset": "assets/di_faces/Raziel.png",
+        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
+        "rooms": [
+            {"room":"core","artifact":"3d_data_cube","screen_id":"raziel-core-screen","status":"ready","version":"1.0.1"},
+            {"room":"brain","artifact":"neural_lattice","screen_id":"raziel-brain-screen","status":"ready","version":"1.0.2"},
+            {"room":"body","artifact":"voice_console","screen_id":"raziel-body-screen","status":"ready","version":"1.0.3"},
+            {"room":"voice","artifact":"memory_vault","screen_id":"raziel-voice-screen","status":"ready","version":"1.0.4"},
+            {"room":"tools","artifact":"control_screen","screen_id":"raziel-tools-screen","status":"ready","version":"1.0.5"},
+            {"room":"memory","artifact":"workflow_graph","screen_id":"raziel-memory-screen","status":"ready","version":"1.0.6"},
+        ],
+        "approved_capabilities": [
+            "research",
+            "operations",
+            "marketing",
+            "technology",
+            "executive",
+        ],
+    },
+}
+DI_CRAFT_REGISTRY_VERSION='2026.08.19'
+DI_CRAFT_ARTIFACT_0001={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0002={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0003={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0004={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0005={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0006={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0007={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0008={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0009={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0010={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0011={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0012={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0013={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0014={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0015={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0016={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0017={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0018={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0019={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0020={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0021={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0022={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0023={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0024={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0025={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0026={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0027={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0028={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0029={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0030={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0031={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0032={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0033={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0034={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0035={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0036={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0037={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0038={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0039={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0040={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0041={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0042={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0043={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0044={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0045={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0046={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0047={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0048={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0049={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0050={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0051={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0052={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0053={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0054={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0055={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0056={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0057={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0058={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0059={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0060={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0061={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0062={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0063={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0064={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0065={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0066={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0067={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0068={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0069={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0070={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0071={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0072={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0073={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0074={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0075={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0076={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0077={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0078={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0079={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0080={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0081={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0082={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0083={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0084={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0085={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0086={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0087={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0088={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0089={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0090={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0091={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0092={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0093={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0094={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0095={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0096={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0097={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0098={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0099={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0100={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0101={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0102={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0103={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0104={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0105={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0106={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0107={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0108={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0109={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0110={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0111={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0112={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0113={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0114={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0115={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0116={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0117={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0118={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0119={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0120={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0121={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0122={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0123={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0124={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0125={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0126={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0127={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0128={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0129={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0130={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0131={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0132={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0133={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0134={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0135={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0136={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0137={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0138={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0139={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0140={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0141={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0142={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0143={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0144={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0145={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0146={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0147={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0148={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0149={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0150={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0151={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0152={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0153={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0154={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0155={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0156={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0157={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0158={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0159={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0160={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0161={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0162={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0163={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0164={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0165={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0166={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0167={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0168={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0169={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0170={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0171={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0172={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0173={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0174={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0175={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0176={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0177={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0178={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0179={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0180={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0181={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0182={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0183={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0184={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0185={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0186={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0187={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0188={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0189={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0190={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0191={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0192={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0193={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0194={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0195={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0196={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0197={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0198={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0199={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0200={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0201={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0202={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0203={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0204={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0205={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0206={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0207={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0208={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0209={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0210={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0211={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0212={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0213={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0214={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0215={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0216={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0217={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0218={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0219={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0220={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0221={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0222={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0223={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0224={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0225={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0226={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0227={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0228={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0229={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0230={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0231={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0232={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0233={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0234={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0235={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0236={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0237={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0238={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0239={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0240={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0241={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0242={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0243={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0244={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0245={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0246={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0247={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0248={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0249={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0250={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0251={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0252={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0253={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0254={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0255={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0256={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0257={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0258={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0259={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0260={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0261={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0262={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0263={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0264={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0265={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0266={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0267={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0268={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0269={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0270={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0271={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0272={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0273={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0274={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0275={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0276={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0277={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0278={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0279={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0280={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0281={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0282={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0283={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0284={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0285={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0286={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0287={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0288={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0289={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0290={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0291={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0292={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0293={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0294={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0295={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0296={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0297={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0298={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0299={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0300={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0301={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0302={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0303={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0304={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0305={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0306={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0307={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0308={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0309={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0310={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0311={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0312={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0313={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0314={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0315={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0316={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0317={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0318={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0319={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0320={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0321={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0322={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0323={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0324={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0325={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0326={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0327={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0328={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0329={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0330={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0331={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0332={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0333={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0334={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0335={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0336={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0337={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0338={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0339={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0340={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0341={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0342={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0343={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0344={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0345={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0346={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0347={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0348={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0349={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0350={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0351={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0352={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0353={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0354={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0355={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0356={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0357={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0358={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0359={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0360={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0361={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0362={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0363={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0364={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0365={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0366={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0367={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0368={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0369={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0370={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0371={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0372={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0373={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0374={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0375={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0376={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0377={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0378={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0379={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0380={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0381={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0382={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0383={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0384={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0385={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0386={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0387={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0388={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0389={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0390={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0391={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0392={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0393={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0394={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0395={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0396={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0397={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0398={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0399={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0400={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0401={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0402={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0403={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0404={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0405={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0406={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0407={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0408={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0409={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0410={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0411={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0412={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0413={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0414={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0415={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0416={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0417={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0418={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0419={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0420={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0421={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0422={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0423={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0424={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0425={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0426={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0427={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0428={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0429={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0430={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0431={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0432={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0433={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0434={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0435={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0436={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0437={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0438={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0439={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0440={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0441={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0442={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0443={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0444={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0445={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0446={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0447={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0448={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0449={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0450={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0451={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0452={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0453={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0454={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0455={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0456={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0457={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0458={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0459={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0460={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0461={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0462={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0463={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0464={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0465={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0466={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0467={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0468={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0469={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0470={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0471={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0472={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0473={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0474={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0475={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0476={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0477={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0478={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0479={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0480={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0481={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0482={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0483={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0484={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0485={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0486={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0487={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0488={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0489={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0490={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0491={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0492={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0493={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0494={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0495={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0496={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0497={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0498={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0499={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0500={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0501={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0502={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0503={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0504={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0505={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0506={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0507={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0508={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0509={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0510={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0511={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0512={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0513={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0514={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0515={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0516={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0517={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0518={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0519={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0520={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0521={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0522={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0523={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0524={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0525={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0526={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0527={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0528={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0529={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0530={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0531={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0532={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0533={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0534={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0535={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0536={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0537={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0538={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0539={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0540={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0541={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0542={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0543={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0544={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0545={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0546={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0547={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0548={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0549={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0550={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0551={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0552={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0553={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0554={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0555={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0556={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0557={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0558={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0559={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0560={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0561={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0562={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0563={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0564={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0565={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0566={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0567={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0568={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0569={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0570={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0571={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0572={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0573={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0574={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0575={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0576={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0577={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0578={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0579={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0580={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0581={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0582={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0583={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0584={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0585={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0586={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0587={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0588={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0589={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0590={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0591={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0592={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0593={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0594={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0595={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0596={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0597={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0598={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0599={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0600={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0601={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0602={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0603={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0604={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0605={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0606={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0607={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0608={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0609={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0610={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0611={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0612={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0613={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0614={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0615={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0616={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0617={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0618={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0619={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0620={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0621={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0622={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0623={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0624={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0625={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0626={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0627={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0628={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0629={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0630={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0631={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0632={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0633={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0634={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0635={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0636={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0637={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0638={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0639={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0640={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0641={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0642={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0643={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0644={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0645={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0646={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0647={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0648={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0649={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0650={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0651={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0652={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0653={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0654={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0655={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0656={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0657={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0658={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0659={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0660={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0661={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0662={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0663={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0664={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0665={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0666={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0667={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0668={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0669={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0670={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0671={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0672={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0673={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0674={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0675={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0676={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0677={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0678={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0679={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0680={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0681={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0682={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0683={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0684={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0685={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0686={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0687={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0688={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0689={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0690={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0691={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0692={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0693={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0694={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0695={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0696={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0697={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0698={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0699={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0700={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0701={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0702={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0703={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0704={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0705={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0706={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0707={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0708={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0709={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0710={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0711={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0712={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0713={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0714={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0715={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0716={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0717={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0718={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0719={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0720={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0721={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0722={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0723={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0724={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0725={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0726={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0727={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0728={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0729={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0730={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0731={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0732={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0733={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0734={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0735={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0736={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0737={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0738={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0739={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0740={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0741={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0742={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0743={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0744={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0745={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0746={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0747={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0748={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0749={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0750={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0751={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0752={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0753={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0754={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0755={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0756={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0757={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0758={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0759={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0760={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0761={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0762={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0763={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0764={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0765={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0766={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0767={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0768={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0769={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0770={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0771={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0772={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0773={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0774={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0775={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0776={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0777={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0778={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0779={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0780={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0781={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0782={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0783={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0784={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0785={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0786={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0787={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0788={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0789={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0790={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0791={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0792={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0793={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0794={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0795={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0796={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0797={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0798={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0799={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0800={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0801={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0802={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0803={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0804={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0805={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0806={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0807={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0808={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0809={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0810={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0811={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0812={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0813={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0814={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0815={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0816={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0817={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0818={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0819={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0820={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0821={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0822={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0823={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0824={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0825={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0826={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0827={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0828={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0829={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0830={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0831={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0832={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0833={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0834={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0835={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0836={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0837={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0838={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0839={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0840={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0841={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0842={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0843={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0844={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0845={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0846={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0847={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0848={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0849={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0850={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0851={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0852={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0853={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0854={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0855={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0856={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0857={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0858={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0859={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0860={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0861={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0862={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0863={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0864={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0865={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0866={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0867={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0868={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0869={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0870={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0871={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0872={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0873={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0874={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0875={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0876={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0877={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0878={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0879={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0880={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0881={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0882={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0883={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0884={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0885={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0886={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0887={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0888={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0889={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0890={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0891={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0892={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0893={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0894={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0895={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0896={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0897={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0898={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0899={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0900={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0901={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0902={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0903={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0904={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0905={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0906={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0907={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0908={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0909={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0910={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0911={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0912={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0913={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0914={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0915={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0916={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0917={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0918={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0919={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0920={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0921={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0922={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0923={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0924={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0925={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0926={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0927={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0928={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0929={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0930={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0931={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0932={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0933={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0934={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0935={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0936={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0937={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0938={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0939={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0940={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0941={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0942={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0943={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0944={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0945={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0946={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0947={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0948={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0949={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0950={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0951={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0952={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0953={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0954={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0955={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0956={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0957={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0958={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0959={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0960={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0961={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0962={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0963={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0964={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0965={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0966={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0967={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0968={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0969={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0970={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0971={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0972={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0973={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0974={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0975={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0976={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0977={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0978={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0979={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0980={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0981={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0982={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0983={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0984={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0985={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0986={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0987={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0988={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0989={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0990={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0991={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0992={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0993={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0994={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0995={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0996={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0997={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0998={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_0999={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1000={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1001={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1002={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1003={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1004={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1005={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1006={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1007={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1008={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1009={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1010={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1011={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1012={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1013={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1014={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1015={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1016={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1017={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1018={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1019={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1020={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1021={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1022={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1023={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1024={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1025={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1026={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1027={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1028={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1029={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1030={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1031={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1032={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1033={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1034={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1035={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1036={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1037={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1038={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1039={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1040={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1041={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1042={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1043={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1044={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1045={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1046={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1047={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1048={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1049={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1050={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1051={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1052={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1053={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1054={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1055={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1056={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1057={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1058={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1059={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1060={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1061={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1062={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1063={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1064={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1065={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1066={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1067={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1068={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1069={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1070={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1071={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1072={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1073={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1074={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1075={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1076={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1077={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1078={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1079={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1080={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1081={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1082={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1083={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1084={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1085={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1086={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1087={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1088={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1089={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1090={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1091={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1092={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1093={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1094={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1095={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1096={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1097={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1098={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1099={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1100={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1101={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1102={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1103={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1104={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1105={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1106={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1107={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1108={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1109={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1110={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1111={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1112={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1113={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1114={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1115={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1116={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1117={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1118={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1119={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1120={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1121={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1122={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1123={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1124={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1125={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1126={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1127={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1128={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1129={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1130={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1131={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1132={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1133={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1134={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1135={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1136={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1137={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1138={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1139={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1140={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1141={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1142={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1143={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1144={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1145={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1146={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1147={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1148={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1149={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1150={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1151={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1152={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1153={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1154={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1155={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1156={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1157={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1158={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1159={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1160={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1161={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1162={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1163={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1164={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1165={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1166={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1167={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1168={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1169={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1170={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1171={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1172={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1173={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1174={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1175={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1176={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1177={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1178={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1179={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1180={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1181={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1182={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1183={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1184={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1185={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1186={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1187={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1188={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1189={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1190={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1191={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1192={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1193={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1194={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1195={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1196={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1197={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1198={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1199={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1200={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1201={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1202={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1203={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1204={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1205={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1206={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1207={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1208={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1209={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1210={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1211={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1212={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1213={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1214={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1215={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1216={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1217={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1218={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1219={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1220={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1221={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1222={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1223={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1224={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1225={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1226={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1227={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1228={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1229={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1230={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1231={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1232={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1233={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1234={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1235={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1236={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1237={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1238={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1239={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1240={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1241={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1242={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1243={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1244={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1245={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1246={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1247={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1248={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1249={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1250={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1251={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1252={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1253={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1254={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1255={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1256={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1257={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1258={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1259={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1260={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1261={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1262={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1263={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1264={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1265={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1266={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1267={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1268={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1269={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1270={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1271={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1272={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1273={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1274={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1275={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1276={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1277={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1278={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1279={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1280={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1281={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1282={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1283={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1284={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1285={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1286={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1287={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1288={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1289={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1290={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1291={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1292={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1293={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1294={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1295={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1296={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1297={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1298={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1299={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1300={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1301={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1302={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1303={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1304={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1305={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1306={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1307={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1308={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1309={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1310={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1311={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1312={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1313={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1314={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1315={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1316={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1317={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1318={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1319={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1320={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1321={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1322={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1323={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1324={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1325={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1326={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1327={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1328={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1329={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1330={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1331={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1332={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1333={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1334={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1335={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1336={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1337={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1338={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1339={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1340={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1341={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1342={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1343={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1344={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1345={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1346={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1347={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1348={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1349={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1350={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1351={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1352={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1353={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1354={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1355={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1356={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1357={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1358={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1359={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1360={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1361={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1362={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1363={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1364={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1365={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1366={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1367={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1368={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1369={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1370={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1371={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1372={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1373={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1374={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1375={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1376={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1377={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1378={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1379={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1380={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1381={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1382={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1383={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1384={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1385={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1386={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1387={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1388={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1389={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1390={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1391={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1392={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1393={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1394={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1395={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1396={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1397={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1398={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1399={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1400={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1401={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1402={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1403={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1404={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1405={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1406={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1407={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1408={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1409={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1410={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1411={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1412={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1413={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1414={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1415={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1416={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1417={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1418={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1419={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1420={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1421={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1422={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1423={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1424={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1425={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1426={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1427={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1428={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1429={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1430={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1431={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1432={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1433={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1434={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1435={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1436={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1437={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1438={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1439={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1440={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1441={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1442={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1443={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1444={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1445={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1446={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1447={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1448={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1449={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1450={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1451={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1452={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1453={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1454={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1455={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1456={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1457={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1458={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1459={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1460={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1461={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1462={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1463={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1464={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1465={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1466={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1467={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1468={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1469={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1470={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1471={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1472={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1473={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1474={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1475={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1476={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1477={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1478={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1479={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1480={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1481={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1482={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1483={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1484={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1485={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1486={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1487={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1488={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1489={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1490={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1491={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1492={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1493={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1494={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1495={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1496={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1497={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1498={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1499={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1500={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1501={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1502={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1503={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1504={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1505={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1506={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1507={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1508={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1509={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1510={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1511={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1512={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1513={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1514={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1515={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1516={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1517={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1518={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1519={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1520={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1521={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1522={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1523={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1524={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1525={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1526={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1527={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1528={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1529={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1530={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1531={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1532={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1533={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1534={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1535={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1536={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1537={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1538={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1539={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1540={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1541={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1542={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1543={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1544={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1545={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1546={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1547={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1548={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1549={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1550={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1551={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1552={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1553={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1554={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1555={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1556={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1557={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1558={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1559={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1560={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1561={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1562={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1563={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1564={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1565={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1566={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1567={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1568={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1569={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1570={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1571={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1572={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1573={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1574={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1575={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1576={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1577={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1578={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1579={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1580={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1581={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1582={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1583={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1584={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1585={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1586={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1587={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1588={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1589={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1590={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1591={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1592={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1593={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1594={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1595={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1596={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1597={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1598={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1599={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1600={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1601={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1602={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1603={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1604={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1605={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1606={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1607={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1608={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1609={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1610={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1611={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1612={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1613={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1614={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1615={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1616={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1617={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1618={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1619={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1620={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1621={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1622={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1623={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1624={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1625={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1626={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1627={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1628={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1629={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1630={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1631={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1632={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1633={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1634={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1635={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1636={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1637={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1638={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1639={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1640={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1641={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1642={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1643={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1644={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1645={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1646={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1647={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1648={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1649={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1650={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1651={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1652={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1653={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1654={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1655={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1656={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1657={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1658={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1659={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1660={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1661={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1662={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1663={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1664={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1665={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1666={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1667={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1668={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1669={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1670={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1671={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1672={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1673={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1674={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1675={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1676={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1677={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1678={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1679={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1680={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1681={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1682={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1683={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1684={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1685={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1686={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1687={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1688={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1689={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1690={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1691={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1692={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1693={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1694={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1695={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1696={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1697={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1698={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1699={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1700={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1701={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1702={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1703={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1704={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1705={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1706={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1707={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1708={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1709={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1710={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1711={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1712={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1713={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1714={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1715={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1716={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1717={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1718={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1719={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1720={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1721={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1722={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1723={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1724={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1725={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1726={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1727={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1728={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1729={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1730={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1731={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1732={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1733={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1734={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1735={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1736={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1737={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1738={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1739={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1740={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1741={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1742={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1743={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1744={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1745={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1746={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1747={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1748={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1749={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1750={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1751={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1752={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1753={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1754={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1755={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1756={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1757={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1758={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1759={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1760={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1761={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1762={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1763={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1764={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1765={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1766={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1767={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1768={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1769={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1770={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1771={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1772={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1773={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1774={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1775={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1776={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1777={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1778={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1779={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1780={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1781={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1782={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1783={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1784={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1785={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1786={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1787={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1788={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1789={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1790={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1791={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1792={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1793={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1794={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1795={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1796={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1797={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1798={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1799={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1800={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1801={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1802={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1803={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1804={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1805={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1806={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1807={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1808={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1809={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1810={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1811={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1812={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1813={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1814={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1815={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1816={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1817={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1818={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1819={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1820={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1821={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1822={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1823={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1824={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1825={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1826={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1827={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1828={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1829={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1830={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1831={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1832={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1833={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1834={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1835={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1836={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1837={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1838={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1839={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1840={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1841={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1842={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1843={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1844={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1845={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1846={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1847={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1848={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1849={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1850={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1851={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1852={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1853={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1854={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1855={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1856={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1857={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1858={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1859={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1860={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1861={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1862={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1863={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1864={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1865={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1866={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1867={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1868={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1869={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1870={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1871={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1872={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1873={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1874={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1875={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1876={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1877={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1878={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1879={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1880={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1881={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1882={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1883={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1884={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1885={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1886={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1887={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1888={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1889={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1890={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1891={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1892={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1893={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1894={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1895={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1896={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1897={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1898={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1899={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1900={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1901={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1902={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1903={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1904={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1905={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1906={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1907={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1908={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1909={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1910={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1911={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1912={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1913={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1914={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1915={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1916={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1917={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1918={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1919={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1920={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1921={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1922={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1923={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1924={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1925={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1926={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1927={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1928={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1929={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1930={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1931={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1932={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1933={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1934={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1935={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1936={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1937={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1938={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1939={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1940={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1941={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1942={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1943={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1944={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1945={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1946={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1947={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1948={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1949={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1950={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1951={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1952={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1953={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1954={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1955={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1956={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1957={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1958={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1959={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1960={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1961={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1962={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1963={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1964={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1965={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1966={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1967={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1968={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1969={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1970={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1971={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1972={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1973={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1974={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1975={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1976={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1977={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1978={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1979={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1980={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1981={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1982={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1983={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1984={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1985={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1986={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1987={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1988={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1989={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1990={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1991={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1992={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1993={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1994={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1995={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1996={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1997={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1998={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_1999={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2000={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2001={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2002={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2003={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2004={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2005={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2006={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2007={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2008={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2009={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2010={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2011={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2012={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2013={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2014={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2015={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2016={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2017={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2018={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2019={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2020={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2021={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2022={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2023={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2024={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2025={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2026={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2027={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2028={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2029={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2030={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2031={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2032={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2033={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2034={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2035={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2036={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2037={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2038={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2039={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2040={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2041={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2042={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2043={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2044={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2045={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2046={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2047={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2048={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2049={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2050={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2051={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2052={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2053={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2054={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2055={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2056={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2057={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2058={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2059={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2060={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2061={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2062={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2063={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2064={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2065={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2066={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2067={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2068={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2069={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2070={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2071={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2072={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2073={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2074={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2075={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2076={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2077={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2078={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2079={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2080={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2081={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2082={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2083={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2084={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2085={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2086={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2087={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2088={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2089={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2090={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2091={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2092={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2093={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2094={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2095={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2096={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2097={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2098={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2099={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2100={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2101={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2102={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2103={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2104={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2105={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2106={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2107={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2108={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2109={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2110={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2111={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2112={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2113={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2114={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2115={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2116={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2117={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2118={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2119={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2120={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2121={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2122={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2123={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2124={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2125={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2126={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2127={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2128={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2129={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2130={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2131={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2132={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2133={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2134={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2135={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2136={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2137={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2138={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2139={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2140={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2141={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2142={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2143={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2144={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2145={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2146={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2147={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2148={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2149={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2150={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2151={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2152={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2153={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2154={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2155={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2156={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2157={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2158={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2159={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2160={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2161={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2162={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2163={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2164={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2165={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2166={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2167={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2168={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2169={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2170={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2171={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2172={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2173={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2174={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2175={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2176={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2177={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2178={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2179={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2180={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2181={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2182={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2183={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2184={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2185={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2186={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2187={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2188={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2189={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2190={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2191={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2192={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2193={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2194={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2195={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2196={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2197={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2198={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2199={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2200={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2201={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2202={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2203={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2204={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2205={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2206={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2207={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2208={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2209={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2210={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2211={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2212={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2213={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2214={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2215={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2216={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2217={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2218={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2219={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2220={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2221={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2222={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2223={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2224={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2225={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2226={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2227={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2228={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2229={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2230={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2231={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2232={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2233={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2234={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2235={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2236={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2237={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2238={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2239={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2240={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2241={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2242={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2243={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2244={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2245={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2246={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2247={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2248={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2249={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2250={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2251={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2252={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2253={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2254={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2255={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2256={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2257={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2258={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2259={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2260={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2261={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2262={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2263={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2264={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2265={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2266={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2267={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2268={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2269={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2270={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2271={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2272={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2273={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2274={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2275={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2276={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2277={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2278={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2279={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2280={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2281={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2282={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2283={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2284={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2285={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2286={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2287={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2288={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2289={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2290={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2291={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2292={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2293={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2294={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2295={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2296={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2297={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2298={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2299={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2300={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2301={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2302={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2303={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2304={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2305={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2306={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2307={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2308={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2309={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2310={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2311={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2312={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2313={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2314={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2315={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2316={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2317={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2318={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2319={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2320={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2321={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2322={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2323={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2324={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2325={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2326={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2327={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2328={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2329={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2330={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2331={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2332={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2333={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2334={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2335={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2336={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2337={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2338={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2339={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2340={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2341={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2342={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2343={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2344={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2345={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2346={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2347={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2348={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2349={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2350={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2351={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2352={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2353={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2354={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2355={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2356={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2357={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2358={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2359={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2360={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2361={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2362={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2363={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2364={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2365={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2366={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2367={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2368={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2369={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2370={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2371={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2372={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2373={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2374={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2375={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2376={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2377={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2378={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2379={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2380={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2381={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2382={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2383={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2384={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2385={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2386={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2387={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2388={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2389={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2390={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2391={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2392={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2393={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2394={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2395={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2396={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2397={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2398={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2399={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2400={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2401={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2402={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2403={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2404={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2405={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2406={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2407={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2408={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2409={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2410={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2411={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2412={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2413={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2414={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2415={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2416={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2417={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2418={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2419={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2420={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2421={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2422={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2423={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2424={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2425={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2426={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2427={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2428={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2429={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2430={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2431={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2432={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2433={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2434={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2435={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2436={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2437={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2438={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2439={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2440={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2441={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2442={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2443={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2444={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2445={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2446={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2447={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2448={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2449={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2450={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2451={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2452={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2453={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2454={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2455={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2456={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2457={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2458={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2459={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2460={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2461={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2462={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2463={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2464={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2465={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2466={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2467={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2468={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2469={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2470={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2471={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2472={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2473={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2474={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2475={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2476={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2477={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2478={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2479={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2480={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2481={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2482={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2483={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2484={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2485={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2486={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2487={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2488={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2489={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2490={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2491={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2492={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2493={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2494={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2495={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2496={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2497={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2498={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2499={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2500={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2501={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2502={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2503={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2504={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2505={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2506={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2507={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2508={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2509={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2510={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2511={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2512={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2513={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2514={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2515={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2516={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2517={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2518={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2519={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2520={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2521={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2522={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2523={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2524={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2525={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2526={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2527={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2528={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2529={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2530={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2531={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2532={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2533={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2534={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2535={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2536={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2537={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2538={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2539={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2540={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2541={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2542={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2543={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2544={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2545={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2546={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2547={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2548={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2549={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2550={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2551={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2552={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2553={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2554={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2555={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2556={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2557={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2558={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2559={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2560={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2561={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2562={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2563={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2564={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2565={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2566={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2567={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2568={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2569={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2570={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2571={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2572={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2573={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2574={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2575={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2576={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2577={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2578={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2579={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2580={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2581={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2582={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2583={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2584={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2585={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2586={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2587={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2588={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2589={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2590={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2591={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2592={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2593={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2594={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2595={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2596={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2597={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2598={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2599={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2600={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2601={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2602={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2603={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2604={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2605={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2606={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2607={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2608={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2609={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2610={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2611={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2612={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2613={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2614={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2615={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2616={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2617={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2618={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2619={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2620={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2621={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2622={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2623={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2624={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2625={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2626={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2627={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2628={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2629={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2630={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2631={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2632={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2633={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2634={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2635={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2636={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2637={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2638={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2639={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2640={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2641={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2642={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2643={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2644={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2645={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2646={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2647={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2648={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2649={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2650={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2651={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2652={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2653={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2654={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2655={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2656={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2657={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2658={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2659={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2660={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2661={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2662={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2663={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2664={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2665={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2666={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2667={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2668={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2669={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2670={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2671={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2672={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2673={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2674={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2675={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2676={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2677={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2678={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2679={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2680={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2681={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2682={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2683={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2684={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2685={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2686={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2687={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2688={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2689={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2690={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2691={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2692={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2693={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2694={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2695={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2696={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2697={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2698={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2699={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2700={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2701={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2702={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2703={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2704={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2705={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2706={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2707={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2708={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2709={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2710={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2711={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2712={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2713={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2714={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2715={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2716={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2717={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2718={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2719={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2720={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2721={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2722={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2723={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2724={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2725={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2726={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2727={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2728={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2729={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2730={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2731={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2732={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2733={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2734={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2735={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2736={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2737={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2738={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2739={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2740={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2741={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2742={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2743={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2744={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2745={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2746={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2747={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2748={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2749={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2750={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2751={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2752={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2753={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2754={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2755={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2756={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2757={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2758={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2759={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2760={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2761={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2762={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2763={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2764={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2765={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2766={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2767={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2768={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2769={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2770={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2771={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2772={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2773={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2774={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2775={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2776={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2777={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2778={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2779={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2780={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2781={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2782={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2783={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2784={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2785={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2786={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2787={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2788={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2789={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2790={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2791={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2792={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2793={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2794={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2795={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2796={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2797={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2798={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2799={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2800={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2801={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2802={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2803={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2804={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2805={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2806={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2807={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2808={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2809={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2810={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2811={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2812={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2813={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2814={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2815={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2816={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2817={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2818={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2819={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2820={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2821={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2822={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2823={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2824={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2825={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2826={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2827={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2828={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2829={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2830={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2831={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2832={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2833={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2834={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2835={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2836={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2837={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2838={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2839={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2840={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2841={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2842={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2843={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2844={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2845={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2846={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2847={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2848={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2849={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2850={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2851={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2852={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2853={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2854={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2855={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2856={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2857={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2858={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2859={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2860={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2861={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2862={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2863={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2864={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2865={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2866={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2867={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2868={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2869={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2870={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2871={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2872={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2873={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2874={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2875={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2876={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2877={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2878={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2879={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2880={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2881={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2882={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2883={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2884={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2885={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2886={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2887={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2888={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2889={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2890={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2891={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2892={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2893={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2894={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2895={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2896={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2897={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2898={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2899={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2900={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2901={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2902={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2903={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2904={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2905={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2906={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2907={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2908={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2909={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2910={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2911={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2912={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2913={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2914={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2915={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2916={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2917={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2918={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2919={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2920={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2921={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2922={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2923={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2924={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2925={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2926={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2927={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2928={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2929={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2930={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2931={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2932={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2933={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2934={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2935={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2936={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2937={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2938={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2939={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2940={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2941={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2942={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2943={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2944={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2945={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2946={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2947={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2948={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2949={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2950={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2951={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2952={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2953={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2954={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2955={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2956={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2957={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2958={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2959={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2960={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2961={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2962={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2963={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2964={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2965={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2966={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2967={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2968={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2969={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2970={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2971={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2972={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2973={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2974={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2975={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2976={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2977={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2978={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2979={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2980={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2981={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2982={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2983={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2984={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2985={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2986={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2987={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2988={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2989={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2990={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2991={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2992={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2993={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2994={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2995={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2996={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2997={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2998={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_2999={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3000={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3001={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3002={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3003={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3004={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3005={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3006={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3007={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3008={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3009={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3010={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3011={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3012={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3013={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3014={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3015={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3016={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3017={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3018={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3019={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3020={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3021={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3022={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3023={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3024={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3025={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3026={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3027={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3028={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3029={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3030={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3031={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3032={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3033={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3034={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3035={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3036={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3037={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3038={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3039={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3040={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3041={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3042={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3043={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3044={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3045={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3046={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3047={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3048={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3049={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3050={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3051={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3052={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3053={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3054={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3055={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3056={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3057={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3058={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3059={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3060={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3061={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3062={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3063={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3064={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3065={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3066={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3067={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3068={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3069={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3070={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3071={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3072={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3073={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3074={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3075={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3076={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3077={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3078={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3079={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3080={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3081={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3082={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3083={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3084={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3085={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3086={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3087={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3088={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3089={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3090={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3091={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3092={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3093={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3094={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3095={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3096={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3097={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3098={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3099={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3100={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3101={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3102={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3103={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3104={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3105={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3106={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3107={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3108={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3109={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3110={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3111={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3112={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3113={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3114={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3115={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3116={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3117={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3118={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3119={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3120={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3121={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3122={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3123={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3124={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3125={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3126={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3127={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3128={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3129={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3130={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3131={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3132={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3133={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3134={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3135={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3136={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3137={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3138={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3139={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3140={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3141={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3142={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3143={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3144={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3145={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3146={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3147={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3148={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3149={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3150={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3151={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3152={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3153={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3154={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3155={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3156={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3157={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3158={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3159={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3160={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3161={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3162={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3163={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3164={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3165={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3166={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3167={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3168={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3169={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3170={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3171={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3172={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3173={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3174={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3175={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3176={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3177={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3178={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3179={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3180={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3181={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3182={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3183={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3184={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3185={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3186={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3187={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3188={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3189={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3190={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3191={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3192={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3193={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3194={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3195={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3196={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3197={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3198={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3199={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3200={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3201={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3202={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3203={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3204={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3205={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3206={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3207={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3208={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3209={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3210={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3211={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3212={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3213={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3214={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3215={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3216={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3217={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3218={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3219={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3220={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3221={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3222={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3223={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3224={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3225={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3226={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3227={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3228={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3229={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3230={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3231={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3232={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3233={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3234={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3235={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3236={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3237={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3238={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3239={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3240={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3241={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3242={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3243={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3244={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3245={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3246={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3247={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3248={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3249={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3250={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3251={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3252={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3253={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3254={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3255={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3256={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3257={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3258={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3259={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3260={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3261={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3262={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3263={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3264={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3265={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3266={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3267={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3268={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3269={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3270={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3271={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3272={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3273={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3274={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3275={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3276={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3277={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3278={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3279={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3280={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3281={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3282={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3283={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3284={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3285={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3286={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3287={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3288={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3289={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3290={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3291={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3292={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3293={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3294={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3295={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3296={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3297={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3298={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3299={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3300={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3301={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3302={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3303={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3304={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3305={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3306={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3307={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3308={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3309={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3310={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3311={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3312={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3313={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3314={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3315={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3316={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3317={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3318={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3319={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3320={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3321={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3322={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3323={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3324={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3325={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3326={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3327={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3328={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3329={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3330={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3331={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3332={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3333={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3334={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3335={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3336={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3337={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3338={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3339={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3340={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3341={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3342={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3343={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3344={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3345={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3346={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3347={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3348={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3349={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3350={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3351={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3352={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3353={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3354={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3355={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3356={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3357={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3358={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3359={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3360={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3361={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3362={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3363={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3364={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3365={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3366={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3367={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3368={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3369={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3370={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3371={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3372={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3373={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3374={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3375={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3376={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3377={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3378={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3379={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3380={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3381={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3382={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3383={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3384={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3385={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3386={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3387={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3388={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3389={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3390={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3391={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3392={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3393={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3394={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3395={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3396={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3397={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3398={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3399={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3400={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3401={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3402={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3403={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3404={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3405={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3406={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3407={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3408={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3409={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3410={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3411={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3412={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3413={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3414={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3415={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3416={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3417={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3418={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3419={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3420={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3421={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3422={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3423={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3424={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3425={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3426={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3427={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3428={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3429={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3430={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3431={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3432={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3433={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3434={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3435={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3436={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3437={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3438={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3439={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3440={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3441={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3442={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3443={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3444={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3445={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3446={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3447={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3448={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3449={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3450={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3451={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3452={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3453={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3454={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3455={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3456={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3457={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3458={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3459={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3460={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3461={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3462={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3463={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3464={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3465={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3466={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3467={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3468={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3469={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3470={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3471={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3472={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3473={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3474={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3475={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3476={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3477={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3478={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3479={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3480={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3481={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3482={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3483={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3484={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3485={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3486={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3487={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3488={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3489={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3490={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3491={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3492={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3493={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3494={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3495={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3496={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3497={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3498={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3499={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
+DI_CRAFT_ARTIFACT_3500={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
