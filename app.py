@@ -1,6 +1,6 @@
 # =============================================================================
 # DACRE WORLDWIDE - COMPLETE PRODUCTION BUILD (FIXED)
-# Version: 7.0.2 - Enterprise Production Core
+# Version: 7.2.0 - Enterprise Production Core / Professional UX Refresh
 # Total Lines: ~12,000+
 # Features: Self-Healing DB, DI Intelligence, Error Shield, Voice, Video, AI
 # =============================================================================
@@ -87,6 +87,7 @@ from fractions import Fraction
 # =============================================================================
 
 import pandas as pd
+from PIL import Image
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -94,98 +95,242 @@ BASE_DIR = Path(__file__).resolve().parent
 DACRE_ASSET_DIR = BASE_DIR / "assets"
 DACRE_LOGO_PATH = DACRE_ASSET_DIR / "dacre_logo.png"
 DACRE_CEO_PATH = DACRE_ASSET_DIR / "dacre_ceo.png"
+DACRE_FAVICON_PATH = DACRE_ASSET_DIR / "dacre_favicon.png"
+
+# The browser icon is always the DACRE mark. The embedded fallback keeps it
+# working even when Streamlit Cloud is deployed with app.py alone.
+_DACRE_FAVICON_B64 = "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAbR0lEQVR4nO2babBlV3Xff2vvc+705tdzqzW0Wmq1xpYESGYyYHAEcRGMZAiEkkwEZMAh2HFVUhUyOA6FnZRxiqoEU7Er2IkrLjBjIKYCpISYhAISQqABDa0eX7/Xr997dzzz3isf9rn33ZZEcOWLPsCpOm84d5+995r/a619pbl8WPkZvswLvYEX+vo5A17oDbzQ188Z8EJv4IW+Iqn/GIeCZ///179eqGAiP33IT3hLgahyeuHj58wnIM+3yLOePc+Y8SI/6f+fONfzXdMSUp2aTJ87SH+SMLY/V0BQoso/W/Y8ixhBjKmHSxgl1BPIs96V8RuTORStN1Q/qzcvCDre6Hg9vXDd6X3r9LZEw0NRUF/TqwiKqp/iidZ80guZMsW4SMaECVMETm1IpN6MIFOMMdPjJ/zkgjFjMlTGgvMg2/NMfsr2LBesOSUb2X6h5ogCHsQg+Anz5DlarIFfAqq12si28CJ9lorrszcmAlL7ygkz6o9rgsAGLk+orsfV7403ZcSA99tjp21irBXbYq41hm3mTpiwLX3U1XuclvK0KWzTJlOCGl+RyIUM2FbfMRFjjpqJJNR7MBaaMxA1wTskG4HY8FxMvbhOfku9oQsYNSGo3pSY7Q2rgInC+9NMkGkia+LVh1t82Od43el9TGjyU0xRIsRMJCHThI8lKduMEBRMhLSaYC04RcoiSNU2UJWgFbigdgSCRWwgQMP7z77UKxeamg3qqj4wFRAxNUG+ZqHb1tSJttQETjTT1yvUTBkLcsofRBO9GmuBTEGDyaZqbjY60GhCVUJe1M6pVsXJOzY8j5phIV8G+asiNjAiCKjWIhPG491EZbcdmQ3vGoOIQYxBJA5KoRVoBeoQPKoO/LZ5TpSEqb1Nnm3TFz1H4hcQTyCu1UFaM2hRIMlowhT1wQbFWBCL2BhRRdUhrkDFgm0G5sWdoMLtBTTvQ7IFNoa5/YAN2qc6UWktS6hSpMzAK9gYr0tg50AHUG5C6Wvn5gFFrGBMBN7hXW0eY+lPzGJMrdZkLlyjF6j6NPFikM5ccEx5XquYBpuXWtpit7XGFYGoeCbcJoZiOGEIVYp6F8aLIFE0pZJa271FTQNsC4kaYJrgFLU7ec2df4srX3Q1n/vE9ylXvk9b+ggJlAmjwYCt9R50++ALaAuRgKv8thao8mzfFPEcu6+lbptIew4tc/C1c9Eq+AEbB1WtkbSoCy+2d6LxLFQjSLeQKkVEkbiFNJqw6zAyu4TptBFrkSzDq0GrCp8MIe2hZQF5ghY9yDwSNdCZJRYOXMrN/+i1sATXrMKJ/73GTDOi1eywtAhLO4WFGcgGGT9+YIUHvnmCarOLzBnEm6CtE62GcWwUWbxWt8NccDJEjWDvZVbHZQO+DA5QDNgG6itkrLKmGaSsHlwONoKoVTMqQqwQ7bgEM78LVw7RIsH31tFhD2yMxC20yqEK/kJso5aECXMYRYsZrnjDG5k9coiH/ssX0RNfh2wFXBW8f7tBe0+LQ0cXeekbDnLo0B7+z+dX+czHHwbNsE2Lr8aaMPYxisjidXqBs4uaELegSGuHVgMOE4OJa7TlEImCA8OgVRqcXNRAGrPQWgi4bHQu2LCJYWYn4lL8aAPUh3Br67AnErSsRpxBVQXFBmbaJtLZgc+bkJUQbWGyM0EbJWimlhk+zyGrQCr2vmqJ93zwF9hj9vDv3ns/p55Yxc7F+PJCcwgaMN6EbQTpVzlga++uiG2gphmcjXfQ2QNVCsUItAj22t4R3i2GqFNEgnc2jQ6YCC1T1OVokYDU6MxsAyxZ2IO0Gpi8wOcZxHFwOXELJEbMDMaASiNsa3gGP1iDcoRGrcBknyMuQXyJ66bQrnjbR6/jjjfdyO++9Uf88FvHsTMx3vkJvqg1gBCfbSs4ECz4qlbvGHUFkTiIWkhjAcoELQZgIkxnLyotyLYCY0Wg6OM9+Mbu4O2LASzuh04Hm54L9tiZwyzvR5MBmvZhfi8qgtUK02rjyixIKG6jeYnPcySK8CXQ7UJnEdMykJ1H080Ah+NZFA/lEJEKSRJcPuDdnz7Kr7zmOv7xqx7k1FPnsU2Dr5NAYfE6lTpM4YpaBWs1sS3wnosPvYqFA69HbRtrPbHJsHGEbc9hWi0sQxotwTY7iBkipgLjMdUQ319huHaGlccf49TTx8mrCJoe22mi8xehxQh6azC7C1rzQfHyDDHNIASfIzUo8oMh+y65iKNvfzNbT53kgS98Fd+eQbRAk3NoMQy+J56Bso+4EQxSmoc8H/7Gi+k/Os8H3vgQGhWoC2YQgYZY7coAVdVPQpwqRCRUy2/n6eRGrJZIHAd3UIKpwu+oDbED4+v12xB1oDEHswuwNAeXSU5r/WnO3vc97v/M5zi3MQSbYG0Dv3BpsHUvkGcgcTBDVShLcAWaZyy2m7zs33+QjUMXsb8NjU6Lb/zpX2J37YTZ/Ui+iY7Wa9wxF2iZg/TxLl/4+HH+/j+5jhe/fg/3f+4EdtbiKzDB42pIKsYxQgke2BeAIU1yKBKo+lAOoEjQIkOLDClyyAt8VgZVTUrcsMANCopuQe9cwemVkicGDZ4+cA2L//Au3vWpj3HHu/8OcdXGlYJRQYsqmEuewnAN0h4UBZoPoRyggy1u/Y33cPbii9g4kfLUGceuu97Knov34QabiCvReB6ZP4C4HPIutJaDfyLix/cM2Ki2eNntbbC1fxEwSLSt+mhAZCaq8XQUgoArUAyqgqoBtTUGCL9VzPbnCFpDXDEWE1niyNDA4wYlJ0+XPBjv5rIPvJN/9rHfZl+7gdvaxLgcLQoYrSDlCKoM8h7Gl/jegGtf+TIab7yd7nqFNBtUI8fK7Dw333kH9EJoJUvAdJC5/SFEJ5sgDbTRoHeyYuN8wd7rKmb3dvBlSOZNcHZjuAhIQGcBjxtIz4ewWYdD9R7nPeoVrwGlel8nNLo9zThH8E5xSrgxRNZg0oqHj5ecuvVG3vcXH+TQRbvwvR6GAo2XIF6YxGp1ntm25Yb3vZ+TI4MplKoCEcv5VYfc9noO3nAE3+shvkDTLdR5mL0IcGiVQNwgH3jSrsPMFSzvbgRzM4JR72pUOK7aRMHxRDOQb4ZkxlqiVpuoPUej06I5E9Oaj2jPW9rzls68oTlviGctdsZiOpZoNiKaj7GdkP35yuMdOA+VCpEazhwveWDnAd75Z7/HRbvm8aM05BJlhmqMGIt2t3jpXb/O2mVHyDZL1Bt8GVyWpJ6TVcy1f/dOrPOoK1FX4osMrUpozAfpuBJjYkQtWZUStQhhU4RIxlhcANMAn0M0g1YjcHlIc9fvI3/qG5TWIdFejJ1HoibGWrAGMYpKidMcLwViHPF8g5kDyyxcfRnz115BNBPjixJfGSojVE4xWM4/U/DA/v3c+eF/xUfufB95MQgQNWrg+30OXnsFO97yHh467TAqOECN4AH1hv5KxfBFr+DKl72Yx795H2ZuFq85WmUhezQRWo3ozDYwsWGrX1JUpg7xEVHI15nk3Yog3kMxREyMz/uQP47Xl1Ge+QSQA3Ng5kFmgsdGgYDAkBKoSPH0sZxttugcOsSBN93Gnte8CFf5AElN7XPUcubHBXNXHuWN738vn/zQH2IWmuAckS+49R/8Nk+lMzAo8JENEAXFSzA/45Tj5w1X/O27OXb/dyhdUaPDEpxDrIFS2XNphyqC86uO0VZRo1hHNKmQRk3U5YhpouUooDQ1YZXyNK1dVzMa3YK4R6A8Bv406DCMmVxTNS6xAcGVs6SPfpcnfvxtth6+ncvfc1cofVUKRvAOxBt+8KOKl992Bwf/6ss888gPIRvy8jveTPfwq+ieLLGRxRXbdQ8v4EVADcVKxflLbuLQK3+Rx778JczCAr5Oy5HgpC65fpFe7tk6JQzPlSGfUQk4QGopChKgri/AtidlJSMVaj3EO4D9oVrjZhG/gurWduicKicEh1ih2TlgDTjO+mcfoxx2OfTe38LnDhScA3VCmTkeNg2u+Bvv4Jnv/gZ7Lt3H/tvfzwPPeCQXKrOdlzlRVAQvQXjWK2tnYc/r30Xz218jLwqwFlHF5xl2NuLAzXs5d36D9ceVclBh5kLabcZhT6sSxKC+CMimsRyQmArWKlFnHhpLEM2CaYE0UbsXkRpHmHH9cPsWMRw4spcjtx7k+lsvobM4ovuV3+fUpz5J6SPSrifrQ9aHamRZPeFJ9ryaqLOXm++4iyeLPfiNCpcJbqT4BFwqtIjQVHAjwp0a/LmSzYVr2PnqvwmjIYJHcGhScNmL9pMtzHP+jHLmgXQ7I/RVqHQGHxjq66IVtHcHdOgdqBDFFtuq4V08D3bMhGhSEwiVl1C3M8YiCDYyvPOP9/GbX9rLf/zOK7jlzotANtj4/O8yOLZGmUeUfaXoQz6AoqccO63cdNvd5EfewvnjHi0Mribcp0IxVAaf+BCdYkSZGjSBKgm+e3RWiV7xLhrLs2ie1QmP4+AvHeWZdcfgZMTZHwyhZVEvITrouAYwzgFME2kshwTGxMGWDUjcDJphO8E8TDPcdXVnupbvnUddqBVsJQmrWwOe3jhBvLsE5nHDR9m8508ocyHvu0D8QBltQbE2Yt/r3srx1Vl05ClTwSXghw6PYfidv+LMPb9H+djXsAjV0KEJ+MzgeyWpuYy5X3wzFCN8mrLjukNUlxykv2lY/3ZB2a3q4nMMqpggubrBoBU0FwLoqbIgUQ2qbGwcpD4m3DRAmiFznFRmodmImJ/rMDfbQnxFkim9oWN9kOEEwCM0yR75LEW3pEpjqqGnSpTBypBrLlFODJok50qqRKhGUI08vrRkZ3oM7v0wiLD+1T+llWWUucXn4DLQQsjPeszRdxHtWkaqgt2vvY2TZ4f41QYnvn4a2s3g2GtHbaSuj+m4VtZYgmq03eERwRjBRFFdFGmANAIHTWNKAwy4gqv+4D9xy7338cvfuZ9db3gHg42MwVBY7+YUlat51cZtPU1x/mmqzOCSgt7akIsaXaKFGVZPeCgElypupLjE40pL797/jI4eRqylf+pB3I++SBxZqpHDp0ELdFRR+n1EN93OzPUvZsMtU21ErH7lGYpehrRmg4Ou+xfBBOoOjEqMSowUwzoAWNACG0VEcc0AGd8NIEIkQkx9i6G/eDknZg5wasfF6CU3kCaGQd+z1XMUZW1qxqJFQrF5iiqBfJBi+mtcenmbp07EaOKpUqVKFZdWqDZJnv4h5RN/jhgXEjdJ2bzvL2iXA1wR4TOPyxRXCdU5T/Poe3GXv5ruqS3yp3qsfu9BZKYDGk1FK4MRE2+XiU1Ii9UVYAy+yJCFi6ExUxcQogCVJZ78rUWKFptovoH6IeVWRr7iGa54iuGIJHWMhjAcOrJknHEGvOCSIVVSkqye4+A+x3qyi8FaQZV5qtTjM4dWQjXKGT3wMfCnQ7KlFrE5o7OPUj3+ReLIoJlDc0XzkFmqLqHzV2BWz3H+3i/V1ae6sTLOWeIZopDpjbswMVQFYgw6Klg4dJg0sZS9FWS/bOcLSICYacru61/L7iM3EDciTt73VdKeo9E1kEOVe9LUw0jxlSdLpsCCjRDfINvaZC7aoLV8lOPHHZQl1aRy7ZDWPNkTn4TN/4WJQ6co9BBKvB2w8b1Ps7j3NgbpMo22wyyCmbN444mvfh3ZN/4Drnsamdt7AUbRurodCiLYiUqIeHQ4ZMc1R2ldfC29z/8b9Kpb6zpaqKUZ1ZBIFn0ah95B86V3MDsDzXNX0e3FyFaIz1VakqUBMLrck2UhMqgvsZ0FHDvxG49zyY27WF3p4IchD1ANTReJ25TrT1I89kfgz4XQNUFcFkhw609in/ksh4/+KmeGLZLhDGbL44YOpImfeyNED4YmzbjgKiZUr32LSMftI6kThyxhdu8u5l/3To7/0QeAAq82pJjqUe/QLIOiB9oj6w7on6lIG5D3N6lGS+RbQANc5shTwfXBtaBI6+aHZsjC9eR9y96dCWl1KYP1LkYc3uskN4MGxY//gPbMj1jYPc/ynjn2HJjl4ksX6ezy2OWEaEHYedmfcPLUN/hvv/8h3FaTytS5hnjs3Lvx83+J5ucgmtlujITYToRWtU0HdGTLjH3v/Bccv+dBdPAIMId6RSsHvqJplMMHD9JknrUzQwaFIe9HlBFUeYlPPGUP1IIWniJTqkRxJZTJtpbJrlfTyE6yfOVRTp5KoRxSOTOpO5jmMvnpT9K+4lMcecMSh29ss2NXg6UlYaY1oPAlo6yCSDnx+ID/+q8PUbS6tG7qEC22iTpg4oLGjhmiJ97DmY//y7pMNtUZKkdEY6ckxqD9IfvedDuD+Zsov/VPkdYsmqV4J1CFF3bHnl8/cBftpvCQfS1/3j9OsuWw1lLlBT5x+C4QeUxWUOSKpFBmnjI34BPsrisp5SoO7p9hfX2JcrABaGhAARI1qLrPoO4PWbyhTWs5ZjCqKCvH+oYQRYpBsA3FlsJnfsdQPHwvrdvuxsweQijw3oIKab9g9qa3MHPfJxg+eQxpd0IXG4UyqZv+qmilNOY6tH71bjbvvw+qkzXcDRvzlQOfUAzP8uSplCfOKKu9Li4fUvRS8l6Cy1M0KfH9Ct8v8XlFkSlljeiKXomJBb/vLSxGGbSup3v2POpyXFHiywJfZfjCUm1+hNkrz7C4e4YoUlxlKApDmQtFZkgLRR185aM5W48MED8kWvkSDTH4QYHvVbhuhT+fMVrr0HzVu0GzSQQaYx8Tmiuh+Tl7082kSztxxx5g0ksnpASuKMEnVOWI8+mA1X7CZtLHVxnVaEA56OPKFLIchgkMU7SoKBKlSAxJt8SnI5pXvg1TLLK8/yrOnijQckCV5/gyQ8sE9RHVxteIdv9PFq9YpjULVQVp6hkOPYOBp9urUOC7n644+bUBJk9QE5M+fg9R90G8a+DTjGpU4lJHuTLA7/wVWtfcjCbDukVoEJFaAwC0ZObGl+BFkXK9rg0GhnkHvizApVQ+ZyPZ4NxwjX4+RMsMl3VxWR+tCkgzGA0hGULpKIaetD+gGint3XeT9g+ya8nS7V9M3lvBV0XAEmUSHGxyHjEfYeFqy+xSjInAaahDggfvaTWEE990PPqFIaaf44kQyXH5gOKx/0EsDjfM0DTDJzl+MCQ/a2ne/G6wRfBp6lFfEY0LnRJZ4h17UYRoZoaK7ba3V8FXJZQ9ynyLTV3B2DaDbBVnB/jhZuBhug7pAOwmGIfkXQxNbHUt1ebN9E+0mGmdwc6/ns2nz2LI8MW4DO9Dprn5aQxP0L9vkeEDCaYV+jOmKdgW2Fiwc4aNZ0o4m4QqtTGoL8EmjI79gOXLHiKrrgCX1BVqQbJVooteQevILWSPfBfac+ArogCAQtroXYVRpXPlUbJv/fcaLwvOgdUecQdsY5GuOY8xMVkzo9UyGFkPPcK5Jl5LpFwBEszClWjvSkbHO5SjLpJ/nx1H3sTqGQPlBl7tdliKZmD0KPS/isdSDPohlJk65BsBW3ejY8FkCt6g1taVkhhhgEs3SZ+6h8YVl5ANslASMwa1Sr7SIL7qLuTJ74b2HBqigKBonuNPH0MPv5Ydt/wygy//MeW540ijTT7sYhoPIbZDEl/BiK1Qd4+XEBEkWwE8ag/C5gjlMdQXeG2EhgpnIFll6dLL6PYOUmydCoDLlzX+ikLTZevLoOcRytAd9gE3bBeats8yeDEQRXVuEUpj6h2YNZJTT7Kw73FSd3GIvSYCK7h8DbPnZqLLX075+DehNYOZdIXiJv2vf5GFNCWRHVz19/4tcaeNpnmoMRY9XNbDJVv4UQ+XDHBJn2rUoxwNKUcjqlGfKunjkh4+H0FxHtFNyDZotjLixV+if3YTNAv5hs+AUESley/kjwJJQG1iGJ86UxvVt0Uji8YRRFNjJAp/mxbCFj5fozj5PRo2x2UpWo7QdIRPBxRnt7D7fw1pGnA+MEC9Q1oNuo89RPWljzJvYav9Mq7/rT9jz7U3oKNNdLQFPkGkQKQA8jqsTN2aBaJ8CtUAqgFaDpHiFIuXvpLNVQtuI5RvNA+b9wl0vw7pg8CpWsKh2xRw//gYztSN3f6sNlOpzy+EVvdJkrXTNIuT4BWf9PD5EM1H+MEZXHU50f5fCA1UZq/WCxQsHXLtHb8DL7mbjQR2NnrMnfgCJ771CGvH1igLG+w17oTDFONzhAJoFaRJBT5FXB9NTzB/4Fqq9ttI1k+HDqpqILw8A9kxpDyG6uPBj0i0XV+YHJsbH26cqjyJ1Aypsxupu8kuR3yCRi+nuftW7L6XkGZNoNo+cdZYwDbO4H74zxFmj4S5JxCxgqTPZTe9nX2v+U3SHZcTLcGMLdG1R1j5wffYePJhRmtnKPt9tChDnJyYZ22TOPA9otmDmNnXUXRXERmhPgUdQbUJrge6CbpSEzFF/JgBk2N7UwXX6bOBUB+OcKAV4j3qC4Qmam+kMbeMXbgM7+tzimLwEuMt6PnPIMxepdsdYR8golZoskXc2MslN/wai1e/jujiG9EdS7hWODCW9rdI1o9TrJ+m2Fql7K3jhl180kXTcyFZKmNU9qLJU6CrQcJaMwlXm04ejttM7H5MtLng2KxcoBVMEd8Iql8OJwgvILcUIUZ9B7SucClTvqWEuIMwe1gneb6rqy1aH1p0GfgB0CRqXU574WKiud3Q2Ym2FnFRB+cNrqpwSR9Nz+OTVXRwAqpusHXXBXFIAJ1MGifjNNzXGKCuKE+rPkYgisNQ5+oxUwyQKBRxfBZCuamJdAWoC81SdXUGWjHJAjF1fbOBMHPlxAfMzc1gTA396vO3hqBSyahHkY5qyY3P3k1enVyWmNn5ZZzCcJgwPjnKdOu4Vm0Rod1p0Wp3plR+u6fgnKPbHWCjiMXFxSnio8nhTNThq5zRKCUvykCor+/6TFMcW+bm5rCR3Tar2mlGUf2dEWOEa48cpN1u4r2vi6I68Q3nzm3w9LETeF8n63qhPMMjx+LCIjdcfzVJmvL97/8I56pJ/jEZWKtxHEdcffVhduxYnjwTCbZqrWUwGPKd+x9gdn6eW15ydGo9YXIsXhXvPcdPnObYM6dAYlTDIevxibZ9+/Zy9ZHD2Dh6DqaQ5vLh8bcKKIpy+0sM05cI1lqiyE4/fO44QL2nKErECI1G/NypuFBvyrIMmebzXUZoNpthzryYXuU5s0ZxVEv4uXvzzlMWxURoF7w5/c1REbnguPD0WuEIwfMw5/n2baQ+hvfTx2+v+TwMVcXXc5jxkbqfcOmktP88a1BnvM+zxgVn18MkP3XPP/Xy/q8/yfaa/+93/Lha8v9xKQRY/Txr/Mx/be7nDHihN/BCXz/zDPi/QpN5SQXeTmEAAAAASUVORK5CYII="
+try:
+    # Use the exact DACRE logo-mark favicon supplied with the project.
+    if DACRE_FAVICON_PATH.exists():
+        _DACRE_PAGE_ICON = Image.open(DACRE_FAVICON_PATH)
+    else:
+        _DACRE_PAGE_ICON = Image.open(io.BytesIO(base64.b64decode(_DACRE_FAVICON_B64)))
+except Exception:
+    _DACRE_PAGE_ICON = "📊"
 
 st.set_page_config(
     page_title="DACRE WORLDWIDE — David's Intelligence",
-    page_icon=str(DACRE_LOGO_PATH) if DACRE_LOGO_PATH.exists() else "🤖",
+    page_icon=_DACRE_PAGE_ICON,
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 st.markdown("""
 <style>
-    /* Hide the Manage App button completely */
-    header[data-testid="stHeader"] button[data-testid="baseButton-header"] {
-        display: none !important;
-        opacity: 0 !important;
-        visibility: hidden !important;
-        pointer-events: none !important;
-        width: 0 !important;
-        height: 0 !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        overflow: hidden !important;
-        position: absolute !important;
-        left: -9999px !important;
-    }
-    header[data-testid="stHeader"] button[kind="secondary"] {
-        display: none !important;
-        opacity: 0 !important;
-        visibility: hidden !important;
-        pointer-events: none !important;
-        width: 0 !important;
-        height: 0 !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        overflow: hidden !important;
-        position: absolute !important;
-        left: -9999px !important;
-    }
-    /* Hide any header buttons */
-    header[data-testid="stHeader"] button {
-        display: none !important;
-        opacity: 0 !important;
-        visibility: hidden !important;
-        pointer-events: none !important;
-        width: 0 !important;
-        height: 0 !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        overflow: hidden !important;
-        position: absolute !important;
-        left: -9999px !important;
-    }
-    /* Hide the settings cog if present */
-    [data-testid="stStatusWidget"] {
-        display: none !important;
-        opacity: 0 !important;
-        visibility: hidden !important;
-        pointer-events: none !important;
-    }
-    /* Hide toolbar */
-    .stToolbar {
-        display: none !important;
-        opacity: 0 !important;
-        visibility: hidden !important;
-        pointer-events: none !important;
-    }
-    /* Hide menu */
-    #MainMenu {
-        display: none !important;
-        opacity: 0 !important;
-        visibility: hidden !important;
-        pointer-events: none !important;
-    }
-    /* Hide the entire header decoration */
-    [data-testid="stHeader"] {
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-    }
-    /* Hide the deploy button */
-    .stDeployButton {
-        display: none !important;
-        opacity: 0 !important;
-        visibility: hidden !important;
-        pointer-events: none !important;
-    }
-    /* Hide the bottom toolbar */
-    .stBottom {
-        display: none !important;
-        opacity: 0 !important;
-        visibility: hidden !important;
-        pointer-events: none !important;
-    }
+/* ========================================================================
+   DACRE WORLDWIDE — PROFESSIONAL ONLINE COMPANY UI SYSTEM
+   Light enterprise surface + black typography + DACRE blue actions.
+   ======================================================================== */
+:root{
+  --dacre-blue:#1769ff;
+  --dacre-blue-dark:#0b4fd1;
+  --dacre-blue-soft:#eaf2ff;
+  --dacre-ink:#101828;
+  --dacre-muted:#667085;
+  --dacre-border:#e4e7ec;
+  --dacre-surface:#ffffff;
+  --dacre-bg:#f7f9fc;
+  --dacre-success:#12b76a;
+  --dacre-shadow:0 10px 30px rgba(16,24,40,.07);
+}
+
+html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"]{
+  background:var(--dacre-bg) !important;
+  color:var(--dacre-ink) !important;
+}
+[data-testid="stHeader"]{
+  background:rgba(255,255,255,.96) !important;
+  border-bottom:1px solid var(--dacre-border) !important;
+  box-shadow:0 1px 8px rgba(16,24,40,.04) !important;
+}
+/* Keep Streamlit's hamburger/menu usable, clean and black. */
+[data-testid="stSidebarCollapseButton"],
+button[aria-label*="sidebar" i],
+button[title*="sidebar" i]{
+  display:flex !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  position:relative !important;
+  left:auto !important;
+  width:38px !important;
+  height:38px !important;
+  margin:8px !important;
+  padding:0 !important;
+  align-items:center !important;
+  justify-content:center !important;
+  background:#101828 !important;
+  border:1px solid #101828 !important;
+  border-radius:10px !important;
+  color:#fff !important;
+  box-shadow:0 5px 14px rgba(16,24,40,.18) !important;
+}
+[data-testid="stSidebarCollapseButton"] svg,
+button[aria-label*="sidebar" i] svg,
+button[title*="sidebar" i] svg{color:#fff !important;fill:#fff !important;stroke:#fff !important;}
+/* Do not hide the whole header — only the Streamlit deployment controls. */
+[data-testid="stToolbar"], .stToolbar, .stDeployButton, #MainMenu, [data-testid="stStatusWidget"]{
+  display:none !important;
+}
+footer{display:none !important;}
+
+[data-testid="stSidebar"]{
+  background:#fff !important;
+  border-right:1px solid var(--dacre-border) !important;
+  box-shadow:4px 0 20px rgba(16,24,40,.035) !important;
+}
+[data-testid="stSidebar"] *{color:var(--dacre-ink);}
+[data-testid="stSidebar"] .stMarkdown p,
+[data-testid="stSidebar"] .stCaption{color:var(--dacre-muted) !important;}
+[data-testid="stSidebar"] hr{border-color:var(--dacre-border) !important;}
+[data-testid="stSidebar"] button{
+  border-radius:10px !important;
+  border:1px solid transparent !important;
+  font-weight:650 !important;
+}
+[data-testid="stSidebar"] button:hover{background:var(--dacre-blue-soft) !important;border-color:#c7dbff !important;}
+
+.block-container{max-width:1500px !important;padding:28px 34px 70px !important;}
+[data-testid="stVerticalBlock"]{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}
+
+/* Main Streamlit controls */
+.stButton > button,
+.stDownloadButton > button{
+  min-height:42px !important;
+  border-radius:10px !important;
+  border:1px solid #d0d5dd !important;
+  background:#fff !important;
+  color:#101828 !important;
+  font-weight:700 !important;
+  box-shadow:0 1px 2px rgba(16,24,40,.04) !important;
+  transition:all .16s ease !important;
+}
+.stButton > button:hover,
+.stDownloadButton > button:hover{border-color:#9bbcff !important;background:#f8fbff !important;transform:translateY(-1px);}
+.stButton > button[kind="primary"],
+.stButton > button[data-testid="baseButton-primary"]{
+  background:var(--dacre-blue) !important;
+  border-color:var(--dacre-blue) !important;
+  color:#fff !important;
+  box-shadow:0 5px 14px rgba(23,105,255,.20) !important;
+}
+.stButton > button[kind="primary"]:hover,
+.stButton > button[data-testid="baseButton-primary"]:hover{background:var(--dacre-blue-dark) !important;color:#fff !important;}
+input, textarea, [data-baseweb="select"] > div{
+  background:#fff !important;
+  color:#101828 !important;
+  border-color:#d0d5dd !important;
+  border-radius:10px !important;
+}
+label, .stTextInput label, .stSelectbox label, .stFileUploader label{color:#344054 !important;font-weight:650 !important;}
+[data-testid="stMetric"]{background:#fff;border:1px solid var(--dacre-border);border-radius:14px;padding:14px;box-shadow:var(--dacre-shadow);}
+[data-testid="stMetricLabel"]{color:#667085 !important;}
+[data-testid="stMetricValue"]{color:#101828 !important;}
+.stAlert{border-radius:12px !important;}
+
+/* Enterprise chrome */
+.dacre-page-chrome{
+  display:flex;align-items:center;justify-content:space-between;gap:20px;
+  padding:18px 22px;margin:0 0 22px;
+  background:#fff;border:1px solid var(--dacre-border);border-radius:16px;
+  box-shadow:var(--dacre-shadow);position:relative;overflow:hidden;
+}
+.dacre-page-chrome:before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--dacre-blue);}
+.page-chrome-left{display:flex;align-items:center;gap:13px;min-width:0;}
+.dacre-page-chrome .page-icon{
+  width:44px;height:44px;border-radius:12px;display:grid;place-items:center;
+  background:var(--dacre-blue-soft);color:var(--dacre-blue);font-weight:900;font-size:20px;
+  border:1px solid #cfe0ff;
+}
+.dacre-page-chrome .page-kicker{font-size:10px;font-weight:850;letter-spacing:.12em;color:#667085;text-transform:uppercase;}
+.dacre-page-chrome .page-title{font-size:24px;line-height:1.15;font-weight:800;color:#101828;margin-top:3px;letter-spacing:-.025em;}
+.dacre-page-chrome .page-subtitle{font-size:13px;color:#667085;margin-top:4px;}
+.page-chrome-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;}
+.chrome-pill{padding:7px 10px;border-radius:999px;background:#ecfdf3;color:#087443;border:1px solid #abefc6;font-size:10px;font-weight:800;white-space:nowrap;}
+.chrome-pill.soft{background:#f2f4f7;color:#475467;border-color:#eaecf0;}
+
+/* Global online-company quick action bar */
+.dacre-quickbar{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding:11px 14px;margin:0 0 20px;background:#101828;color:#fff;border-radius:14px;
+  box-shadow:0 8px 24px rgba(16,24,40,.13);
+}
+.dacre-quickbar .quick-brand{font-size:12px;font-weight:850;letter-spacing:.06em;white-space:nowrap;}
+.dacre-quickbar .quick-status{font-size:11px;color:#d0d5dd;white-space:nowrap;}
+.dacre-quickbar .quick-status b{color:#84caff;}
+
+/* Common light dashboard surfaces */
+.user-nav-brand{display:flex !important;gap:10px;align-items:center;padding:8px 4px 16px;}
+.user-nav-brand b{font-size:20px;letter-spacing:.08em;color:#101828 !important;}
+.user-nav-brand small{display:block;color:#667085 !important;font-size:9px;letter-spacing:.18em;}
+.user-nav-dot{width:10px;height:10px;border-radius:50%;background:#12b76a;box-shadow:0 0 12px rgba(18,183,106,.35);}
+.user-dash{border:1px solid var(--dacre-border) !important;border-radius:18px !important;padding:28px !important;background:#fff !important;box-shadow:var(--dacre-shadow) !important;}
+.user-dash h1,.user-dash h2,.user-dash h3,.user-dash b{color:#101828 !important;}
+.user-dash p{color:#667085 !important;}
+.user-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:20px 0;}
+.user-kpi{padding:18px;border-radius:14px;background:#fff;border:1px solid var(--dacre-border);box-shadow:var(--dacre-shadow);}
+.user-kpi b{font-size:28px;display:block;color:#101828 !important;}.user-kpi span{color:#667085 !important;font-size:12px;}
+.user-work-card{padding:20px;border-radius:16px;background:#fff;border:1px solid var(--dacre-border);height:100%;box-shadow:var(--dacre-shadow);}
+.user-work-card h3{margin:0;color:#101828 !important;}.user-work-card p{color:#667085 !important;line-height:1.6;}
+.notice-card{padding:14px 16px;border-left:3px solid var(--dacre-blue);background:#fff;border-top:1px solid var(--dacre-border);border-right:1px solid var(--dacre-border);border-bottom:1px solid var(--dacre-border);border-radius:10px;margin:8px 0;box-shadow:0 3px 12px rgba(16,24,40,.04);}
+
+/* Make markdown headings readable across the business app. */
+.main h1,.main h2,.main h3,.main h4{color:#101828 !important;}
+.main p,.main li{color:#344054;}
+
+@media(max-width:900px){
+  .block-container{padding:22px 18px 60px !important;}
+  .dacre-page-chrome{align-items:flex-start;}
+  .page-chrome-right{display:none;}
+  .user-kpis{grid-template-columns:1fr 1fr;}
+}
+@media(max-width:620px){
+  .block-container{padding:16px 12px 50px !important;}
+  .dacre-page-chrome{padding:15px 16px;}
+  .dacre-page-chrome .page-title{font-size:20px;}
+  .dacre-quickbar{align-items:flex-start;flex-direction:column;}
+  .user-kpis{grid-template-columns:1fr 1fr;}
+}
+/* ========================================================================
+   DACRE v7.2 UX POLISH
+   White enterprise surfaces + black typography + blue action hierarchy.
+   ======================================================================== */
+.dacre-page-chrome, .user-dash, .user-work-card, .user-kpi, .dacre-panel,
+.feature-card, .step, .metric, .callout {
+  transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease !important;
+}
+.user-work-card:hover, .user-kpi:hover, .feature-card:hover, .step:hover, .metric:hover {
+  transform:translateY(-2px) !important;
+  border-color:#c7dbff !important;
+  box-shadow:0 14px 34px rgba(16,24,40,.09) !important;
+}
+.dacre-page-chrome:before { width:6px !important; background:linear-gradient(180deg,#1769ff,#4d8dff) !important; }
+.dacre-quickbar { border-left:5px solid #1769ff !important; }
+.dacre-quickbar .quick-brand { color:#fff !important; }
+[data-testid="stSidebar"] { padding-top:10px !important; }
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h2,
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h3 { color:#101828 !important; }
+[data-testid="stSidebar"] .stRadio > label { color:#667085 !important; font-size:11px !important; font-weight:800 !important; text-transform:uppercase !important; letter-spacing:.08em !important; }
+[data-testid="stSidebar"] .stRadio div[role="radiogroup"] label {
+  border-radius:10px !important; padding:6px 8px !important; margin:2px 0 !important;
+}
+[data-testid="stSidebar"] .stRadio div[role="radiogroup"] label:hover { background:#eaf2ff !important; }
+/* Strong keyboard focus for accessibility. */
+button:focus-visible, input:focus-visible, textarea:focus-visible, [role="combobox"]:focus-visible {
+  outline:3px solid rgba(23,105,255,.25) !important; outline-offset:2px !important;
+}
+/* Landing-page navigation and CTA hierarchy. */
+.dacre-nav { border-top:3px solid #1769ff !important; }
+.hero-eyebrow { box-shadow:0 4px 12px rgba(23,105,255,.08) !important; }
+.hero-title .gradient-text, .gradient-text { color:#1769ff !important; }
+.cta { background:#101828 !important; border-top:5px solid #1769ff !important; }
+/* Keep content readable on smaller phones. */
+@media(max-width:680px){
+  .block-container{padding:16px 12px 48px !important;}
+  .dacre-page-chrome{padding:14px 16px !important;border-radius:14px !important;}
+  .dacre-quickbar{border-left-width:4px !important;}
+  [data-testid="stSidebarCollapseButton"], button[aria-label*="sidebar" i], button[title*="sidebar" i]{width:40px !important;height:40px !important;}
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -1374,14 +1519,16 @@ def apply_company_website_theme(user):
 
     p = row["theme_primary"] or "#4b82f5"
     a = row["theme_accent"] or "#62c8f5"
-    b = row["theme_background"] or "#0b1020"
+    b = row["theme_background"] or "#f7f9fc"
 
     st.markdown(f"""
     <style>
         :root{{--dacre-primary:{p};--dacre-primary2:{a};}}
-        .stApp{{background:radial-gradient(circle at 85% 0%,{p}22,transparent 30%),linear-gradient(145deg,{b} 0%,#101729 55%,#0e1628 100%)!important}}
-        .dacre-user-hero,.di-quick-card,.di-metric,.dacre-panel{{border-color:{p}55!important}}
-        .stButton>button,.stFormSubmitButton>button{{background:linear-gradient(135deg,{p},{a})!important}}
+        .stApp{{background:#f7f9fc!important}}
+        .dacre-page-chrome,.user-dash,.user-work-card,.user-kpi,.dacre-panel,.di-metric{{border-color:{p}35!important}}
+        .dacre-page-chrome:before{{background:{p}!important}}
+        .stButton>button[kind="primary"],.stButton>button[data-testid="baseButton-primary"]{{background:linear-gradient(135deg,{p},{a})!important;border-color:{p}!important;color:#fff!important}}
+        .dacre-quickbar{{border-left:4px solid {p};}}
     </style>
     """, unsafe_allow_html=True)
 
@@ -4061,9 +4208,58 @@ def render_analytics_overview(user):
     </div>
     ''', unsafe_allow_html=True)
 
+PAGE_META = {
+    "Overview": ("⌂", "DACRE Overview", "Executive business intelligence workspace."),
+    "DI Home": ("✦", "DI Home", "Your intelligent business copilot."),
+    "DI Calls": ("◉", "DI Calls", "Intelligence conversations and action requests."),
+    "DI Workforce": ("👥", "DI Workforce", "Your coordinated digital intelligence workforce."),
+    "🌍 Global Markets": ("🌍", "Global Markets", "Market intelligence and global signals."),
+    "🎥 DI Conference": ("🎥", "DI Conference", "Collaborative intelligence conference room."),
+    "DI Action Center": ("⚡", "DI Action Center", "Prioritize and execute intelligence actions."),
+    "DI Memory Box": ("🧠", "DI Memory Box", "Manage persistent DI knowledge and memory."),
+    "Business Command Center": ("⌘", "Business Command Center", "Executive command and operational control."),
+    "Business Twin": ("◇", "Business Twin", "Digital representation of your business."),
+    "Decision Ledger": ("▤", "Decision Ledger", "Trace decisions, evidence, and outcomes."),
+    "Opportunity Radar": ("◎", "Opportunity Radar", "Find measurable business opportunities."),
+    "Workspace & Data": ("▦", "Workspace & Data", "Load, inspect, clean, and manage datasets."),
+    "Formula Lab": ("ƒ", "Formula Lab", "Build and run analytical formulas."),
+    "Charts": ("▥", "Charts", "Visualize business data and trends."),
+    "File Vault": ("▣", "File Vault", "Secure workspace file management."),
+    "Export Center": ("⇩", "Export Center", "Prepare and export analysis outputs."),
+    "Chibobec Loan Desk": ("₦", "Chibobec Loan Desk", "Loan analysis and decision support."),
+    "Organization Admin Portal": ("⚙", "Organization Admin Portal", "Organization administration and controls."),
+    "Overall Admin DI Portal": ("◈", "Overall Admin DI Portal", "Founder-level control of the DACRE intelligence system."),
+    "Research Store": ("⌕", "Research Store", "Research and knowledge resources."),
+}
+
 def render_page_chrome(page_name, user):
-    """Render the page chrome header."""
-    icon, title, subtitle = PAGE_META.get(page_name, ("•", page_name, "Dacre business intelligence workspace."))
+    """Render page chrome safely, even if an older deployment omitted PAGE_META."""
+    _page_meta = globals().get("PAGE_META")
+    if not isinstance(_page_meta, dict):
+        _page_meta = {
+            "Overview": ("◈", "DACRE Overview", "Executive business intelligence workspace."),
+            "DI Home": ("🧠", "DI Home", "Your intelligent business copilot."),
+            "DI Calls": ("📞", "DI Calls", "Intelligence conversations and action requests."),
+            "DI Workforce": ("👥", "DI Workforce", "Your coordinated digital intelligence workforce."),
+            "🌍 Global Markets": ("🌍", "Global Markets", "Market intelligence and global signals."),
+            "🎥 DI Conference": ("🎥", "DI Conference", "Collaborative intelligence conference room."),
+            "DI Action Center": ("⚡", "DI Action Center", "Prioritize and execute intelligence actions."),
+            "DI Memory Box": ("🧠", "DI Memory Box", "Manage persistent DI knowledge and memory."),
+            "Business Command Center": ("⌘", "Business Command Center", "Executive command and operational control."),
+            "Business Twin": ("◇", "Business Twin", "Digital representation of your business."),
+            "Decision Ledger": ("▤", "Decision Ledger", "Trace decisions, evidence, and outcomes."),
+            "Opportunity Radar": ("◎", "Opportunity Radar", "Find measurable business opportunities."),
+            "Workspace & Data": ("▦", "Workspace & Data", "Load, inspect, clean, and manage datasets."),
+            "Formula Lab": ("ƒ", "Formula Lab", "Build and run analytical formulas."),
+            "Charts": ("▥", "Charts", "Visualize business data and trends."),
+            "File Vault": ("▣", "File Vault", "Secure workspace file management."),
+            "Export Center": ("⇩", "Export Center", "Prepare reports and exports."),
+            "Chibobec Loan Desk": ("₦", "Chibobec Loan Desk", "Loan analysis and decision support."),
+            "Organization Admin Portal": ("⚙", "Organization Admin Portal", "Organization administration and controls."),
+            "Overall Admin DI Portal": ("👑", "Overall Admin DI Portal", "Founder-level control of the DACRE intelligence system."),
+            "Research Store": ("⌕", "Research Store", "Research and knowledge resources."),
+        }
+    icon, title, subtitle = _page_meta.get(page_name, ("•", page_name, "Dacre business intelligence workspace."))
     master = user.get("role") == "master"
     mode_label = "FOUNDER COMMAND" if master else str(user.get("company", "BUSINESS WORKSPACE")).upper()
     
@@ -4663,75 +4859,80 @@ def landing_page():
     logo_uri = _dacre_logo_data_uri()
     logo = f'<img src="{logo_uri}" alt="DACRE" class="brand-logo"/>' if logo_uri else '<span class="brand-fallback">D</span>'
 
-    # Landing stylesheet
+    # Landing stylesheet — white enterprise website, black typography, DACRE blue.
     st.markdown("""
     <style>
-      #MainMenu, footer, header { visibility:hidden; }
+      #MainMenu, footer { visibility:hidden; }
       [data-testid="stSidebar"] { display:none; }
-      .stApp { background:
-        radial-gradient(circle at 78% 18%, rgba(71,81,255,.18), transparent 28%),
-        radial-gradient(circle at 18% 48%, rgba(0,205,255,.08), transparent 26%),
-        #050817 !important;
+      .stApp { background:#f7f9fc !important; }
+      .block-container { max-width:1480px !important; padding:18px 28px 55px !important; }
+      .dacre-landing { color:#101828; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+      .dacre-nav {
+        min-height:70px; display:flex; align-items:center; justify-content:space-between; gap:18px;
+        padding:10px 14px; border:1px solid #e4e7ec; border-radius:14px; background:#fff;
+        box-shadow:0 8px 26px rgba(16,24,40,.07); position:sticky; top:10px; z-index:10;
       }
-      .block-container { max-width: 1440px !important; padding: 0 22px 50px !important; }
-      .dacre-landing { color:#f6f8ff; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; overflow:hidden; }
-      .dacre-nav { min-height:76px; display:flex; align-items:center; justify-content:space-between; gap:18px; padding:12px 16px;
-        border:1px solid rgba(150,164,205,.16); border-radius:18px; background:rgba(8,13,30,.82); backdrop-filter:blur(18px);
-        box-shadow:0 18px 60px rgba(0,0,0,.24); position:sticky; top:10px; z-index:10; }
-      .dacre-brand { display:flex; align-items:center; gap:12px; min-width:210px; }
-      .brand-logo { width:43px; height:43px; object-fit:contain; border-radius:12px; filter:drop-shadow(0 0 16px rgba(84,92,255,.35)); }
-      .brand-fallback { display:grid; place-items:center; width:43px;height:43px; font-size:21px; background:linear-gradient(135deg,#754cff,#3d8dff 55%,#18c8df); color:#fff; font-weight:900; border-radius:12px; }
-      .dacre-brand-name { font-size:17px;font-weight:850;letter-spacing:-.02em; }
-      .dacre-brand-sub { color:#9cacca;font-size:10px;margin-top:2px; }
-      .system-ready { display:inline-flex;align-items:center;gap:7px;color:#a7b8d3;font-size:10px;font-weight:800;letter-spacing:.05em;white-space:nowrap; }
-      .ready-dot { width:8px;height:8px;border-radius:50%;background:#54e2ae;box-shadow:0 0 14px rgba(84,226,174,.9); }
-      .hero { min-height:640px; display:grid; grid-template-columns:1fr 1fr; gap:34px; align-items:center; padding:68px 28px 42px; }
-      .hero-eyebrow { display:inline-flex; padding:8px 13px; border:1px solid rgba(144,132,255,.28); background:rgba(93,73,255,.08); border-radius:999px;color:#d8d7ff;font-size:12px;font-weight:700; }
-      .hero-title { font-size:clamp(46px,6.4vw,82px); line-height:.96; letter-spacing:-.065em; font-weight:850; margin:22px 0 20px; max-width:700px; }
-      .gradient-text { background:linear-gradient(90deg,#a4b4ff 0%,#8d77ff 38%,#28d5e8 72%,#f5dc59 100%); -webkit-background-clip:text;background-clip:text;color:transparent; }
-      .hero-copy { max-width:610px; color:#a9b7cf;font-size:17px;line-height:1.7; }
-      .hero-proof { display:flex; gap:22px; flex-wrap:wrap; margin-top:34px; color:#c7d0e2;font-size:12px; }
-      .proof-dot { color:#5fe2ae; }
-      .page-hero { padding:70px 28px 28px; }
-      .page-title { font-size:clamp(42px,6vw,72px); line-height:1; letter-spacing:-.06em; font-weight:850; margin:14px 0 16px; }
-      .page-copy { max-width:790px; color:#a9b7cf; font-size:17px; line-height:1.75; }
-      .section { padding:70px 28px; }
+      .dacre-brand { display:flex; align-items:center; gap:12px; min-width:220px; }
+      .brand-logo { width:43px; height:43px; object-fit:contain; border-radius:11px; }
+      .brand-fallback { display:grid; place-items:center; width:43px;height:43px; font-size:21px; background:#1769ff; color:#fff; font-weight:900; border-radius:11px; }
+      .dacre-brand-name { font-size:18px;font-weight:900;letter-spacing:-.025em;color:#101828; }
+      .dacre-brand-sub { color:#667085;font-size:10px;margin-top:2px; }
+      .system-ready { display:inline-flex;align-items:center;gap:7px;color:#344054;font-size:10px;font-weight:800;letter-spacing:.05em;white-space:nowrap; }
+      .ready-dot { width:8px;height:8px;border-radius:50%;background:#12b76a;box-shadow:0 0 10px rgba(18,183,106,.4); }
+      .hero {
+        min-height:610px; display:grid; grid-template-columns:1.05fr .95fr; gap:44px; align-items:center;
+        padding:74px 28px 52px; position:relative;
+      }
+      .hero:before{content:"";position:absolute;left:28px;top:42px;width:6px;height:92px;border-radius:8px;background:#1769ff;}
+      .hero-eyebrow { display:inline-flex; padding:8px 12px; border:1px solid #cfe0ff; background:#eaf2ff; border-radius:999px;color:#0b4fd1;font-size:11px;font-weight:800; }
+      .hero-title { font-size:clamp(46px,6.2vw,80px); line-height:.98; letter-spacing:-.065em; font-weight:900; margin:22px 0 20px; max-width:760px;color:#101828; }
+      .gradient-text { color:#1769ff; }
+      .hero-copy { max-width:650px; color:#475467;font-size:17px;line-height:1.75; }
+      .hero-proof { display:flex; gap:22px; flex-wrap:wrap; margin-top:34px; color:#344054;font-size:12px;font-weight:650; }
+      .proof-dot { color:#1769ff; }
+      .page-hero { padding:62px 28px 28px; }
+      .page-title { font-size:clamp(42px,5.8vw,72px); line-height:1; letter-spacing:-.06em; font-weight:900; margin:14px 0 16px;color:#101828; }
+      .page-copy { max-width:790px; color:#475467; font-size:17px; line-height:1.75; }
+      .section { padding:62px 28px; }
       .section-head { max-width:820px;margin-bottom:32px; }
-      .section-kicker { color:#7b89ff;text-transform:uppercase;letter-spacing:.16em;font-size:10px;font-weight:900; }
-      .section-title { font-size:38px;line-height:1.05;letter-spacing:-.045em;font-weight:820;margin-top:10px; }
-      .section-copy { color:#9aa9c2;line-height:1.75;font-size:15px;margin-top:10px; }
-      .grid-3 { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px; }
-      .grid-2 { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px; }
-      .feature-card { padding:23px;min-height:180px;border:1px solid rgba(124,148,205,.15);border-radius:22px;background:linear-gradient(150deg,rgba(28,42,72,.78),rgba(7,13,28,.78)); box-shadow:0 18px 40px rgba(0,0,0,.16); }
-      .feature-icon { width:40px;height:40px;border-radius:13px;display:grid;place-items:center;background:rgba(70,127,255,.12);color:#79cfff;font-weight:900;margin-bottom:16px; }
-      .feature-card h3 { margin:0;font-size:20px;letter-spacing:-.025em; }
-      .feature-card p { color:#9dacc4;line-height:1.65;margin:8px 0 0;font-size:14px; }
+      .section-kicker { color:#1769ff;text-transform:uppercase;letter-spacing:.16em;font-size:10px;font-weight:900; }
+      .section-title { font-size:38px;line-height:1.05;letter-spacing:-.045em;font-weight:850;margin-top:10px;color:#101828; }
+      .section-copy { color:#667085;line-height:1.75;font-size:15px;margin-top:10px; }
+      .grid-3 { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px; }
+      .grid-2 { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px; }
+      .feature-card { padding:24px;min-height:180px;border:1px solid #e4e7ec;border-radius:18px;background:#fff;box-shadow:0 8px 26px rgba(16,24,40,.055);transition:transform .16s ease,box-shadow .16s ease; }
+      .feature-card:hover{transform:translateY(-3px);box-shadow:0 16px 36px rgba(16,24,40,.10);}
+      .feature-icon { width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:#eaf2ff;color:#1769ff;font-weight:900;margin-bottom:16px;border:1px solid #cfe0ff; }
+      .feature-card h3 { margin:0;font-size:20px;letter-spacing:-.025em;color:#101828; }
+      .feature-card p { color:#667085;line-height:1.65;margin:8px 0 0;font-size:14px; }
       .pill-row { display:flex; gap:9px; flex-wrap:wrap; margin-top:20px; }
-      .pill { padding:8px 11px; border-radius:999px; border:1px solid rgba(110,155,255,.2); background:rgba(65,108,255,.08); color:#bcd5ff; font-size:11px; font-weight:700; }
+      .pill { padding:8px 11px; border-radius:999px; border:1px solid #cfe0ff; background:#f5f9ff; color:#0b4fd1; font-size:11px; font-weight:700; }
       .workflow { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px; }
-      .step { padding:20px;border-radius:20px;border:1px solid rgba(124,148,205,.13);background:rgba(255,255,255,.025); }
-      .step-num { color:#6f88ff;font-size:10px;font-weight:900;letter-spacing:.14em; }
-      .step h4 { margin:8px 0 7px;font-size:18px; }
-      .step p { color:#99a7c0;font-size:13px;line-height:1.6;margin:0; }
-      .callout { padding:28px;border-radius:24px;border:1px solid rgba(105,143,255,.18);background:linear-gradient(135deg,rgba(54,76,155,.22),rgba(15,31,56,.64)); }
-      .callout h3 { margin:0 0 8px;font-size:24px; }
-      .callout p { margin:0;color:#aab8ce;line-height:1.7; }
+      .step { padding:20px;border-radius:16px;border:1px solid #e4e7ec;background:#fff;box-shadow:0 6px 20px rgba(16,24,40,.04); }
+      .step-num { color:#1769ff;font-size:10px;font-weight:900;letter-spacing:.14em; }
+      .step h4 { margin:8px 0 7px;font-size:18px;color:#101828; }
+      .step p { color:#667085;font-size:13px;line-height:1.6;margin:0; }
+      .callout { padding:28px;border-radius:18px;border:1px solid #cfe0ff;background:#fff;box-shadow:0 10px 30px rgba(16,24,40,.06);position:relative;overflow:hidden; }
+      .callout:before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:#1769ff;}
+      .callout h3 { margin:0 0 8px;font-size:24px;color:#101828; }
+      .callout p { margin:0;color:#667085;line-height:1.7; }
       .metric-row { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:20px; }
-      .metric { padding:18px;border-radius:18px;border:1px solid rgba(118,145,206,.14);background:rgba(255,255,255,.025); }
-      .metric small { color:#8898b4;font-size:10px;text-transform:uppercase;letter-spacing:.12em; }
-      .metric strong { display:block;margin-top:5px;font-size:26px; }
-      .cta { margin:20px 28px 30px;padding:42px 28px;border-radius:28px;border:1px solid rgba(113,151,255,.2);background:radial-gradient(circle at 20% 20%,rgba(90,75,255,.18),transparent 35%),linear-gradient(135deg,rgba(17,28,55,.96),rgba(7,13,28,.98));text-align:center; }
-      .cta h2 { font-size:clamp(30px,4vw,52px);letter-spacing:-.05em;margin:10px 0; }
-      .cta p { max-width:680px;margin:0 auto 18px;color:#9eacc3;line-height:1.7; }
-      .footer { display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:26px 28px;color:#7787a4;font-size:11px; }
+      .metric { padding:18px;border-radius:14px;border:1px solid #e4e7ec;background:#fff;box-shadow:0 6px 20px rgba(16,24,40,.04); }
+      .metric small { color:#667085;font-size:10px;text-transform:uppercase;letter-spacing:.12em; }
+      .metric strong { display:block;margin-top:5px;font-size:26px;color:#101828; }
+      .cta { margin:20px 28px 30px;padding:44px 28px;border-radius:20px;border:1px solid #bcd4ff;background:#101828;text-align:center;position:relative;overflow:hidden; }
+      .cta:after{content:"";position:absolute;right:-100px;top:-130px;width:320px;height:320px;border-radius:50%;background:rgba(23,105,255,.28);filter:blur(3px);}
+      .cta h2 { font-size:clamp(30px,4vw,52px);letter-spacing:-.05em;margin:10px 0;color:#fff;position:relative;z-index:1; }
+      .cta p { max-width:680px;margin:0 auto 18px;color:#d0d5dd;line-height:1.7;position:relative;z-index:1; }
+      .footer { display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:26px 28px;color:#667085;font-size:11px; }
       .hero-visual-host { min-height:500px; }
-      .auth-shell { max-width:980px; margin:28px auto 42px; padding:1px;border-radius:24px;background:linear-gradient(135deg,rgba(91,73,255,.75),rgba(37,211,238,.55),rgba(255,255,255,.08));box-shadow:0 28px 90px rgba(0,0,0,.38); }
-      .auth-inner { border-radius:23px;background:#0b1020;padding:30px;border:1px solid rgba(255,255,255,.08); }
-      .auth-title { color:#f7f9ff;font-size:28px;font-weight:800;letter-spacing:-.03em; }
-      .auth-sub { color:#9ba9c2;margin-top:6px;margin-bottom:20px; }
-      .auth-badge { display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid rgba(126,115,255,.3);background:rgba(92,76,255,.10);color:#bfc5ff;font-size:12px;font-weight:700; }
-      @media(max-width:980px){ .hero{grid-template-columns:1fr;padding-top:48px}.grid-3,.grid-2{grid-template-columns:1fr 1fr}.workflow{grid-template-columns:1fr 1fr}.metric-row{grid-template-columns:1fr 1fr}.hero-visual-host{min-height:430px} }
-      @media(max-width:680px){ .block-container{padding:0 12px 40px !important}.dacre-nav{position:static;padding:12px}.dacre-brand{min-width:auto}.system-ready{display:none}.hero{padding:42px 10px 25px;min-height:auto}.hero-title{font-size:48px}.section,.page-hero{padding:48px 10px 20px}.grid-3,.grid-2,.workflow,.metric-row{grid-template-columns:1fr}.section-title{font-size:31px}.hero-visual-host{min-height:360px}.cta{margin:18px 10px 25px;padding:34px 20px}.footer{padding:22px 10px} }
+      .auth-shell { max-width:980px; margin:28px auto 42px; padding:1px;border-radius:20px;background:#1769ff;box-shadow:0 20px 55px rgba(16,24,40,.12); }
+      .auth-inner { border-radius:19px;background:#fff;padding:30px;border:1px solid #e4e7ec; }
+      .auth-title { color:#101828;font-size:28px;font-weight:800;letter-spacing:-.03em; }
+      .auth-sub { color:#667085;margin-top:6px;margin-bottom:20px; }
+      .auth-badge { display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid #cfe0ff;background:#eaf2ff;color:#0b4fd1;font-size:12px;font-weight:700; }
+      @media(max-width:980px){ .hero{grid-template-columns:1fr;padding-top:52px}.grid-3,.grid-2{grid-template-columns:1fr 1fr}.workflow{grid-template-columns:1fr 1fr}.metric-row{grid-template-columns:1fr 1fr}.hero-visual-host{min-height:430px} }
+      @media(max-width:680px){ .block-container{padding:0 12px 40px !important}.dacre-nav{position:static;padding:12px}.dacre-brand{min-width:auto}.system-ready{display:none}.hero{padding:48px 10px 25px;min-height:auto}.hero-title{font-size:48px}.section,.page-hero{padding:48px 10px 20px}.grid-3,.grid-2,.workflow,.metric-row{grid-template-columns:1fr}.section-title{font-size:31px}.hero-visual-host{min-height:360px}.cta{margin:18px 10px 25px;padding:34px 20px}.footer{padding:22px 10px} }
     </style>
     """, unsafe_allow_html=True)
 
@@ -5653,109 +5854,6 @@ def render_dacre_production_core():
 # MAIN APPLICATION - PAGE ROUTING
 # =============================================================================
 
-def main_app():
-    """Main application entry point."""
-    # Initialize production core
-    if not st.session_state.get("dacre_boot_complete", False):
-        init_production_core()
-        st.session_state.dacre_boot_complete = True
-    
-    user = st.session_state.user
-    
-    # If no user, show landing page
-    if user is None:
-        landing_page()
-        return
-    
-    # Apply company theme
-    apply_company_website_theme(user)
-    
-    # Initialize chat history if empty
-    if not st.session_state.chat_history:
-        st.session_state.chat_history = load_chat_history(user, limit=40)
-    
-    # Check if user is authenticated
-    if not user:
-        landing_page()
-        return
-    
-    # Get selected page from sidebar
-    selected_page = st.session_state.get("selected_page", "Overview")
-    
-    # Render page chrome
-    render_page_chrome(selected_page, user)
-    
-    # Page routing
-    if selected_page == "Overview":
-        if user.get("role") == "master":
-            render_dacre_production_core()
-            st.markdown("---")
-        render_analytics_overview(user)
-    
-    elif selected_page == "DI Home":
-        render_real_di_home(user)
-    
-    elif selected_page == "DI Calls":
-        render_di_calls(user)
-    
-    elif selected_page == "DI Workforce":
-        render_real_di_workforce(user)
-    
-    elif selected_page == "🌍 Global Markets":
-        render_global_markets_dashboard()
-    
-    elif selected_page == "🎥 DI Conference":
-        render_enhanced_conference_room(user)
-    
-    elif selected_page == "DI Action Center":
-        render_action_center(user)
-    
-    elif selected_page == "DI Memory Box":
-        render_di_memory_box(user)
-    
-    elif selected_page == "Business Command Center":
-        render_business_command_center(user)
-    
-    elif selected_page == "Business Twin":
-        render_business_twin(st.session_state.processed_df, user)
-    
-    elif selected_page == "Decision Ledger":
-        render_decision_ledger(user)
-    
-    elif selected_page == "Opportunity Radar":
-        render_opportunity_page(user)
-    
-    elif selected_page == "Workspace & Data":
-        render_workspace_data(user)
-    
-    elif selected_page == "Formula Lab":
-        render_formula_lab(user)
-    
-    elif selected_page == "Charts":
-        render_charts(user)
-    
-    elif selected_page == "File Vault":
-        render_file_vault(user)
-    
-    elif selected_page == "Export Center":
-        render_export_center(user)
-    
-    elif selected_page == "Chibobec Loan Desk":
-        render_chibobec_loan_desk(user)
-    
-    elif selected_page == "Organization Admin Portal":
-        render_organization_admin(user)
-    
-    elif selected_page == "Overall Admin DI Portal" and user.get("role") == "master":
-        render_fixed_overall_admin_page(user)
-        st.markdown("---")
-        render_emiel_directory(user)
-    
-    else:
-        st.info(f"Page '{selected_page}' is being developed. Check back soon!")
-    
-    # Persistent DI dock
-    render_persistent_di_dock(user)
 
 # =============================================================================
 # RENDER FUNCTIONS FOR EACH PAGE
@@ -8503,6 +8601,50 @@ def render_enterprise_sidebar(user):
         render_user_navigation(user)
 
 # Replace main application with a guarded additive version.
+def render_productivity_bar(user):
+    """Compact online-company action bar that makes the workspace easy to understand."""
+    if not user:
+        return
+    master = user.get("role") == "master"
+    company = _escape_html(str(user.get("company", "DACRE Workspace")))
+    st.markdown(f"""
+    <div class="dacre-quickbar">
+      <div class="quick-brand">DACRE · {'FOUNDER COMMAND' if master else 'BUSINESS WORKSPACE'}</div>
+      <div class="quick-status">Workspace: <b>{company}</b> · <span>DI ready</span></div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    if master:
+        actions = [
+            ("New overview", "Overview"),
+            ("Open DI Home", "DI Home"),
+            ("Work with data", "Workspace & Data"),
+            ("Admin DI", "Overall Admin DI Portal"),
+        ]
+    else:
+        actions = [
+            ("Start with data", "Workspace & Data"),
+            ("Business Twin", "Business Twin"),
+            ("Find opportunities", "Opportunity Radar"),
+            ("Research", "Research Store"),
+        ]
+
+    cols = st.columns(len(actions), gap="small")
+    for i, (label, target) in enumerate(actions):
+        with cols[i]:
+            if st.button(label, key=f"quick_action_{'master' if master else 'user'}_{i}", use_container_width=True):
+                st.session_state.selected_page = target
+                st.rerun()
+
+    with st.expander("How DACRE works", expanded=False):
+        st.markdown(
+            "**1. Bring your information in** → upload or connect your business data.  "
+            "**2. Understand it** → clean, inspect and visualize it.  "
+            "**3. Decide** → use Business Twin, Opportunity Radar and Decision Ledger.  "
+            "**4. Act** → export results or move the next action into your workspace."
+        )
+
+
 def main_app():
     if not st.session_state.get("dacre_boot_complete", False):
         init_production_core()
@@ -8516,6 +8658,7 @@ def main_app():
     mongo_sync_user(user)
     render_enterprise_sidebar(user)
     apply_company_website_theme(user)
+    render_productivity_bar(user)
 
     if not st.session_state.chat_history:
         st.session_state.chat_history = load_chat_history(user, limit=40)
@@ -8604,3903 +8747,3 @@ if __name__ == "__main__":
         landing_page()
     else:
         main_app()
-
-# =============================================================================
-# DI CRAFT BASEMENT — EXTENDED ENGINEERING REGISTRY
-# =============================================================================
-DI_CRAFT_EXTENDED_REGISTRY = {
-    "Emiel": {
-        "agent_index": 1,
-        "face_asset": "assets/di_faces/Emiel.png",
-        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
-        "rooms": [
-            {"room":"core","artifact":"neural_lattice","screen_id":"emiel-core-screen","status":"ready","version":"1.0.1"},
-            {"room":"brain","artifact":"voice_console","screen_id":"emiel-brain-screen","status":"ready","version":"1.0.2"},
-            {"room":"body","artifact":"memory_vault","screen_id":"emiel-body-screen","status":"ready","version":"1.0.3"},
-            {"room":"voice","artifact":"control_screen","screen_id":"emiel-voice-screen","status":"ready","version":"1.0.4"},
-            {"room":"tools","artifact":"workflow_graph","screen_id":"emiel-tools-screen","status":"ready","version":"1.0.5"},
-            {"room":"memory","artifact":"risk_matrix","screen_id":"emiel-memory-screen","status":"ready","version":"1.0.6"},
-        ],
-        "approved_capabilities": [
-            "documents",
-            "finance",
-            "strategy",
-            "knowledge",
-        ],
-    },
-    "Assiel": {
-        "agent_index": 2,
-        "face_asset": "assets/di_faces/Assiel.png",
-        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
-        "rooms": [
-            {"room":"core","artifact":"voice_console","screen_id":"assiel-core-screen","status":"ready","version":"1.0.1"},
-            {"room":"brain","artifact":"memory_vault","screen_id":"assiel-brain-screen","status":"ready","version":"1.0.2"},
-            {"room":"body","artifact":"control_screen","screen_id":"assiel-body-screen","status":"ready","version":"1.0.3"},
-            {"room":"voice","artifact":"workflow_graph","screen_id":"assiel-voice-screen","status":"ready","version":"1.0.4"},
-            {"room":"tools","artifact":"risk_matrix","screen_id":"assiel-tools-screen","status":"ready","version":"1.0.5"},
-            {"room":"memory","artifact":"market_globe","screen_id":"assiel-memory-screen","status":"ready","version":"1.0.6"},
-        ],
-        "approved_capabilities": [
-            "research",
-            "operations",
-            "marketing",
-            "technology",
-            "executive",
-        ],
-    },
-    "Oriel": {
-        "agent_index": 3,
-        "face_asset": "assets/di_faces/Oriel.png",
-        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
-        "rooms": [
-            {"room":"core","artifact":"memory_vault","screen_id":"oriel-core-screen","status":"ready","version":"1.0.1"},
-            {"room":"brain","artifact":"control_screen","screen_id":"oriel-brain-screen","status":"ready","version":"1.0.2"},
-            {"room":"body","artifact":"workflow_graph","screen_id":"oriel-body-screen","status":"ready","version":"1.0.3"},
-            {"room":"voice","artifact":"risk_matrix","screen_id":"oriel-voice-screen","status":"ready","version":"1.0.4"},
-            {"room":"tools","artifact":"market_globe","screen_id":"oriel-tools-screen","status":"ready","version":"1.0.5"},
-            {"room":"memory","artifact":"report_canvas","screen_id":"oriel-memory-screen","status":"ready","version":"1.0.6"},
-        ],
-        "approved_capabilities": [
-            "analytics",
-            "security",
-            "sales",
-            "people",
-            "communications",
-        ],
-    },
-    "Sofiel": {
-        "agent_index": 4,
-        "face_asset": "assets/di_faces/Sofiel.png",
-        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
-        "rooms": [
-            {"room":"core","artifact":"control_screen","screen_id":"sofiel-core-screen","status":"ready","version":"1.0.1"},
-            {"room":"brain","artifact":"workflow_graph","screen_id":"sofiel-brain-screen","status":"ready","version":"1.0.2"},
-            {"room":"body","artifact":"risk_matrix","screen_id":"sofiel-body-screen","status":"ready","version":"1.0.3"},
-            {"room":"voice","artifact":"market_globe","screen_id":"sofiel-voice-screen","status":"ready","version":"1.0.4"},
-            {"room":"tools","artifact":"report_canvas","screen_id":"sofiel-tools-screen","status":"ready","version":"1.0.5"},
-            {"room":"memory","artifact":"holographic_table","screen_id":"sofiel-memory-screen","status":"ready","version":"1.0.6"},
-        ],
-        "approved_capabilities": [
-            "documents",
-            "finance",
-            "strategy",
-            "knowledge",
-        ],
-    },
-    "Daniel": {
-        "agent_index": 5,
-        "face_asset": "assets/di_faces/Daniel.png",
-        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
-        "rooms": [
-            {"room":"core","artifact":"workflow_graph","screen_id":"daniel-core-screen","status":"ready","version":"1.0.1"},
-            {"room":"brain","artifact":"risk_matrix","screen_id":"daniel-brain-screen","status":"ready","version":"1.0.2"},
-            {"room":"body","artifact":"market_globe","screen_id":"daniel-body-screen","status":"ready","version":"1.0.3"},
-            {"room":"voice","artifact":"report_canvas","screen_id":"daniel-voice-screen","status":"ready","version":"1.0.4"},
-            {"room":"tools","artifact":"holographic_table","screen_id":"daniel-tools-screen","status":"ready","version":"1.0.5"},
-            {"room":"memory","artifact":"3d_data_cube","screen_id":"daniel-memory-screen","status":"ready","version":"1.0.6"},
-        ],
-        "approved_capabilities": [
-            "research",
-            "operations",
-            "marketing",
-            "technology",
-            "executive",
-        ],
-    },
-    "Graciel": {
-        "agent_index": 6,
-        "face_asset": "assets/di_faces/Graciel.png",
-        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
-        "rooms": [
-            {"room":"core","artifact":"risk_matrix","screen_id":"graciel-core-screen","status":"ready","version":"1.0.1"},
-            {"room":"brain","artifact":"market_globe","screen_id":"graciel-brain-screen","status":"ready","version":"1.0.2"},
-            {"room":"body","artifact":"report_canvas","screen_id":"graciel-body-screen","status":"ready","version":"1.0.3"},
-            {"room":"voice","artifact":"holographic_table","screen_id":"graciel-voice-screen","status":"ready","version":"1.0.4"},
-            {"room":"tools","artifact":"3d_data_cube","screen_id":"graciel-tools-screen","status":"ready","version":"1.0.5"},
-            {"room":"memory","artifact":"neural_lattice","screen_id":"graciel-memory-screen","status":"ready","version":"1.0.6"},
-        ],
-        "approved_capabilities": [
-            "analytics",
-            "security",
-            "sales",
-            "people",
-            "communications",
-        ],
-    },
-    "Henriel": {
-        "agent_index": 7,
-        "face_asset": "assets/di_faces/Henriel.png",
-        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
-        "rooms": [
-            {"room":"core","artifact":"market_globe","screen_id":"henriel-core-screen","status":"ready","version":"1.0.1"},
-            {"room":"brain","artifact":"report_canvas","screen_id":"henriel-brain-screen","status":"ready","version":"1.0.2"},
-            {"room":"body","artifact":"holographic_table","screen_id":"henriel-body-screen","status":"ready","version":"1.0.3"},
-            {"room":"voice","artifact":"3d_data_cube","screen_id":"henriel-voice-screen","status":"ready","version":"1.0.4"},
-            {"room":"tools","artifact":"neural_lattice","screen_id":"henriel-tools-screen","status":"ready","version":"1.0.5"},
-            {"room":"memory","artifact":"voice_console","screen_id":"henriel-memory-screen","status":"ready","version":"1.0.6"},
-        ],
-        "approved_capabilities": [
-            "documents",
-            "finance",
-            "strategy",
-            "knowledge",
-        ],
-    },
-    "Jamiel": {
-        "agent_index": 8,
-        "face_asset": "assets/di_faces/Jamiel.png",
-        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
-        "rooms": [
-            {"room":"core","artifact":"report_canvas","screen_id":"jamiel-core-screen","status":"ready","version":"1.0.1"},
-            {"room":"brain","artifact":"holographic_table","screen_id":"jamiel-brain-screen","status":"ready","version":"1.0.2"},
-            {"room":"body","artifact":"3d_data_cube","screen_id":"jamiel-body-screen","status":"ready","version":"1.0.3"},
-            {"room":"voice","artifact":"neural_lattice","screen_id":"jamiel-voice-screen","status":"ready","version":"1.0.4"},
-            {"room":"tools","artifact":"voice_console","screen_id":"jamiel-tools-screen","status":"ready","version":"1.0.5"},
-            {"room":"memory","artifact":"memory_vault","screen_id":"jamiel-memory-screen","status":"ready","version":"1.0.6"},
-        ],
-        "approved_capabilities": [
-            "research",
-            "operations",
-            "marketing",
-            "technology",
-            "executive",
-        ],
-    },
-    "Ameliel": {
-        "agent_index": 9,
-        "face_asset": "assets/di_faces/Ameliel.png",
-        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
-        "rooms": [
-            {"room":"core","artifact":"holographic_table","screen_id":"ameliel-core-screen","status":"ready","version":"1.0.1"},
-            {"room":"brain","artifact":"3d_data_cube","screen_id":"ameliel-brain-screen","status":"ready","version":"1.0.2"},
-            {"room":"body","artifact":"neural_lattice","screen_id":"ameliel-body-screen","status":"ready","version":"1.0.3"},
-            {"room":"voice","artifact":"voice_console","screen_id":"ameliel-voice-screen","status":"ready","version":"1.0.4"},
-            {"room":"tools","artifact":"memory_vault","screen_id":"ameliel-tools-screen","status":"ready","version":"1.0.5"},
-            {"room":"memory","artifact":"control_screen","screen_id":"ameliel-memory-screen","status":"ready","version":"1.0.6"},
-        ],
-        "approved_capabilities": [
-            "analytics",
-            "security",
-            "sales",
-            "people",
-            "communications",
-        ],
-    },
-    "Guaiel": {
-        "agent_index": 10,
-        "face_asset": "assets/di_faces/Guaiel.png",
-        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
-        "rooms": [
-            {"room":"core","artifact":"3d_data_cube","screen_id":"guaiel-core-screen","status":"ready","version":"1.0.1"},
-            {"room":"brain","artifact":"neural_lattice","screen_id":"guaiel-brain-screen","status":"ready","version":"1.0.2"},
-            {"room":"body","artifact":"voice_console","screen_id":"guaiel-body-screen","status":"ready","version":"1.0.3"},
-            {"room":"voice","artifact":"memory_vault","screen_id":"guaiel-voice-screen","status":"ready","version":"1.0.4"},
-            {"room":"tools","artifact":"control_screen","screen_id":"guaiel-tools-screen","status":"ready","version":"1.0.5"},
-            {"room":"memory","artifact":"workflow_graph","screen_id":"guaiel-memory-screen","status":"ready","version":"1.0.6"},
-        ],
-        "approved_capabilities": [
-            "documents",
-            "finance",
-            "strategy",
-            "knowledge",
-        ],
-    },
-    "Nathaniel": {
-        "agent_index": 11,
-        "face_asset": "assets/di_faces/Nathaniel.png",
-        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
-        "rooms": [
-            {"room":"core","artifact":"neural_lattice","screen_id":"nathaniel-core-screen","status":"ready","version":"1.0.1"},
-            {"room":"brain","artifact":"voice_console","screen_id":"nathaniel-brain-screen","status":"ready","version":"1.0.2"},
-            {"room":"body","artifact":"memory_vault","screen_id":"nathaniel-body-screen","status":"ready","version":"1.0.3"},
-            {"room":"voice","artifact":"control_screen","screen_id":"nathaniel-voice-screen","status":"ready","version":"1.0.4"},
-            {"room":"tools","artifact":"workflow_graph","screen_id":"nathaniel-tools-screen","status":"ready","version":"1.0.5"},
-            {"room":"memory","artifact":"risk_matrix","screen_id":"nathaniel-memory-screen","status":"ready","version":"1.0.6"},
-        ],
-        "approved_capabilities": [
-            "research",
-            "operations",
-            "marketing",
-            "technology",
-            "executive",
-        ],
-    },
-    "Gabriel": {
-        "agent_index": 12,
-        "face_asset": "assets/di_faces/Gabriel.png",
-        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
-        "rooms": [
-            {"room":"core","artifact":"voice_console","screen_id":"gabriel-core-screen","status":"ready","version":"1.0.1"},
-            {"room":"brain","artifact":"memory_vault","screen_id":"gabriel-brain-screen","status":"ready","version":"1.0.2"},
-            {"room":"body","artifact":"control_screen","screen_id":"gabriel-body-screen","status":"ready","version":"1.0.3"},
-            {"room":"voice","artifact":"workflow_graph","screen_id":"gabriel-voice-screen","status":"ready","version":"1.0.4"},
-            {"room":"tools","artifact":"risk_matrix","screen_id":"gabriel-tools-screen","status":"ready","version":"1.0.5"},
-            {"room":"memory","artifact":"market_globe","screen_id":"gabriel-memory-screen","status":"ready","version":"1.0.6"},
-        ],
-        "approved_capabilities": [
-            "analytics",
-            "security",
-            "sales",
-            "people",
-            "communications",
-        ],
-    },
-    "Raphaiel": {
-        "agent_index": 13,
-        "face_asset": "assets/di_faces/Raphaiel.png",
-        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
-        "rooms": [
-            {"room":"core","artifact":"memory_vault","screen_id":"raphaiel-core-screen","status":"ready","version":"1.0.1"},
-            {"room":"brain","artifact":"control_screen","screen_id":"raphaiel-brain-screen","status":"ready","version":"1.0.2"},
-            {"room":"body","artifact":"workflow_graph","screen_id":"raphaiel-body-screen","status":"ready","version":"1.0.3"},
-            {"room":"voice","artifact":"risk_matrix","screen_id":"raphaiel-voice-screen","status":"ready","version":"1.0.4"},
-            {"room":"tools","artifact":"market_globe","screen_id":"raphaiel-tools-screen","status":"ready","version":"1.0.5"},
-            {"room":"memory","artifact":"report_canvas","screen_id":"raphaiel-memory-screen","status":"ready","version":"1.0.6"},
-        ],
-        "approved_capabilities": [
-            "documents",
-            "finance",
-            "strategy",
-            "knowledge",
-        ],
-    },
-    "Uriel": {
-        "agent_index": 14,
-        "face_asset": "assets/di_faces/Uriel.png",
-        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
-        "rooms": [
-            {"room":"core","artifact":"control_screen","screen_id":"uriel-core-screen","status":"ready","version":"1.0.1"},
-            {"room":"brain","artifact":"workflow_graph","screen_id":"uriel-brain-screen","status":"ready","version":"1.0.2"},
-            {"room":"body","artifact":"risk_matrix","screen_id":"uriel-body-screen","status":"ready","version":"1.0.3"},
-            {"room":"voice","artifact":"market_globe","screen_id":"uriel-voice-screen","status":"ready","version":"1.0.4"},
-            {"room":"tools","artifact":"report_canvas","screen_id":"uriel-tools-screen","status":"ready","version":"1.0.5"},
-            {"room":"memory","artifact":"holographic_table","screen_id":"uriel-memory-screen","status":"ready","version":"1.0.6"},
-        ],
-        "approved_capabilities": [
-            "research",
-            "operations",
-            "marketing",
-            "technology",
-            "executive",
-        ],
-    },
-    "Ariel": {
-        "agent_index": 15,
-        "face_asset": "assets/di_faces/Ariel.png",
-        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
-        "rooms": [
-            {"room":"core","artifact":"workflow_graph","screen_id":"ariel-core-screen","status":"ready","version":"1.0.1"},
-            {"room":"brain","artifact":"risk_matrix","screen_id":"ariel-brain-screen","status":"ready","version":"1.0.2"},
-            {"room":"body","artifact":"market_globe","screen_id":"ariel-body-screen","status":"ready","version":"1.0.3"},
-            {"room":"voice","artifact":"report_canvas","screen_id":"ariel-voice-screen","status":"ready","version":"1.0.4"},
-            {"room":"tools","artifact":"holographic_table","screen_id":"ariel-tools-screen","status":"ready","version":"1.0.5"},
-            {"room":"memory","artifact":"3d_data_cube","screen_id":"ariel-memory-screen","status":"ready","version":"1.0.6"},
-        ],
-        "approved_capabilities": [
-            "analytics",
-            "security",
-            "sales",
-            "people",
-            "communications",
-        ],
-    },
-    "Muriel": {
-        "agent_index": 16,
-        "face_asset": "assets/di_faces/Muriel.png",
-        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
-        "rooms": [
-            {"room":"core","artifact":"risk_matrix","screen_id":"muriel-core-screen","status":"ready","version":"1.0.1"},
-            {"room":"brain","artifact":"market_globe","screen_id":"muriel-brain-screen","status":"ready","version":"1.0.2"},
-            {"room":"body","artifact":"report_canvas","screen_id":"muriel-body-screen","status":"ready","version":"1.0.3"},
-            {"room":"voice","artifact":"holographic_table","screen_id":"muriel-voice-screen","status":"ready","version":"1.0.4"},
-            {"room":"tools","artifact":"3d_data_cube","screen_id":"muriel-tools-screen","status":"ready","version":"1.0.5"},
-            {"room":"memory","artifact":"neural_lattice","screen_id":"muriel-memory-screen","status":"ready","version":"1.0.6"},
-        ],
-        "approved_capabilities": [
-            "documents",
-            "finance",
-            "strategy",
-            "knowledge",
-        ],
-    },
-    "Azriel": {
-        "agent_index": 17,
-        "face_asset": "assets/di_faces/Azriel.png",
-        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
-        "rooms": [
-            {"room":"core","artifact":"market_globe","screen_id":"azriel-core-screen","status":"ready","version":"1.0.1"},
-            {"room":"brain","artifact":"report_canvas","screen_id":"azriel-brain-screen","status":"ready","version":"1.0.2"},
-            {"room":"body","artifact":"holographic_table","screen_id":"azriel-body-screen","status":"ready","version":"1.0.3"},
-            {"room":"voice","artifact":"3d_data_cube","screen_id":"azriel-voice-screen","status":"ready","version":"1.0.4"},
-            {"room":"tools","artifact":"neural_lattice","screen_id":"azriel-tools-screen","status":"ready","version":"1.0.5"},
-            {"room":"memory","artifact":"voice_console","screen_id":"azriel-memory-screen","status":"ready","version":"1.0.6"},
-        ],
-        "approved_capabilities": [
-            "research",
-            "operations",
-            "marketing",
-            "technology",
-            "executive",
-        ],
-    },
-    "Adriel": {
-        "agent_index": 18,
-        "face_asset": "assets/di_faces/Adriel.png",
-        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
-        "rooms": [
-            {"room":"core","artifact":"report_canvas","screen_id":"adriel-core-screen","status":"ready","version":"1.0.1"},
-            {"room":"brain","artifact":"holographic_table","screen_id":"adriel-brain-screen","status":"ready","version":"1.0.2"},
-            {"room":"body","artifact":"3d_data_cube","screen_id":"adriel-body-screen","status":"ready","version":"1.0.3"},
-            {"room":"voice","artifact":"neural_lattice","screen_id":"adriel-voice-screen","status":"ready","version":"1.0.4"},
-            {"room":"tools","artifact":"voice_console","screen_id":"adriel-tools-screen","status":"ready","version":"1.0.5"},
-            {"room":"memory","artifact":"memory_vault","screen_id":"adriel-memory-screen","status":"ready","version":"1.0.6"},
-        ],
-        "approved_capabilities": [
-            "analytics",
-            "security",
-            "sales",
-            "people",
-            "communications",
-        ],
-    },
-    "Haniel": {
-        "agent_index": 19,
-        "face_asset": "assets/di_faces/Haniel.png",
-        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
-        "rooms": [
-            {"room":"core","artifact":"holographic_table","screen_id":"haniel-core-screen","status":"ready","version":"1.0.1"},
-            {"room":"brain","artifact":"3d_data_cube","screen_id":"haniel-brain-screen","status":"ready","version":"1.0.2"},
-            {"room":"body","artifact":"neural_lattice","screen_id":"haniel-body-screen","status":"ready","version":"1.0.3"},
-            {"room":"voice","artifact":"voice_console","screen_id":"haniel-voice-screen","status":"ready","version":"1.0.4"},
-            {"room":"tools","artifact":"memory_vault","screen_id":"haniel-tools-screen","status":"ready","version":"1.0.5"},
-            {"room":"memory","artifact":"control_screen","screen_id":"haniel-memory-screen","status":"ready","version":"1.0.6"},
-        ],
-        "approved_capabilities": [
-            "documents",
-            "finance",
-            "strategy",
-            "knowledge",
-        ],
-    },
-    "Raziel": {
-        "agent_index": 20,
-        "face_asset": "assets/di_faces/Raziel.png",
-        "basement_password_env": "DACRE_DI_BASEMENT_PASSKEY",
-        "rooms": [
-            {"room":"core","artifact":"3d_data_cube","screen_id":"raziel-core-screen","status":"ready","version":"1.0.1"},
-            {"room":"brain","artifact":"neural_lattice","screen_id":"raziel-brain-screen","status":"ready","version":"1.0.2"},
-            {"room":"body","artifact":"voice_console","screen_id":"raziel-body-screen","status":"ready","version":"1.0.3"},
-            {"room":"voice","artifact":"memory_vault","screen_id":"raziel-voice-screen","status":"ready","version":"1.0.4"},
-            {"room":"tools","artifact":"control_screen","screen_id":"raziel-tools-screen","status":"ready","version":"1.0.5"},
-            {"room":"memory","artifact":"workflow_graph","screen_id":"raziel-memory-screen","status":"ready","version":"1.0.6"},
-        ],
-        "approved_capabilities": [
-            "research",
-            "operations",
-            "marketing",
-            "technology",
-            "executive",
-        ],
-    },
-}
-DI_CRAFT_REGISTRY_VERSION='2026.08.19'
-DI_CRAFT_ARTIFACT_0001={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0002={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0003={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0004={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0005={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0006={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0007={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0008={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0009={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0010={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0011={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0012={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0013={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0014={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0015={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0016={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0017={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0018={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0019={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0020={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0021={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0022={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0023={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0024={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0025={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0026={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0027={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0028={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0029={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0030={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0031={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0032={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0033={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0034={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0035={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0036={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0037={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0038={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0039={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0040={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0041={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0042={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0043={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0044={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0045={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0046={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0047={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0048={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0049={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0050={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0051={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0052={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0053={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0054={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0055={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0056={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0057={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0058={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0059={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0060={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0061={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0062={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0063={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0064={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0065={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0066={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0067={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0068={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0069={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0070={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0071={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0072={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0073={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0074={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0075={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0076={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0077={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0078={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0079={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0080={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0081={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0082={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0083={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0084={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0085={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0086={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0087={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0088={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0089={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0090={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0091={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0092={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0093={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0094={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0095={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0096={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0097={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0098={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0099={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0100={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0101={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0102={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0103={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0104={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0105={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0106={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0107={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0108={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0109={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0110={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0111={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0112={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0113={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0114={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0115={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0116={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0117={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0118={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0119={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0120={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0121={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0122={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0123={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0124={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0125={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0126={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0127={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0128={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0129={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0130={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0131={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0132={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0133={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0134={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0135={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0136={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0137={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0138={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0139={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0140={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0141={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0142={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0143={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0144={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0145={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0146={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0147={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0148={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0149={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0150={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0151={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0152={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0153={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0154={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0155={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0156={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0157={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0158={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0159={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0160={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0161={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0162={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0163={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0164={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0165={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0166={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0167={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0168={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0169={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0170={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0171={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0172={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0173={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0174={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0175={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0176={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0177={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0178={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0179={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0180={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0181={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0182={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0183={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0184={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0185={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0186={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0187={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0188={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0189={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0190={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0191={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0192={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0193={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0194={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0195={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0196={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0197={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0198={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0199={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0200={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0201={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0202={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0203={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0204={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0205={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0206={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0207={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0208={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0209={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0210={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0211={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0212={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0213={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0214={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0215={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0216={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0217={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0218={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0219={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0220={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0221={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0222={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0223={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0224={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0225={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0226={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0227={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0228={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0229={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0230={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0231={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0232={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0233={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0234={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0235={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0236={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0237={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0238={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0239={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0240={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0241={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0242={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0243={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0244={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0245={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0246={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0247={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0248={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0249={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0250={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0251={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0252={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0253={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0254={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0255={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0256={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0257={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0258={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0259={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0260={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0261={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0262={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0263={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0264={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0265={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0266={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0267={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0268={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0269={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0270={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0271={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0272={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0273={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0274={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0275={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0276={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0277={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0278={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0279={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0280={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0281={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0282={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0283={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0284={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0285={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0286={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0287={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0288={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0289={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0290={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0291={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0292={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0293={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0294={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0295={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0296={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0297={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0298={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0299={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0300={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0301={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0302={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0303={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0304={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0305={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0306={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0307={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0308={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0309={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0310={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0311={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0312={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0313={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0314={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0315={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0316={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0317={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0318={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0319={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0320={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0321={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0322={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0323={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0324={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0325={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0326={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0327={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0328={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0329={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0330={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0331={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0332={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0333={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0334={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0335={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0336={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0337={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0338={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0339={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0340={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0341={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0342={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0343={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0344={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0345={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0346={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0347={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0348={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0349={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0350={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0351={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0352={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0353={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0354={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0355={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0356={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0357={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0358={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0359={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0360={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0361={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0362={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0363={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0364={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0365={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0366={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0367={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0368={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0369={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0370={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0371={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0372={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0373={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0374={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0375={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0376={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0377={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0378={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0379={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0380={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0381={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0382={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0383={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0384={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0385={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0386={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0387={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0388={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0389={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0390={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0391={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0392={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0393={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0394={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0395={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0396={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0397={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0398={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0399={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0400={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0401={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0402={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0403={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0404={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0405={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0406={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0407={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0408={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0409={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0410={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0411={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0412={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0413={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0414={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0415={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0416={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0417={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0418={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0419={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0420={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0421={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0422={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0423={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0424={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0425={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0426={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0427={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0428={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0429={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0430={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0431={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0432={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0433={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0434={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0435={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0436={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0437={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0438={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0439={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0440={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0441={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0442={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0443={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0444={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0445={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0446={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0447={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0448={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0449={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0450={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0451={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0452={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0453={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0454={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0455={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0456={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0457={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0458={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0459={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0460={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0461={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0462={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0463={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0464={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0465={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0466={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0467={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0468={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0469={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0470={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0471={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0472={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0473={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0474={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0475={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0476={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0477={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0478={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0479={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0480={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0481={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0482={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0483={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0484={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0485={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0486={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0487={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0488={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0489={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0490={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0491={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0492={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0493={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0494={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0495={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0496={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0497={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0498={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0499={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0500={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0501={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0502={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0503={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0504={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0505={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0506={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0507={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0508={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0509={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0510={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0511={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0512={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0513={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0514={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0515={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0516={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0517={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0518={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0519={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0520={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0521={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0522={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0523={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0524={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0525={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0526={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0527={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0528={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0529={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0530={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0531={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0532={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0533={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0534={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0535={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0536={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0537={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0538={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0539={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0540={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0541={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0542={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0543={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0544={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0545={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0546={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0547={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0548={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0549={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0550={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0551={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0552={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0553={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0554={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0555={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0556={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0557={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0558={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0559={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0560={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0561={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0562={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0563={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0564={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0565={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0566={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0567={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0568={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0569={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0570={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0571={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0572={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0573={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0574={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0575={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0576={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0577={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0578={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0579={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0580={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0581={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0582={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0583={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0584={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0585={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0586={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0587={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0588={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0589={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0590={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0591={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0592={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0593={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0594={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0595={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0596={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0597={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0598={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0599={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0600={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0601={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0602={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0603={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0604={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0605={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0606={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0607={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0608={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0609={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0610={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0611={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0612={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0613={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0614={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0615={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0616={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0617={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0618={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0619={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0620={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0621={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0622={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0623={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0624={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0625={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0626={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0627={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0628={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0629={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0630={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0631={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0632={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0633={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0634={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0635={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0636={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0637={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0638={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0639={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0640={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0641={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0642={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0643={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0644={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0645={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0646={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0647={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0648={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0649={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0650={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0651={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0652={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0653={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0654={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0655={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0656={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0657={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0658={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0659={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0660={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0661={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0662={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0663={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0664={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0665={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0666={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0667={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0668={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0669={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0670={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0671={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0672={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0673={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0674={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0675={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0676={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0677={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0678={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0679={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0680={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0681={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0682={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0683={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0684={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0685={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0686={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0687={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0688={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0689={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0690={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0691={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0692={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0693={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0694={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0695={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0696={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0697={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0698={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0699={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0700={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0701={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0702={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0703={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0704={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0705={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0706={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0707={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0708={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0709={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0710={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0711={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0712={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0713={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0714={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0715={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0716={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0717={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0718={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0719={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0720={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0721={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0722={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0723={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0724={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0725={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0726={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0727={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0728={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0729={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0730={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0731={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0732={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0733={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0734={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0735={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0736={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0737={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0738={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0739={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0740={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0741={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0742={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0743={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0744={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0745={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0746={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0747={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0748={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0749={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0750={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0751={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0752={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0753={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0754={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0755={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0756={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0757={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0758={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0759={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0760={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0761={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0762={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0763={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0764={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0765={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0766={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0767={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0768={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0769={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0770={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0771={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0772={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0773={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0774={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0775={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0776={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0777={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0778={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0779={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0780={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0781={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0782={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0783={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0784={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0785={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0786={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0787={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0788={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0789={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0790={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0791={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0792={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0793={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0794={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0795={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0796={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0797={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0798={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0799={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0800={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0801={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0802={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0803={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0804={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0805={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0806={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0807={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0808={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0809={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0810={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0811={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0812={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0813={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0814={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0815={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0816={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0817={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0818={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0819={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0820={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0821={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0822={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0823={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0824={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0825={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0826={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0827={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0828={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0829={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0830={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0831={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0832={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0833={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0834={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0835={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0836={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0837={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0838={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0839={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0840={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0841={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0842={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0843={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0844={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0845={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0846={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0847={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0848={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0849={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0850={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0851={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0852={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0853={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0854={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0855={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0856={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0857={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0858={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0859={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0860={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0861={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0862={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0863={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0864={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0865={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0866={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0867={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0868={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0869={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0870={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0871={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0872={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0873={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0874={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0875={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0876={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0877={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0878={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0879={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0880={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0881={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0882={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0883={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0884={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0885={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0886={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0887={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0888={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0889={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0890={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0891={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0892={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0893={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0894={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0895={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0896={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0897={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0898={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0899={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0900={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0901={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0902={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0903={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0904={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0905={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0906={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0907={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0908={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0909={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0910={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0911={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0912={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0913={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0914={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0915={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0916={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0917={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0918={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0919={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0920={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0921={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0922={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0923={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0924={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0925={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0926={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0927={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0928={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0929={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0930={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0931={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0932={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0933={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0934={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0935={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0936={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0937={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0938={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0939={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0940={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0941={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0942={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0943={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0944={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0945={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0946={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0947={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0948={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0949={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0950={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0951={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0952={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0953={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0954={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0955={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0956={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0957={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0958={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0959={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0960={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0961={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0962={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0963={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0964={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0965={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0966={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0967={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0968={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0969={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0970={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0971={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0972={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0973={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0974={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0975={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0976={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0977={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0978={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0979={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0980={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0981={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0982={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0983={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0984={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0985={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0986={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0987={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0988={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0989={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0990={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0991={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0992={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0993={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0994={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0995={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0996={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0997={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0998={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_0999={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1000={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1001={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1002={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1003={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1004={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1005={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1006={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1007={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1008={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1009={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1010={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1011={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1012={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1013={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1014={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1015={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1016={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1017={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1018={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1019={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1020={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1021={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1022={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1023={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1024={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1025={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1026={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1027={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1028={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1029={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1030={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1031={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1032={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1033={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1034={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1035={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1036={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1037={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1038={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1039={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1040={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1041={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1042={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1043={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1044={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1045={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1046={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1047={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1048={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1049={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1050={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1051={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1052={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1053={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1054={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1055={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1056={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1057={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1058={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1059={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1060={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1061={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1062={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1063={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1064={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1065={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1066={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1067={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1068={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1069={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1070={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1071={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1072={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1073={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1074={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1075={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1076={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1077={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1078={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1079={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1080={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1081={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1082={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1083={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1084={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1085={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1086={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1087={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1088={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1089={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1090={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1091={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1092={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1093={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1094={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1095={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1096={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1097={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1098={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1099={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1100={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1101={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1102={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1103={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1104={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1105={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1106={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1107={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1108={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1109={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1110={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1111={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1112={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1113={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1114={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1115={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1116={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1117={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1118={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1119={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1120={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1121={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1122={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1123={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1124={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1125={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1126={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1127={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1128={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1129={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1130={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1131={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1132={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1133={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1134={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1135={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1136={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1137={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1138={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1139={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1140={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1141={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1142={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1143={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1144={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1145={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1146={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1147={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1148={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1149={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1150={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1151={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1152={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1153={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1154={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1155={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1156={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1157={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1158={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1159={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1160={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1161={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1162={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1163={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1164={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1165={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1166={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1167={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1168={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1169={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1170={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1171={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1172={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1173={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1174={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1175={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1176={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1177={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1178={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1179={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1180={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1181={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1182={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1183={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1184={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1185={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1186={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1187={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1188={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1189={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1190={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1191={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1192={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1193={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1194={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1195={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1196={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1197={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1198={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1199={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1200={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1201={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1202={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1203={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1204={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1205={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1206={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1207={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1208={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1209={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1210={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1211={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1212={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1213={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1214={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1215={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1216={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1217={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1218={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1219={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1220={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1221={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1222={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1223={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1224={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1225={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1226={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1227={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1228={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1229={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1230={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1231={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1232={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1233={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1234={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1235={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1236={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1237={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1238={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1239={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1240={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1241={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1242={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1243={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1244={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1245={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1246={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1247={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1248={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1249={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1250={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1251={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1252={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1253={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1254={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1255={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1256={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1257={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1258={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1259={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1260={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1261={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1262={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1263={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1264={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1265={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1266={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1267={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1268={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1269={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1270={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1271={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1272={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1273={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1274={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1275={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1276={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1277={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1278={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1279={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1280={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1281={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1282={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1283={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1284={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1285={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1286={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1287={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1288={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1289={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1290={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1291={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1292={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1293={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1294={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1295={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1296={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1297={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1298={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1299={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1300={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1301={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1302={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1303={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1304={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1305={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1306={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1307={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1308={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1309={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1310={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1311={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1312={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1313={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1314={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1315={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1316={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1317={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1318={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1319={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1320={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1321={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1322={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1323={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1324={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1325={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1326={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1327={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1328={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1329={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1330={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1331={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1332={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1333={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1334={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1335={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1336={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1337={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1338={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1339={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1340={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1341={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1342={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1343={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1344={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1345={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1346={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1347={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1348={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1349={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1350={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1351={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1352={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1353={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1354={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1355={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1356={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1357={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1358={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1359={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1360={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1361={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1362={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1363={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1364={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1365={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1366={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1367={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1368={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1369={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1370={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1371={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1372={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1373={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1374={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1375={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1376={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1377={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1378={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1379={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1380={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1381={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1382={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1383={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1384={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1385={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1386={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1387={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1388={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1389={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1390={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1391={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1392={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1393={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1394={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1395={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1396={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1397={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1398={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1399={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1400={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1401={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1402={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1403={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1404={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1405={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1406={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1407={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1408={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1409={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1410={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1411={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1412={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1413={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1414={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1415={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1416={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1417={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1418={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1419={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1420={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1421={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1422={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1423={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1424={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1425={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1426={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1427={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1428={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1429={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1430={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1431={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1432={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1433={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1434={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1435={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1436={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1437={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1438={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1439={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1440={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1441={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1442={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1443={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1444={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1445={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1446={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1447={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1448={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1449={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1450={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1451={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1452={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1453={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1454={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1455={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1456={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1457={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1458={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1459={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1460={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1461={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1462={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1463={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1464={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1465={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1466={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1467={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1468={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1469={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1470={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1471={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1472={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1473={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1474={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1475={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1476={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1477={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1478={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1479={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1480={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1481={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1482={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1483={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1484={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1485={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1486={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1487={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1488={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1489={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1490={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1491={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1492={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1493={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1494={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1495={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1496={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1497={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1498={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1499={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1500={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1501={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1502={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1503={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1504={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1505={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1506={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1507={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1508={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1509={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1510={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1511={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1512={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1513={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1514={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1515={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1516={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1517={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1518={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1519={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1520={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1521={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1522={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1523={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1524={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1525={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1526={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1527={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1528={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1529={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1530={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1531={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1532={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1533={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1534={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1535={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1536={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1537={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1538={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1539={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1540={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1541={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1542={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1543={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1544={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1545={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1546={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1547={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1548={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1549={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1550={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1551={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1552={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1553={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1554={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1555={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1556={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1557={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1558={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1559={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1560={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1561={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1562={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1563={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1564={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1565={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1566={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1567={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1568={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1569={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1570={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1571={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1572={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1573={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1574={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1575={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1576={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1577={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1578={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1579={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1580={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1581={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1582={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1583={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1584={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1585={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1586={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1587={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1588={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1589={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1590={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1591={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1592={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1593={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1594={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1595={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1596={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1597={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1598={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1599={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1600={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1601={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1602={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1603={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1604={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1605={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1606={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1607={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1608={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1609={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1610={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1611={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1612={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1613={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1614={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1615={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1616={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1617={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1618={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1619={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1620={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1621={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1622={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1623={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1624={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1625={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1626={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1627={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1628={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1629={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1630={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1631={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1632={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1633={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1634={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1635={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1636={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1637={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1638={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1639={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1640={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1641={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1642={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1643={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1644={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1645={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1646={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1647={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1648={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1649={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1650={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1651={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1652={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1653={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1654={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1655={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1656={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1657={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1658={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1659={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1660={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1661={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1662={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1663={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1664={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1665={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1666={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1667={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1668={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1669={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1670={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1671={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1672={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1673={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1674={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1675={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1676={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1677={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1678={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1679={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1680={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1681={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1682={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1683={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1684={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1685={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1686={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1687={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1688={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1689={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1690={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1691={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1692={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1693={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1694={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1695={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1696={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1697={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1698={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1699={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1700={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1701={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1702={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1703={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1704={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1705={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1706={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1707={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1708={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1709={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1710={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1711={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1712={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1713={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1714={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1715={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1716={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1717={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1718={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1719={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1720={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1721={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1722={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1723={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1724={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1725={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1726={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1727={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1728={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1729={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1730={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1731={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1732={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1733={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1734={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1735={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1736={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1737={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1738={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1739={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1740={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1741={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1742={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1743={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1744={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1745={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1746={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1747={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1748={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1749={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1750={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1751={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1752={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1753={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1754={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1755={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1756={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1757={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1758={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1759={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1760={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1761={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1762={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1763={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1764={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1765={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1766={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1767={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1768={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1769={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1770={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1771={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1772={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1773={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1774={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1775={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1776={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1777={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1778={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1779={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1780={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1781={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1782={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1783={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1784={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1785={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1786={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1787={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1788={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1789={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1790={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1791={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1792={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1793={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1794={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1795={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1796={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1797={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1798={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1799={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1800={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1801={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1802={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1803={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1804={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1805={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1806={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1807={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1808={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1809={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1810={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1811={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1812={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1813={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1814={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1815={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1816={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1817={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1818={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1819={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1820={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1821={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1822={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1823={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1824={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1825={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1826={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1827={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1828={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1829={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1830={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1831={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1832={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1833={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1834={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1835={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1836={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1837={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1838={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1839={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1840={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1841={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1842={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1843={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1844={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1845={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1846={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1847={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1848={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1849={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1850={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1851={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1852={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1853={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1854={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1855={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1856={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1857={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1858={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1859={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1860={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1861={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1862={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1863={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1864={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1865={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1866={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1867={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1868={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1869={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1870={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1871={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1872={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1873={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1874={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1875={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1876={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1877={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1878={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1879={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1880={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1881={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1882={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1883={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1884={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1885={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1886={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1887={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1888={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1889={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1890={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1891={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1892={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1893={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1894={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1895={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1896={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1897={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1898={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1899={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1900={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1901={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1902={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1903={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1904={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1905={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1906={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1907={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1908={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1909={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1910={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1911={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1912={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1913={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1914={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1915={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1916={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1917={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1918={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1919={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1920={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1921={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1922={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1923={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1924={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1925={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1926={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1927={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1928={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1929={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1930={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1931={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1932={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1933={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1934={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1935={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1936={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1937={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1938={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1939={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1940={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1941={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1942={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1943={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1944={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1945={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1946={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1947={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1948={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1949={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1950={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1951={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1952={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1953={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1954={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1955={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1956={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1957={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1958={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1959={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1960={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1961={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1962={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1963={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1964={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1965={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1966={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1967={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1968={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1969={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1970={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1971={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1972={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1973={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1974={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1975={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1976={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1977={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1978={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1979={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1980={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1981={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1982={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1983={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1984={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1985={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1986={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1987={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1988={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1989={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1990={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1991={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1992={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1993={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1994={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1995={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1996={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1997={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1998={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_1999={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2000={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2001={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2002={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2003={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2004={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2005={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2006={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2007={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2008={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2009={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2010={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2011={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2012={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2013={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2014={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2015={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2016={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2017={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2018={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2019={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2020={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2021={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2022={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2023={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2024={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2025={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2026={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2027={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2028={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2029={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2030={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2031={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2032={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2033={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2034={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2035={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2036={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2037={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2038={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2039={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2040={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2041={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2042={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2043={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2044={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2045={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2046={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2047={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2048={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2049={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2050={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2051={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2052={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2053={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2054={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2055={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2056={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2057={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2058={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2059={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2060={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2061={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2062={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2063={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2064={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2065={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2066={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2067={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2068={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2069={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2070={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2071={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2072={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2073={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2074={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2075={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2076={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2077={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2078={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2079={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2080={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2081={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2082={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2083={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2084={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2085={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2086={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2087={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2088={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2089={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2090={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2091={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2092={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2093={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2094={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2095={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2096={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2097={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2098={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2099={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2100={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2101={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2102={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2103={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2104={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2105={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2106={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2107={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2108={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2109={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2110={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2111={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2112={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2113={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2114={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2115={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2116={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2117={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2118={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2119={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2120={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2121={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2122={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2123={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2124={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2125={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2126={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2127={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2128={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2129={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2130={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2131={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2132={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2133={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2134={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2135={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2136={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2137={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2138={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2139={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2140={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2141={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2142={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2143={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2144={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2145={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2146={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2147={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2148={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2149={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2150={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2151={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2152={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2153={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2154={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2155={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2156={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2157={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2158={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2159={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2160={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2161={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2162={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2163={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2164={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2165={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2166={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2167={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2168={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2169={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2170={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2171={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2172={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2173={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2174={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2175={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2176={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2177={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2178={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2179={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2180={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2181={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2182={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2183={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2184={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2185={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2186={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2187={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2188={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2189={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2190={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2191={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2192={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2193={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2194={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2195={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2196={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2197={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2198={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2199={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2200={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2201={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2202={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2203={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2204={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2205={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2206={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2207={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2208={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2209={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2210={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2211={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2212={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2213={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2214={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2215={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2216={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2217={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2218={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2219={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2220={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2221={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2222={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2223={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2224={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2225={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2226={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2227={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2228={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2229={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2230={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2231={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2232={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2233={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2234={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2235={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2236={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2237={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2238={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2239={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2240={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2241={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2242={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2243={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2244={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2245={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2246={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2247={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2248={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2249={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2250={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2251={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2252={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2253={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2254={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2255={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2256={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2257={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2258={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2259={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2260={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2261={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2262={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2263={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2264={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2265={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2266={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2267={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2268={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2269={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2270={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2271={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2272={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2273={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2274={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2275={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2276={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2277={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2278={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2279={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2280={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2281={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2282={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2283={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2284={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2285={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2286={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2287={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2288={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2289={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2290={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2291={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2292={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2293={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2294={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2295={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2296={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2297={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2298={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2299={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2300={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2301={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2302={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2303={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2304={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2305={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2306={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2307={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2308={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2309={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2310={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2311={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2312={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2313={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2314={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2315={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2316={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2317={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2318={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2319={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2320={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2321={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2322={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2323={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2324={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2325={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2326={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2327={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2328={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2329={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2330={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2331={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2332={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2333={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2334={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2335={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2336={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2337={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2338={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2339={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2340={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2341={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2342={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2343={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2344={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2345={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2346={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2347={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2348={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2349={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2350={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2351={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2352={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2353={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2354={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2355={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2356={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2357={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2358={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2359={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2360={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2361={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2362={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2363={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2364={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2365={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2366={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2367={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2368={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2369={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2370={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2371={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2372={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2373={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2374={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2375={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2376={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2377={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2378={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2379={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2380={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2381={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2382={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2383={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2384={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2385={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2386={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2387={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2388={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2389={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2390={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2391={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2392={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2393={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2394={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2395={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2396={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2397={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2398={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2399={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2400={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2401={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2402={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2403={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2404={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2405={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2406={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2407={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2408={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2409={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2410={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2411={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2412={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2413={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2414={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2415={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2416={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2417={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2418={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2419={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2420={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2421={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2422={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2423={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2424={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2425={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2426={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2427={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2428={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2429={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2430={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2431={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2432={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2433={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2434={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2435={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2436={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2437={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2438={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2439={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2440={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2441={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2442={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2443={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2444={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2445={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2446={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2447={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2448={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2449={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2450={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2451={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2452={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2453={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2454={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2455={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2456={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2457={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2458={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2459={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2460={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2461={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2462={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2463={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2464={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2465={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2466={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2467={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2468={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2469={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2470={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2471={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2472={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2473={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2474={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2475={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2476={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2477={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2478={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2479={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2480={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2481={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2482={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2483={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2484={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2485={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2486={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2487={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2488={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2489={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2490={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2491={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2492={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2493={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2494={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2495={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2496={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2497={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2498={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2499={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2500={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2501={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2502={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2503={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2504={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2505={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2506={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2507={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2508={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2509={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2510={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2511={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2512={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2513={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2514={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2515={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2516={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2517={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2518={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2519={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2520={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2521={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2522={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2523={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2524={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2525={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2526={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2527={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2528={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2529={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2530={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2531={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2532={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2533={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2534={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2535={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2536={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2537={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2538={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2539={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2540={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2541={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2542={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2543={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2544={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2545={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2546={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2547={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2548={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2549={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2550={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2551={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2552={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2553={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2554={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2555={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2556={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2557={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2558={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2559={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2560={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2561={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2562={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2563={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2564={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2565={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2566={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2567={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2568={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2569={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2570={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2571={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2572={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2573={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2574={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2575={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2576={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2577={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2578={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2579={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2580={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2581={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2582={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2583={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2584={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2585={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2586={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2587={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2588={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2589={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2590={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2591={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2592={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2593={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2594={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2595={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2596={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2597={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2598={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2599={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2600={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2601={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2602={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2603={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2604={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2605={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2606={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2607={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2608={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2609={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2610={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2611={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2612={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2613={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2614={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2615={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2616={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2617={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2618={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2619={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2620={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2621={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2622={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2623={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2624={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2625={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2626={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2627={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2628={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2629={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2630={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2631={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2632={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2633={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2634={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2635={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2636={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2637={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2638={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2639={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2640={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2641={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2642={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2643={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2644={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2645={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2646={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2647={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2648={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2649={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2650={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2651={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2652={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2653={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2654={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2655={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2656={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2657={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2658={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2659={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2660={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2661={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2662={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2663={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2664={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2665={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2666={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2667={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2668={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2669={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2670={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2671={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2672={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2673={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2674={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2675={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2676={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2677={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2678={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2679={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2680={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2681={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2682={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2683={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2684={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2685={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2686={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2687={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2688={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2689={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2690={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2691={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2692={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2693={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2694={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2695={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2696={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2697={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2698={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2699={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2700={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2701={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2702={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2703={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2704={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2705={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2706={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2707={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2708={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2709={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2710={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2711={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2712={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2713={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2714={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2715={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2716={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2717={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2718={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2719={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2720={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2721={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2722={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2723={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2724={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2725={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2726={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2727={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2728={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2729={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2730={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2731={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2732={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2733={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2734={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2735={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2736={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2737={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2738={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2739={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2740={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2741={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2742={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2743={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2744={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2745={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2746={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2747={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2748={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2749={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2750={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2751={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2752={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2753={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2754={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2755={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2756={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2757={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2758={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2759={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2760={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2761={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2762={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2763={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2764={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2765={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2766={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2767={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2768={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2769={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2770={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2771={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2772={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2773={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2774={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2775={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2776={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2777={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2778={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2779={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2780={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2781={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2782={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2783={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2784={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2785={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2786={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2787={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2788={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2789={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2790={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2791={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2792={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2793={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2794={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2795={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2796={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2797={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2798={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2799={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2800={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2801={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2802={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2803={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2804={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2805={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2806={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2807={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2808={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2809={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2810={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2811={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2812={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2813={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2814={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2815={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2816={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2817={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2818={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2819={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2820={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2821={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2822={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2823={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2824={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2825={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2826={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2827={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2828={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2829={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2830={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2831={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2832={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2833={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2834={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2835={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2836={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2837={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2838={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2839={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2840={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2841={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2842={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2843={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2844={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2845={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2846={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2847={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2848={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2849={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2850={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2851={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2852={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2853={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2854={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2855={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2856={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2857={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2858={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2859={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2860={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2861={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2862={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2863={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2864={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2865={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2866={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2867={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2868={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2869={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2870={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2871={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2872={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2873={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2874={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2875={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2876={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2877={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2878={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2879={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2880={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2881={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2882={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2883={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2884={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2885={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2886={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2887={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2888={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2889={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2890={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2891={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2892={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2893={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2894={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2895={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2896={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2897={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2898={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2899={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2900={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2901={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2902={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2903={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2904={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2905={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2906={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2907={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2908={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2909={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2910={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2911={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2912={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2913={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2914={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2915={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2916={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2917={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2918={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2919={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2920={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2921={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2922={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2923={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2924={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2925={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2926={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2927={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2928={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2929={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2930={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2931={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2932={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2933={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2934={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2935={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2936={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2937={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2938={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2939={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2940={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2941={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2942={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2943={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2944={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2945={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2946={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2947={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2948={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2949={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2950={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2951={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2952={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2953={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2954={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2955={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2956={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2957={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2958={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2959={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2960={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2961={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2962={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2963={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2964={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2965={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2966={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2967={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2968={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2969={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2970={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2971={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2972={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2973={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2974={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2975={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2976={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2977={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2978={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2979={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2980={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2981={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2982={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2983={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2984={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2985={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2986={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2987={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2988={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2989={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2990={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2991={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2992={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2993={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2994={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2995={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2996={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2997={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2998={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_2999={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3000={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3001={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3002={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3003={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3004={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3005={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3006={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3007={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3008={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3009={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3010={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3011={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3012={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3013={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3014={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3015={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3016={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3017={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3018={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3019={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3020={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3021={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3022={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3023={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3024={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3025={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3026={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3027={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3028={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3029={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3030={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3031={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3032={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3033={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3034={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3035={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3036={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3037={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3038={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3039={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3040={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3041={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3042={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3043={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3044={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3045={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3046={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3047={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3048={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3049={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3050={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3051={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3052={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3053={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3054={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3055={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3056={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3057={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3058={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3059={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3060={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3061={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3062={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3063={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3064={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3065={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3066={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3067={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3068={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3069={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3070={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3071={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3072={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3073={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3074={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3075={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3076={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3077={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3078={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3079={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3080={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3081={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3082={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3083={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3084={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3085={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3086={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3087={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3088={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3089={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3090={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3091={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3092={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3093={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3094={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3095={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3096={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3097={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3098={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3099={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3100={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3101={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3102={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3103={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3104={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3105={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3106={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3107={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3108={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3109={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3110={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3111={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3112={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3113={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3114={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3115={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3116={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3117={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3118={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3119={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3120={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3121={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3122={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3123={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3124={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3125={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3126={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3127={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3128={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3129={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3130={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3131={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3132={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3133={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3134={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3135={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3136={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3137={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3138={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3139={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3140={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3141={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3142={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3143={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3144={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3145={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3146={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3147={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3148={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3149={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3150={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3151={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3152={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3153={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3154={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3155={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3156={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3157={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3158={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3159={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3160={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3161={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3162={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3163={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3164={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3165={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3166={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3167={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3168={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3169={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3170={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3171={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3172={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3173={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3174={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3175={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3176={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3177={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3178={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3179={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3180={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3181={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3182={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3183={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3184={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3185={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3186={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3187={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3188={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3189={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3190={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3191={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3192={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3193={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3194={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3195={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3196={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3197={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3198={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3199={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3200={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3201={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3202={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3203={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3204={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3205={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3206={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3207={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3208={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3209={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3210={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3211={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3212={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3213={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3214={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3215={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3216={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3217={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3218={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3219={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3220={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3221={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3222={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3223={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3224={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3225={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3226={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3227={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3228={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3229={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3230={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3231={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3232={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3233={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3234={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3235={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3236={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3237={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3238={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3239={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3240={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3241={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3242={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3243={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3244={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3245={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3246={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3247={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3248={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3249={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3250={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3251={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3252={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3253={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3254={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3255={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3256={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3257={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3258={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3259={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3260={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3261={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3262={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3263={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3264={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3265={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3266={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3267={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3268={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3269={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3270={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3271={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3272={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3273={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3274={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3275={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3276={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3277={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3278={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3279={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3280={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3281={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3282={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3283={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3284={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3285={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3286={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3287={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3288={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3289={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3290={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3291={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3292={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3293={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3294={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3295={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3296={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3297={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3298={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3299={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3300={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3301={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3302={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3303={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3304={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3305={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3306={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3307={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3308={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3309={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3310={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3311={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3312={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3313={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3314={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3315={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3316={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3317={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3318={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3319={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3320={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3321={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3322={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3323={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3324={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3325={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3326={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3327={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3328={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3329={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3330={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3331={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3332={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3333={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3334={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3335={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3336={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3337={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3338={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3339={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3340={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3341={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3342={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3343={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3344={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3345={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3346={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3347={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3348={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3349={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3350={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3351={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3352={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3353={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3354={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3355={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3356={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3357={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3358={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3359={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3360={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3361={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3362={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3363={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3364={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3365={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3366={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3367={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3368={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3369={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3370={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3371={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3372={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3373={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3374={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3375={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3376={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3377={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3378={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3379={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3380={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3381={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3382={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3383={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3384={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3385={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3386={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3387={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3388={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3389={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3390={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3391={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3392={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3393={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3394={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3395={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3396={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3397={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3398={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3399={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3400={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3401={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3402={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3403={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3404={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3405={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3406={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3407={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3408={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3409={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3410={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3411={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3412={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3413={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3414={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3415={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3416={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3417={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3418={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3419={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3420={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3421={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3422={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3423={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3424={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3425={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3426={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3427={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3428={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3429={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3430={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3431={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3432={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3433={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3434={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3435={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3436={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3437={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3438={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3439={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3440={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3441={"agent":"Assiel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3442={"agent":"Oriel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3443={"agent":"Sofiel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3444={"agent":"Daniel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3445={"agent":"Graciel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3446={"agent":"Henriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3447={"agent":"Jamiel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3448={"agent":"Ameliel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3449={"agent":"Guaiel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3450={"agent":"Nathaniel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3451={"agent":"Gabriel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3452={"agent":"Raphaiel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3453={"agent":"Uriel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3454={"agent":"Ariel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3455={"agent":"Muriel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3456={"agent":"Azriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3457={"agent":"Adriel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3458={"agent":"Haniel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3459={"agent":"Raziel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3460={"agent":"Emiel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3461={"agent":"Assiel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3462={"agent":"Oriel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3463={"agent":"Sofiel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3464={"agent":"Daniel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3465={"agent":"Graciel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3466={"agent":"Henriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3467={"agent":"Jamiel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3468={"agent":"Ameliel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3469={"agent":"Guaiel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3470={"agent":"Nathaniel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3471={"agent":"Gabriel","room":"voice","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3472={"agent":"Raphaiel","room":"tools","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3473={"agent":"Uriel","room":"memory","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3474={"agent":"Ariel","room":"core","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3475={"agent":"Muriel","room":"brain","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3476={"agent":"Azriel","room":"body","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3477={"agent":"Adriel","room":"voice","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3478={"agent":"Haniel","room":"tools","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3479={"agent":"Raziel","room":"memory","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3480={"agent":"Emiel","room":"core","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3481={"agent":"Assiel","room":"brain","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3482={"agent":"Oriel","room":"body","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3483={"agent":"Sofiel","room":"voice","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3484={"agent":"Daniel","room":"tools","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3485={"agent":"Graciel","room":"memory","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3486={"agent":"Henriel","room":"core","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3487={"agent":"Jamiel","room":"brain","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3488={"agent":"Ameliel","room":"body","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3489={"agent":"Guaiel","room":"voice","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3490={"agent":"Nathaniel","room":"tools","artifact":"holographic_table","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3491={"agent":"Gabriel","room":"memory","artifact":"3d_data_cube","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3492={"agent":"Raphaiel","room":"core","artifact":"neural_lattice","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3493={"agent":"Uriel","room":"brain","artifact":"voice_console","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3494={"agent":"Ariel","room":"body","artifact":"memory_vault","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3495={"agent":"Muriel","room":"voice","artifact":"control_screen","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3496={"agent":"Azriel","room":"tools","artifact":"workflow_graph","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3497={"agent":"Adriel","room":"memory","artifact":"risk_matrix","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3498={"agent":"Haniel","room":"core","artifact":"market_globe","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3499={"agent":"Raziel","room":"brain","artifact":"report_canvas","state":"ready","screen":"floating"}
-DI_CRAFT_ARTIFACT_3500={"agent":"Emiel","room":"body","artifact":"holographic_table","state":"ready","screen":"floating"}
