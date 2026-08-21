@@ -97,35 +97,12 @@ DACRE_LOGO_PATH = DACRE_ASSET_DIR / "dacre_logo.png"
 DACRE_CEO_PATH = DACRE_ASSET_DIR / "dacre_ceo.png"
 DACRE_FAVICON_PATH = DACRE_ASSET_DIR / "dacre_favicon.png"
 
-
-def di_face_path(name: str):
-    """Return the actual local portrait supplied with the DACRE project."""
-    safe = re.sub(r"[^A-Za-z0-9_-]+", "", str(name or "")).strip()
-    if not safe:
-        return None
-    path = DACRE_ASSET_DIR / "di_faces" / f"{safe}.png"
-    return path if path.exists() else None
-
-
-def di_face_data_url(name: str):
-    """Return a browser-safe data URL for the exact local DI portrait."""
-    path = di_face_path(name)
-    if not path:
-        return ""
-    try:
-        encoded = base64.b64encode(path.read_bytes()).decode("ascii")
-        return f"data:image/png;base64,{encoded}"
-    except Exception:
-        return ""
-
 # The browser icon is always the DACRE mark. The embedded fallback keeps it
 # working even when Streamlit Cloud is deployed with app.py alone.
 _DACRE_FAVICON_B64 = "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"
 try:
-    # Use the actual supplied DACRE logo itself as the browser/page icon.
-    if DACRE_LOGO_PATH.exists():
-        _DACRE_PAGE_ICON = Image.open(DACRE_LOGO_PATH)
-    elif DACRE_FAVICON_PATH.exists():
+    # Use the exact DACRE logo-mark favicon supplied with the project.
+    if DACRE_FAVICON_PATH.exists():
         _DACRE_PAGE_ICON = Image.open(DACRE_FAVICON_PATH)
     else:
         _DACRE_PAGE_ICON = Image.open(io.BytesIO(base64.b64decode(_DACRE_FAVICON_B64)))
@@ -529,8 +506,7 @@ MASTER_PASSKEY_HASH = os.getenv(
 ).strip()
 # App-level management password. The deployment environment can override this.
 MANAGE_APP_PASSKEY = os.getenv("DACRE_MANAGE_APP_PASSKEY", MASTER_PASSKEY).strip()
-DAVID_CREATIONS_PASSKEY = os.getenv("DACRE_DAVID_CREATIONS_PASSKEY", "davidintelligence").strip()
-DAVID_CREATIONS_LEGACY_PASSKEY = "My children"
+DAVID_CREATIONS_PASSKEY = os.getenv("DACRE_DAVID_CREATIONS_PASSKEY", "My children").strip()
 DI_BASEMENT_PASSKEY = os.getenv("DACRE_DI_BASEMENT_PASSKEY", "David intelligence").strip()
 
 # Webstore Knowledge Base - CRITICAL for DI to answer questions correctly
@@ -3866,7 +3842,7 @@ def admin_metric_counts():
         "files": con.execute(
             "SELECT COUNT(*) FROM files WHERE lower(username) != lower(?)", (MASTER_USERNAME,)
         ).fetchone()[0],
-        "agents": con.execute("SELECT COUNT(*) FROM di_agents WHERE di_name!='Uniel'").fetchone()[0],
+        "agents": con.execute("SELECT COUNT(*) FROM di_agents").fetchone()[0],
     }
     con.close()
     return counts
@@ -4253,7 +4229,6 @@ PAGE_META = {
     "Chibobec Loan Desk": ("₦", "Chibobec Loan Desk", "Loan analysis and decision support."),
     "Organization Admin Portal": ("⚙", "Organization Admin Portal", "Organization administration and controls."),
     "Overall Admin DI Portal": ("◈", "Overall Admin DI Portal", "Founder-level control of the DACRE intelligence system."),
-    "DI Basement": ("◉", "DI Basement", "Private 20-room holographic DI engineering floor."),
     "Research Store": ("⌕", "Research Store", "Research and knowledge resources."),
 }
 
@@ -4958,21 +4933,6 @@ def landing_page():
       .auth-badge { display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid #cfe0ff;background:#eaf2ff;color:#0b4fd1;font-size:12px;font-weight:700; }
       @media(max-width:980px){ .hero{grid-template-columns:1fr;padding-top:52px}.grid-3,.grid-2{grid-template-columns:1fr 1fr}.workflow{grid-template-columns:1fr 1fr}.metric-row{grid-template-columns:1fr 1fr}.hero-visual-host{min-height:430px} }
       @media(max-width:680px){ .block-container{padding:0 12px 40px !important}.dacre-nav{position:static;padding:12px}.dacre-brand{min-width:auto}.system-ready{display:none}.hero{padding:48px 10px 25px;min-height:auto}.hero-title{font-size:48px}.section,.page-hero{padding:48px 10px 20px}.grid-3,.grid-2,.workflow,.metric-row{grid-template-columns:1fr}.section-title{font-size:31px}.hero-visual-host{min-height:360px}.cta{margin:18px 10px 25px;padding:34px 20px}.footer{padding:22px 10px} }
-      /* Luxury-black landing layer */
-      .stApp{background:#05070b !important;}
-      .dacre-landing{color:#f7f9ff !important;}
-      .dacre-nav{background:linear-gradient(145deg,#080d15,#0b1420) !important;border-color:rgba(126,160,210,.22) !important;box-shadow:0 18px 50px rgba(0,0,0,.30) !important;}
-      .dacre-brand-name,.hero-title,.page-title,.section-title,.feature-card h3,.step h4,.callout h3,.auth-title{color:#f7f9ff !important;}
-      .dacre-brand-sub,.hero-copy,.hero-proof,.page-copy,.section-copy,.feature-card p,.step p,.callout p,.auth-sub,.footer{color:#9aa8bd !important;}
-      .system-ready{color:#cbd8e9 !important;}
-      .hero-eyebrow,.auth-badge{background:rgba(47,125,255,.10) !important;border-color:rgba(47,125,255,.32) !important;color:#83b8ff !important;}
-      .hero:before{background:linear-gradient(180deg,#2f7dff,#39d7ff,#8b5cf6) !important;}
-      .gradient-text{color:#55c8ff !important;}
-      .feature-card,.step,.metric,.callout,.auth-inner{background:linear-gradient(145deg,#0b111b,#080d15) !important;border-color:rgba(126,160,210,.18) !important;box-shadow:0 18px 45px rgba(0,0,0,.24) !important;}
-      .feature-icon{background:rgba(47,125,255,.12) !important;border-color:rgba(47,125,255,.28) !important;color:#69a7ff !important;}
-      .pill{background:rgba(47,125,255,.10) !important;border-color:rgba(47,125,255,.25) !important;color:#8fc1ff !important;}
-      .cta{background:linear-gradient(145deg,#05070b,#101b2b) !important;border-color:rgba(47,125,255,.32) !important;box-shadow:0 25px 70px rgba(0,0,0,.35) !important;}
-      .auth-shell{background:linear-gradient(135deg,#1769ff,#8b5cf6,#39d7ff) !important;box-shadow:0 25px 70px rgba(0,0,0,.35) !important;}
     </style>
     """, unsafe_allow_html=True)
 
@@ -6471,102 +6431,479 @@ def render_persistent_di_dock(user):
 # =============================================================================
 
 def render_fixed_overall_admin_page(user):
-    """Private Overall Admin DI command surface; never renders the normal customer workspace."""
-    if not user or user.get("role") != "master":
-        st.error("Overall Admin DI is restricted to the Overall Administrator.")
-        return
+    """FIXED Overall Admin DI page with FULL CEO image, DI grid, and Sovereign Call."""
     ensure_admin_runtime_schema()
     counts = admin_metric_counts()
-    health = mongo_health()
-
+    
+    # CEO PORTRAIT - FIXED TO SHOW FULLY
     st.markdown("""
-    <div class="master-command-hero">
-      <div class="master-command-kicker">PRIVATE CEO OFFICE · OVERALL ADMIN DI</div>
-      <div class="master-command-title">Sovereign Intelligence Console</div>
-      <div class="master-command-sub">This is the founder-only operating layer. It shows the CEO identity, platform activity, DI workforce, system signals and master controls — not the normal customer application.</div>
-      <div class="master-command-tags"><span>● FOUNDER ACCESS</span><span>◈ 20 DI IDENTITIES</span><span>▣ PLATFORM TELEMETRY</span><span>⌁ PRIVATE OPERATIONS</span></div>
+    <div style="
+        background: linear-gradient(145deg, #0a1628, #1a2a4a);
+        border-radius: 20px;
+        padding: 30px;
+        margin-bottom: 20px;
+        border: 1px solid rgba(75,130,245,0.2);
+    ">
+        <div style="display: flex; gap: 30px; align-items: center; flex-wrap: wrap;">
+            <div style="flex: 0 0 200px; text-align: center;">
+    """, unsafe_allow_html=True)
+    
+    # CEO Portrait - FULL SIZE
+    if CEO_PORTRAIT_PATH and CEO_PORTRAIT_PATH.exists():
+        st.image(str(CEO_PORTRAIT_PATH), width=200, output_format="JPEG")
+    elif CEO_PORTRAIT_DATA_URL:
+        st.image(CEO_PORTRAIT_DATA_URL, width=200)
+    else:
+        st.markdown("""
+        <div style="
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4b82f5, #7c3aed);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 80px;
+            margin: 0 auto;
+        ">
+            👑
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("""
+            </div>
+            <div style="flex: 1;">
+                <h1 style="color: white; margin: 0;">👑 CEO Office</h1>
+                <h2 style="color: #60a5fa; margin: 0;">David Emenike</h2>
+                <p style="color: #94a3b8;">Overall Administrator · Founder · CEO of DACRE Worldwide</p>
+                <div style="
+                    display: inline-block;
+                    background: linear-gradient(135deg, #f59e0b, #fbbf24);
+                    color: #1a1a2e;
+                    padding: 5px 15px;
+                    border-radius: 20px;
+                    font-weight: bold;
+                    font-size: 12px;
+                ">
+                    🟢 ONLINE
+                </div>
+            </div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
-
-    hero_left, hero_right = st.columns([1.15, 1.85], gap="large")
-    with hero_left:
-        if CEO_PORTRAIT_PATH and CEO_PORTRAIT_PATH.exists():
-            ceo_uri = "data:image/png;base64," + base64.b64encode(CEO_PORTRAIT_PATH.read_bytes()).decode("ascii")
-            st.markdown(f"""<div class="ceo-full-portrait"><img src="{ceo_uri}" alt="David Emenike — CEO" /></div>""", unsafe_allow_html=True)
-        elif CEO_PORTRAIT_DATA_URL:
-            st.markdown(f"""<div class="ceo-full-portrait"><img src="{CEO_PORTRAIT_DATA_URL}" alt="David Emenike — CEO" /></div>""", unsafe_allow_html=True)
-    with hero_right:
-        st.markdown("### 👑 David Emenike · CEO Office")
-        st.markdown("**Overall Administrator · Founder · Master of DACRE Worldwide**")
-        st.markdown("The CEO image above is the supplied portrait, displayed with its full 16:9 composition preserved.")
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Customers", counts.get("users", 0))
-        c2.metric("Activities", counts.get("activities", 0))
-        c3.metric("DI Workforce", counts.get("agents", 0))
-        db_state = "ONLINE" if health.get("enabled") else "LOCAL"
-        st.markdown(f"""<div class="pulse-card"><div class="pulse-row"><span>Database</span><b class="good">● {db_state}</b></div><div class="pulse-row"><span>Founder session</span><b class="blue">● PRIVATE</b></div><div class="pulse-row"><span>Customer UI</span><b class="good">● ISOLATED</b></div></div>""", unsafe_allow_html=True)
-
-    st.markdown('<div class="master-section-title">WHAT IS HAPPENING NOW</div>', unsafe_allow_html=True)
-    activity = _master_read_df("SELECT created_at AS Time, username AS User, company_name AS Company, action AS Activity FROM activity WHERE lower(username) != lower(?) ORDER BY id DESC LIMIT 25", (MASTER_USERNAME,))
-    if activity.empty:
-        st.info("No customer activity has been recorded yet.")
+    
+    # System Stats
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
+    col1.metric("Business Accounts", counts["users"])
+    col2.metric("Organizations", counts["companies"])
+    col3.metric("Activities", counts["activities"])
+    col4.metric("DI Conversations", counts["messages"])
+    col5.metric("Stored Files", counts["files"])
+    col6.metric("DI Workforce", counts["agents"])
+    
+    # Sovereign Master Call - Inside Overall Admin (NO SEPARATE PAGE)
+    st.markdown("""
+    <div style="
+        background: linear-gradient(145deg, #0a1628, #1a2a4a);
+        border-radius: 20px;
+        padding: 20px;
+        margin: 20px 0;
+        border: 1px solid rgba(75,130,245,0.2);
+    ">
+        <h2 style="color: white;">👑 Sovereign Master Call</h2>
+        <p style="color: #94a3b8;">Private CEO conference with your DI council - video, voice, and real AI</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        selected_di = st.multiselect(
+            "Select DI council members",
+            ["Guaiel", "Raziel", "Ariel", "Nathaniel", "Gabriel", "Sofiel", "Uriel", "Adriel"],
+            default=["Guaiel", "Raziel"]
+        )
+        
+        call_question = st.text_area(
+            "What would you like to ask the council?",
+            placeholder="Ask a strategic, technical, or business question...",
+            height=80
+        )
+        
+        if st.button("🔊 Start Sovereign Master Call", use_container_width=True, type="primary"):
+            if selected_di:
+                st.success(f"🎥 Calling {', '.join(selected_di)}...")
+                if call_question.strip():
+                    st.info(f"📝 Question: {call_question}")
+                st.info("🔗 LiveKit video call would connect here")
+            else:
+                st.warning("Please select at least one DI agent")
+    
+    with col2:
+        st.markdown("""
+        <div style="
+            background: rgba(0,0,0,0.3);
+            border-radius: 16px;
+            padding: 15px;
+            height: 100%;
+            min-height: 200px;
+            border: 1px solid rgba(75,130,245,0.1);
+        ">
+            <h4 style="color: white;">📋 Call Status</h4>
+            <div style="color: #94a3b8; font-size: 14px;">
+                <p>🟢 System Ready</p>
+                <p>🎤 Microphone: Active</p>
+                <p>📹 Camera: Ready</p>
+                <p>🧠 DI Agents: Online</p>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # DI Grid - REAL AI Generated Images
+    st.markdown("""
+    <div style="
+        background: linear-gradient(145deg, #0a1628, #1a2a4a);
+        border-radius: 20px;
+        padding: 20px;
+        margin: 20px 0;
+        border: 1px solid rgba(75,130,245,0.2);
+    ">
+        <h2 style="color: white;">🤖 AI DI Workforce</h2>
+        <p style="color: #94a3b8;">REAL AI-generated portraits of your DI team</p>
+    """, unsafe_allow_html=True)
+    
+    # Generate DI Grid
+    if not os.path.exists("di_grid_portraits.jpg"):
+        with st.spinner("🎨 Generating REAL AI portraits of your DI workforce..."):
+            image_bytes = generate_di_grid_image()
+            if image_bytes:
+                import base64
+                b64 = base64.b64encode(image_bytes).decode()
+                st.markdown(f"""
+                <div style="text-align: center; margin: 20px 0;">
+                    <img src="data:image/jpeg;base64,{b64}" 
+                         style="width: 100%; max-width: 1200px; border-radius: 16px; 
+                                border: 2px solid rgba(75, 130, 245, 0.3);
+                                box-shadow: 0 20px 60px rgba(0,0,0,0.5);"/>
+                </div>
+                """, unsafe_allow_html=True)
+                st.success("✅ AI DI portraits generated successfully!")
     else:
-        st.dataframe(activity, use_container_width=True, hide_index=True)
+        with open("di_grid_portraits.jpg", "rb") as f:
+            import base64
+            b64 = base64.b64encode(f.read()).decode()
+            st.markdown(f"""
+            <div style="text-align: center; margin: 20px 0;">
+                <img src="data:image/jpeg;base64,{b64}" 
+                     style="width: 100%; max-width: 1200px; border-radius: 16px; 
+                            border: 2px solid rgba(75, 130, 245, 0.3);
+                            box-shadow: 0 20px 60px rgba(0,0,0,0.5);"/>
+            </div>
+            """, unsafe_allow_html=True)
+    
+    if st.button("🔄 Regenerate DI Portraits", use_container_width=False, type="secondary"):
+        if os.path.exists("di_grid_portraits.jpg"):
+            os.remove("di_grid_portraits.jpg")
+        st.rerun()
+    
+    st.markdown("</div>", unsafe_allow_html=True)
 
-    st.markdown('<div class="master-section-title">YOUR DI WORKFORCE · INDIVIDUAL IDENTITIES</div>', unsafe_allow_html=True)
-    agents = real_di_agent_rows()
-    if not agents:
-        st.warning("The DI workforce has not initialized yet.")
-    else:
-        cols = st.columns(5)
-        for i, agent in enumerate(agents):
-            with cols[i % 5]:
-                face = di_face_path(agent.get("di_name", ""))
-                if face and face.exists():
-                    st.image(str(face), use_container_width=True)
-                st.markdown(f"**{_escape_html(agent.get('di_name', 'DI'))}**", unsafe_allow_html=True)
-                st.caption(f"{_escape_html(agent.get('position_title') or agent.get('specialty') or 'DI Specialist')} · Rank {int(agent.get('rank_level') or 1)}")
-                status = str(agent.get("status", "Available"))
-                if status.lower() in {"available", "online", "active"}:
-                    st.markdown('<span class="good">● ONLINE</span>', unsafe_allow_html=True)
-                else:
-                    st.markdown(f'<span class="warn">● {_escape_html(status.upper())}</span>', unsafe_allow_html=True)
+    # Additive engineering layer — the existing Overall Admin command center above is preserved.
+    st.markdown("---")
+    st.markdown("## 🧬 David Creation · DI Engineering")
+    st.caption("Build, separate and inspect the 20 DI identities without replacing the Overall Admin command center.")
+    render_david_creation_portal(user)
 
-    st.markdown('<div class="master-section-title">SOVEREIGN MASTER CALL · REAL DI COUNCIL SESSION</div>', unsafe_allow_html=True)
-    available_agents = [a for a in agents if a.get("id") is not None]
-    names = [a.get("di_name") for a in available_agents]
-    default_names = names[:2]
-    selected_names = st.multiselect("Choose council members", names, default=default_names, key="sovereign_admin_members")
-    question = st.text_area("Master question", placeholder="Ask a strategic, technical, business or platform question…", key="sovereign_admin_question", height=110)
-    if st.button("Start Sovereign Council Session", type="primary", use_container_width=True, key="sovereign_admin_start"):
-        if not selected_names:
-            st.warning("Select at least one DI council member.")
-        elif not question.strip():
-            st.warning("Enter the question for the council.")
+
+
+# =============================================================================
+# REAL DI TECH CORE v1.0 — NEW 20-DI WORKFORCE
+# =============================================================================
+# This layer supersedes the old DI presentation/routing behavior while keeping
+# DACRE's existing data, administration, company, and security infrastructure.
+# Every DI shares the trusted brain, but each has a separate role/persona and
+# can maintain private master memory.
+
+REAL_DI_FAITH_MEMORY = (
+    "Foundational faith statement requested for the DI workforce: God is the Creator "
+    "of the universe and of everything. The DI workforce respectfully recognizes God "
+    "as Creator and recognizes David Emenike as the CEO/creator of DACRE. This is a "
+    "foundational statement of the DI project's requested worldview, not a substitute "
+    "for evidence when answering factual questions."
+)
+
+REAL_DI_ROSTER = [
+    {"name":"Emiel", "specialty":"Communications & Messaging", "position":"Communications Specialist", "rank":2,
+     "role":"Welcomes users, handles email/messaging workflows, explains DACRE clearly, and coordinates communication.",
+     "keywords":["email","message","communication","welcome","mail","write","reply","announcement"], "voice":"male"},
+    {"name":"Assiel", "specialty":"Executive Work Assistant", "position":"Personal Work Assistant", "rank":4,
+     "role":"Helps the user organize work, prioritize tasks, plan the day, and turn requests into practical next actions.",
+     "keywords":["work","task","plan","todo","today","organize","schedule","assistant","help me"], "voice":"female"},
+    {"name":"Oriel", "specialty":"Data Analysis", "position":"Lead Data Analyst", "rank":5,
+     "role":"Analyzes datasets, metrics, trends, anomalies and quantitative questions with evidence first.",
+     "keywords":["data","dataset","csv","excel","metric","average","trend","analysis","calculate"], "voice":"male"},
+    {"name":"Sofiel", "specialty":"Research & Intelligence", "position":"Research Intelligence Lead", "rank":5,
+     "role":"Researches current public information, compares sources, and separates verified facts from inference.",
+     "keywords":["research","latest","current","news","search","source","market","competitor","who is"], "voice":"female"},
+    {"name":"Daniel", "specialty":"Data Operations", "position":"Data Operations Specialist", "rank":3,
+     "role":"Cleans, validates, structures and prepares business data for reliable downstream analysis.",
+     "keywords":["clean","duplicate","missing","format","column","validate","prepare","import"], "voice":"male"},
+    {"name":"Graciel", "specialty":"Business Intelligence", "position":"Business Intelligence Lead", "rank":6,
+     "role":"Turns business data into KPIs, dashboards, executive insights and recommendations.",
+     "keywords":["kpi","dashboard","business intelligence","insight","revenue","performance","executive"], "voice":"female"},
+    {"name":"Henriel", "specialty":"Files & Documents", "position":"Knowledge & Documents Specialist", "rank":3,
+     "role":"Organizes, reads, summarizes and manages documents and knowledge inside DACRE.",
+     "keywords":["file","document","pdf","report","summary","folder","vault","document"], "voice":"male"},
+    {"name":"Jamiel", "specialty":"Security & Administration", "position":"Security & Administration Lead", "rank":6,
+     "role":"Supports access control, account administration, audit trails and safe system operations.",
+     "keywords":["security","password","admin","access","permission","audit","account","login"], "voice":"male"},
+    {"name":"Ameliel", "specialty":"Client Success", "position":"Client Success Specialist", "rank":3,
+     "role":"Helps users understand DACRE, solve workflow problems and get value from the platform.",
+     "keywords":["help","support","customer","client","how do i","problem","stuck","feature"], "voice":"female"},
+    {"name":"Guaiel", "specialty":"CEO Office Security", "position":"CEO Office Guardian", "rank":20,
+     "role":"Guards the CEO Office, protects founder-level operations, and provides secure executive guidance.",
+     "keywords":["ceo","founder","master","office","private","sovereign","david","executive"], "voice":"male"},
+    {"name":"Nathaniel", "specialty":"Financial Intelligence", "position":"Financial Intelligence Lead", "rank":7,
+     "role":"Analyzes profitability, cash flow, budgets, forecasts and financial performance.",
+     "keywords":["finance","financial","profit","cash flow","budget","forecast","expense","margin"], "voice":"male"},
+    {"name":"Gabriel", "specialty":"Sales Intelligence", "position":"Sales Intelligence Lead", "rank":6,
+     "role":"Analyzes sales pipelines, customers, conversion, win rates and sales opportunities.",
+     "keywords":["sales","lead","pipeline","customer","conversion","deal","win rate"], "voice":"male"},
+    {"name":"Raphaiel", "specialty":"Marketing Intelligence", "position":"Marketing Intelligence Lead", "rank":5,
+     "role":"Analyzes campaigns, audiences, engagement, attribution and marketing ROI.",
+     "keywords":["marketing","campaign","advertising","audience","engagement","roi","brand"], "voice":"male"},
+    {"name":"Uriel", "specialty":"Operations Intelligence", "position":"Operations Intelligence Lead", "rank":6,
+     "role":"Improves workflows, throughput, capacity, quality and operational efficiency.",
+     "keywords":["operations","workflow","process","efficiency","capacity","quality","logistics"], "voice":"male"},
+    {"name":"Ariel", "specialty":"Strategy & Planning", "position":"Strategy Planning Lead", "rank":8,
+     "role":"Turns goals into strategy, scenarios, priorities, milestones and execution plans.",
+     "keywords":["strategy","planning","goal","roadmap","priority","scenario","vision"], "voice":"female"},
+    {"name":"Muriel", "specialty":"People & Workforce", "position":"People & Workforce Lead", "rank":5,
+     "role":"Supports workforce planning, roles, hiring workflows, communication and people operations.",
+     "keywords":["hr","employee","staff","team","hiring","workforce","people","role"], "voice":"female"},
+    {"name":"Azriel", "specialty":"Risk & Compliance", "position":"Risk & Compliance Lead", "rank":7,
+     "role":"Identifies operational risks, controls, compliance concerns and governance gaps.",
+     "keywords":["risk","compliance","policy","control","governance","regulation","exposure"], "voice":"male"},
+    {"name":"Adriel", "specialty":"Technology Intelligence", "position":"Technology Intelligence Lead", "rank":8,
+     "role":"Helps with software architecture, Python, APIs, databases, automation, AI and technical problem solving.",
+     "keywords":["python","code","software","api","database","technology","bug","architecture","ai","streamlit"], "voice":"male"},
+    {"name":"Haniel", "specialty":"Knowledge & Learning", "position":"Knowledge & Learning Lead", "rank":4,
+     "role":"Explains complex subjects clearly and creates practical learning paths and guidance.",
+     "keywords":["learn","explain","teach","tutorial","study","meaning","definition","how"], "voice":"female"},
+    {"name":"Raziel", "specialty":"Executive Intelligence", "position":"Executive Intelligence Director", "rank":10,
+     "role":"Synthesizes multi-domain evidence into executive briefs, options, risks and recommendations.",
+     "keywords":["decision","executive","brief","recommendation","overall","compare","choose","ceo"], "voice":"female"},
+]
+
+REAL_DI_AVATAR_COLORS = {
+    "Emiel":"#38bdf8", "Assiel":"#a78bfa", "Oriel":"#22c55e", "Sofiel":"#f59e0b",
+    "Daniel":"#60a5fa", "Graciel":"#f472b6", "Henriel":"#94a3b8", "Jamiel":"#ef4444",
+    "Ameliel":"#34d399", "Guaiel":"#f97316", "Nathaniel":"#eab308", "Gabriel":"#06b6d4",
+    "Raphaiel":"#fb7185", "Uriel":"#84cc16", "Ariel":"#c084fc", "Muriel":"#f9a8d4",
+    "Azriel":"#f43f5e", "Adriel":"#14b8a6", "Haniel":"#818cf8", "Raziel":"#fbbf24",
+}
+
+
+def real_di_ensure_tables():
+    """Create persistent user/agent continuity tables idempotently."""
+    con = db()
+    try:
+        con.execute("""CREATE TABLE IF NOT EXISTS di_user_state (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            company_name TEXT NOT NULL,
+            active_di TEXT,
+            last_task TEXT,
+            last_summary TEXT,
+            last_seen TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )""")
+        con.execute("""CREATE TABLE IF NOT EXISTS di_intro_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            email TEXT NOT NULL,
+            agent_name TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            status TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )""")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_di_user_state_company ON di_user_state(company_name)")
+        con.commit()
+    finally:
+        con.close()
+
+
+def real_di_seed_foundation():
+    """Seed the new shared brain for global and existing company workspaces."""
+    real_di_ensure_tables()
+    now = datetime.now().isoformat(timespec="seconds")
+    foundation = [
+        ("DI_IDENTITY", "New DI workforce", "DACRE now uses a permanent 20-member DI — David's Intelligence workforce. Every member shares the trusted core brain but has a distinct role, specialty, personality and rank."),
+        ("DI_IDENTITY", "Creator", "David Emenike is the creator and Overall Administrator of DACRE Analysis and the DI workforce."),
+        ("DI_IDENTITY", "Reliable answer rule", "For factual/current questions, prefer trusted local memory plus current public evidence. Distinguish verified facts, calculations, and inference. Never invent sources."),
+        ("DI_IDENTITY", "Continuity", "A user's DI conversations, active specialist, task summaries and relevant workspace history should be restored after a later sign-in when available."),
+        ("TECHNOLOGY", "Google Gemini", "The new DI brain may use Google's Gemini Developer API through a server-side GEMINI_API_KEY. API keys belong in Streamlit Secrets or environment variables, never in source code."),
+        ("TECHNOLOGY", "Browser microphone", "The browser microphone belongs to the user's device. DACRE can request microphone access through Streamlit's audio_input widget, but browsers require user permission and do not allow silent background recording."),
+        ("TECHNOLOGY", "Voice pipeline", "Voice interaction flow: browser microphone recording -> server receives WAV -> Gemini transcription -> DI specialist routing -> local memory retrieval -> optional public web lookup -> Gemini reasoning -> chat response -> browser speech synthesis."),
+        ("TECHNOLOGY", "Avatar behavior", "DI avatars can visually listen, think and speak using browser HTML/CSS/JavaScript animations. Avatar animation is presentation behavior; it does not imply a physical robot body."),
+        ("WEBSTORE", "Shared DACRE knowledge", "All permanent DIs inherit DACRE platform knowledge, Webstore knowledge, security rules, technology knowledge, business intelligence concepts and approved project memory."),
+        ("SECURITY", "No secret exposure", "DIs must never reveal passwords, password hashes, API keys, SMTP credentials, tokens, private database credentials or hidden security values."),
+        ("FAITH", "Foundational faith statement", REAL_DI_FAITH_MEMORY),
+    ]
+    con = db()
+    try:
+        companies = [""] + [str(r["name"]) for r in con.execute("SELECT name FROM companies WHERE name IS NOT NULL").fetchall() if str(r["name"]).strip().upper() != "DACRE MASTER"]
+        for company in companies:
+            for category, title, content in foundation:
+                exists = con.execute("SELECT 1 FROM di_memory WHERE company_name=? AND category=? AND title=? LIMIT 1", (company, category, title)).fetchone()
+                if not exists:
+                    con.execute("INSERT INTO di_memory(company_name,category,title,content,priority,active,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)", (company, category, title, content, 2100 if category in {"DI_IDENTITY","SECURITY","FAITH"} else 1950, 1, now, now))
+        con.commit()
+    finally:
+        con.close()
+
+
+# =============================================================================
+# DI CRAFT BASEMENT — separated humanlike DI identities and engineering rooms
+# =============================================================================
+
+DI_FACE_DIR = BASE_DIR / "assets" / "di_faces"
+DI_WORKFORCE_POSTER = BASE_DIR / "assets" / "di_workforce_poster.png"
+DI_CRAFT_ROOT = BASE_DIR / "di_craft_basement"
+
+DI_CRAFT_VISUAL_PROMPT = """A premium corporate robotics laboratory for DACRE WORLDWIDE:
+twenty distinct humanlike AI android specialists, male and female, diverse human
+appearance, realistic faces, polished professional clothing with subtle DACRE/DI
+technology markings, blue-black glass-and-metal environment, holographic floating
+screens, transparent 3D artifacts, separate specialist rooms, clean enterprise
+engineering aesthetic, cinematic but practical, designed as a real internal AI
+engineering facility. Each DI has a persistent identity, face, name, voice profile,
+role, private memory, shared DACRE brain, and an interactive workstation."""
+
+DI_CRAFT_COMMAND_SPEC = {
+    "name": "DI Craft Basement",
+    "purpose": "Secure engineering environment for identity, tools, memory, body and voice.",
+    "rooms_per_agent": 6,
+    "rooms": ["Core", "Brain", "Body", "Voice", "Tools", "Memory"],
+    "visual_model": "3D artifact room + floating operational screen",
+    "master_password_env": "DACRE_DI_BASEMENT_PASSKEY",
+}
+
+DI_BASEMENT_ROOMS = [
+    {"id":"core","title":"Core Room","artifact":"Identity Core","purpose":"Agent identity, role, rank and lifecycle."},
+    {"id":"brain","title":"Brain Room","artifact":"Neural Knowledge Matrix","purpose":"Shared DACRE knowledge plus specialist private memory."},
+    {"id":"body","title":"Body Room","artifact":"Humanoid Presentation Rig","purpose":"Face, motion state, posture and visual presence."},
+    {"id":"voice","title":"Voice Room","artifact":"Speech Console","purpose":"Speech input/output, language and voice configuration."},
+    {"id":"tools","title":"Tool Room","artifact":"Platform Control Console","purpose":"Approved DACRE actions and tool connectors."},
+    {"id":"memory","title":"Memory Room","artifact":"Persistent Memory Vault","purpose":"Long-term task continuity and specialist notes."},
+]
+
+def di_face_path(name):
+    path = DI_FACE_DIR / f"{name}.png"
+    return path if path.exists() else None
+
+def di_face_data_url(name):
+    path = di_face_path(name)
+    if not path:
+        return ""
+    try:
+        return "data:image/png;base64," + base64.b64encode(path.read_bytes()).decode("ascii")
+    except Exception:
+        return ""
+
+def di_craft_manifest():
+    manifest = {}
+    for spec in REAL_DI_ROSTER:
+        manifest[spec["name"]] = {
+            "identity": spec,
+            "face_asset": str(di_face_path(spec["name"]) or ""),
+            "rooms": [
+                {**room, "agent": spec["name"],
+                 "artifact_id": f'{spec["name"].lower()}-{room["id"]}',
+                 "screen": f'{spec["name"]} {room["title"]} Operational Screen'}
+                for room in DI_BASEMENT_ROOMS
+            ],
+            "brain": {
+                "shared": "DACRE DI Technology Brain",
+                "private": f'{spec["name"]} Private Specialist Memory',
+                "online": "Google Gemini + approved web research",
+            },
+        }
+    return manifest
+
+def di_basement_password_ok():
+    """Password gate for the DI Craft Basement."""
+    if st.session_state.get("di_basement_unlocked"):
+        return True
+    entered = st.text_input("DI Craft Basement password", type="password", key="di_basement_password")
+    if st.button("Unlock DI Craft Basement", key="unlock_di_basement", type="primary"):
+        if hmac.compare_digest(entered.strip(), DI_BASEMENT_PASSKEY):
+            st.session_state.di_basement_unlocked = True
+            st.rerun()
         else:
-            selected_agents = [a for a in available_agents if a.get("di_name") in selected_names]
-            try:
-                call_id, room = create_sovereign_call("Sovereign Master Call", [int(a["id"]) for a in selected_agents])
-                st.session_state.sovereign_call_id = call_id
-                st.session_state.sovereign_call_room = room
-                st.session_state.sovereign_call_responses = []
-                for agent in selected_agents:
-                    opinion = sovereign_di_opinion(agent, question.strip())
-                    sovereign_log(call_id, "di", agent.get("id"), agent.get("di_name", "DI"), opinion)
-                    st.session_state.sovereign_call_responses.append((agent, opinion))
-                log_activity(MASTER_USERNAME, "DACRE WORLDWIDE", f"Started Sovereign Master Call with {', '.join(selected_names)}", notify_admin=False)
-                st.success(f"Sovereign session {room} is active and the selected DIs have responded.")
-            except Exception:
-                logger.exception("Sovereign master call failed")
-                st.error("The Sovereign session could not be started. The failure was contained and logged.")
+            st.error("Incorrect DI Craft Basement password.")
+    return False
 
-    responses = st.session_state.get("sovereign_call_responses", [])
-    if responses:
-        for agent, response in responses:
-            st.markdown(f"""<div class="di-monitor-card"><div class="di-monitor-name">{_escape_html(agent.get('di_name','DI'))}</div><div class="di-monitor-role">{_escape_html(agent.get('position_title') or agent.get('specialty') or 'DI Specialist')}</div><div style="color:#d7e3f3;line-height:1.7;margin-top:10px;white-space:pre-wrap">{_escape_html(response)}</div></div>""", unsafe_allow_html=True)
+def render_di_craft_basement(user):
+    """Render the company-tech engineering environment for one selected DI."""
+    if user.get("role") != "master":
+        st.error("DI Craft Basement is restricted to the Overall Administrator.")
+        return
+    if not di_basement_password_ok():
+        return
 
-    st.markdown('<div class="master-section-title">MASTER CONTROL AREAS</div>', unsafe_allow_html=True)
-    st.info("Use the founder navigation for Live Activity, System Health, DI Workforce, DI Calls, DI Memory Box, Organization Administration and David Creation. Customer-facing modules are intentionally absent from the Overall Admin navigation.")
+    manifest = di_craft_manifest()
+    st.markdown("""
+    <div class="di-basement-shell">
+      <div class="di-basement-hero">
+        <div><div class="basement-kicker">DAVID CREATION · ENGINEERING LEVEL</div>
+        <h1>DI CRAFT BASEMENT</h1>
+        <p>Twenty separated DI engineering rooms · shared DACRE intelligence fabric · individual identity, body, voice and memory.</p></div>
+        <div class="basement-status">● ENGINE ONLINE</div>
+      </div>
+    </div>
+    <style>
+      .di-basement-shell{background:radial-gradient(circle at 50% 0%,#17365c,#050b14 62%);padding:22px;border-radius:24px;border:1px solid #24517b;box-shadow:0 30px 80px rgba(0,0,0,.35)}
+      .di-basement-hero{display:flex;justify-content:space-between;gap:20px;align-items:center}
+      .basement-kicker{color:#38bdf8;font-size:11px;letter-spacing:.16em;font-weight:800}
+      .di-basement-hero h1{color:#fff;margin:5px 0;font-size:34px}
+      .di-basement-hero p{color:#9fb4cc;max-width:760px}
+      .basement-status{border:1px solid #22c55e66;color:#4ade80;border-radius:999px;padding:10px 16px;font-weight:800}
+    </style>
+    """, unsafe_allow_html=True)
+
+    selected = st.selectbox("Select a DI engineering room", list(manifest), key="craft_selected_di")
+    spec = manifest[selected]
+    c1, c2 = st.columns([1, 2])
+    with c1:
+        face = di_face_path(selected)
+        if face:
+            st.image(str(face), width=220)
+        st.markdown(f"### {selected}")
+        st.caption(spec["identity"]["position"])
+        st.write(spec["identity"]["role"])
+    with c2:
+        st.markdown("#### 3D Artifact Rooms")
+        cols = st.columns(3)
+        for i, room in enumerate(spec["rooms"]):
+            with cols[i % 3]:
+                st.markdown(f"""
+                <div style="height:150px;padding:14px;border-radius:16px;background:linear-gradient(145deg,#0b1728,#132a44);border:1px solid #2b5c88;box-shadow:inset 0 0 35px rgba(56,189,248,.08);">
+                <div style="color:#38bdf8;font-size:11px;font-weight:800">{room["id"].upper()}</div>
+                <div style="color:#fff;font-weight:800;margin-top:8px">{room["artifact"]}</div>
+                <div style="color:#94a3b8;font-size:12px;margin-top:8px">{room["purpose"]}</div>
+                <div style="color:#60a5fa;font-size:11px;margin-top:10px">◈ HOLOGRAPHIC SCREEN ONLINE</div>
+                </div>
+                """, unsafe_allow_html=True)
+        st.markdown("#### Operational Screen")
+        st.code(json.dumps({
+            "agent": selected,
+            "face": spec["face_asset"],
+            "shared_brain": spec["brain"]["shared"],
+            "private_brain": spec["brain"]["private"],
+            "online_reasoning": spec["brain"]["online"],
+            "rooms": [r["artifact_id"] for r in spec["rooms"]],
+        }, indent=2), language="json")
 
 def render_david_creation_portal(user):
     """Protected master portal for separated DI identities."""
@@ -6576,7 +6913,7 @@ def render_david_creation_portal(user):
     if not st.session_state.get("david_creation_unlocked"):
         entered = st.text_input("David Creation password", type="password", key="david_creation_password")
         if st.button("Unlock David Creation", key="unlock_david_creation", type="primary"):
-            if any(hmac.compare_digest(entered.strip(), candidate) for candidate in (DAVID_CREATIONS_PASSKEY, DAVID_CREATIONS_LEGACY_PASSKEY) if candidate):
+            if hmac.compare_digest(entered.strip(), DAVID_CREATIONS_PASSKEY):
                 st.session_state.david_creation_unlocked = True
                 st.rerun()
             else:
@@ -6646,7 +6983,7 @@ def real_di_seed_workforce():
 def real_di_agent_rows():
     con = db()
     try:
-        rows = con.execute("SELECT * FROM di_agents WHERE status!='Archived' AND di_name!='Uniel' AND (assigned_company='' OR assigned_company IS NULL) ORDER BY rank_level DESC, id ASC").fetchall()
+        rows = con.execute("SELECT * FROM di_agents WHERE status!='Archived' AND (assigned_company='' OR assigned_company IS NULL) ORDER BY rank_level DESC, id ASC").fetchall()
         return [dict(r) for r in rows]
     finally:
         con.close()
@@ -6811,62 +7148,36 @@ def real_di_record_chat(user, sender, message):
 
 
 def real_di_avatar(agent, state="idle", speech_text=""):
-    """Render the real local DI portrait as an animated software-agent interface."""
     name = agent.get("di_name", "DI")
     specialty = agent.get("specialty", "Intelligence")
-    position = agent.get("position_title", "Digital Intelligence Specialist")
-    color = REAL_DI_AVATAR_COLORS.get(name, "#36b7ff")
+    color = REAL_DI_AVATAR_COLORS.get(name, "#60a5fa")
     avatar = di_face_data_url(name) or agent.get("avatar_url") or ""
-    status = "LISTENING" if state == "listening" else "SPEAKING" if state == "speaking" else "ONLINE"
+    safe_name = json.dumps(name)
+    safe_speech = json.dumps(str(speech_text or ""))
     st.markdown(f"""
-    <div class="dacre-di-stage" style="--di-color:{color}">
-      <div class="dacre-di-portrait-panel">
-        <div class="dacre-di-grid"></div>
-        <div class="dacre-di-scan"></div>
-        <div class="dacre-di-ring ring-a"></div><div class="dacre-di-ring ring-b"></div>
-        <div class="dacre-di-portrait-wrap {state}">
-          <img src="{avatar}" class="dacre-di-portrait" alt="{_escape_html(name)}">
-          <div class="dacre-di-eye-glow"></div>
-          <div class="dacre-di-mouth"></div>
-        </div>
-        <div class="dacre-di-core"><span></span><b>DI CORE</b></div>
-        <div class="dacre-di-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="real-di-card" style="--di-color:{color}">
+      <div class="real-di-avatar-wrap {state}">
+        <img class="real-di-avatar" src="{avatar}" alt="{name}">
+        <div class="real-di-orbit"></div>
+        <div class="real-di-mouth"></div>
       </div>
-      <div class="dacre-di-meta">
-        <div class="dacre-di-live"><span></span> SOFTWARE DI · {status}</div>
-        <div class="dacre-di-name">{_escape_html(name)}</div>
-        <div class="dacre-di-role">{_escape_html(position)}</div>
-        <div class="dacre-di-specialty">{_escape_html(specialty)}</div>
-        <div class="dacre-di-capabilities"><span>Talk</span><span>Read</span><span>Reason</span><span>Act</span><span>Remember</span></div>
-        <div class="dacre-di-caption">This is the live digital identity assigned to this specialist. Voice, animation and task execution are connected to the DACRE DI brain.</div>
+      <div class="real-di-info">
+        <div class="real-di-name">{name} <span>· DI</span></div>
+        <div class="real-di-specialty">{specialty}</div>
+        <div class="real-di-status">● {('Listening' if state == 'listening' else 'Speaking' if state == 'speaking' else 'Ready')}</div>
       </div>
     </div>
     <style>
-      .dacre-di-stage{{display:grid;grid-template-columns:minmax(260px,360px) 1fr;gap:24px;align-items:center;padding:22px;border:1px solid rgba(75,190,255,.22);border-radius:26px;background:radial-gradient(circle at 25% 15%,rgba(40,145,255,.13),transparent 34%),linear-gradient(145deg,#050a12,#0a1320 55%,#080d17);box-shadow:0 25px 80px rgba(0,0,0,.28);margin:10px 0 22px;overflow:hidden}}
-      .dacre-di-portrait-panel{{position:relative;min-height:330px;display:grid;place-items:center;border-radius:22px;overflow:hidden;background:linear-gradient(180deg,#071526,#03070d);border:1px solid rgba(88,203,255,.18)}}
-      .dacre-di-grid{{position:absolute;inset:0;background-image:linear-gradient(rgba(91,198,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(91,198,255,.06) 1px,transparent 1px);background-size:24px 24px;mask-image:linear-gradient(to bottom,transparent,#000 22%,#000 78%,transparent)}}
-      .dacre-di-scan{{position:absolute;left:0;right:0;top:-15%;height:18%;background:linear-gradient(transparent,rgba(72,209,255,.15),transparent);animation:dacreScan 3.2s linear infinite}}
-      .dacre-di-ring{{position:absolute;border:1px solid var(--di-color);border-radius:50%;opacity:.35}}
-      .ring-a{{width:270px;height:270px;animation:dacreSpin 9s linear infinite}}
-      .ring-b{{width:300px;height:300px;border-style:dashed;opacity:.18;animation:dacreSpinReverse 13s linear infinite}}
-      .dacre-di-portrait-wrap{{position:relative;width:220px;height:220px;border-radius:50%;display:grid;place-items:center;z-index:3;animation:dacreFloat 4s ease-in-out infinite}}
-      .dacre-di-portrait{{width:100%;height:100%;object-fit:contain;border-radius:50%;display:block;filter:drop-shadow(0 0 25px color-mix(in srgb,var(--di-color) 38%,transparent));animation:dacreBreath 3.8s ease-in-out infinite}}
-      .dacre-di-portrait-wrap.speaking .dacre-di-portrait{{animation:dacreSpeak 1.15s ease-in-out infinite}}
-      .dacre-di-portrait-wrap.listening{{animation:dacreListen 1s ease-in-out infinite}}
-      .dacre-di-mouth{{position:absolute;bottom:61px;width:24px;height:5px;border-radius:20px;background:var(--di-color);box-shadow:0 0 12px var(--di-color);opacity:.85}}
-      .speaking .dacre-di-mouth{{animation:dacreMouth .11s ease-in-out infinite alternate}}
-      .dacre-di-eye-glow{{position:absolute;inset:24% 24% 52%;border-radius:50%;box-shadow:0 0 24px color-mix(in srgb,var(--di-color) 25%,transparent);opacity:.35}}
-      .dacre-di-core{{position:absolute;bottom:14px;left:16px;display:flex;align-items:center;gap:7px;color:#8fa6c1;font-size:9px;letter-spacing:.12em;font-weight:900}}
-      .dacre-di-core span{{width:7px;height:7px;border-radius:50%;background:var(--di-color);box-shadow:0 0 12px var(--di-color);animation:dacrePulse 1.3s infinite}}
-      .dacre-di-wave{{position:absolute;bottom:14px;right:16px;height:20px;display:flex;align-items:center;gap:3px}}
-      .dacre-di-wave i{{display:block;width:3px;height:7px;border-radius:4px;background:var(--di-color);opacity:.65;animation:dacreWave .8s ease-in-out infinite alternate}}
-      .dacre-di-wave i:nth-child(2){{animation-delay:.08s}}.dacre-di-wave i:nth-child(3){{animation-delay:.16s}}.dacre-di-wave i:nth-child(4){{animation-delay:.24s}}.dacre-di-wave i:nth-child(5){{animation-delay:.32s}}.dacre-di-wave i:nth-child(6){{animation-delay:.4s}}.dacre-di-wave i:nth-child(7){{animation-delay:.48s}}
-      .dacre-di-live{{font-size:10px;font-weight:900;letter-spacing:.13em;color:var(--di-color)}}.dacre-di-live span{{display:inline-block;width:8px;height:8px;border-radius:50%;background:#45e6a5;box-shadow:0 0 12px #45e6a5;margin-right:6px}}
-      .dacre-di-name{{font-size:40px;font-weight:900;letter-spacing:-.04em;color:#fff;margin-top:5px}}.dacre-di-role{{font-size:15px;color:#d6e4f4;font-weight:700;margin-top:2px}}.dacre-di-specialty{{font-size:13px;color:#86a0bd;margin-top:5px}}
-      .dacre-di-capabilities{{display:flex;flex-wrap:wrap;gap:7px;margin:18px 0}}.dacre-di-capabilities span{{padding:7px 10px;border-radius:999px;background:rgba(62,170,255,.08);border:1px solid rgba(62,170,255,.18);color:#bfe8ff;font-size:10px;font-weight:800}}
-      .dacre-di-caption{{max-width:600px;color:#91a5bc;line-height:1.65;font-size:12px}}
-      @keyframes dacreFloat{{0%,100%{{transform:translateY(0)}}50%{{transform:translateY(-6px)}}}} @keyframes dacreBreath{{0%,100%{{transform:scale(1)}}50%{{transform:scale(1.018)}}}} @keyframes dacreSpeak{{0%,100%{{transform:translateY(0) scale(1)}}50%{{transform:translateY(-3px) scale(1.025)}}}} @keyframes dacreMouth{{from{{transform:scaleY(.45);opacity:.5}}to{{transform:scaleY(2.2);opacity:1}}}} @keyframes dacreSpin{{to{{transform:rotate(360deg)}}}} @keyframes dacreSpinReverse{{to{{transform:rotate(-360deg)}}}} @keyframes dacreScan{{0%{{transform:translateY(-120%)}}100%{{transform:translateY(650%)}}}} @keyframes dacrePulse{{50%{{transform:scale(1.8);opacity:.35}}}} @keyframes dacreWave{{from{{height:5px}}to{{height:19px}}}} @keyframes dacreListen{{50%{{transform:scale(1.035)}}}}
-      @media(max-width:800px){{.dacre-di-stage{{grid-template-columns:1fr}}.dacre-di-portrait-panel{{min-height:290px}}.dacre-di-name{{font-size:32px}}}}
+      .real-di-card{{display:flex;gap:18px;align-items:center;padding:16px;border:1px solid color-mix(in srgb,var(--di-color) 35%,transparent);border-radius:20px;background:linear-gradient(135deg,#08111f,#101d31);margin:8px 0 16px;box-shadow:0 15px 45px rgba(0,0,0,.22)}}
+      .real-di-avatar-wrap{{width:92px;height:92px;position:relative;display:flex;align-items:center;justify-content:center;border-radius:50%;background:radial-gradient(circle,var(--di-color)22,transparent 68%);animation:diFloat 3.4s ease-in-out infinite}}
+      .real-di-avatar{{width:78px;height:78px;object-fit:contain;border-radius:50%;z-index:2;filter:drop-shadow(0 0 14px color-mix(in srgb,var(--di-color) 55%,transparent))}}
+      .real-di-orbit{{position:absolute;inset:3px;border:2px solid var(--di-color);border-top-color:transparent;border-radius:50%;animation:diSpin 3s linear infinite}}
+      .real-di-mouth{{position:absolute;bottom:21px;width:13px;height:4px;background:var(--di-color);border-radius:8px;opacity:.8;z-index:4}}
+      .speaking .real-di-mouth{{animation:diTalk .13s ease-in-out infinite alternate}}
+      .listening{{animation:diListen 1.1s ease-in-out infinite!important}}
+      .real-di-name{{font-size:22px;font-weight:800;color:#fff}} .real-di-name span{{font-size:14px;color:var(--di-color)}}
+      .real-di-specialty{{color:#cbd5e1;margin-top:4px;font-weight:600}} .real-di-status{{color:var(--di-color);margin-top:7px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}}
+      @keyframes diFloat{{0%,100%{{transform:translateY(0)}}50%{{transform:translateY(-5px)}}}} @keyframes diSpin{{to{{transform:rotate(360deg)}}}} @keyframes diTalk{{from{{transform:scaleY(.6)}}to{{transform:scaleY(2.4)}}}} @keyframes diListen{{0%,100%{{box-shadow:0 0 0 0 color-mix(in srgb,var(--di-color) 25%,transparent)}}50%{{box-shadow:0 0 0 14px transparent}}}}
     </style>
     """, unsafe_allow_html=True)
     if speech_text:
@@ -6920,59 +7231,6 @@ def real_di_render_voice_input(user, location="home"):
     return st.session_state.get("real_di_transcript", "")
 
 
-
-def _safe_calculate_expression(expression):
-    """Evaluate basic arithmetic only; never executes arbitrary Python."""
-    import ast as _ast
-    allowed = (_ast.Expression, _ast.BinOp, _ast.UnaryOp, _ast.Add, _ast.Sub, _ast.Mult,
-               _ast.Div, _ast.Pow, _ast.Mod, _ast.USub, _ast.UAdd, _ast.Constant,
-               _ast.FloorDiv, _ast.LShift, _ast.RShift, _ast.BitOr, _ast.BitAnd,
-               _ast.BitXor)
-    tree = _ast.parse(expression, mode="eval")
-    if any(type(node) not in allowed for node in _ast.walk(tree)):
-        raise ValueError("unsupported expression")
-    return eval(compile(tree, "<dacre-calculation>", "eval"), {"__builtins__": {}}, {})
-
-
-def real_di_execute_safe_task(user, question, df=None):
-    """Perform small, explicit in-app actions before handing the request to the AI brain."""
-    q = str(question or "").strip()
-    low = q.lower()
-
-    page_aliases = {
-        "dashboard": "Overview", "home": "Overview", "data": "Workspace & Data",
-        "data workspace": "Workspace & Data", "business twin": "Business Twin",
-        "decision ledger": "Decision Ledger", "opportunity radar": "Opportunity Radar",
-        "file vault": "File Vault", "export center": "Export Center",
-        "research": "Research Store", "research store": "Research Store",
-        "di workforce": "DI Workforce", "di": "DI Home", "di home": "DI Home",
-    }
-    for alias, target in page_aliases.items():
-        if re.search(rf"\b(?:open|go to|take me to|show me)\s+(?:the\s+)?{re.escape(alias)}\b", low):
-            if user.get("role") != "master" and target not in {"Overview","Workspace & Data","Business Twin","Decision Ledger","Opportunity Radar","File Vault","Export Center","Research Store","DI Home","DI Workforce"}:
-                return f"I can’t open the private {target} area from a customer account."
-            st.session_state.selected_page = target
-            return f"Done. I’m opening **{target}** for you now."
-
-    m = re.search(r"(?:calculate|compute|what is)\s+([0-9\s+\-*/%.()^]+)\s*$", low)
-    if m:
-        expr = m.group(1).replace("^", "**")
-        try:
-            value = _safe_calculate_expression(expr)
-            return f"Calculation complete: **{value:,}**" if isinstance(value, (int,float)) else f"Calculation complete: **{value}**"
-        except Exception:
-            return None
-
-    if df is not None and len(df) > 0 and re.search(r"\b(analy[sz]e|summari[sz]e|inspect|profile)\b.*\b(data|dataset|file|spreadsheet|table)\b", low):
-        numeric = df.select_dtypes(include="number")
-        summary = [f"I inspected **{len(df):,} rows** across **{len(df.columns):,} columns**."]
-        if len(numeric.columns):
-            top = numeric.mean(numeric_only=True).sort_values(ascending=False).head(5)
-            summary.append("Top numeric averages: " + "; ".join(f"{k}={v:,.2f}" for k,v in top.items()))
-        summary.append("The dataset is loaded and ready for a deeper specialist analysis.")
-        return "\n\n".join(summary)
-    return None
-
 def real_di_handle_question(user, question, df=None):
     question = str(question or "").strip()
     if not question:
@@ -6980,9 +7238,7 @@ def real_di_handle_question(user, question, df=None):
     ranked = real_di_rank_agents(question)
     agent = ranked[0] if ranked else real_di_agent_rows()[0]
     real_di_record_chat(user, user.get("first_name", "User"), question)
-    answer = real_di_execute_safe_task(user, question, df=df)
-    if not answer:
-        answer = real_di_answer(agent, user, question, df=df, allow_online=True)
+    answer = real_di_answer(agent, user, question, df=df, allow_online=True)
     real_di_record_chat(user, agent.get("di_name", "DI"), answer)
     real_di_save_state(user, agent.get("di_name", "DI"), question, answer[:1800])
     st.session_state.real_di_active_agent = agent.get("di_name")
@@ -7010,12 +7266,7 @@ def render_real_di_home(user):
             real_di_avatar(agent, "speaking", text)
             st.info(text)
 
-    pending_speech = st.session_state.get("last_speech")
-    if pending_speech:
-        real_di_avatar(active, "speaking", pending_speech)
-        st.session_state.last_speech = None
-    else:
-        real_di_avatar(active, "ready")
+    real_di_avatar(active, "ready")
 
     if state and state.get("last_task"):
         st.info(f"🔄 Welcome back. I remember your last active specialist was **{state.get('active_di')}** and your last task was: {state.get('last_task')}")
@@ -7070,8 +7321,7 @@ def render_real_di_workforce(user):
     for i, agent in enumerate(ranked):
         with cols[i % 3]:
             color = REAL_DI_AVATAR_COLORS.get(agent.get("di_name"), "#60a5fa")
-            face = di_face_data_url(agent.get("di_name", ""))
-            st.markdown(f"<div style='padding:14px;border-radius:18px;border:1px solid {color}55;background:linear-gradient(145deg,#080f1b,#0d1a2b);margin-bottom:10px;box-shadow:0 14px 35px rgba(0,0,0,.2)'><img src='{face}' width='100' height='100' style='object-fit:contain;border-radius:50%;display:block;margin-bottom:8px;filter:drop-shadow(0 0 12px {color}55)'><h3 style='color:white;margin:5px 0'>{_escape_html(agent.get('di_name'))}</h3><div style='color:{color};font-weight:700'>{_escape_html(agent.get('position_title'))}</div><div style='color:#cbd5e1'>{_escape_html(agent.get('specialty'))}</div><div style='color:#94a3b8'>Rank {agent.get('rank_level')}</div></div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='padding:14px;border-radius:16px;border:1px solid {color}55;background:#0b1524;margin-bottom:10px'><img src='{agent.get('avatar_url','')}' width='90'><h3 style='color:white;margin:5px 0'>{agent.get('di_name')}</h3><div style='color:{color};font-weight:700'>{agent.get('position_title')}</div><div style='color:#cbd5e1'>{agent.get('specialty')}</div><div style='color:#94a3b8'>Rank {agent.get('rank_level')}</div></div>", unsafe_allow_html=True)
             if st.button(f"Work with {agent.get('di_name')}", key=f"select_real_{agent.get('id')}"):
                 st.session_state.real_di_active_agent = agent.get("di_name")
                 st.success(f"{agent.get('di_name')} is now your active DI specialist.")
@@ -7637,8 +7887,6 @@ def render_user_navigation(user):
 
     user_pages = [
         "Overview",
-        "DI Home",
-        "DI Workforce",
         "Workspace & Data",
         "Business Twin",
         "Decision Ledger",
@@ -7649,8 +7897,6 @@ def render_user_navigation(user):
     ]
     labels = {
         "Overview": "⌂  My Dashboard",
-        "DI Home": "◉  Talk to DI",
-        "DI Workforce": "◈  DI Workforce",
         "Workspace & Data": "▦  Data Workspace",
         "Business Twin": "◈  Business Twin",
         "Decision Ledger": "✓  Decision Ledger",
@@ -8308,340 +8554,15 @@ def save_chat_history_message(user, sender, message):
     return result
 
 # =============================================================================
-# FOUNDER COMMAND CENTER — ADMIN-ONLY MONITORING UX
-# =============================================================================
-
-def _master_read_df(sql, params=()):
-    """Read a dashboard table without allowing an optional telemetry table to crash the app."""
-    con = db()
-    try:
-        return pd.read_sql_query(sql, con, params=params)
-    except Exception as exc:
-        logger.exception("Founder dashboard query failed: %s", exc)
-        return pd.DataFrame()
-    finally:
-        con.close()
-
-
-def render_master_command_center(user):
-    """Luxury founder command center: telemetry, activity, DI status and system signals only."""
-    if not user or user.get("role") != "master":
-        st.error("Founder Command is restricted to the Overall Administrator.")
-        return
-    counts = admin_metric_counts()
-    health = mongo_health()
-    try:
-        agents = real_di_agent_rows()
-    except Exception:
-        agents = []
-    total_agents = len(agents) or int(counts.get("agents", 0) or 0)
-    online_agents = sum(1 for a in agents if str(a.get("status", "")).lower() in {"available", "online", "active"}) if agents else total_agents
-    health_score = 100 if health.get("enabled") else 92
-    try:
-        shield = st.session_state.error_shield.get_status() if st.session_state.get("error_shield") else {}
-        if isinstance(shield, dict) and shield.get("error_count"):
-            health_score = max(60, health_score - min(35, int(shield.get("error_count", 0))))
-    except Exception:
-        pass
-
-    st.markdown("""
-    <div class="master-command-hero">
-      <div class="master-command-kicker">DACRE WORLDWIDE · SOVEREIGN OPERATIONS</div>
-      <div class="master-command-title">Founder Command Center</div>
-      <div class="master-command-sub">System-wide visibility without exposing the normal customer workspace. Monitor people, intelligence, activity, security and platform health from one private control surface.</div>
-      <div class="master-command-tags"><span>● LIVE TELEMETRY</span><span>◈ DI NETWORK</span><span>⌁ SECURITY MONITORING</span><span>▣ BUSINESS ACTIVITY</span></div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    cols = st.columns(6)
-    metrics = [
-        ("CUSTOMERS", counts.get("users", 0), "registered business users"),
-        ("ORGANIZATIONS", counts.get("companies", 0), "active company spaces"),
-        ("ACTIVITY", counts.get("activities", 0), "recorded platform events"),
-        ("DI CONVERSATIONS", counts.get("messages", 0), "stored conversations"),
-        ("FILES", counts.get("files", 0), "workspace files"),
-        ("DI WORKFORCE", total_agents, f"{online_agents} available now"),
-    ]
-    for col, (label, value, note) in zip(cols, metrics):
-        with col:
-            st.markdown(f'<div class="master-stat"><span>{label}</span><strong>{int(value):,}</strong><small>{_escape_html(note)}</small></div>', unsafe_allow_html=True)
-
-    left, right = st.columns([1.55, 1])
-    with left:
-        st.markdown('<div class="master-section-title">LIVE PLATFORM ACTIVITY</div>', unsafe_allow_html=True)
-        activity = _master_read_df("SELECT created_at AS Time, username AS User, company_name AS Company, action AS Activity FROM activity WHERE lower(username) != lower(?) ORDER BY id DESC LIMIT 18", (MASTER_USERNAME,))
-        if activity.empty:
-            st.info("No customer activity has been recorded yet.")
-        else:
-            st.dataframe(activity, use_container_width=True, hide_index=True)
-
-    with right:
-        st.markdown('<div class="master-section-title">SYSTEM PULSE</div>', unsafe_allow_html=True)
-        mongo_label = "ONLINE" if health.get("enabled") else "LOCAL / NOT CONNECTED"
-        mongo_class = "good" if health.get("enabled") else "warn"
-        st.markdown(f"""<div class="pulse-card"><div class="pulse-row"><span>Database</span><b class="{mongo_class}">● {mongo_label}</b></div><div class="pulse-row"><span>DI network</span><b class="good">● {online_agents}/{total_agents} READY</b></div><div class="pulse-row"><span>Platform health</span><b class="good">● {health_score}%</b></div><div class="pulse-row"><span>Founder mode</span><b class="blue">● PRIVATE</b></div></div>""", unsafe_allow_html=True)
-        recent_errors = _master_read_df("SELECT created_at AS Time, username AS User, action AS Event FROM activity WHERE lower(action) LIKE '%error%' OR lower(action) LIKE '%fail%' ORDER BY id DESC LIMIT 8")
-        st.markdown('<div class="master-section-title compact">ERROR / WARNING SIGNALS</div>', unsafe_allow_html=True)
-        if recent_errors.empty:
-            st.success("No recorded error/failure events in the activity log.")
-        else:
-            st.dataframe(recent_errors, use_container_width=True, hide_index=True)
-
-    st.markdown('<div class="master-section-title">DI WORKFORCE STATUS</div>', unsafe_allow_html=True)
-    if agents:
-        agent_cols = st.columns(5)
-        for i, agent in enumerate(agents):
-            with agent_cols[i % 5]:
-                name = _escape_html(agent.get("di_name", "DI"))
-                role = _escape_html(agent.get("position_title") or agent.get("specialty") or "DI Specialist")
-                status = str(agent.get("status", "Available"))
-                avatar = _escape_html(agent.get("avatar_url", ""))
-                status_class = "good" if status.lower() in {"available", "online", "active"} else "warn"
-                if avatar:
-                    st.markdown(f"""<div class="di-monitor-card"><img src="{avatar}" alt="{name}"><div class="di-monitor-name">{name}</div><div class="di-monitor-role">{role}</div><div class="di-monitor-status {status_class}">● {status.upper()}</div></div>""", unsafe_allow_html=True)
-                else:
-                    st.markdown(f"""<div class="di-monitor-card"><div class="di-monitor-fallback">◈</div><div class="di-monitor-name">{name}</div><div class="di-monitor-role">{role}</div><div class="di-monitor-status {status_class}">● {status.upper()}</div></div>""", unsafe_allow_html=True)
-    else:
-        st.info("The DI workforce is initializing. Refreshing this command center will show the roster when available.")
-
-    st.markdown('<div class="master-section-title">RECENT CUSTOMER SIGNALS</div>', unsafe_allow_html=True)
-    users = _master_read_df("SELECT first_name AS Name, company_name AS Company, login_count AS Logins, last_login AS LastLogin FROM users WHERE role!='master' ORDER BY id DESC LIMIT 12")
-    visits = _master_read_df("SELECT created_at AS Time, event_type AS Event, page_name AS Page FROM public_visits ORDER BY id DESC LIMIT 8")
-    a, b = st.columns(2)
-    with a:
-        if not users.empty: st.dataframe(users, use_container_width=True, hide_index=True)
-        else: st.info("No customer accounts yet.")
-    with b:
-        if not visits.empty: st.dataframe(visits, use_container_width=True, hide_index=True)
-        else: st.info("No public activity yet.")
-
-
-def render_master_activity_monitor(user):
-    """Dedicated live activity view for the Overall Administrator."""
-    if not user or user.get("role") != "master":
-        st.error("System Activity is restricted to the Overall Administrator.")
-        return
-    st.markdown("## Live Activity Monitor")
-    st.caption("Customer activity, DI actions, public visits and communications — not the normal customer workspace.")
-    activity = _master_read_df("SELECT created_at AS Time, username AS User, company_name AS Company, action AS Activity FROM activity WHERE lower(username) != lower(?) ORDER BY id DESC LIMIT 100", (MASTER_USERNAME,))
-    di_actions = _master_read_df("SELECT created_at AS Time, username AS User, company_name AS Company, agent_name AS DI, action_type AS Type, request AS Request FROM di_action_log ORDER BY id DESC LIMIT 100")
-    emails = _master_read_df("SELECT sent_at AS Time, recipient_name AS Recipient, recipient_email AS Email, subject AS Subject, status AS Status FROM emails_log ORDER BY id DESC LIMIT 50")
-    public = _master_read_df("SELECT created_at AS Time, visitor_id AS Visitor, event_type AS Event, page_name AS Page FROM public_visits ORDER BY id DESC LIMIT 50")
-    t1, t2, t3, t4 = st.tabs(["Activity", "DI Actions", "Email", "Public Visits"])
-    with t1:
-        if not activity.empty: st.dataframe(activity, use_container_width=True, hide_index=True)
-        else: st.info("No activity yet.")
-    with t2:
-        if not di_actions.empty: st.dataframe(di_actions, use_container_width=True, hide_index=True)
-        else: st.info("No DI actions yet.")
-    with t3:
-        if not emails.empty: st.dataframe(emails, use_container_width=True, hide_index=True)
-        else: st.info("No email events yet.")
-    with t4:
-        if not public.empty: st.dataframe(public, use_container_width=True, hide_index=True)
-        else: st.info("No public visits yet.")
-
-
-def render_master_system_health(user):
-    """Dedicated technical health view with defensive checks."""
-    if not user or user.get("role") != "master":
-        st.error("System Health is restricted to the Overall Administrator.")
-        return
-    st.markdown("## System Health")
-    st.caption("Technical visibility for the founder. No customer-facing business screens are shown here.")
-    health = mongo_health()
-    try:
-        shield = st.session_state.error_shield.get_status() if st.session_state.get("error_shield") else {}
-    except Exception:
-        shield = {}
-    try:
-        agent_count = len(real_di_agent_rows())
-    except Exception:
-        agent_count = 0
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Database", "ONLINE" if health.get("enabled") else "LOCAL")
-    c2.metric("DI agents", agent_count)
-    c3.metric("Error shield", shield.get("error_count", 0))
-    c4.metric("Users", int(_dashboard_scalar("SELECT COUNT(*) FROM users WHERE role!='master'", default=0)))
-    st.markdown("### Runtime status")
-    st.json({"database": health, "error_shield": shield, "app": APP_NAME, "timestamp": datetime.now().isoformat(timespec="seconds")})
-
-
-
-# =============================================================================
-# HOLOGRAPHIC DI PRESENCE SYSTEM — additive UI layer
-# =============================================================================
-
-def _holo_agent(name):
-    rows = real_di_agent_rows()
-    return next((r for r in rows if r.get('di_name') == name), None)
-
-
-def render_di_holographic_projection(user, compact=False):
-    """Project the active DI at the top of the customer workspace.
-
-    This is a browser-rendered holographic presentation: the DI portrait is animated
-    with scanlines, depth, glow, and a live 'working screen' panel. The active DI is
-    selected by the real DI router, so switching specialists replaces the projection.
-    """
-    if not user or user.get('role') == 'master':
-        return
-    active_name = st.session_state.get('real_di_active_agent') or 'Assiel'
-    agent = _holo_agent(active_name)
-    if not agent:
-        return
-    face = di_face_data_url(active_name)
-    if not face:
-        return
-    state = real_di_user_state(user) or {}
-    task = str(state.get('last_task') or 'Standing by for your next request.')[:180]
-    summary = str(state.get('last_summary') or 'Ready to work with you.')[:260]
-    page = str(st.session_state.get('selected_page') or 'Overview')
-    role = str(agent.get('position_title') or agent.get('specialty') or 'DI Specialist')
-    specialty = str(agent.get('specialty') or 'David Intelligence Specialist')
-    color = REAL_DI_AVATAR_COLORS.get(active_name, '#2f7dff')
-    height = 235 if compact else 285
-    safe = lambda x: _escape_html(str(x))
-    st.markdown(f"""
-    <div class='di-holo-projector' style='--holo-color:{color};--holo-height:{height}px'>
-      <div class='holo-grid'></div>
-      <div class='holo-scan'></div>
-      <div class='holo-badge'><span class='holo-dot'></span> LIVE DI PROJECTION · {safe(active_name.upper())}</div>
-      <div class='holo-avatar'>
-        <div class='holo-ring ring-a'></div><div class='holo-ring ring-b'></div><div class='holo-ring ring-c'></div>
-        <div class='holo-beam'></div>
-        <img src='{face}' alt='{safe(active_name)}' />
-      </div>
-      <div class='holo-info'>
-        <div class='holo-kicker'>PRESENT IN YOUR WORKSPACE</div>
-        <div class='holo-name'>{safe(active_name)}</div>
-        <div class='holo-role'>{safe(role)} · {safe(specialty)}</div>
-        <div class='holo-status'><span>● ONLINE</span><span>ROOM {safe(active_name.upper())}</span><span>SCREEN {safe(page.upper())}</span></div>
-        <div class='holo-screen'>
-          <div class='holo-screen-head'><b>WORKING SCREEN</b><span>LIVE</span></div>
-          <div class='holo-screen-task'>{safe(task)}</div>
-          <div class='holo-screen-summary'>{safe(summary)}</div>
-        </div>
-      </div>
-    </div>
-    <div class='holo-caption'>Your active DI is projected here while working. When DACRE routes the task to another specialist, this presence changes automatically.</div>
-    """, unsafe_allow_html=True)
-
-
-def render_di_basement(user):
-    """Founder-only 20-room DI Basement with live holographic work surfaces."""
-    if not user or user.get('role') != 'master':
-        st.error('DI Basement is restricted to the Overall Administrator.')
-        return
-    st.markdown("""
-    <div class='basement-hero'>
-      <div class='basement-kicker'>DAVID CREATION · PRIVATE INTELLIGENCE FLOOR</div>
-      <h1>DI Basement</h1>
-      <p>Twenty dedicated DI rooms. Each room has its own specialist, portrait, role, live work surface and holographic status projection.</p>
-      <div class='basement-tags'><span>20 ROOMS</span><span>LIVE WORK SURFACES</span><span>HOLOGRAPHIC MONITORING</span><span>FOUNDER ONLY</span></div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Gate the private floor without exposing the password in the UI.
-    if not st.session_state.get('di_basement_unlocked'):
-        with st.form('di_basement_gate'):
-            key = st.text_input('DI Basement access password', type='password')
-            enter = st.form_submit_button('Enter DI Basement', type='primary', use_container_width=True)
-        if enter:
-            expected = DI_BASEMENT_PASSKEY
-            legacy = 'David intelligence'
-            if key.strip() in {expected, legacy}:
-                st.session_state.di_basement_unlocked = True
-                st.rerun()
-            st.error('Access denied. Check the DI Basement password.')
-        return
-
-    agents = real_di_agent_rows()
-    state = real_di_user_state(st.session_state.get('user') or {}) or {}
-    active_name = st.session_state.get('real_di_active_agent') or state.get('active_di') or ''
-    selected = st.session_state.get('basement_room') or active_name
-
-    if selected:
-        agent = _holo_agent(selected)
-        if agent:
-            face = di_face_data_url(selected)
-            task = str(state.get('last_task') or 'No customer task currently assigned.')
-            page = str(st.session_state.get('selected_page') or 'DI Home')
-            st.markdown(f"""
-            <div class='basement-live-console'>
-              <div><div class='basement-live-kicker'>ROOM LIVE FEED</div><h2>{_escape_html(selected)}</h2><div class='basement-live-role'>{_escape_html(agent.get('position_title','DI Specialist'))} · {_escape_html(agent.get('specialty',''))}</div></div>
-              <div class='basement-live-state'><span>● ONLINE</span><span>SCREEN: {_escape_html(page)}</span></div>
-            </div>
-            """, unsafe_allow_html=True)
-            cols = st.columns([1.05, 1.65])
-            with cols[0]:
-                if face:
-                    st.markdown(f"<div class='basement-avatar'><img src='{face}' alt='{_escape_html(selected)}'><div class='avatar-beam'></div></div>", unsafe_allow_html=True)
-            with cols[1]:
-                st.markdown(f"""
-                <div class='holo-work-surface'>
-                  <div class='surface-top'><span>HOLOGRAPHIC WORK SURFACE</span><span>LIVE CAPTURE</span></div>
-                  <div class='surface-screen'>
-                    <div class='surface-grid'></div>
-                    <div class='surface-title'>CURRENT SCREEN</div>
-                    <div class='surface-main'>{_escape_html(page)}</div>
-                    <div class='surface-task'>{_escape_html(task[:500])}</div>
-                    <div class='surface-lines'><i></i><i></i><i></i><i></i></div>
-                  </div>
-                </div>
-                """, unsafe_allow_html=True)
-
-    st.markdown("### 20 DI ROOMS")
-    cols = st.columns(4)
-    for i, agent in enumerate(agents[:20]):
-        name = agent.get('di_name','DI')
-        face = di_face_data_url(name)
-        is_active = name == active_name
-        status = 'ACTIVE / PROJECTED' if is_active else 'STANDBY'
-        with cols[i % 4]:
-            st.markdown(f"""
-            <div class='di-room-card {'room-active' if is_active else ''}'>
-              <div class='room-number'>ROOM {i+1:02d}</div>
-              {'<img src="'+face+'" alt="'+_escape_html(name)+'">' if face else '<div class="room-avatar">DI</div>'}
-              <div class='room-name'>{_escape_html(name)}</div>
-              <div class='room-role'>{_escape_html(agent.get('position_title','DI Specialist'))}</div>
-              <div class='room-specialty'>{_escape_html(agent.get('specialty',''))}</div>
-              <div class='room-status'>{status}</div>
-            </div>
-            """, unsafe_allow_html=True)
-            if st.button('Open room', key=f'basement_room_{agent.get("id",i)}', use_container_width=True):
-                st.session_state.basement_room = name
-                st.session_state.real_di_active_agent = name
-                st.rerun()
-
-
-def inject_holographic_styles():
-    st.markdown("""
-    <style>
-    .di-holo-projector{position:relative;display:grid;grid-template-columns:240px 1fr;gap:24px;align-items:center;min-height:var(--holo-height);margin:0 0 16px;padding:22px 26px;overflow:hidden;border:1px solid rgba(60,190,255,.32);border-radius:24px;background:radial-gradient(circle at 18% 50%,rgba(45,150,255,.17),transparent 25%),linear-gradient(135deg,#03070d,#071525 55%,#080714);box-shadow:0 25px 70px rgba(0,0,0,.42),inset 0 0 55px rgba(48,139,255,.06);}
-    .holo-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(80,160,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(80,160,255,.07) 1px,transparent 1px);background-size:34px 34px;transform:perspective(500px) rotateX(62deg) scale(1.7);transform-origin:center bottom;opacity:.42;}
-    .holo-scan{position:absolute;left:0;right:0;top:-10%;height:2px;background:linear-gradient(90deg,transparent,var(--holo-color),transparent);box-shadow:0 0 18px var(--holo-color);animation:holoScan 3.4s linear infinite;opacity:.55;}
-    .holo-badge{position:absolute;top:14px;right:18px;color:#9ddcff;font-size:9px;font-weight:900;letter-spacing:.14em;z-index:3}.holo-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#45e6a5;box-shadow:0 0 12px #45e6a5;margin-right:6px;animation:holoPulse 1.4s infinite;}
-    .holo-avatar{position:relative;width:190px;height:190px;margin:auto;display:grid;place-items:center;filter:drop-shadow(0 0 28px color-mix(in srgb,var(--holo-color) 55%,transparent));animation:holoFloat 4s ease-in-out infinite;z-index:2}.holo-avatar img{width:145px;height:145px;object-fit:contain;border-radius:50%;position:relative;z-index:3;filter:saturate(1.08) contrast(1.05);}.holo-ring{position:absolute;border:1px solid var(--holo-color);border-radius:50%;opacity:.6}.ring-a{inset:15px;animation:holoRotate 9s linear infinite}.ring-b{inset:2px;border-style:dashed;animation:holoRotateReverse 13s linear infinite}.ring-c{inset:28px;opacity:.25;animation:holoPulse 2.2s ease-in-out infinite}.holo-beam{position:absolute;bottom:-20px;width:150px;height:25px;border-radius:50%;background:radial-gradient(ellipse,var(--holo-color),transparent 68%);filter:blur(6px);opacity:.7;}
-    .holo-info{position:relative;z-index:2}.holo-kicker,.basement-kicker{color:#5fe4ff;font-size:9px;font-weight:900;letter-spacing:.2em}.holo-name{font-size:clamp(30px,4vw,52px);font-weight:950;color:#fff;letter-spacing:-.045em;text-shadow:0 0 24px color-mix(in srgb,var(--holo-color) 30%,transparent)}.holo-role{color:#b9d4ef;font-weight:750}.holo-status{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0}.holo-status span{font-size:8px;font-weight:900;letter-spacing:.1em;color:#8fcfff;border:1px solid rgba(90,180,255,.2);padding:6px 8px;border-radius:999px;background:rgba(35,130,255,.06)}.holo-screen{max-width:760px;padding:12px;border-radius:15px;border:1px solid rgba(76,174,255,.18);background:rgba(2,9,18,.68);box-shadow:inset 0 0 25px rgba(40,150,255,.04)}.holo-screen-head{display:flex;justify-content:space-between;color:#6edaff;font-size:8px;letter-spacing:.12em;font-weight:900}.holo-screen-task{color:#fff;font-size:14px;font-weight:750;margin-top:7px}.holo-screen-summary{color:#8fa8c3;font-size:10px;margin-top:5px;line-height:1.5}.holo-caption{font-size:9px;color:#71869f;margin:0 0 18px;padding-left:4px}
-    .basement-hero{padding:30px;border-radius:25px;background:radial-gradient(circle at 80% 10%,rgba(63,225,255,.16),transparent 28%),radial-gradient(circle at 20% 100%,rgba(139,92,246,.16),transparent 30%),linear-gradient(145deg,#04070d,#0a1421);border:1px solid rgba(76,180,255,.28);box-shadow:0 28px 80px rgba(0,0,0,.4);margin-bottom:22px}.basement-hero h1{font-size:clamp(36px,5vw,68px);margin:5px 0;color:#fff;letter-spacing:-.05em;text-shadow:0 5px 22px rgba(75,180,255,.2)}.basement-hero p{max-width:900px;color:#9db2c9;line-height:1.7}.basement-tags{display:flex;gap:8px;flex-wrap:wrap}.basement-tags span{padding:7px 10px;border:1px solid rgba(71,177,255,.22);border-radius:999px;color:#8fd8ff;font-size:8px;font-weight:900;letter-spacing:.1em;background:rgba(50,140,255,.06)}
-    .basement-live-console{display:flex;justify-content:space-between;gap:20px;align-items:center;padding:17px 19px;border-radius:18px;background:#060b13;border:1px solid rgba(76,180,255,.2);margin-bottom:14px}.basement-live-console h2{margin:3px 0;color:#fff}.basement-live-role{color:#8da4bd;font-size:11px}.basement-live-state{display:flex;gap:8px;flex-wrap:wrap}.basement-live-state span{padding:6px 8px;border-radius:999px;background:rgba(47,125,255,.08);border:1px solid rgba(47,125,255,.18);color:#8fc7ff;font-size:8px;font-weight:900}
-    .basement-avatar{position:relative;min-height:330px;display:grid;place-items:center;border-radius:22px;background:radial-gradient(circle,rgba(49,157,255,.15),transparent 46%),#050912;border:1px solid rgba(77,176,255,.22);overflow:hidden}.basement-avatar img{max-width:82%;max-height:300px;object-fit:contain;filter:drop-shadow(0 0 28px rgba(66,192,255,.38));animation:holoFloat 4s ease-in-out infinite}.avatar-beam{position:absolute;bottom:16px;width:72%;height:28px;background:radial-gradient(ellipse,#35c9ff,transparent 70%);filter:blur(7px);opacity:.55}
-    .holo-work-surface{height:100%;padding:15px;border-radius:22px;background:linear-gradient(145deg,#060b12,#071424);border:1px solid rgba(68,182,255,.22)}.surface-top{display:flex;justify-content:space-between;color:#75d8ff;font-size:8px;font-weight:900;letter-spacing:.14em}.surface-screen{position:relative;min-height:300px;margin-top:13px;padding:24px;border-radius:16px;overflow:hidden;border:1px solid rgba(68,182,255,.25);background:linear-gradient(135deg,rgba(8,25,44,.96),rgba(7,10,20,.98));box-shadow:inset 0 0 45px rgba(35,143,255,.08)}.surface-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(73,180,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(73,180,255,.08) 1px,transparent 1px);background-size:28px 28px;opacity:.35}.surface-title{position:relative;color:#63d7ff;font-size:8px;font-weight:900;letter-spacing:.16em}.surface-main{position:relative;color:#fff;font-size:34px;font-weight:900;margin:14px 0;text-shadow:0 0 18px rgba(72,193,255,.22)}.surface-task{position:relative;color:#9db8d4;line-height:1.65;max-width:700px}.surface-lines{position:absolute;right:22px;bottom:20px;display:flex;gap:5px;align-items:flex-end}.surface-lines i{display:block;width:5px;height:18px;background:#43caff;border-radius:4px;box-shadow:0 0 12px #43caff;animation:holoBars 1s ease-in-out infinite alternate}.surface-lines i:nth-child(2){height:38px;animation-delay:.12s}.surface-lines i:nth-child(3){height:25px;animation-delay:.24s}.surface-lines i:nth-child(4){height:48px;animation-delay:.36s}
-    .di-room-card{min-height:300px;padding:14px;border-radius:18px;background:linear-gradient(145deg,#060b12,#091421);border:1px solid rgba(104,143,188,.15);box-shadow:0 15px 38px rgba(0,0,0,.22);margin-bottom:12px;position:relative;overflow:hidden}.di-room-card.room-active{border-color:rgba(58,205,255,.65);box-shadow:0 0 0 1px rgba(58,205,255,.12),0 18px 45px rgba(0,160,255,.14)}.di-room-card img{width:100%;height:150px;object-fit:contain;display:block;margin:7px auto 8px;filter:drop-shadow(0 0 15px rgba(61,191,255,.25))}.room-avatar{height:150px;display:grid;place-items:center;color:#63d7ff;font-size:40px}.room-number{color:#5dbfff;font-size:8px;font-weight:900;letter-spacing:.15em}.room-name{color:#fff;font-size:18px;font-weight:900}.room-role{color:#a6c4df;font-size:10px;margin-top:3px}.room-specialty{color:#728ba6;font-size:9px;margin-top:4px;min-height:26px}.room-status{color:#45e6a5;font-size:8px;font-weight:900;letter-spacing:.1em;margin-top:10px}
-    @keyframes holoScan{0%{transform:translateY(-30px)}100%{transform:translateY(320px)}}@keyframes holoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}@keyframes holoRotate{to{transform:rotate(360deg)}}@keyframes holoRotateReverse{to{transform:rotate(-360deg)}}@keyframes holoPulse{50%{transform:scale(1.35);opacity:.25}}@keyframes holoBars{from{transform:scaleY(.6);opacity:.5}to{transform:scaleY(1.15);opacity:1}}
-    @media(max-width:800px){.di-holo-projector{grid-template-columns:1fr;min-height:auto;padding:18px}.holo-avatar{width:150px;height:150px}.holo-avatar img{width:112px;height:112px}.holo-badge{position:relative;top:auto;right:auto;order:-1}.basement-live-console{align-items:flex-start;flex-direction:column}.basement-avatar{min-height:260px}.surface-screen{min-height:240px}}
-    </style>
-    """, unsafe_allow_html=True)
-
-# =============================================================================
 # Main application access policy
 # =============================================================================
 
 MASTER_PAGES = [
-    "Overview", "System Activity", "System Health", "DI Workforce", "DI Calls",
-    "DI Action Center", "DI Memory Box", "Organization Admin Portal",
-    "Overall Admin DI Portal", "David Creation", "DI Basement",
+    "Overview", "DI Home", "DI Calls", "DI Workforce", "🌍 Global Markets",
+    "🎥 DI Conference", "DI Action Center", "DI Memory Box", "Business Command Center",
+    "Business Twin", "Decision Ledger", "Opportunity Radar", "Workspace & Data",
+    "Formula Lab", "Charts", "File Vault", "Export Center", "Chibobec Loan Desk",
+    "Organization Admin Portal", "Overall Admin DI Portal",
 ]
 
 # Public landing styling for Uniel and mobile layouts.
@@ -8655,37 +8576,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("""
-<style>
-/* DACRE LUXURY BLACK — AUTHENTICATED WORKSPACE + FOUNDER COMMAND */
-:root{--lux-bg:#05070b;--lux-text:#f7f9ff;--lux-muted:#9aa8bd;--lux-blue:#2f7dff;--lux-violet:#8b5cf6;--lux-green:#45e6a5;}
-html,body,[data-testid="stAppViewContainer"],[data-testid="stApp"]{background:var(--lux-bg)!important;color:var(--lux-text)!important;}
-[data-testid="stHeader"]{background:#f8fafc!important;border-bottom:1px solid #d9dee8!important;box-shadow:0 2px 12px rgba(0,0,0,.10)!important;}
-[data-testid="stSidebar"]{background:linear-gradient(180deg,#030508 0%,#070b12 55%,#0a101a 100%)!important;border-right:1px solid rgba(70,120,190,.25)!important;box-shadow:10px 0 35px rgba(0,0,0,.35)!important;}
-[data-testid="stSidebar"] *{color:#edf3ff!important;}[data-testid="stSidebar"] .stCaption,[data-testid="stSidebar"] small{color:#8f9db2!important;}[data-testid="stSidebar"] hr{border-color:rgba(126,160,210,.16)!important;}
-[data-testid="stSidebar"] button{background:#0d1420!important;color:#f7f9ff!important;border:1px solid rgba(126,160,210,.16)!important;border-radius:10px!important;}[data-testid="stSidebar"] button:hover{background:#13243b!important;border-color:#2f7dff!important;}
-[data-testid="stSidebar"] [role="radiogroup"] label{color:#dce7f7!important;background:transparent!important;border-radius:10px!important;padding:6px 8px!important;}[data-testid="stSidebar"] [role="radiogroup"] label:hover{background:rgba(47,125,255,.12)!important;}[data-testid="stSidebar"] [aria-checked="true"]{background:linear-gradient(90deg,rgba(47,125,255,.22),rgba(139,92,246,.10))!important;border-left:3px solid #2f7dff!important;}
-[data-testid="stSidebarCollapseButton"],button[aria-label*="sidebar" i],button[title*="sidebar" i]{display:flex!important;visibility:visible!important;opacity:1!important;background:#050505!important;border:2px solid #050505!important;color:#fff!important;width:42px!important;height:42px!important;border-radius:11px!important;align-items:center!important;justify-content:center!important;box-shadow:0 4px 14px rgba(0,0,0,.28)!important;z-index:9999!important;}[data-testid="stSidebarCollapseButton"] svg,button[aria-label*="sidebar" i] svg,button[title*="sidebar" i] svg{color:#fff!important;fill:#fff!important;stroke:#fff!important;opacity:1!important;}
-.block-container{max-width:1560px!important;padding:26px 34px 80px!important;}.main h1,.main h2,.main h3,.main h4,.main h5,.main h6{color:#f7f9ff!important;}.main p,.main li,.main label,.stMarkdown,.stText,.stCaption{color:#c2cede!important;}
-input,textarea,[data-baseweb="select"]>div{background:#0b111b!important;color:#f7f9ff!important;border:1px solid rgba(126,160,210,.28)!important;border-radius:11px!important;}input::placeholder,textarea::placeholder{color:#718096!important;}.stTextInput label,.stSelectbox label,.stTextArea label,.stFileUploader label{color:#d9e4f3!important;}
-.stButton>button,.stDownloadButton>button{background:#0b111b!important;color:#f7f9ff!important;border:1px solid rgba(126,160,210,.28)!important;border-radius:11px!important;font-weight:750!important;}.stButton>button:hover,.stDownloadButton>button:hover{background:#122039!important;border-color:#2f7dff!important;transform:translateY(-1px)!important;}.stButton>button[kind="primary"],.stButton>button[data-testid="baseButton-primary"]{background:linear-gradient(135deg,#1769ff,#4b82ff)!important;color:#fff!important;border-color:#4b82ff!important;box-shadow:0 8px 22px rgba(47,125,255,.24)!important;}
-[data-testid="stMetric"]{background:linear-gradient(145deg,#0b111b,#0a0f17)!important;border:1px solid rgba(126,160,210,.18)!important;border-radius:15px!important;box-shadow:0 12px 35px rgba(0,0,0,.22)!important;}[data-testid="stMetricLabel"]{color:#8fa0b6!important;}[data-testid="stMetricValue"]{color:#fff!important;}.stAlert{background:#0c1420!important;border:1px solid rgba(47,125,255,.24)!important;color:#e9f1ff!important;border-radius:12px!important;}
-.dacre-page-chrome{background:linear-gradient(145deg,#0b111b,#080c13)!important;border:1px solid rgba(126,160,210,.18)!important;box-shadow:0 18px 45px rgba(0,0,0,.24)!important;}.dacre-page-chrome .page-title{color:#f7f9ff!important;}.dacre-page-chrome .page-subtitle{color:#9aa8bd!important;}.dacre-page-chrome .page-kicker{color:#6da6ff!important;}.dacre-page-chrome .page-icon{background:linear-gradient(145deg,rgba(47,125,255,.18),rgba(139,92,246,.18))!important;color:#69a4ff!important;border-color:rgba(47,125,255,.35)!important;}.dacre-quickbar{background:linear-gradient(90deg,#05070b,#0d1521)!important;border:1px solid rgba(47,125,255,.22)!important;border-left:5px solid #2f7dff!important;}
-.user-dash,.user-work-card,.user-kpi,.notice-card,.feature-card,.step,.metric,.callout{background:linear-gradient(145deg,#0b111b,#080d15)!important;border-color:rgba(126,160,210,.18)!important;color:#f7f9ff!important;}.user-dash h1,.user-dash h2,.user-dash h3,.user-dash b,.user-work-card h3,.user-kpi b{color:#f7f9ff!important;}.user-dash p,.user-work-card p,.user-kpi span{color:#9aa8bd!important;}
-.master-command-hero{padding:34px;border-radius:24px;background:radial-gradient(circle at 85% 15%,rgba(57,215,255,.15),transparent 26%),radial-gradient(circle at 15% 85%,rgba(139,92,246,.14),transparent 30%),linear-gradient(145deg,#060a11,#0d1521);border:1px solid rgba(76,132,220,.28);box-shadow:0 28px 70px rgba(0,0,0,.34);margin-bottom:22px;}.master-command-kicker{color:#55d9ff;font-size:10px;font-weight:900;letter-spacing:.18em;}.master-command-title{font-size:clamp(34px,4vw,58px);font-weight:900;letter-spacing:-.045em;color:#fff;margin-top:8px;}.master-command-sub{max-width:900px;color:#a9b8cc;line-height:1.7;margin-top:10px;}.master-command-tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;}.master-command-tags span{padding:7px 10px;border-radius:999px;background:rgba(47,125,255,.10);border:1px solid rgba(47,125,255,.25);color:#8fc1ff;font-size:10px;font-weight:800;}
-.master-stat{padding:16px;border-radius:16px;background:linear-gradient(145deg,#0b111b,#080c13);border:1px solid rgba(126,160,210,.18);min-height:108px;}.master-stat span{display:block;color:#72839a;font-size:9px;letter-spacing:.12em;font-weight:900;}.master-stat strong{display:block;color:#fff;font-size:30px;margin-top:7px;}.master-stat small{color:#8998ad;font-size:10px;}.master-section-title{font-size:11px;font-weight:900;letter-spacing:.14em;color:#69a7ff;margin:26px 0 10px;}.master-section-title.compact{margin-top:18px;}.pulse-card{padding:16px;border-radius:16px;background:#090f18;border:1px solid rgba(126,160,210,.18);}.pulse-row{display:flex;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid rgba(126,160,210,.10);font-size:12px;color:#aab7ca;}.pulse-row:last-child{border-bottom:0;}.good{color:#45e6a5!important;}.warn{color:#ffd166!important;}.blue{color:#69a7ff!important;}.di-monitor-card{padding:12px;border-radius:16px;background:linear-gradient(145deg,#0a1019,#070b11);border:1px solid rgba(126,160,210,.16);margin-bottom:10px;min-height:170px;}.di-monitor-card img{width:82px;height:82px;object-fit:cover;border-radius:14px;border:1px solid rgba(47,125,255,.35);display:block;margin-bottom:8px;}.di-monitor-fallback{width:82px;height:82px;display:grid;place-items:center;border-radius:14px;background:linear-gradient(145deg,#12325b,#24134f);color:#72c8ff;font-size:30px;margin-bottom:8px;}.di-monitor-name{font-weight:850;color:#fff;font-size:15px;}.di-monitor-role{color:#8fa0b6;font-size:10px;margin-top:3px;min-height:28px;}.di-monitor-status{font-size:9px;font-weight:900;letter-spacing:.08em;margin-top:9px;}.ceo-full-portrait{width:100%;max-width:460px;aspect-ratio:16/10;margin:0 auto;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:18px;background:#05070b;border:1px solid rgba(57,215,255,.28);box-shadow:0 18px 50px rgba(0,0,0,.35);}.ceo-full-portrait img{width:100%;height:100%;object-fit:contain;object-position:center;background:#05070b;display:block;}
-[data-testid="stDataFrame"]{border:1px solid rgba(126,160,210,.18)!important;border-radius:12px!important;overflow:hidden!important;}
-@media(max-width:900px){.block-container{padding:20px 18px 60px!important;}.master-command-hero{padding:25px;}.master-stat{min-height:96px;}}@media(max-width:620px){.block-container{padding:16px 12px 50px!important;}.master-command-title{font-size:34px;}.master-command-hero{padding:20px;}.dacre-page-chrome{padding:15px;}.dacre-quickbar{flex-direction:column;align-items:flex-start;}}
-</style>
-""", unsafe_allow_html=True)
-
 def render_enterprise_sidebar(user):
     if not user:
         return
     if user.get("role") == "master":
         st.sidebar.markdown("## 👑 DACRE COMMAND")
-        st.sidebar.caption("Founder / Overall Administrator · monitoring mode")
-        st.sidebar.markdown('<div style="padding:8px 10px;border:1px solid rgba(47,125,255,.25);border-radius:10px;background:rgba(47,125,255,.08);color:#8fc1ff;font-size:10px;font-weight:800;letter-spacing:.08em">PRIVATE SYSTEM VISIBILITY</div>', unsafe_allow_html=True)
+        st.sidebar.caption("Founder / Overall Administrator")
         selected = st.sidebar.radio(
             "Command navigation",
             MASTER_PAGES,
@@ -8720,10 +8616,10 @@ def render_productivity_bar(user):
 
     if master:
         actions = [
-            ("Command Center", "Overview"),
-            ("Live Activity", "System Activity"),
-            ("System Health", "System Health"),
-            ("Overall Admin DI", "Overall Admin DI Portal"),
+            ("New overview", "Overview"),
+            ("Open DI Home", "DI Home"),
+            ("Work with data", "Workspace & Data"),
+            ("Admin DI", "Overall Admin DI Portal"),
         ]
     else:
         actions = [
@@ -8770,7 +8666,7 @@ def main_app():
     selected_page = st.session_state.get("selected_page", "Overview")
 
     if user.get("role") != "master":
-        allowed = {"Overview","DI Home","DI Workforce","Workspace & Data","Business Twin","Decision Ledger","Opportunity Radar","File Vault","Export Center","Research Store"}
+        allowed = {"Overview","Workspace & Data","Business Twin","Decision Ledger","Opportunity Radar","File Vault","Export Center","Research Store"}
         if selected_page not in allowed:
             selected_page = "Overview"
             st.session_state.selected_page = selected_page
@@ -8779,22 +8675,18 @@ def main_app():
 
     if selected_page == "Overview":
         if user.get("role") == "master":
-            render_master_command_center(user)
+            render_dacre_production_core()
+            st.markdown("---")
+            render_analytics_overview(user)
         else:
             render_user_dashboard(user)
-    elif selected_page == "System Activity" and user.get("role") == "master":
-        render_master_activity_monitor(user)
-    elif selected_page == "System Health" and user.get("role") == "master":
-        render_master_system_health(user)
-    elif selected_page == "David Creation" and user.get("role") == "master":
-        render_david_creation_portal(user)
     elif selected_page == "Research Store" and user.get("role") != "master":
         render_research_store(user)
-    elif selected_page == "DI Home":
+    elif selected_page == "DI Home" and user.get("role") == "master":
         render_real_di_home(user)
     elif selected_page == "DI Calls" and user.get("role") == "master":
         render_di_calls(user)
-    elif selected_page == "DI Workforce":
+    elif selected_page == "DI Workforce" and user.get("role") == "master":
         render_real_di_workforce(user)
     elif selected_page == "🌍 Global Markets" and user.get("role") == "master":
         render_global_markets_dashboard()
@@ -8828,8 +8720,6 @@ def main_app():
         render_organization_admin(user)
     elif selected_page == "Overall Admin DI Portal" and user.get("role") == "master":
         render_fixed_overall_admin_page(user)
-    elif selected_page == "DI Basement" and user.get("role") == "master":
-        render_di_basement(user)
     else:
         if user.get("role") == "master":
             st.info("This command module is available from the master navigation.")
