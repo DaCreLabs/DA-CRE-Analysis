@@ -1,6 +1,6 @@
 # =============================================================================
 # DACRE WORLDWIDE - COMPLETE PRODUCTION BUILD (FIXED)
-# Version: 7.7.1 - Founder Command Center / 3D DI Office Fabric
+# Version: 7.7.2 - Founder Command Center / Physical DI Robot 3D Office Fabric
 # Total Lines: ~12,000+
 # Features: Self-Healing DB, DI Intelligence, Error Shield, Voice, Video, AI
 # =============================================================================
@@ -7285,10 +7285,7 @@ def render_persistent_di_basement_world():
     for idx, spec in enumerate(REAL_DI_ROSTER, start=1):
         room = by_name.get(spec["name"], {})
         face = di_face_data_url(spec["name"])
-        if face:
-            face_html = f'<img src="{face}" class="world-face" alt="{spec["name"]}">'
-        else:
-            face_html = f'<div class="world-face-fallback">{html.escape(spec["name"][:1])}</div>'
+        face_html = _di_robot_figure(face, spec["name"], status, compact=True)
         activity = html.escape(str(room.get("activity", "MONITORING")))
         screen_title = html.escape(str(room.get("screen_title", "Operations Console")))
         screen_text = html.escape(str(room.get("screen_text", "Monitoring DACRE platform")))
@@ -7355,9 +7352,7 @@ def render_persistent_di_basement_world():
       .room-grid{{position:absolute;left:-20%;right:-20%;bottom:-42%;height:140%;background-image:linear-gradient(rgba(88,199,255,.12) 1px,transparent 1px),linear-gradient(90deg,rgba(88,199,255,.12) 1px,transparent 1px);background-size:28px 28px;transform:perspective(170px) rotateX(63deg);opacity:.45}}
       .room-floor{{position:absolute;left:23%;right:23%;bottom:18px;height:15px;border-radius:50%;background:#58c7ff22;filter:blur(7px);box-shadow:0 0 35px 12px #58c7ff1c}}
       .room-beam{{position:absolute;left:50%;top:18%;bottom:20px;width:100px;transform:translateX(-50%);background:linear-gradient(90deg,transparent,#58c7ff18,transparent);filter:blur(6px);animation:beamPulse 2.4s ease-in-out infinite}}
-      .room-avatar{{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);width:105px;height:105px;display:grid;place-items:center;animation:avatarFloat 3.2s ease-in-out infinite;filter:drop-shadow(0 0 18px #58c7ff66)}}
-      .world-face,.world-face-fallback{{width:82px;height:82px;border-radius:50%;object-fit:cover;border:1px solid #58c7ff99;opacity:.9;box-shadow:0 0 20px #58c7ff55;mix-blend-mode:screen}}
-      .world-face-fallback{{display:grid;place-items:center;background:#0b2b43;color:#9de5ff;font-size:34px;font-weight:900}}
+      .room-avatar{{position:absolute;left:50%;top:47%;transform:translate(-50%,-50%) scale(.86);width:112px;height:145px;display:block;animation:avatarFloat 3.2s ease-in-out infinite;filter:drop-shadow(0 0 18px #58c7ff66);z-index:5}}
       .room-ring{{position:absolute;left:50%;top:44%;width:105px;height:34px;border:1px solid #58c7ff77;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 18px #58c7ff33;animation:ringSpin 5s linear infinite}}
       .ring-b{{width:135px;height:48px;transform:translate(-50%,-50%) rotate(60deg);animation-duration:8s;animation-direction:reverse}}
       .room-identity{{padding:10px 12px 6px;display:flex;justify-content:space-between;gap:8px;align-items:flex-start}}
@@ -9616,9 +9611,40 @@ def _founder_module_status():
     return status
 
 
+def _di_robot_figure(face, name, state="ONLINE", compact=False):
+    """Render a visible humanoid DI robot inside its physical office scene.
+
+    This intentionally never falls back to a letter/initial. When a DI face
+    asset exists it is placed inside the robot head; the rest of the figure is
+    a CSS-rendered humanoid service robot with a torso, arms, hands and legs.
+    """
+    safe_name = html.escape(str(name or "DI"))
+    safe_state = html.escape(str(state or "ONLINE"))
+    if face:
+        head = f'<img class="di-robot-face" src="{face}" alt="{safe_name} face">'
+    else:
+        head = '<div class="di-robot-face di-robot-face-core"><span></span></div>'
+    size_class = " compact" if compact else ""
+    return f"""<div class="di-robot-figure{size_class}" aria-label="{safe_name} physical DI robot">
+      <div class="di-robot-status-light"></div>
+      <div class="di-robot-head">{head}<i class="di-robot-eye eye-left"></i><i class="di-robot-eye eye-right"></i></div>
+      <div class="di-robot-neck"></div>
+      <div class="di-robot-torso">
+        <div class="di-robot-chest-glow"></div><div class="di-robot-chest-label">DI</div>
+        <div class="di-robot-core"></div>
+      </div>
+      <div class="di-robot-arm arm-left"><span class="di-robot-joint"></span><b></b></div>
+      <div class="di-robot-arm arm-right"><span class="di-robot-joint"></span><b></b></div>
+      <div class="di-robot-hand hand-left"></div><div class="di-robot-hand hand-right"></div>
+      <div class="di-robot-hips"></div>
+      <div class="di-robot-leg leg-left"><span></span></div><div class="di-robot-leg leg-right"><span></span></div>
+      <div class="di-robot-foot foot-left"></div><div class="di-robot-foot foot-right"></div>
+      <div class="di-robot-state">{safe_state}</div>
+    </div>"""
+
 def _founder_office_card(spec, room_number, activity, screen_text):
     face=di_face_data_url(spec["name"])
-    face_html=f'<img src="{face}" alt="{html.escape(spec["name"])}" class="office-face">' if face else f'<div class="office-face office-face-fallback">{html.escape(spec["name"][:1])}</div>'
+    robot_html=_di_robot_figure(face, spec["name"], "ONLINE")
     return f'''
     <div class="founder-office">
       <div class="office-ceiling"></div>
@@ -9626,7 +9652,7 @@ def _founder_office_card(spec, room_number, activity, screen_text):
       <div class="office-scene">
         <div class="office-wall-line"></div><div class="office-light light-a"></div><div class="office-light light-b"></div>
         <div class="office-window"><span>DACRE WORLDWIDE</span><small>LIVE OPERATIONS</small></div>
-        <div class="office-person">{face_html}<div class="person-aura"></div></div>
+        <div class="office-person">{robot_html}</div>
         <div class="office-desk"></div>
         <div class="office-monitor"><div class="monitor-top">DI WORKSTATION <span>LIVE</span></div><div class="monitor-name">{html.escape(spec["name"])}</div><div class="monitor-text">{html.escape(str(screen_text))}</div><div class="monitor-bars"><i></i><i></i><i></i><i></i></div></div>
         <div class="office-chair"></div><div class="office-floor"></div>
@@ -9672,7 +9698,7 @@ def render_founder_3d_di_offices():
       .founder-office-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:16px}.founder-office{overflow:hidden;border:1px solid #264862;border-radius:18px;background:#050b13;box-shadow:0 18px 45px rgba(0,0,0,.38),inset 0 0 40px rgba(68,183,255,.04)}
       .office-ceiling{height:5px;background:linear-gradient(90deg,#58c7ff,#9ee7ff,#ff9f43)}.office-header{display:flex;justify-content:space-between;padding:10px 12px;color:#7591a8;font-size:8px;letter-spacing:.14em;font-weight:900;background:#07111c}.office-header b{color:#63e6a5;font-size:8px}
       .office-scene{height:190px;position:relative;overflow:hidden;background:linear-gradient(180deg,#0b1b2b,#08111c 62%,#03070d);perspective:550px}.office-wall-line{position:absolute;left:0;right:0;top:38%;height:1px;background:#21425a}.office-light{position:absolute;top:8px;width:55px;height:6px;border-radius:50%;background:#a9eaff;box-shadow:0 0 18px #58c7ff;opacity:.55}.light-a{left:24%}.light-b{right:24%}.office-window{position:absolute;right:10px;top:25px;width:72px;height:42px;border:1px solid #315a75;background:linear-gradient(145deg,#0a2031,#07101a);border-radius:4px;padding:6px}.office-window span{display:block;color:#5fd4ff;font-size:5px;font-weight:900;letter-spacing:.08em}.office-window small{color:#7894a9;font-size:5px}
-      .office-person{position:absolute;left:29%;bottom:47px;width:78px;height:105px;display:grid;place-items:center;z-index:4;animation:founderFloat 4s ease-in-out infinite}.office-face{width:58px;height:58px;border-radius:50%;object-fit:cover;border:2px solid #69d9ff;box-shadow:0 0 22px rgba(88,199,255,.32);position:relative;z-index:3}.office-face-fallback{display:grid;place-items:center;background:#092237;color:#a9e9ff;font-size:26px;font-weight:900}.person-aura{position:absolute;width:76px;height:92px;border-radius:50%;border:1px solid #58c7ff33;box-shadow:0 0 28px #58c7ff22}
+      .office-person{position:absolute;left:22%;bottom:34px;width:112px;height:145px;z-index:8;animation:founderFloat 4s ease-in-out infinite;filter:drop-shadow(0 0 18px rgba(88,199,255,.26))}.di-robot-figure{position:relative;width:112px;height:145px}.di-robot-status-light{position:absolute;left:50%;top:-7px;width:7px;height:7px;transform:translateX(-50%);border-radius:50%;background:#66f0ad;box-shadow:0 0 12px #66f0ad;z-index:20}.di-robot-head{position:absolute;left:50%;top:4px;width:45px;height:43px;transform:translateX(-50%);border:2px solid #6edbff;border-radius:15px 15px 12px 12px;background:linear-gradient(145deg,#dce9f2,#6d8293 46%,#1b2d3b);box-shadow:inset 0 0 12px #ffffff33,0 0 20px #58c7ff30;z-index:10;overflow:hidden}.di-robot-face{position:absolute;inset:5px 4px 8px;width:35px;height:29px;border-radius:10px;object-fit:cover;opacity:.92;filter:saturate(.85) contrast(1.08);border:1px solid #9de9ff77}.di-robot-face-core{background:radial-gradient(circle at 50% 45%,#5de0ff 0 8%,#0b2c45 30%,#020a12 72%)}.di-robot-face-core span:before,.di-robot-face-core span:after{content:"";position:absolute;top:13px;width:7px;height:3px;border-radius:3px;background:#8ff0ff;box-shadow:0 0 7px #58c7ff}.di-robot-face-core span:before{left:8px}.di-robot-face-core span:after{right:8px}.di-robot-eye{position:absolute;top:17px;width:4px;height:4px;border-radius:50%;background:#8ff3ff;box-shadow:0 0 6px #58c7ff;z-index:4}.eye-left{left:9px}.eye-right{right:9px}.di-robot-neck{position:absolute;left:50%;top:45px;width:13px;height:9px;transform:translateX(-50%);border-left:2px solid #6f8494;border-right:2px solid #6f8494;background:#172735}.di-robot-torso{position:absolute;left:50%;top:51px;width:48px;height:55px;transform:translateX(-50%);border:2px solid #5c7588;border-radius:13px 13px 9px 9px;background:linear-gradient(160deg,#cad7df,#607789 42%,#172735);box-shadow:inset 0 0 16px #ffffff22,0 0 15px #58c7ff20;z-index:8}.di-robot-chest-glow{position:absolute;left:50%;top:10px;width:22px;height:12px;transform:translateX(-50%);border-radius:8px;background:#06263a;box-shadow:0 0 12px #58c7ff66;border:1px solid #65dfff88}.di-robot-chest-label{position:absolute;top:12px;left:50%;transform:translateX(-50%);font-size:5px;font-weight:900;color:#8deaff;letter-spacing:.08em}.di-robot-core{position:absolute;left:50%;bottom:7px;width:12px;height:12px;transform:translateX(-50%);border-radius:50%;background:#57d8ff;box-shadow:0 0 13px #57d8ff}.di-robot-arm{position:absolute;top:57px;width:13px;height:46px;border:2px solid #617a8b;border-radius:8px;background:linear-gradient(180deg,#aebdc7,#3b5060);z-index:6}.arm-left{left:24px;transform:rotate(8deg)}.arm-right{right:24px;transform:rotate(-8deg)}.di-robot-joint{position:absolute;left:2px;top:18px;width:5px;height:5px;border-radius:50%;background:#5bdcff;box-shadow:0 0 6px #5bdcff}.di-robot-arm b{position:absolute;left:2px;bottom:6px;width:5px;height:5px;border-radius:2px;background:#243746}.di-robot-hand{position:absolute;top:101px;width:11px;height:13px;border:2px solid #71899a;border-radius:5px;background:#536978;z-index:9}.hand-left{left:25px}.hand-right{right:25px}.di-robot-hips{position:absolute;left:50%;top:104px;width:37px;height:12px;transform:translateX(-50%);border:2px solid #536b7c;border-radius:7px;background:#304654;z-index:7}.di-robot-leg{position:absolute;top:113px;width:14px;height:26px;border:2px solid #526b7d;border-radius:7px;background:linear-gradient(180deg,#7f929e,#263b49);z-index:5}.leg-left{left:42px}.leg-right{right:42px}.di-robot-foot{position:absolute;top:136px;width:23px;height:8px;border:2px solid #536c7d;border-radius:5px;background:#172a38;z-index:6}.foot-left{left:35px}.foot-right{right:35px}.di-robot-state{position:absolute;left:50%;top:146px;transform:translateX(-50%);font-size:5px;letter-spacing:.12em;color:#63e6a5;font-weight:900;white-space:nowrap}.di-robot-figure.compact{transform:scale(.78);transform-origin:center bottom}
       .office-desk{position:absolute;left:16%;right:14%;bottom:32px;height:24px;border-radius:5px;background:linear-gradient(180deg,#24384b,#111b27);border:1px solid #38536a;z-index:5;box-shadow:0 9px 0 #0a1119}.office-desk:after{content:"";position:absolute;left:8%;right:8%;bottom:-26px;height:26px;border-left:3px solid #172534;border-right:3px solid #172534}.office-monitor{position:absolute;right:13%;bottom:58px;width:86px;height:55px;border:2px solid #365a72;border-radius:5px;background:#03111b;z-index:7;box-shadow:0 0 16px #58c7ff15;padding:5px}.monitor-top{font-size:5px;color:#5fd4ff;font-weight:900}.monitor-top span{float:right;color:#64e7a7}.monitor-name{color:#fff;font-size:8px;font-weight:900;margin-top:5px}.monitor-text{color:#7993a8;font-size:5px;line-height:1.35;margin-top:3px;white-space:nowrap;overflow:hidden}.monitor-bars{display:flex;gap:3px;margin-top:6px;align-items:flex-end;height:10px}.monitor-bars i{display:block;width:7px;background:#58c7ff;border-radius:2px 2px 0 0}.monitor-bars i:nth-child(1){height:4px}.monitor-bars i:nth-child(2){height:8px}.monitor-bars i:nth-child(3){height:6px}.monitor-bars i:nth-child(4){height:10px}.office-chair{position:absolute;left:34%;bottom:19px;width:38px;height:28px;border:2px solid #314a5e;border-bottom:0;border-radius:12px 12px 4px 4px;z-index:6}.office-floor{position:absolute;left:-15%;right:-15%;bottom:-82px;height:130px;background-image:linear-gradient(#1c3c52 1px,transparent 1px),linear-gradient(90deg,#1c3c52 1px,transparent 1px);background-size:28px 18px;transform:perspective(220px) rotateX(58deg);opacity:.45}
       .office-info{display:flex;justify-content:space-between;gap:8px;padding:10px 12px 6px;background:#07111c}.office-info strong{display:block;color:#fff;font-size:13px}.office-info small{display:block;color:#7892a7;font-size:7px;margin-top:2px}.office-info>span{color:#6ed8ff;font-size:7px;text-align:right;max-width:100px}.office-activity{display:flex;justify-content:space-between;gap:8px;padding:8px 12px 10px;border-top:1px solid #18354a;background:#050b13}.office-activity b{color:#ffb56e;font-size:7px;letter-spacing:.08em}.office-activity span{color:#6b8ca2;font-size:6px}@keyframes founderFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
       @media(max-width:1200px){.founder-office-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:900px){.founder-office-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.founder-office-grid{grid-template-columns:1fr}}
