@@ -1,6 +1,6 @@
 # =============================================================================
 # DACRE WORLDWIDE - COMPLETE PRODUCTION BUILD (FIXED)
-# Version: 7.2.0 - Enterprise Production Core / Professional UX Refresh
+# Version: 7.3.0 - Dark Online Robot / Holographic Service Fabric
 # Total Lines: ~12,000+
 # Features: Self-Healing DB, DI Intelligence, Error Shield, Voice, Video, AI
 # =============================================================================
@@ -11,6 +11,7 @@
 
 import hashlib
 import hmac
+import html
 import io
 import json
 import os
@@ -159,15 +160,15 @@ button[title*="sidebar" i]{
   padding:0 !important;
   align-items:center !important;
   justify-content:center !important;
-  background:#101828 !important;
-  border:1px solid #101828 !important;
+  background:#fff !important;
+  border:1px solid #d0d5dd !important;
   border-radius:10px !important;
-  color:#fff !important;
-  box-shadow:0 5px 14px rgba(16,24,40,.18) !important;
+  color:#101828 !important;
+  box-shadow:0 2px 8px rgba(16,24,40,.06) !important;
 }
 [data-testid="stSidebarCollapseButton"] svg,
 button[aria-label*="sidebar" i] svg,
-button[title*="sidebar" i] svg{color:#fff !important;fill:#fff !important;stroke:#fff !important;}
+button[title*="sidebar" i] svg{color:#101828 !important;fill:#101828 !important;stroke:#101828 !important;}
 /* Do not hide the whole header — only the Streamlit deployment controls. */
 [data-testid="stToolbar"], .stToolbar, .stDeployButton, #MainMenu, [data-testid="stStatusWidget"]{
   display:none !important;
@@ -291,46 +292,22 @@ label, .stTextInput label, .stSelectbox label, .stFileUploader label{color:#3440
   .dacre-quickbar{align-items:flex-start;flex-direction:column;}
   .user-kpis{grid-template-columns:1fr 1fr;}
 }
-/* ========================================================================
-   DACRE v7.2 UX POLISH
-   White enterprise surfaces + black typography + blue action hierarchy.
-   ======================================================================== */
-.dacre-page-chrome, .user-dash, .user-work-card, .user-kpi, .dacre-panel,
-.feature-card, .step, .metric, .callout {
-  transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease !important;
-}
-.user-work-card:hover, .user-kpi:hover, .feature-card:hover, .step:hover, .metric:hover {
-  transform:translateY(-2px) !important;
-  border-color:#c7dbff !important;
-  box-shadow:0 14px 34px rgba(16,24,40,.09) !important;
-}
-.dacre-page-chrome:before { width:6px !important; background:linear-gradient(180deg,#1769ff,#4d8dff) !important; }
-.dacre-quickbar { border-left:5px solid #1769ff !important; }
-.dacre-quickbar .quick-brand { color:#fff !important; }
-[data-testid="stSidebar"] { padding-top:10px !important; }
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h2,
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h3 { color:#101828 !important; }
-[data-testid="stSidebar"] .stRadio > label { color:#667085 !important; font-size:11px !important; font-weight:800 !important; text-transform:uppercase !important; letter-spacing:.08em !important; }
-[data-testid="stSidebar"] .stRadio div[role="radiogroup"] label {
-  border-radius:10px !important; padding:6px 8px !important; margin:2px 0 !important;
-}
-[data-testid="stSidebar"] .stRadio div[role="radiogroup"] label:hover { background:#eaf2ff !important; }
-/* Strong keyboard focus for accessibility. */
-button:focus-visible, input:focus-visible, textarea:focus-visible, [role="combobox"]:focus-visible {
-  outline:3px solid rgba(23,105,255,.25) !important; outline-offset:2px !important;
-}
-/* Landing-page navigation and CTA hierarchy. */
-.dacre-nav { border-top:3px solid #1769ff !important; }
-.hero-eyebrow { box-shadow:0 4px 12px rgba(23,105,255,.08) !important; }
-.hero-title .gradient-text, .gradient-text { color:#1769ff !important; }
-.cta { background:#101828 !important; border-top:5px solid #1769ff !important; }
-/* Keep content readable on smaller phones. */
-@media(max-width:680px){
-  .block-container{padding:16px 12px 48px !important;}
-  .dacre-page-chrome{padding:14px 16px !important;border-radius:14px !important;}
-  .dacre-quickbar{border-left-width:4px !important;}
-  [data-testid="stSidebarCollapseButton"], button[aria-label*="sidebar" i], button[title*="sidebar" i]{width:40px !important;height:40px !important;}
-}
+/* DACRE 7.3 DARK ONLINE ROBOT THEME */
+:root{--dacre-bg:#050914;--dacre-surface:#0b1220;--dacre-surface-2:#101a2b;--dacre-border:#203149;--dacre-blue:#58c7ff;--dacre-blue-dark:#1d8fd0;--dacre-orange:#ff9f43;--dacre-copper:#b9784f;--dacre-text:#f4f8ff;--dacre-muted:#a7b7ca;--dacre-shadow:0 18px 55px rgba(0,0,0,.34)}
+.stApp,[data-testid="stAppViewContainer"],.main{background:radial-gradient(circle at 70% -10%,rgba(88,199,255,.10),transparent 35%),#050914!important;color:#f4f8ff!important}
+[data-testid="stSidebar"]{background:linear-gradient(180deg,#05070d,#0a101b 65%,#070b12)!important;border-right:1px solid #1b2a3d!important}
+[data-testid="stSidebar"] *{color:#f5f9ff!important}
+[data-testid="stSidebar"] button{background:#05070b!important;border:1px solid #2a3c53!important;color:#fff!important}
+[data-testid="stSidebar"] button:hover{background:#132033!important;border-color:#58c7ff!important}
+.main h1,.main h2,.main h3,.main h4,.main h5,.main h6{color:#f7fbff!important}.main p,.main li,.main label,.stCaption{color:#c1cede!important}
+.stTextInput input,.stTextArea textarea,.stNumberInput input,.stSelectbox div[data-baseweb="select"]>div,.stMultiSelect div[data-baseweb="select"]>div,.stDateInput input{background:#0b1220!important;color:#fff!important;border-color:#2b4059!important}
+.stTextInput input::placeholder,.stTextArea textarea::placeholder{color:#71839a!important}.stButton>button{background:#0b1422!important;color:#fff!important;border:1px solid #2d425b!important;border-radius:12px!important}
+.stButton>button:hover{border-color:#58c7ff!important;box-shadow:0 0 22px rgba(88,199,255,.14)!important;transform:translateY(-1px)!important}.stButton>button[kind="primary"],.stButton>button[data-testid="baseButton-primary"]{background:linear-gradient(135deg,#178dd0,#58c7ff)!important;color:#04111b!important;border:0!important;font-weight:900!important}
+[data-testid="stMetric"]{background:linear-gradient(145deg,#0d1727,#0a111d)!important;border:1px solid #263a52!important;color:#fff!important;box-shadow:0 18px 55px rgba(0,0,0,.34)!important}[data-testid="stMetricLabel"],[data-testid="stMetricValue"]{color:#fff!important}.stAlert{background:#0d1727!important;border-color:#2c4560!important;color:#fff!important}
+.dacre-page-chrome{background:linear-gradient(145deg,#0c1524,#09111d)!important;border-color:#263b54!important;box-shadow:0 18px 55px rgba(0,0,0,.34)!important}.dacre-page-chrome:before{background:linear-gradient(180deg,#58c7ff,#ff9f43,#b9784f)!important}.dacre-page-chrome .page-kicker{color:#79d3ff!important}.dacre-page-chrome .page-title{color:#fff!important}.dacre-page-chrome .page-subtitle{color:#aabbd0!important}.dacre-page-chrome .page-icon{background:#0d1b2d!important;color:#58c7ff!important;border-color:#31506d!important}
+.chrome-pill{background:#102d24!important;color:#78f0b0!important;border-color:#276448!important}.chrome-pill.soft{background:#151d2a!important;color:#b7c6d8!important;border-color:#2a3c53!important}.dacre-quickbar{background:linear-gradient(90deg,#05080e,#0d1725 65%,#13253a)!important;border:1px solid #263e58!important}
+.user-dash,.user-kpi,.user-work-card,.notice-card{background:#0b1422!important;border-color:#263b54!important;box-shadow:0 18px 55px rgba(0,0,0,.34)!important}.user-dash h1,.user-dash h2,.user-dash h3,.user-dash b,.user-kpi b,.user-work-card h3{color:#fff!important}.user-dash p,.user-kpi span,.user-work-card p{color:#b1bfd0!important}
+.dacre-dark-section{background:linear-gradient(145deg,#0b1422,#101b2b);border:1px solid #2a405b;border-radius:20px;padding:22px;box-shadow:0 18px 55px rgba(0,0,0,.34)}.dacre-section-blue{border-left:5px solid #58c7ff!important}.dacre-section-orange{border-left:5px solid #ff9f43!important}.dacre-section-copper{border-left:5px solid #b9784f!important}
 </style>
 """, unsafe_allow_html=True)
 
@@ -847,6 +824,18 @@ def _ensure_core_tables(con):
             id INTEGER PRIMARY KEY AUTOINCREMENT, di_id INTEGER NOT NULL, title TEXT,
             content TEXT, source TEXT DEFAULT 'master', created_by TEXT, created_at TEXT,
             updated_at TEXT, active INTEGER DEFAULT 1)""",
+        "di_research_store": """CREATE TABLE IF NOT EXISTS di_research_store (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_name TEXT NOT NULL DEFAULT '',
+            di_id INTEGER,
+            di_name TEXT NOT NULL DEFAULT 'DI',
+            question TEXT NOT NULL,
+            answer TEXT NOT NULL,
+            source TEXT NOT NULL DEFAULT 'local',
+            server_endpoint TEXT DEFAULT '',
+            created_at TEXT NOT NULL,
+            last_accessed TEXT NOT NULL
+        )""",
         "di_position_history": """CREATE TABLE IF NOT EXISTS di_position_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT, di_id INTEGER, old_position TEXT,
             new_position TEXT, old_rank INTEGER, new_rank INTEGER, appointed_by TEXT, created_at TEXT)""",
@@ -992,6 +981,8 @@ def ensure_runtime_schema():
             WHERE sender IS NULL OR TRIM(sender) = ''
         """)
         con.execute("CREATE INDEX IF NOT EXISTS idx_chat_history_user_company ON chat_history(username, company_name, id)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_di_research_store_company ON di_research_store(company_name, id)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_di_research_store_di ON di_research_store(di_id, id)")
         con.commit()
     finally:
         con.close()
@@ -1213,6 +1204,7 @@ def send_di_welcome_email(first_name, last_name, company_name, email, email_pass
     # Gmail is the production mail provider for DACRE.
     # Credentials MUST come from Streamlit Secrets/environment variables; never hard-code them.
     providers = [
+        ("Mailjet", "DACRE_MAILJET_SMTP_HOST", "DACRE_MAILJET_SMTP_PORT", "DACRE_MAILJET_SMTP_USER", "DACRE_MAILJET_SMTP_PASSWORD", "DACRE_MAILJET_SMTP_FROM"),
         ("Gmail", "DACRE_GMAIL_SMTP_HOST", "DACRE_GMAIL_SMTP_PORT", "DACRE_GMAIL_SMTP_USER", "DACRE_GMAIL_SMTP_PASSWORD", "DACRE_GMAIL_SMTP_FROM"),
     ]
 
@@ -4933,7 +4925,12 @@ def landing_page():
       .auth-badge { display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid #cfe0ff;background:#eaf2ff;color:#0b4fd1;font-size:12px;font-weight:700; }
       @media(max-width:980px){ .hero{grid-template-columns:1fr;padding-top:52px}.grid-3,.grid-2{grid-template-columns:1fr 1fr}.workflow{grid-template-columns:1fr 1fr}.metric-row{grid-template-columns:1fr 1fr}.hero-visual-host{min-height:430px} }
       @media(max-width:680px){ .block-container{padding:0 12px 40px !important}.dacre-nav{position:static;padding:12px}.dacre-brand{min-width:auto}.system-ready{display:none}.hero{padding:48px 10px 25px;min-height:auto}.hero-title{font-size:48px}.section,.page-hero{padding:48px 10px 20px}.grid-3,.grid-2,.workflow,.metric-row{grid-template-columns:1fr}.section-title{font-size:31px}.hero-visual-host{min-height:360px}.cta{margin:18px 10px 25px;padding:34px 20px}.footer{padding:22px 10px} }
-    </style>
+    /* DACRE dark landing system */
+.dacre-landing{color:#f5f9ff!important}.dacre-landing .dacre-nav{background:rgba(8,14,24,.94);border-color:#263b54;box-shadow:0 18px 55px rgba(0,0,0,.30);backdrop-filter:blur(14px)}
+.dacre-landing .dacre-brand-name,.dacre-landing .hero-title,.dacre-landing .page-title,.dacre-landing .section-title,.dacre-landing .feature-card h3,.dacre-landing .step h4,.dacre-landing .callout h3,.dacre-landing .metric strong{color:#fff!important}.dacre-landing .dacre-brand-sub,.dacre-landing .hero-copy,.dacre-landing .hero-proof,.dacre-landing .section-copy,.dacre-landing .feature-card p,.dacre-landing .step p,.dacre-landing .callout p,.dacre-landing .metric small,.dacre-landing .footer{color:#aebed0!important}
+.dacre-landing .hero:before{background:linear-gradient(180deg,#58c7ff,#ff9f43)!important}.dacre-landing .hero-eyebrow{background:#0d2235;border-color:#2c5a78;color:#79d3ff}.dacre-landing .gradient-text{color:#58c7ff!important}.dacre-landing .feature-card,.dacre-landing .step,.dacre-landing .metric,.dacre-landing .callout{background:linear-gradient(145deg,#0b1422,#101b2b);border-color:#263b54;box-shadow:0 16px 44px rgba(0,0,0,.28)}
+.dacre-landing .feature-icon{background:#0d2538;color:#58c7ff;border-color:#2c5a78}.dacre-landing .pill{background:#151c28;border-color:#33495f;color:#b9d4e8}.dacre-landing .cta{background:linear-gradient(135deg,#07101b,#11243a);border-color:#31516f}.dacre-landing .footer{border-top:1px solid #203149}.dacre-landing .auth-inner{background:#0b1422;border-color:#263b54}.dacre-landing .auth-title{color:#fff!important}
+</style>
     """, unsafe_allow_html=True)
 
     current_section = st.session_state.get("landing_section", "home")
@@ -6831,6 +6828,315 @@ def di_craft_manifest():
         }
     return manifest
 
+# =============================================================================
+# DACRE ONLINE ROBOT SERVICE FABRIC
+# =============================================================================
+
+def dacre_service_status():
+    """Return non-secret health/configuration state for major online services."""
+    endpoint, _, capacity = _research_server_config()
+    ai = free_ai_provider_status()
+    try:
+        mongo_ready = bool(mongo_enabled())
+    except Exception:
+        mongo_ready = False
+    return {
+        "research_gateway": bool(endpoint),
+        "research_capacity": capacity,
+        "gemini": bool(ai.get("gemini")),
+        "groq": bool(ai.get("groq")),
+        "mongodb": mongo_ready,
+        "mailjet": bool(_free_secret("DACRE_MAILJET_SMTP_USER") and _free_secret("DACRE_MAILJET_SMTP_PASSWORD")),
+        "mailjet_sender": _free_secret("DACRE_MAILJET_SMTP_FROM"),
+    }
+
+def render_online_robot_control_center(user):
+    """Master-only service dashboard. Never displays credentials."""
+    if user.get("role") != "master":
+        return
+    st.markdown("### ◈ Online Robot Service Fabric")
+    st.caption("AI, database, mail and research services used by the DI workforce. Credentials stay server-side.")
+    status = dacre_service_status()
+    cards = [("RESEARCH GATEWAY", "ONLINE" if status["research_gateway"] else "FALLBACK", "#58c7ff"),("GEMINI", "READY" if status["gemini"] else "NOT CONFIGURED", "#58c7ff"),("GROQ", "READY" if status["groq"] else "NOT CONFIGURED", "#ff9f43"),("MONGODB", "READY" if status["mongodb"] else "LOCAL DB", "#b9784f"),("MAILJET", "READY" if status["mailjet"] else "NOT CONFIGURED", "#ff9f43")]
+    cols = st.columns(len(cards))
+    for col, (title, value, accent) in zip(cols, cards):
+        with col:
+            st.markdown(f'<div class="dacre-dark-section" style="padding:15px;border-top:3px solid {accent};"><div style="font-size:10px;letter-spacing:.12em;color:#91a7bd;font-weight:900">{title}</div><div style="font-size:18px;color:#fff;font-weight:900;margin-top:6px">{value}</div></div>', unsafe_allow_html=True)
+    with st.expander("Server configuration guide", expanded=False):
+        st.code('''DACRE_RESEARCH_SERVER_URL=https://your-research-gateway.example/answer
+DACRE_RESEARCH_SERVER_TOKEN=server-side-token
+DACRE_RESEARCH_STORE_CAPACITY=5000
+GEMINI_API_KEY=your-gemini-key
+GROQ_API_KEY=your-groq-key
+DACRE_MAILJET_SMTP_HOST=in-v3.mailjet.com
+DACRE_MAILJET_SMTP_PORT=587
+DACRE_MAILJET_SMTP_USER=mailjet-api-key
+DACRE_MAILJET_SMTP_PASSWORD=mailjet-secret-key
+DACRE_MAILJET_SMTP_FROM=verified-sender@example.com
+MONGODB_URI=mongodb+srv://...''', language="bash")
+
+# =============================================================================
+# DI BASEMENT RESEARCH SERVER STORE
+# =============================================================================
+
+DI_RESEARCH_STORE_DEFAULT_CAPACITY = 5000
+DI_RESEARCH_SERVER_TIMEOUT = 30
+
+
+def _research_server_config():
+    """Read the optional server gateway configuration without exposing secrets."""
+    try:
+        endpoint = str(st.secrets.get("DACRE_RESEARCH_SERVER_URL", "") or "").strip()
+        token = str(st.secrets.get("DACRE_RESEARCH_SERVER_TOKEN", "") or "").strip()
+        capacity_raw = st.secrets.get("DACRE_RESEARCH_STORE_CAPACITY", DI_RESEARCH_STORE_DEFAULT_CAPACITY)
+    except Exception:
+        endpoint = ""
+        token = ""
+        capacity_raw = DI_RESEARCH_STORE_DEFAULT_CAPACITY
+    endpoint = endpoint or os.getenv("DACRE_RESEARCH_SERVER_URL", "").strip()
+    token = token or os.getenv("DACRE_RESEARCH_SERVER_TOKEN", "").strip()
+    try:
+        capacity = max(100, min(100000, int(capacity_raw)))
+    except (TypeError, ValueError):
+        capacity = DI_RESEARCH_STORE_DEFAULT_CAPACITY
+    return endpoint, token, capacity
+
+
+def di_research_store_ensure_table():
+    """Idempotently ensure the research store exists on older DACRE databases."""
+    con = db()
+    try:
+        con.execute("""CREATE TABLE IF NOT EXISTS di_research_store (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_name TEXT NOT NULL DEFAULT '',
+            di_id INTEGER,
+            di_name TEXT NOT NULL DEFAULT 'DI',
+            question TEXT NOT NULL,
+            answer TEXT NOT NULL,
+            source TEXT NOT NULL DEFAULT 'local',
+            server_endpoint TEXT DEFAULT '',
+            created_at TEXT NOT NULL,
+            last_accessed TEXT NOT NULL
+        )""")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_di_research_store_company ON di_research_store(company_name, id)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_di_research_store_di ON di_research_store(di_id, id)")
+        con.commit()
+    finally:
+        con.close()
+
+
+def di_research_store_stats(company_name=""):
+    """Return store count/capacity without exposing credentials."""
+    di_research_store_ensure_table()
+    _, _, capacity = _research_server_config()
+    con = db()
+    try:
+        if company_name:
+            row = con.execute("SELECT COUNT(*) AS n FROM di_research_store WHERE company_name=?", (company_name,)).fetchone()
+        else:
+            row = con.execute("SELECT COUNT(*) AS n FROM di_research_store").fetchone()
+        count = int(row["n"] if row else 0)
+    finally:
+        con.close()
+    return count, capacity
+
+
+def di_research_store_find(company_name, di_id, question):
+    """Find an exact cached answer and refresh its access timestamp."""
+    if not str(question or "").strip():
+        return None
+    di_research_store_ensure_table()
+    now = datetime.now().isoformat(timespec="seconds")
+    con = db()
+    try:
+        row = con.execute(
+            """SELECT * FROM di_research_store
+               WHERE company_name=? AND di_id=? AND lower(trim(question))=lower(trim(?))
+               ORDER BY id DESC LIMIT 1""",
+            (company_name or "", int(di_id or 0), question),
+        ).fetchone()
+        if row:
+            con.execute("UPDATE di_research_store SET last_accessed=? WHERE id=?", (now, row["id"]))
+            con.commit()
+            return dict(row)
+    finally:
+        con.close()
+    return None
+
+
+def di_research_store_archive_oldest_to_brain(company_name, di_id, di_name, created_by="DI Basement"):
+    """Move the oldest research records into the selected DI's private brain before deletion."""
+    di_research_store_ensure_table()
+    _, _, capacity = _research_server_config()
+    con = db()
+    try:
+        row = con.execute("SELECT COUNT(*) AS n FROM di_research_store WHERE company_name=?", (company_name or "",)).fetchone()
+        count = int(row["n"] if row else 0)
+        if count <= capacity:
+            return 0
+        overflow = count - capacity
+        move_count = min(max(overflow, 1), 100)
+        rows = con.execute(
+            """SELECT * FROM di_research_store WHERE company_name=? ORDER BY id ASC LIMIT ?""",
+            (company_name or "", move_count),
+        ).fetchall()
+        now = datetime.now().isoformat(timespec="seconds")
+        for r in rows:
+            target_di_id = int(r["di_id"] or di_id or 0)
+            target_name = str(r["di_name"] or di_name or "DI")
+            title = f"Research Memory: {str(r['question'])[:160]}"
+            existing = con.execute(
+                "SELECT id FROM di_private_memory WHERE di_id=? AND title=? LIMIT 1",
+                (target_di_id, title),
+            ).fetchone()
+            if existing:
+                con.execute(
+                    "UPDATE di_private_memory SET content=?, source=?, created_by=?, updated_at=?, active=1 WHERE id=?",
+                    (str(r["answer"]), "DI Research Store archive", created_by, now, existing["id"]),
+                )
+            else:
+                con.execute(
+                    """INSERT INTO di_private_memory
+                       (di_id,title,content,source,created_by,created_at,updated_at,active)
+                       VALUES(?,?,?,?,?,?,?,1)""",
+                    (target_di_id, title, str(r["answer"]), "DI Research Store archive", created_by, now, now),
+                )
+            con.execute("DELETE FROM di_research_store WHERE id=?", (r["id"],))
+        con.commit()
+        return len(rows)
+    finally:
+        con.close()
+
+
+def di_research_store_put(company_name, di_id, di_name, question, answer, source="local", endpoint="", created_by="DI"):
+    """Cache an answer, then archive oldest entries into the DI private brain if full."""
+    if not str(question or "").strip() or not str(answer or "").strip():
+        return False
+    di_research_store_ensure_table()
+    now = datetime.now().isoformat(timespec="seconds")
+    con = db()
+    try:
+        con.execute(
+            """INSERT INTO di_research_store
+               (company_name,di_id,di_name,question,answer,source,server_endpoint,created_at,last_accessed)
+               VALUES(?,?,?,?,?,?,?,?,?)""",
+            (company_name or "", int(di_id or 0), di_name or "DI", str(question).strip(), str(answer).strip(), source, endpoint or "", now, now),
+        )
+        con.commit()
+    finally:
+        con.close()
+    di_research_store_archive_oldest_to_brain(company_name or "", di_id, di_name, created_by=created_by)
+    return True
+
+
+def di_research_server_query(question, di_name, company_name, context=""):
+    """Ask the configured DACRE research gateway. The endpoint is server-side configuration.
+
+    An IP address by itself is not an application protocol, so DACRE expects a full URL
+    such as http://192.168.1.20:8000/answer. The URL is never shown to ordinary users.
+    """
+    endpoint, token, _ = _research_server_config()
+    if not endpoint:
+        return None, "Research server is not configured."
+    if not endpoint.startswith(("http://", "https://")):
+        return None, "Research server URL must start with http:// or https://."
+    payload = {
+        "question": str(question).strip(),
+        "di_name": str(di_name or "DI"),
+        "company_name": str(company_name or ""),
+        "context": str(context or "")[:12000],
+    }
+    headers = {"Content-Type": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    try:
+        response = requests.post(endpoint, json=payload, headers=headers, timeout=DI_RESEARCH_SERVER_TIMEOUT)
+        response.raise_for_status()
+        data = response.json()
+        answer = data.get("answer") or data.get("response") or data.get("result")
+        if isinstance(answer, dict):
+            answer = answer.get("text") or answer.get("answer")
+        if not answer:
+            return None, "Research server returned no answer."
+        return str(answer).strip(), None
+    except requests.RequestException as exc:
+        return None, f"Research server request failed: {type(exc).__name__}."
+    except (ValueError, TypeError) as exc:
+        return None, f"Research server returned invalid JSON: {type(exc).__name__}."
+    except Exception as exc:
+        return None, f"Research server error: {type(exc).__name__}."
+
+
+def di_basement_research_answer(agent, user, question, allow_remote=True):
+    """Research pipeline: cache -> configured server -> Gemini/DI reasoning -> cache."""
+    question = str(question or "").strip()
+    if not question:
+        return "Please enter a research question.", "validation"
+    company = str(user.get("company", "") or "")
+    di_id = int(agent.get("id") or 0)
+    di_name = str(agent.get("di_name") or "DI")
+
+    cached = di_research_store_find(company, di_id, question)
+    if cached:
+        return str(cached["answer"]), "brain-store"
+
+    local_context = di_memory_context(limit=20, query=question)
+    remote_answer = None
+    if allow_remote:
+        remote_answer, _ = di_research_server_query(question, di_name, company, local_context)
+
+    if remote_answer:
+        answer = normalize_di_identity(remote_answer)
+        di_research_store_put(company, di_id, di_name, question, answer, source="research-server", endpoint=_research_server_config()[0], created_by=user.get("username", "DI"))
+        return answer, "research-server"
+
+    # Safe local fallback when no research gateway is configured or temporarily unavailable.
+    answer = real_di_answer(agent, user, question, allow_online=allow_remote)
+    answer = normalize_di_identity(answer)
+    source = "gemini/web-fallback" if answer else "local"
+    di_research_store_put(company, di_id, di_name, question, answer, source=source, endpoint="", created_by=user.get("username", "DI"))
+    return answer, source
+
+
+def render_di_research_store(user, selected_agent=None):
+    """Large DI Basement research store and server gateway controls."""
+    st.markdown("### ◈ DI Research Server Store")
+    st.caption("The DI specialist takes research requests here. Answers are cached in the store and promoted into that DI's private brain when the store reaches capacity.")
+    endpoint, _, capacity = _research_server_config()
+    count, capacity = di_research_store_stats(str(user.get("company", "") or ""))
+    status = "CONNECTED" if endpoint else "LOCAL FALLBACK"
+    st.markdown(
+        f'''<div style="padding:16px 18px;border:1px solid #24517b;border-radius:16px;background:#081423;color:#fff;">
+        <b style="color:#38bdf8">RESEARCH GATEWAY · {status}</b><br>
+        <span style="color:#a9bad0">Store capacity: {count:,} / {capacity:,} · Server endpoint is administrator-configured and hidden from ordinary users.</span>
+        </div>''',
+        unsafe_allow_html=True,
+    )
+    if not selected_agent:
+        st.info("Select a DI above to use the research store.")
+        return
+    q = st.text_area("Research request", placeholder="Ask the DI to research a question...", key="basement_research_question")
+    if st.button("Send to Research Store", key="basement_research_send", type="primary"):
+        with st.spinner("DI is routing the request through the research pipeline..."):
+            answer, source = di_basement_research_answer(selected_agent, user, q, allow_remote=True)
+        st.success(f"Answer returned via {source}.")
+        st.markdown("#### Returned answer")
+        st.write(answer)
+    rows = []
+    con = db()
+    try:
+        rows = con.execute(
+            """SELECT di_name, question, source, created_at FROM di_research_store
+               WHERE company_name=? ORDER BY id DESC LIMIT 12""",
+            (str(user.get("company", "") or ""),),
+        ).fetchall()
+    finally:
+        con.close()
+    if rows:
+        st.markdown("#### Recent stored research")
+        st.dataframe(pd.DataFrame([dict(r) for r in rows]), use_container_width=True, hide_index=True)
+
+
 def di_basement_password_ok():
     """Password gate for the DI Craft Basement."""
     if st.session_state.get("di_basement_unlocked"):
@@ -6843,6 +7149,217 @@ def di_basement_password_ok():
         else:
             st.error("Incorrect DI Craft Basement password.")
     return False
+
+
+# =============================================================================
+# PERSISTENT 20-ROOM DI BASEMENT WORLD
+# =============================================================================
+
+DI_BASEMENT_ACTIVITY = [
+    ("RESEARCH", "Research Console", "Analyzing approved research requests"),
+    ("PROCESSING", "Neural Console", "Processing DACRE intelligence tasks"),
+    ("MEMORY", "Memory Console", "Indexing specialist memory"),
+    ("COMMUNICATION", "Communications Console", "Monitoring DACRE communications"),
+    ("TOOLS", "Tool Console", "Monitoring approved platform tools"),
+    ("MONITORING", "Operations Console", "Monitoring assigned company activity"),
+]
+
+def di_basement_world_ensure_table():
+    """Persist the live state of all 20 DI rooms across app reruns/restarts."""
+    con = db()
+    try:
+        con.execute("""CREATE TABLE IF NOT EXISTS di_basement_rooms (
+            di_name TEXT PRIMARY KEY,
+            room_number INTEGER NOT NULL,
+            activity TEXT NOT NULL DEFAULT 'MONITORING',
+            screen_title TEXT NOT NULL DEFAULT 'Operations Console',
+            screen_text TEXT NOT NULL DEFAULT 'Monitoring DACRE platform',
+            status TEXT NOT NULL DEFAULT 'ONLINE',
+            updated_at TEXT NOT NULL
+        )""")
+        con.commit()
+    finally:
+        con.close()
+
+def di_basement_world_sync():
+    """Ensure every permanent DI has a persistent room and a current operational state."""
+    di_basement_world_ensure_table()
+    now = datetime.now()
+    now_s = now.isoformat(timespec="seconds")
+    con = db()
+    rows = []
+    try:
+        for idx, spec in enumerate(REAL_DI_ROSTER, start=1):
+            existing = con.execute(
+                "SELECT * FROM di_basement_rooms WHERE di_name=? LIMIT 1",
+                (spec["name"],)
+            ).fetchone()
+            # The visual activity rotates only when a room is stale; the database
+            # remains the source of truth between Streamlit reruns.
+            if existing:
+                try:
+                    age = (now - datetime.fromisoformat(str(existing["updated_at"]))).total_seconds()
+                except Exception:
+                    age = 999999
+                if age > 45:
+                    activity, title, screen = DI_BASEMENT_ACTIVITY[(idx + int(now.timestamp() // 45)) % len(DI_BASEMENT_ACTIVITY)]
+                    con.execute(
+                        """UPDATE di_basement_rooms
+                           SET activity=?, screen_title=?, screen_text=?, status='ONLINE', updated_at=?
+                           WHERE di_name=?""",
+                        (activity, title, f"{screen} · DACRE ONLINE ROBOT", now_s, spec["name"])
+                    )
+            else:
+                activity, title, screen = DI_BASEMENT_ACTIVITY[(idx - 1) % len(DI_BASEMENT_ACTIVITY)]
+                con.execute(
+                    """INSERT INTO di_basement_rooms
+                       (di_name,room_number,activity,screen_title,screen_text,status,updated_at)
+                       VALUES(?,?,?,?,?,?,?)""",
+                    (spec["name"], idx, activity, title, f"{screen} · DACRE ONLINE ROBOT", "ONLINE", now_s)
+                )
+        con.commit()
+        rows = con.execute(
+            "SELECT * FROM di_basement_rooms ORDER BY room_number ASC"
+        ).fetchall()
+    finally:
+        con.close()
+    return [dict(r) for r in rows]
+
+def render_persistent_di_basement_world():
+    """
+    Render all 20 DI rooms simultaneously as one persistent browser-based
+    holographic world. Room identity/state persists in SQLite; CSS animation
+    supplies the continuous holographic movement between Streamlit reruns.
+    """
+    rooms = di_basement_world_sync()
+    by_name = {r["di_name"]: r for r in rooms}
+    cards = []
+
+    for idx, spec in enumerate(REAL_DI_ROSTER, start=1):
+        room = by_name.get(spec["name"], {})
+        face = di_face_data_url(spec["name"])
+        if face:
+            face_html = f'<img src="{face}" class="world-face" alt="{spec["name"]}">'
+        else:
+            face_html = f'<div class="world-face-fallback">{html.escape(spec["name"][:1])}</div>'
+        activity = html.escape(str(room.get("activity", "MONITORING")))
+        screen_title = html.escape(str(room.get("screen_title", "Operations Console")))
+        screen_text = html.escape(str(room.get("screen_text", "Monitoring DACRE platform")))
+        status = html.escape(str(room.get("status", "ONLINE")))
+        cards.append(f"""
+        <div class="di-room room-{idx}" data-di="{html.escape(spec['name'])}">
+          <div class="room-header">
+            <span class="room-number">ROOM {idx:02d}</span>
+            <span class="room-status">● {status}</span>
+          </div>
+          <div class="room-stage">
+            <div class="room-grid"></div>
+            <div class="room-beam"></div>
+            <div class="room-ring ring-a"></div>
+            <div class="room-ring ring-b"></div>
+            <div class="room-avatar">{face_html}</div>
+            <div class="room-floor"></div>
+          </div>
+          <div class="room-identity">
+            <strong>{html.escape(spec["name"])}</strong>
+            <span>{html.escape(spec["position"])}</span>
+          </div>
+          <div class="room-screen">
+            <div class="screen-top">
+              <span>DACRE PLATFORM</span><span>LIVE NODE</span>
+            </div>
+            <div class="screen-title">{screen_title}</div>
+            <div class="screen-text">{screen_text}</div>
+            <div class="screen-activity"><b>{activity}</b><span>WORKSTATION ACTIVE</span></div>
+          </div>
+          <div class="room-footer">{html.escape(spec["specialty"])}</div>
+        </div>
+        """)
+
+    st.markdown(f"""
+    <div class="di-world-shell">
+      <div class="di-world-top">
+        <div>
+          <div class="world-kicker">DACRE WORLDWIDE · DAVID INTELLIGENCE</div>
+          <h2>DI BASEMENT · 20-ROOM HOLOGRAPHIC WORKFORCE</h2>
+          <p>All twenty permanent DI identities are represented simultaneously. Room state is persisted in the DACRE database; the holographic motion runs continuously in the browser.</p>
+        </div>
+        <div class="world-live"><span class="live-dot"></span>20 / 20 NODES ONLINE</div>
+      </div>
+      <div class="di-world-grid">
+        {''.join(cards)}
+      </div>
+    </div>
+    <style>
+      .di-world-shell{{background:radial-gradient(circle at 50% 0%,#12385b 0,#07101b 38%,#02050a 100%);border:1px solid #244d70;border-radius:28px;padding:20px;box-shadow:0 30px 100px rgba(0,0,0,.55),inset 0 0 100px rgba(56,189,248,.045);overflow:hidden}}
+      .di-world-top{{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:18px}}
+      .world-kicker{{color:#58c7ff;font-size:10px;font-weight:900;letter-spacing:.18em}}
+      .di-world-top h2{{color:#fff;font-size:28px;margin:6px 0}}
+      .di-world-top p{{color:#9bb1c7;max-width:850px;margin:0;line-height:1.55}}
+      .world-live{{white-space:nowrap;border:1px solid #38d58a66;color:#6ee7a5;background:#062219;border-radius:999px;padding:9px 13px;font-size:11px;font-weight:900}}
+      .live-dot{{display:inline-block;width:8px;height:8px;border-radius:50%;background:#3ee58a;box-shadow:0 0 14px #3ee58a;margin-right:6px;animation:liveBlink 1.4s infinite}}
+      .di-world-grid{{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}}
+      .di-room{{position:relative;min-height:410px;border:1px solid #244968;border-radius:20px;background:linear-gradient(155deg,#081827,#03070d 70%);overflow:hidden;box-shadow:0 18px 45px rgba(0,0,0,.34),inset 0 0 50px rgba(56,189,248,.035);transition:transform .25s,border-color .25s,box-shadow .25s}}
+      .di-room:hover{{transform:translateY(-4px);border-color:#58c7ff99;box-shadow:0 24px 55px rgba(0,0,0,.48),0 0 30px rgba(56,189,248,.09)}}
+      .room-header{{display:flex;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #1b344b;background:#07131f}}
+      .room-number{{color:#8ca5bb;font-size:9px;font-weight:900;letter-spacing:.15em}}
+      .room-status{{color:#65e6a1;font-size:9px;font-weight:900}}
+      .room-stage{{height:180px;position:relative;overflow:hidden;background:radial-gradient(circle at 50% 38%,rgba(88,199,255,.18),transparent 30%),linear-gradient(180deg,#06111d,#02060b)}}
+      .room-grid{{position:absolute;left:-20%;right:-20%;bottom:-42%;height:140%;background-image:linear-gradient(rgba(88,199,255,.12) 1px,transparent 1px),linear-gradient(90deg,rgba(88,199,255,.12) 1px,transparent 1px);background-size:28px 28px;transform:perspective(170px) rotateX(63deg);opacity:.45}}
+      .room-floor{{position:absolute;left:23%;right:23%;bottom:18px;height:15px;border-radius:50%;background:#58c7ff22;filter:blur(7px);box-shadow:0 0 35px 12px #58c7ff1c}}
+      .room-beam{{position:absolute;left:50%;top:18%;bottom:20px;width:100px;transform:translateX(-50%);background:linear-gradient(90deg,transparent,#58c7ff18,transparent);filter:blur(6px);animation:beamPulse 2.4s ease-in-out infinite}}
+      .room-avatar{{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);width:105px;height:105px;display:grid;place-items:center;animation:avatarFloat 3.2s ease-in-out infinite;filter:drop-shadow(0 0 18px #58c7ff66)}}
+      .world-face,.world-face-fallback{{width:82px;height:82px;border-radius:50%;object-fit:cover;border:1px solid #58c7ff99;opacity:.9;box-shadow:0 0 20px #58c7ff55;mix-blend-mode:screen}}
+      .world-face-fallback{{display:grid;place-items:center;background:#0b2b43;color:#9de5ff;font-size:34px;font-weight:900}}
+      .room-ring{{position:absolute;left:50%;top:44%;width:105px;height:34px;border:1px solid #58c7ff77;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 18px #58c7ff33;animation:ringSpin 5s linear infinite}}
+      .ring-b{{width:135px;height:48px;transform:translate(-50%,-50%) rotate(60deg);animation-duration:8s;animation-direction:reverse}}
+      .room-identity{{padding:10px 12px 6px;display:flex;justify-content:space-between;gap:8px;align-items:flex-start}}
+      .room-identity strong{{color:#fff;font-size:15px}} .room-identity span{{color:#8ca5bb;font-size:9px;text-align:right}}
+      .room-screen{{margin:8px 10px;padding:10px;border:1px solid #58c7ff33;border-radius:12px;background:linear-gradient(145deg,#061a28aa,#02080dcc);box-shadow:inset 0 0 20px #58c7ff08}}
+      .screen-top{{display:flex;justify-content:space-between;color:#58c7ff;font-size:7px;letter-spacing:.13em;font-weight:900}}
+      .screen-title{{color:#fff;font-weight:900;font-size:11px;margin-top:7px}}
+      .screen-text{{color:#9eb3c7;font-size:9px;line-height:1.45;margin-top:4px;min-height:27px}}
+      .screen-activity{{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:7px;border-top:1px solid #18354a}}
+      .screen-activity b{{font-size:8px;color:#ffad62;letter-spacing:.08em}} .screen-activity span{{font-size:7px;color:#70d6ff}}
+      .room-footer{{padding:8px 12px;color:#68849b;font-size:8px;border-top:1px solid #102638;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+      @keyframes liveBlink{{0%,100%{{opacity:1}}50%{{opacity:.35}}}}@keyframes beamPulse{{0%,100%{{opacity:.3;transform:translateX(-50%) scaleX(.7)}}50%{{opacity:1;transform:translateX(-50%) scaleX(1.12)}}}}@keyframes avatarFloat{{0%,100%{{margin-top:0}}50%{{margin-top:-7px}}}}@keyframes ringSpin{{to{{transform:translate(-50%,-50%) rotate(360deg)}}}}
+      @media(max-width:1200px){{.di-world-grid{{grid-template-columns:repeat(3,minmax(0,1fr))}}}}
+      @media(max-width:900px){{.di-world-grid{{grid-template-columns:repeat(2,minmax(0,1fr))}}.di-world-top{{flex-direction:column}}}}
+      @media(max-width:560px){{.di-world-grid{{grid-template-columns:1fr}}.di-world-top h2{{font-size:22px}}}}
+    </style>
+    """, unsafe_allow_html=True)
+
+def render_di_holographic_hub(selected, spec, status_text="ACTIVE"):
+    """Render a CSS holographic projection for the selected DI."""
+    face = di_face_data_url(selected)
+    face_html = f'<img src="{face}" class="holo-face" alt="{selected}"/>' if face else f'<div class="holo-face-fallback">{selected[:1]}</div>'
+    st.markdown(f"""
+    <div class="dacre-holo-stage">
+      <div class="holo-grid"></div><div class="holo-orbit holo-orbit-a"></div><div class="holo-orbit holo-orbit-b"></div><div class="holo-beam"></div>
+      <div class="holo-panel holo-left"><span>DI NODE</span><b>{selected}</b><small>{spec["identity"]["specialty"]}</small></div>
+      <div class="holo-panel holo-right"><span>STATUS</span><b>{status_text}</b><small>Research · Memory · Tools</small></div>
+      <div class="holo-avatar">{face_html}<div class="holo-ring"></div></div><div class="holo-floor"></div>
+      <div class="holo-caption">DAVID INTELLIGENCE · HOLOGRAPHIC WORKSTATION</div>
+    </div>
+    <style>
+      .dacre-holo-stage{{position:relative;height:430px;margin:18px 0 24px;border-radius:26px;overflow:hidden;background:radial-gradient(circle at 50% 35%,rgba(88,199,255,.18),transparent 26%),linear-gradient(180deg,#06101b,#03060c 78%);border:1px solid #274a66;box-shadow:inset 0 0 90px rgba(88,199,255,.06),0 25px 70px rgba(0,0,0,.38)}}
+      .holo-grid{{position:absolute;inset:52% -10% -30%;background-image:linear-gradient(rgba(88,199,255,.14) 1px,transparent 1px),linear-gradient(90deg,rgba(88,199,255,.14) 1px,transparent 1px);background-size:44px 44px;transform:perspective(260px) rotateX(62deg);transform-origin:top;opacity:.55}}
+      .holo-floor{{position:absolute;left:18%;right:18%;bottom:44px;height:22px;border-radius:50%;background:rgba(88,199,255,.16);filter:blur(10px);box-shadow:0 0 55px 20px rgba(88,199,255,.11)}}
+      .holo-beam{{position:absolute;left:50%;top:34%;bottom:55px;width:170px;transform:translateX(-50%);background:linear-gradient(90deg,transparent,rgba(88,199,255,.12),transparent);filter:blur(8px);animation:holoPulse 2.6s ease-in-out infinite}}
+      .holo-avatar{{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);width:190px;height:190px;display:grid;place-items:center;filter:drop-shadow(0 0 25px rgba(88,199,255,.45));animation:holoFloat 3.5s ease-in-out infinite}}
+      .holo-face,.holo-face-fallback{{width:150px;height:150px;border-radius:50%;object-fit:cover;border:2px solid rgba(88,199,255,.78);box-shadow:0 0 24px rgba(88,199,255,.38),inset 0 0 25px rgba(88,199,255,.15);opacity:.86;mix-blend-mode:screen}}
+      .holo-face-fallback{{display:grid;place-items:center;background:#0c2a40;color:#9ee2ff;font-size:62px;font-weight:900}}
+      .holo-ring{{position:absolute;inset:0;border:1px solid rgba(88,199,255,.5);border-radius:50%;box-shadow:0 0 30px rgba(88,199,255,.22);animation:holoSpin 8s linear infinite}}
+      .holo-ring:after{{content:"";position:absolute;left:50%;top:-7px;width:12px;height:12px;border-radius:50%;background:#58c7ff;box-shadow:0 0 18px #58c7ff}}
+      .holo-orbit{{position:absolute;left:50%;top:42%;width:330px;height:100px;border:1px solid rgba(88,199,255,.3);border-radius:50%;transform:translate(-50%,-50%) rotate(-12deg);box-shadow:0 0 18px rgba(88,199,255,.08)}}
+      .holo-orbit-a{{animation:holoOrbit 6s linear infinite}}.holo-orbit-b{{width:390px;height:130px;transform:translate(-50%,-50%) rotate(62deg);animation:holoOrbit 9s linear reverse infinite}}
+      .holo-panel{{position:absolute;padding:12px 15px;min-width:180px;background:rgba(7,16,27,.68);border:1px solid rgba(88,199,255,.32);border-radius:14px;backdrop-filter:blur(10px)}}
+      .holo-panel span,.holo-caption{{font-size:9px;letter-spacing:.16em;color:#79d3ff;font-weight:900}}.holo-panel b{{display:block;color:#fff;font-size:17px;margin:4px 0}}.holo-panel small{{color:#9fb4ca}}
+      .holo-left{{left:24px;top:30px;border-left:3px solid #58c7ff}}.holo-right{{right:24px;top:30px;border-left:3px solid #ff9f43}}.holo-caption{{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);white-space:nowrap;color:#80bde0}}
+      @keyframes holoPulse{{0%,100%{{opacity:.45;transform:translateX(-50%) scaleX(.8)}}50%{{opacity:1;transform:translateX(-50%) scaleX(1.15)}}}}@keyframes holoFloat{{0%,100%{{margin-top:0}}50%{{margin-top:-9px}}}}@keyframes holoSpin{{to{{transform:rotate(360deg)}}}}@keyframes holoOrbit{{to{{transform:translate(-50%,-50%) rotate(348deg)}}}}
+      @media(max-width:700px){{.dacre-holo-stage{{height:360px}}.holo-panel{{min-width:130px;padding:9px}}.holo-panel small{{display:none}}.holo-orbit-b{{width:300px}}}}
+    </style>
+    """, unsafe_allow_html=True)
 
 def render_di_craft_basement(user):
     """Render the company-tech engineering environment for one selected DI."""
@@ -6872,7 +7389,12 @@ def render_di_craft_basement(user):
     </style>
     """, unsafe_allow_html=True)
 
-    selected = st.selectbox("Select a DI engineering room", list(manifest), key="craft_selected_di")
+    # All 20 rooms are visible simultaneously. The selected DI below is only
+    # for detailed inspection/research; the world itself is never reduced to one DI.
+    render_persistent_di_basement_world()
+    render_online_robot_control_center(user)
+
+    selected = st.selectbox("Inspect a DI workstation", list(manifest), key="craft_selected_di")
     spec = manifest[selected]
     c1, c2 = st.columns([1, 2])
     with c1:
@@ -6883,7 +7405,7 @@ def render_di_craft_basement(user):
         st.caption(spec["identity"]["position"])
         st.write(spec["identity"]["role"])
     with c2:
-        st.markdown("#### 3D Artifact Rooms")
+        st.markdown("#### Persistent Workstation Rooms")
         cols = st.columns(3)
         for i, room in enumerate(spec["rooms"]):
             with cols[i % 3]:
@@ -6903,7 +7425,15 @@ def render_di_craft_basement(user):
             "private_brain": spec["brain"]["private"],
             "online_reasoning": spec["brain"]["online"],
             "rooms": [r["artifact_id"] for r in spec["rooms"]],
+            "persistent_world": True,
+            "room_count": 20,
         }, indent=2), language="json")
+
+    # Large research store: the selected DI is the accountable specialist.
+    selected_agent = next((a for a in real_di_agent_rows() if a.get("di_name") == selected), None)
+    if selected_agent:
+        st.divider()
+        render_di_research_store(user, selected_agent=selected_agent)
 
 def render_david_creation_portal(user):
     """Protected master portal for separated DI identities."""
@@ -8553,6 +9083,212 @@ def save_chat_history_message(user, sender, message):
         pass
     return result
 
+
+# =============================================================================
+# PAGE-AWARE DI HOLOGRAPHIC ASSISTANT
+# =============================================================================
+
+# Every major DACRE surface has an accountable DI specialist. The same DI
+# identity, role and private brain are used by the page assistant and by the
+# 20-room Basement world.
+DACRE_PAGE_DI_MAP = {
+    "Overview": "Raziel",
+    "DI Home": "Raziel",
+    "DI Calls": "Emiel",
+    "DI Workforce": "Muriel",
+    "🌍 Global Markets": "Nathaniel",
+    "🎥 DI Conference": "Emiel",
+    "DI Action Center": "Uriel",
+    "DI Memory Box": "Haniel",
+    "Business Command Center": "Graciel",
+    "Business Twin": "Ariel",
+    "Decision Ledger": "Raziel",
+    "Opportunity Radar": "Gabriel",
+    "Workspace & Data": "Daniel",
+    "Formula Lab": "Oriel",
+    "Charts": "Oriel",
+    "File Vault": "Henriel",
+    "Export Center": "Daniel",
+    "Chibobec Loan Desk": "Nathaniel",
+    "Organization Admin Portal": "Jamiel",
+    "Overall Admin DI Portal": "Guaiel",
+    "Research Store": "Sofiel",
+}
+
+def _page_di_agent(page_name):
+    """Return the real seeded DI responsible for the current DACRE surface."""
+    target = DACRE_PAGE_DI_MAP.get(page_name, "Assiel")
+    rows = real_di_agent_rows()
+    for row in rows:
+        if str(row.get("di_name", "")).strip().lower() == target.lower():
+            return row
+    # Safe fallback to the first real seeded agent.
+    return rows[0] if rows else {
+        "di_name": target,
+        "specialty": "DACRE Intelligence",
+        "position_title": "DI Specialist",
+        "system_role": "Assists users on this DACRE platform surface.",
+        "status": "Available",
+        "id": 0,
+    }
+
+def _di_uptime_snapshot(agent):
+    """
+    Persist a service heartbeat. This represents the DI service being alive
+    while the DACRE process is running; it does not falsely claim uptime while
+    the hosting service itself is offline.
+    """
+    now = datetime.now()
+    if "dacre_process_started_at" not in st.session_state:
+        st.session_state.dacre_process_started_at = now.isoformat(timespec="seconds")
+
+    started = st.session_state.dacre_process_started_at
+    try:
+        elapsed = max(0, int((now - datetime.fromisoformat(started)).total_seconds()))
+    except Exception:
+        elapsed = 0
+
+    days, rem = divmod(elapsed, 86400)
+    hours, rem = divmod(rem, 3600)
+    minutes, seconds = divmod(rem, 60)
+    uptime = f"{days}d {hours:02d}h {minutes:02d}m {seconds:02d}s"
+
+    # Persist a heartbeat if the table exists; failures must never crash the UI.
+    try:
+        con = db()
+        con.execute("""CREATE TABLE IF NOT EXISTS di_service_heartbeat (
+            di_name TEXT PRIMARY KEY,
+            last_seen TEXT NOT NULL,
+            status TEXT NOT NULL,
+            page_name TEXT
+        )""")
+        con.execute("""INSERT INTO di_service_heartbeat(di_name,last_seen,status,page_name)
+                       VALUES(?,?,?,?)
+                       ON CONFLICT(di_name) DO UPDATE SET
+                       last_seen=excluded.last_seen,
+                       status=excluded.status,
+                       page_name=excluded.page_name""",
+                    (agent.get("di_name","DI"), now.isoformat(timespec="seconds"), "ONLINE", st.session_state.get("selected_page","")))
+        con.commit()
+        con.close()
+    except Exception:
+        pass
+
+    return uptime, now.strftime("%Y-%m-%d %H:%M:%S")
+
+def render_page_di_hologram(page_name, user):
+    """
+    Put the responsible DI at the top of the current DACRE page.
+    The DI's actual face, role and operational screen reflect the page the
+    user is currently visiting.
+    """
+    if not user:
+        return
+
+    agent = _page_di_agent(page_name)
+    uptime, heartbeat = _di_uptime_snapshot(agent)
+    name = html.escape(str(agent.get("di_name", "DI")))
+    specialty = html.escape(str(agent.get("specialty", "DACRE Intelligence")))
+    position = html.escape(str(agent.get("position_title", "DI Specialist")))
+    role = html.escape(str(agent.get("system_role", "Ready to assist you.")))
+    face = di_face_data_url(str(agent.get("di_name", "")))
+
+    if face:
+        avatar = f'<img src="{face}" alt="{name}" class="page-di-face">'
+    else:
+        avatar = f'<div class="page-di-face page-di-fallback">{name[:1]}</div>'
+
+    # This is a real working control: it opens a compact specialist prompt
+    # and sends the question through the existing DI brain/research pipeline.
+    st.markdown(f"""
+    <div class="page-di-hologram">
+      <div class="page-di-landscape">
+        <div class="page-di-grid"></div>
+        <div class="page-di-floor"></div>
+        <div class="page-di-ring r1"></div>
+        <div class="page-di-ring r2"></div>
+        <div class="page-di-beam"></div>
+        <div class="page-di-avatar">{avatar}</div>
+        <div class="page-di-particles">· · · · · · · · · ·</div>
+      </div>
+      <div class="page-di-console">
+        <div class="page-di-live"><span></span> ONLINE · READY TO ASSIST</div>
+        <div class="page-di-kicker">DAVID INTELLIGENCE · DACRE PLATFORM</div>
+        <h3>{name}</h3>
+        <div class="page-di-role">{position} · {specialty}</div>
+        <p>{role}</p>
+        <div class="page-di-status-row">
+          <div><b>PAGE NODE</b><br><span>{html.escape(page_name)}</span></div>
+          <div><b>UPTIME</b><br><span>{uptime}</span></div>
+          <div><b>HEARTBEAT</b><br><span>{heartbeat}</span></div>
+        </div>
+        <div class="page-di-screen">
+          <div class="screen-bar"><span>DACRE WORKSTATION</span><span>24/7 READY</span></div>
+          <div class="screen-line"></div>
+          <div class="screen-copy">SPECIALIST NODE ACTIVE · WORKING ON THIS PAGE · KNOWLEDGE + TOOLS + DI BRAIN CONNECTED</div>
+        </div>
+      </div>
+    </div>
+    <style>
+      .page-di-hologram{{display:grid;grid-template-columns:310px 1fr;gap:0;margin:0 0 20px;border:1px solid #274966;border-radius:24px;overflow:hidden;background:radial-gradient(circle at 18% 25%,#103d60 0,#071521 34%,#02060b 100%);box-shadow:0 22px 70px rgba(0,0,0,.42),inset 0 0 80px rgba(74,198,255,.035)}}
+      .page-di-landscape{{position:relative;min-height:240px;overflow:hidden;background:radial-gradient(circle at 50% 45%,rgba(75,199,255,.22),transparent 24%),linear-gradient(180deg,#071c2d,#02060b)}}
+      .page-di-grid{{position:absolute;left:-30%;right:-30%;bottom:-55%;height:150%;background-image:linear-gradient(#58c7ff1f 1px,transparent 1px),linear-gradient(90deg,#58c7ff1f 1px,transparent 1px);background-size:30px 30px;transform:perspective(160px) rotateX(64deg)}}
+      .page-di-floor{{position:absolute;left:22%;right:22%;bottom:18px;height:20px;border-radius:50%;background:#58c7ff22;box-shadow:0 0 45px 12px #58c7ff1e;filter:blur(5px)}}
+      .page-di-beam{{position:absolute;left:50%;top:25px;width:115px;height:190px;transform:translateX(-50%);background:linear-gradient(90deg,transparent,#58c7ff18,transparent);filter:blur(5px);animation:pdiBeam 2.5s ease-in-out infinite}}
+      .page-di-avatar{{position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);width:120px;height:120px;display:grid;place-items:center;animation:pdiFloat 3s ease-in-out infinite;filter:drop-shadow(0 0 22px #58c7ff88)}}
+      .page-di-face{{width:94px;height:94px;object-fit:cover;border-radius:50%;border:1px solid #6ed7ff99;box-shadow:0 0 30px #58c7ff55;mix-blend-mode:screen}}
+      .page-di-fallback{{display:grid;place-items:center;background:#09263c;color:#b7ebff;font-size:42px;font-weight:900}}
+      .page-di-ring{{position:absolute;left:50%;top:48%;width:145px;height:44px;border:1px solid #5bcfff77;border-radius:50%;transform:translate(-50%,-50%);animation:pdiSpin 6s linear infinite}}
+      .page-di-ring.r2{{width:180px;height:56px;transform:translate(-50%,-50%) rotate(58deg);animation-duration:9s;animation-direction:reverse}}
+      .page-di-particles{{position:absolute;left:0;right:0;bottom:44px;text-align:center;color:#62d7ff77;letter-spacing:14px;animation:pdiParticles 2s ease-in-out infinite}}
+      .page-di-console{{padding:22px 24px}}
+      .page-di-live{{display:inline-flex;align-items:center;gap:7px;color:#67e6a2;font-size:9px;font-weight:900;letter-spacing:.13em}}
+      .page-di-live span{{width:8px;height:8px;border-radius:50%;background:#4ee493;box-shadow:0 0 14px #4ee493;animation:pdiBlink 1.3s infinite}}
+      .page-di-kicker{{color:#5dcfff;font-size:9px;font-weight:900;letter-spacing:.16em;margin-top:10px}}
+      .page-di-console h3{{color:#fff;font-size:29px;margin:5px 0 2px}}
+      .page-di-role{{color:#9bdfff;font-weight:800;font-size:11px}}
+      .page-di-console p{{color:#a7b8c9;line-height:1.55;max-width:800px;margin:9px 0}}
+      .page-di-status-row{{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}}
+      .page-di-status-row div{{background:#071522;border:1px solid #24455d;border-radius:10px;padding:8px;color:#7691a8;font-size:8px}}
+      .page-di-status-row b{{color:#5fcfff;font-size:7px;letter-spacing:.1em}} .page-di-status-row span{{color:#fff;font-size:9px}}
+      .page-di-screen{{border:1px solid #2d617d;border-radius:12px;padding:10px;background:linear-gradient(145deg,#061a28,#02080d);box-shadow:inset 0 0 25px #58c7ff08}}
+      .screen-bar{{display:flex;justify-content:space-between;color:#5ecfff;font-size:7px;font-weight:900;letter-spacing:.12em}}
+      .screen-line{{height:2px;width:40%;background:#ffad62;margin:8px 0;box-shadow:0 0 10px #ffad62}}
+      .screen-copy{{color:#a8c0d1;font-size:9px;letter-spacing:.03em}}
+      @keyframes pdiBeam{{0%,100%{{opacity:.35;transform:translateX(-50%) scaleX(.72)}}50%{{opacity:1;transform:translateX(-50%) scaleX(1.12)}}}}
+      @keyframes pdiFloat{{0%,100%{{margin-top:0}}50%{{margin-top:-8px}}}}
+      @keyframes pdiSpin{{to{{transform:translate(-50%,-50%) rotate(360deg)}}}}
+      @keyframes pdiParticles{{0%,100%{{opacity:.25}}50%{{opacity:.8}}}}
+      @keyframes pdiBlink{{0%,100%{{opacity:1}}50%{{opacity:.3}}}}
+      @media(max-width:760px){{.page-di-hologram{{grid-template-columns:1fr}}.page-di-landscape{{min-height:210px}}.page-di-status-row{{grid-template-columns:1fr}}.page-di-console h3{{font-size:24px}}}}
+    </style>
+    """, unsafe_allow_html=True)
+
+    with st.expander(f"Talk to {agent.get('di_name','DI')} — {page_name}", expanded=False):
+        question = st.text_input(
+            f"What do you need {agent.get('di_name','DI')} to do?",
+            key=f"page_di_question_{re.sub(r'[^a-zA-Z0-9]+','_',page_name)}"
+        )
+        if st.button(f"Ask {agent.get('di_name','DI')}", key=f"page_di_ask_{re.sub(r'[^a-zA-Z0-9]+','_',page_name)}", type="primary"):
+            if not question.strip():
+                st.warning("Enter a request for the DI.")
+            else:
+                with st.spinner(f"{agent.get('di_name','DI')} is working..."):
+                    try:
+                        answer, source = di_basement_research_answer(agent, user, question.strip(), allow_remote=True)
+                        real_di_record_chat(agent, user, question.strip(), answer, source=source)
+                        st.session_state[f"page_di_last_answer_{re.sub(r'[^a-zA-Z0-9]+','_',page_name)}"] = answer
+                        st.session_state[f"page_di_last_source_{re.sub(r'[^a-zA-Z0-9]+','_',page_name)}"] = source
+                    except Exception as exc:
+                        logger.exception("Page DI assistant failed: %s", exc)
+                        st.error("The DI could not complete that request. The application remains available.")
+        last = st.session_state.get(f"page_di_last_answer_{re.sub(r'[^a-zA-Z0-9]+','_',page_name)}")
+        if last:
+            st.markdown("**DI response**")
+            st.write(last)
+            st.caption(f"Source path: {st.session_state.get(f'page_di_last_source_{re.sub(r'[^a-zA-Z0-9]+','_',page_name)}', 'local')}")
+
+
 # =============================================================================
 # Main application access policy
 # =============================================================================
@@ -8672,10 +9408,13 @@ def main_app():
             st.session_state.selected_page = selected_page
 
     render_page_chrome(selected_page, user)
+    render_page_di_hologram(selected_page, user)
 
     if selected_page == "Overview":
         if user.get("role") == "master":
             render_dacre_production_core()
+            st.markdown("---")
+            render_online_robot_control_center(user)
             st.markdown("---")
             render_analytics_overview(user)
         else:
