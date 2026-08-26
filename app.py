@@ -1,6 +1,6 @@
 # =============================================================================
 # DACRE WORLDWIDE - COMPLETE PRODUCTION BUILD (FIXED)
-# Version: 7.3.0 - Dark Online Robot / Holographic Service Fabric
+# Version: 7.7.1 - Founder Command Center / 3D DI Office Fabric
 # Total Lines: ~12,000+
 # Features: Self-Healing DB, DI Intelligence, Error Shield, Voice, Video, AI
 # =============================================================================
@@ -108,7 +108,7 @@ try:
     else:
         _DACRE_PAGE_ICON = Image.open(io.BytesIO(base64.b64decode(_DACRE_FAVICON_B64)))
 except Exception:
-    _DACRE_PAGE_ICON = "📊"
+    _DACRE_PAGE_ICON = "DATA"
 
 st.set_page_config(
     page_title="DACRE WORLDWIDE — David's Intelligence",
@@ -116,6 +116,9 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+# DACRE MOBILE-FIRST RESPONSIVE POLISH
+st.markdown("""<style>html,body,[data-testid="stAppViewContainer"]{overflow-x:hidden!important}[data-testid="stMainBlockContainer"]{width:100%!important;max-width:1440px!important;padding-left:clamp(10px,2vw,32px)!important;padding-right:clamp(10px,2vw,32px)!important}img,video,iframe{max-width:100%}@media(max-width:768px){[data-testid="stMainBlockContainer"]{padding-left:10px!important;padding-right:10px!important}.stButton>button{min-height:44px!important}h1{font-size:clamp(26px,7vw,40px)!important}}</style>""",unsafe_allow_html=True)
 
 st.markdown("""
 <style>
@@ -471,7 +474,7 @@ logger = logging.getLogger('DACRE')
 # =============================================================================
 
 APP_NAME = "DACRE WORLDWIDE"
-_DB_SCHEMA_VERSION = 10
+_DB_SCHEMA_VERSION = 11
 DI_NAME = "DI — David's Intelligence"
 CEO_GUARD_NAME = "Guaiel"
 MASTER_USERNAME = "david"
@@ -484,7 +487,7 @@ MASTER_PASSKEY_HASH = os.getenv(
 # App-level management password. The deployment environment can override this.
 MANAGE_APP_PASSKEY = os.getenv("DACRE_MANAGE_APP_PASSKEY", MASTER_PASSKEY).strip()
 DAVID_CREATIONS_PASSKEY = os.getenv("DACRE_DAVID_CREATIONS_PASSKEY", "My children").strip()
-DI_BASEMENT_PASSKEY = os.getenv("DACRE_DI_BASEMENT_PASSKEY", "David intelligence").strip()
+DI_BASEMENT_PASSKEY = os.getenv("DACRE_DI_BASEMENT_PASSKEY", "dacre-di").strip()
 
 # Webstore Knowledge Base - CRITICAL for DI to answer questions correctly
 DI_WEBSTORE_KNOWLEDGE = {
@@ -592,16 +595,16 @@ DI_LANGUAGE_PROFILES = {
 
 # DI Personalities
 DI_PERSONALITIES = {
-    "professional": {"style": "formal", "tone": "authoritative", "pace": "measured", "emoji": "💼"},
-    "friendly": {"style": "casual", "tone": "warm", "pace": "conversational", "emoji": "😊"},
-    "analytical": {"style": "detailed", "tone": "precise", "pace": "deliberate", "emoji": "🔬"},
-    "creative": {"style": "imaginative", "tone": "inspiring", "pace": "dynamic", "emoji": "🎨"},
-    "executive": {"style": "decisive", "tone": "commanding", "pace": "rapid", "emoji": "👔"},
-    "strategic": {"style": "visionary", "tone": "insightful", "pace": "thoughtful", "emoji": "🎯"},
-    "global": {"style": "worldly", "tone": "cultured", "pace": "measured", "emoji": "🌍"},
-    "empathetic": {"style": "warm", "tone": "caring", "pace": "gentle", "emoji": "💝"},
-    "technical": {"style": "precise", "tone": "logical", "pace": "methodical", "emoji": "⚡"},
-    "sales": {"style": "persuasive", "tone": "confident", "pace": "energetic", "emoji": "📈"},
+    "professional": {"style": "formal", "tone": "authoritative", "pace": "measured", "emoji": ""},
+    "friendly": {"style": "casual", "tone": "warm", "pace": "conversational", "emoji": ""},
+    "analytical": {"style": "detailed", "tone": "precise", "pace": "deliberate", "emoji": ""},
+    "creative": {"style": "imaginative", "tone": "inspiring", "pace": "dynamic", "emoji": ""},
+    "executive": {"style": "decisive", "tone": "commanding", "pace": "rapid", "emoji": ""},
+    "strategic": {"style": "visionary", "tone": "insightful", "pace": "thoughtful", "emoji": ""},
+    "global": {"style": "worldly", "tone": "cultured", "pace": "measured", "emoji": ""},
+    "empathetic": {"style": "warm", "tone": "caring", "pace": "gentle", "emoji": ""},
+    "technical": {"style": "precise", "tone": "logical", "pace": "methodical", "emoji": ""},
+    "sales": {"style": "persuasive", "tone": "confident", "pace": "energetic", "emoji": ""},
 }
 
 DI_AVATAR_LIBRARY = {
@@ -2729,7 +2732,7 @@ def manage_app_password_gate():
     if st.session_state.get("manage_app_unlocked"):
         return True
 
-    st.markdown("### 🔐 Manage App")
+    st.markdown("### Manage App")
     st.caption("Enter the management password to access administrative controls.")
     with st.form("manage_app_password_form", clear_on_submit=False):
         candidate = st.text_input("Manage App Password", type="password", key="manage_app_password")
@@ -2785,7 +2788,7 @@ def render_di_video_call_stage(agent_rows, title, user_label):
           <div class='di-avatar-fallback'>{_escape_html(name[:1].upper())}</div></div>
           <div class='di-video-name'>{_escape_html(name)}</div>
           <div class='di-video-role'>{_escape_html(position)}</div>
-          <div class='di-video-status'><span class='speaker-dot'>●</span> <span class='speaker-text'>Ready</span></div>
+          <div class='di-video-status'><span class='speaker-dot'>ONLINE</span> <span class='speaker-text'>Ready</span></div>
         </div>""")
     
     founder_src = CEO_PORTRAIT_DATA_URL if 'CEO_PORTRAIT_DATA_URL' in globals() else ''
@@ -2796,7 +2799,7 @@ def render_di_video_call_stage(agent_rows, title, user_label):
       <div class='di-avatar-fallback founder-fallback'>DE</div></div>
       <div class='di-video-name'>{_escape_html(user_label or 'David Emenike')}</div>
       <div class='di-video-role'>Creator · CEO · Overall Administrator</div>
-      <div class='di-video-status'><span class='speaker-dot'>●</span> <span class='speaker-text'>Connected</span></div>
+      <div class='di-video-status'><span class='speaker-dot'>ONLINE</span> <span class='speaker-text'>Connected</span></div>
     </div>"""
     
     components.html(f"""
@@ -2806,7 +2809,7 @@ def render_di_video_call_stage(agent_rows, title, user_label):
         <h2>{_escape_html(title)}</h2>
         <p>Fixed DI identities · permanent portraits · real call speaker state when LiveKit is connected</p>
         </div>
-        <strong>● LIVE READY</strong>
+        <strong>ONLINE LIVE READY</strong>
       </div>
       <div class='di-video-grid'>{founder}{''.join(people)}</div>
     </section>
@@ -2850,7 +2853,7 @@ def di_voice_player(text, language_code=None):
     
     components.html(f"""
     <div style="font-family:Inter,Segoe UI,sans-serif;background:#174f86;border:1px solid #6bb8ee;border-radius:14px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
-      <button id="dacre-speak-btn" style="background:#f28c28;color:white;border:0;border-radius:10px;padding:9px 15px;font-weight:800;cursor:pointer;">🔊 Speak DI</button>
+      <button id="dacre-speak-btn" style="background:#f28c28;color:white;border:0;border-radius:10px;padding:9px 15px;font-weight:800;cursor:pointer;">SPEAK Speak DI</button>
       <span style="color:#eaf6ff;font-weight:700;font-size:13px;">DI voice ready · {language_code}</span>
     </div>
     <script>
@@ -3451,7 +3454,7 @@ def render_call_interface(room, title, participants, company):
                 <h2>{title}</h2>
                 <p>{company} · {len(participants)} invited</p>
             </div>
-            <div class='live-dot'>● READY</div>
+            <div class='live-dot'>ONLINE READY</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -3469,11 +3472,11 @@ def render_call_interface(room, title, participants, company):
     if not st.session_state.get(join_key, False):
         c1, c2 = st.columns([2, 1])
         with c1:
-            if st.button('🎥 Join Call', key=f'joinbtn_{room}', use_container_width=True, type='primary'):
+            if st.button('VIDEO Join Call', key=f'joinbtn_{room}', use_container_width=True, type='primary'):
                 st.session_state[join_key] = True
                 st.rerun()
         with c2:
-            st.link_button('↗ Open in new tab', f'https://meet.jit.si/{urllib.parse.quote(room)}', use_container_width=True)
+            st.link_button('OPEN Open in new tab', f'https://meet.jit.si/{urllib.parse.quote(room)}', use_container_width=True)
         return
     
     safe_room = urllib.parse.quote(room)
@@ -3661,7 +3664,7 @@ def render_livekit_call(room_name, user, agent_rows, mode="company_di", title="D
       <div style='display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;'>
         <div>
           <div style='font-size:11px;font-weight:800;letter-spacing:.16em;color:#6ea8ff;'>DACRE REALTIME</div>
-          <h2 style='margin:4px 0;font-size:25px;color:#f6fbff;'>🎙️ {safe(title)}</h2>
+          <h2 style='margin:4px 0;font-size:25px;color:#f6fbff;'>VOICE {safe(title)}</h2>
           <div style='font-size:13px;color:#a9bbd4;'>Fixed DI characters · permanent voices · actual speaker detection · full-duplex audio</div>
         </div>
         <div id='lk-status' style='padding:8px 12px;border-radius:999px;background:rgba(250,180,60,.12);border:1px solid rgba(250,180,60,.22);font-size:12px;color:#ffd68a;'>READY TO JOIN</div>
@@ -4056,10 +4059,10 @@ def render_analytics_overview(user):
         st.caption(f"Dashboard search: {search.strip()} · use the navigation to open the matching workspace.")
     
     kpis = [
-        ("users", "Total Users", f"{users:,}", 12.4, spark_users, "registered platform users", "👥"),
-        ("activity", "Activity", f"{activities:,}", 8.9, spark_activity, "recorded workspace events", "↗"),
+        ("users", "Total Users", f"{users:,}", 12.4, spark_users, "registered platform users", "USERS"),
+        ("activity", "Activity", f"{activities:,}", 8.9, spark_activity, "recorded workspace events", "OPEN"),
         ("health", "System Health", f"{health:.2f}%", 0.3, spark_health, "availability signal · 24h", "◉"),
-        ("calls", "Active Calls", f"{active_calls:,}", -3.1, spark_calls, "live sessions", "☎"),
+        ("calls", "Active Calls", f"{active_calls:,}", -3.1, spark_calls, "live sessions", "CALL"),
     ]
     
     cards = []
@@ -4069,7 +4072,7 @@ def render_analytics_overview(user):
         <div class="dacre-kpi-card">
             <div class="kpi-head">
                 <span class="kpi-icon">{icon}</span>
-                <span class="kpi-delta {'up' if positive else 'down'}">{'↗' if positive else '↘'} {abs(delta):.1f}%</span>
+                <span class="kpi-delta {'up' if positive else 'down'}">{'OPEN' if positive else 'DOWN'} {abs(delta):.1f}%</span>
             </div>
             <p>{label}</p>
             <div class="kpi-value-row">
@@ -4201,27 +4204,27 @@ def render_analytics_overview(user):
     ''', unsafe_allow_html=True)
 
 PAGE_META = {
-    "Overview": ("⌂", "DACRE Overview", "Executive business intelligence workspace."),
-    "DI Home": ("✦", "DI Home", "Your intelligent business copilot."),
+    "Overview": ("HOME", "DACRE Overview", "Executive business intelligence workspace."),
+    "DI Home": ("DI", "DI Home", "Your intelligent business copilot."),
     "DI Calls": ("◉", "DI Calls", "Intelligence conversations and action requests."),
-    "DI Workforce": ("👥", "DI Workforce", "Your coordinated digital intelligence workforce."),
-    "🌍 Global Markets": ("🌍", "Global Markets", "Market intelligence and global signals."),
-    "🎥 DI Conference": ("🎥", "DI Conference", "Collaborative intelligence conference room."),
-    "DI Action Center": ("⚡", "DI Action Center", "Prioritize and execute intelligence actions."),
-    "DI Memory Box": ("🧠", "DI Memory Box", "Manage persistent DI knowledge and memory."),
-    "Business Command Center": ("⌘", "Business Command Center", "Executive command and operational control."),
-    "Business Twin": ("◇", "Business Twin", "Digital representation of your business."),
-    "Decision Ledger": ("▤", "Decision Ledger", "Trace decisions, evidence, and outcomes."),
-    "Opportunity Radar": ("◎", "Opportunity Radar", "Find measurable business opportunities."),
-    "Workspace & Data": ("▦", "Workspace & Data", "Load, inspect, clean, and manage datasets."),
+    "DI Workforce": ("USERS", "DI Workforce", "Your coordinated digital intelligence workforce."),
+    "Global Markets": ("GLOBAL", "Global Markets", "Market intelligence and global signals."),
+    "DI Conference": ("VIDEO", "DI Conference", "Collaborative intelligence conference room."),
+    "DI Action Center": ("FAST", "DI Action Center", "Prioritize and execute intelligence actions."),
+    "DI Memory Box": ("DI", "DI Memory Box", "Manage persistent DI knowledge and memory."),
+    "Business Command Center": ("COMMAND", "Business Command Center", "Executive command and operational control."),
+    "Business Twin": ("TWIN", "Business Twin", "Digital representation of your business."),
+    "Decision Ledger": ("FILES", "Decision Ledger", "Trace decisions, evidence, and outcomes."),
+    "Opportunity Radar": ("RADAR", "Opportunity Radar", "Find measurable business opportunities."),
+    "Workspace & Data": ("DATA", "Workspace & Data", "Load, inspect, clean, and manage datasets."),
     "Formula Lab": ("ƒ", "Formula Lab", "Build and run analytical formulas."),
-    "Charts": ("▥", "Charts", "Visualize business data and trends."),
-    "File Vault": ("▣", "File Vault", "Secure workspace file management."),
-    "Export Center": ("⇩", "Export Center", "Prepare and export analysis outputs."),
+    "Charts": ("CHARTS", "Charts", "Visualize business data and trends."),
+    "File Vault": ("VAULT", "File Vault", "Secure workspace file management."),
+    "Export Center": ("EXPORT", "Export Center", "Prepare and export analysis outputs."),
     "Chibobec Loan Desk": ("₦", "Chibobec Loan Desk", "Loan analysis and decision support."),
-    "Organization Admin Portal": ("⚙", "Organization Admin Portal", "Organization administration and controls."),
-    "Overall Admin DI Portal": ("◈", "Overall Admin DI Portal", "Founder-level control of the DACRE intelligence system."),
-    "Research Store": ("⌕", "Research Store", "Research and knowledge resources."),
+    "Organization Admin Portal": ("SETTINGS", "Organization Admin Portal", "Organization administration and controls."),
+    "Overall Admin DI Portal": ("NODE", "Overall Admin DI Portal", "Founder-level control of the DACRE intelligence system."),
+    "Research Store": ("SEARCH", "Research Store", "Research and knowledge resources."),
 }
 
 def render_page_chrome(page_name, user):
@@ -4229,27 +4232,27 @@ def render_page_chrome(page_name, user):
     _page_meta = globals().get("PAGE_META")
     if not isinstance(_page_meta, dict):
         _page_meta = {
-            "Overview": ("◈", "DACRE Overview", "Executive business intelligence workspace."),
-            "DI Home": ("🧠", "DI Home", "Your intelligent business copilot."),
-            "DI Calls": ("📞", "DI Calls", "Intelligence conversations and action requests."),
-            "DI Workforce": ("👥", "DI Workforce", "Your coordinated digital intelligence workforce."),
-            "🌍 Global Markets": ("🌍", "Global Markets", "Market intelligence and global signals."),
-            "🎥 DI Conference": ("🎥", "DI Conference", "Collaborative intelligence conference room."),
-            "DI Action Center": ("⚡", "DI Action Center", "Prioritize and execute intelligence actions."),
-            "DI Memory Box": ("🧠", "DI Memory Box", "Manage persistent DI knowledge and memory."),
-            "Business Command Center": ("⌘", "Business Command Center", "Executive command and operational control."),
-            "Business Twin": ("◇", "Business Twin", "Digital representation of your business."),
-            "Decision Ledger": ("▤", "Decision Ledger", "Trace decisions, evidence, and outcomes."),
-            "Opportunity Radar": ("◎", "Opportunity Radar", "Find measurable business opportunities."),
-            "Workspace & Data": ("▦", "Workspace & Data", "Load, inspect, clean, and manage datasets."),
+            "Overview": ("NODE", "DACRE Overview", "Executive business intelligence workspace."),
+            "DI Home": ("DI", "DI Home", "Your intelligent business copilot."),
+            "DI Calls": ("", "DI Calls", "Intelligence conversations and action requests."),
+            "DI Workforce": ("USERS", "DI Workforce", "Your coordinated digital intelligence workforce."),
+            "Global Markets": ("GLOBAL", "Global Markets", "Market intelligence and global signals."),
+            "DI Conference": ("VIDEO", "DI Conference", "Collaborative intelligence conference room."),
+            "DI Action Center": ("FAST", "DI Action Center", "Prioritize and execute intelligence actions."),
+            "DI Memory Box": ("DI", "DI Memory Box", "Manage persistent DI knowledge and memory."),
+            "Business Command Center": ("COMMAND", "Business Command Center", "Executive command and operational control."),
+            "Business Twin": ("TWIN", "Business Twin", "Digital representation of your business."),
+            "Decision Ledger": ("FILES", "Decision Ledger", "Trace decisions, evidence, and outcomes."),
+            "Opportunity Radar": ("RADAR", "Opportunity Radar", "Find measurable business opportunities."),
+            "Workspace & Data": ("DATA", "Workspace & Data", "Load, inspect, clean, and manage datasets."),
             "Formula Lab": ("ƒ", "Formula Lab", "Build and run analytical formulas."),
-            "Charts": ("▥", "Charts", "Visualize business data and trends."),
-            "File Vault": ("▣", "File Vault", "Secure workspace file management."),
-            "Export Center": ("⇩", "Export Center", "Prepare reports and exports."),
+            "Charts": ("CHARTS", "Charts", "Visualize business data and trends."),
+            "File Vault": ("VAULT", "File Vault", "Secure workspace file management."),
+            "Export Center": ("EXPORT", "Export Center", "Prepare reports and exports."),
             "Chibobec Loan Desk": ("₦", "Chibobec Loan Desk", "Loan analysis and decision support."),
-            "Organization Admin Portal": ("⚙", "Organization Admin Portal", "Organization administration and controls."),
-            "Overall Admin DI Portal": ("👑", "Overall Admin DI Portal", "Founder-level control of the DACRE intelligence system."),
-            "Research Store": ("⌕", "Research Store", "Research and knowledge resources."),
+            "Organization Admin Portal": ("SETTINGS", "Organization Admin Portal", "Organization administration and controls."),
+            "Overall Admin DI Portal": ("CEO", "Overall Admin DI Portal", "Founder-level control of the DACRE intelligence system."),
+            "Research Store": ("SEARCH", "Research Store", "Research and knowledge resources."),
         }
     icon, title, subtitle = _page_meta.get(page_name, ("•", page_name, "Dacre business intelligence workspace."))
     master = user.get("role") == "master"
@@ -4266,7 +4269,7 @@ def render_page_chrome(page_name, user):
             </div>
         </div>
         <div class="page-chrome-right">
-            <span class="chrome-pill">● DI ONLINE</span>
+            <span class="chrome-pill">ONLINE DI ONLINE</span>
             <span class="chrome-pill soft">{datetime.now().strftime("%d %b %Y · %H:%M")}</span>
         </div>
     </div>
@@ -4368,7 +4371,7 @@ def render_business_twin(df, user):
         key="business_twin_question",
     )
     
-    if st.button("✦ Explain this Business Twin", use_container_width=True, type="primary") and prompt.strip():
+    if st.button("DI Explain this Business Twin", use_container_width=True, type="primary") and prompt.strip():
         answer = enhanced_di_reply(prompt, user, df, allow_online=True, language=st.session_state.get("di_language", "English — Nigeria"))
         log_di_action(user, "business_twin", prompt, answer)
         st.markdown(
@@ -4563,7 +4566,7 @@ def _landing_auth_panel():
     </style>
     <div id="dacre-auth" class="auth-anchor auth-shell">
         <div class="auth-inner">
-            <div class="auth-badge">✦ DACRE secure workspace access</div>
+            <div class="auth-badge">DI DACRE secure workspace access</div>
             <div class="auth-title">Your DACRE workspace starts here.</div>
             <div class="auth-sub">Sign in to your existing workspace or create your organization account without leaving the DACRE landing page.</div>
         </div>
@@ -4718,8 +4721,47 @@ def _landing_auth_panel():
         </div>
         """.replace("__CEO_LOGO__", f'<img src="{_dacre_logo_data_uri()}" alt="DACRE" />'), unsafe_allow_html=True)
 
+def render_dacre_startup_loader():
+    if st.session_state.get('dacre_intro_seen', False):
+        return
+    st.session_state.dacre_intro_seen = True
+    try:
+        logo_b64 = base64.b64encode(DACRE_LOGO_PATH.read_bytes()).decode('ascii') if DACRE_LOGO_PATH.exists() else ''
+    except Exception:
+        logo_b64 = ''
+    logo_html = ('<img class="dacre-startup-logo" src="data:image/png;base64,' + logo_b64 + '" alt="DACRE">') if logo_b64 else '<div class="dacre-startup-logo d">D</div>'
+    html_block = '''
+    <style>.dacre-startup{position:fixed;inset:0;z-index:999999;background:#02060c;display:flex;align-items:center;justify-content:center;animation:dacreFade .55s ease 2.65s forwards;pointer-events:none}.dacre-startup-inner{text-align:center}.dacre-startup-logo{width:76px;height:76px;border-radius:22px;object-fit:contain;border:1px solid #62d7ff66;box-shadow:0 0 50px #4ccfff33;animation:dacreFloat 1.45s ease-in-out infinite}.dacre-startup-logo.d{display:grid;place-items:center;color:#bfeeff;font-size:30px;font-weight:950}.dacre-startup-name{margin-top:15px;color:#fff;font-size:15px;font-weight:950;letter-spacing:.25em}.dacre-startup-sub{margin-top:6px;color:#6e91aa;font-size:9px;letter-spacing:.14em}@keyframes dacreFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}@keyframes dacreFade{to{opacity:0;visibility:hidden}}</style>
+    <div class="dacre-startup"><div class="dacre-startup-inner">__LOGO__<div class="dacre-startup-name">DACRE</div><div class="dacre-startup-sub">DAVID INTELLIGENCE · ONLINE COMPANY</div></div></div>
+    '''.replace('__LOGO__', logo_html)
+    components.html(html_block, height=0)
+
+
+def render_dacre_capability_showcase():
+    fx_path = DACRE_ASSET_DIR / 'dacre_forex_dashboard.png'
+    st.markdown('### What DACRE can do')
+    left, right = st.columns([1.05, .95])
+    with left:
+        chart_html = '''
+        <div style="height:250px;border:1px solid #24455d;border-radius:18px;background:#06111b;padding:14px;color:#9bb3c8;font-family:Inter,system-ui"><b style="color:#63d7ff;font-size:10px">ONLINE MARKET INTELLIGENCE</b><canvas id="fxc" style="width:100%;height:210px"></canvas></div>
+        <script>(function(){var c=document.getElementById('fxc'),v=[.22,.31,.28,.41,.37,.5,.47,.62,.57,.71,.67,.8];function draw(a){var r=c.getBoundingClientRect(),d=window.devicePixelRatio||1;c.width=r.width*d;c.height=r.height*d;var x=c.getContext('2d');x.scale(d,d);x.strokeStyle='#17374d';for(var y=20;y<r.height;y+=40){x.beginPath();x.moveTo(0,y);x.lineTo(r.width,y);x.stroke()}x.strokeStyle='#59d8ff';x.lineWidth=3;x.beginPath();a.forEach(function(n,i){var X=10+i*(r.width-20)/(a.length-1),Y=r.height-20-n*(r.height-45);if(i)x.lineTo(X,Y);else x.moveTo(X,Y)});x.stroke()}draw(v);var load=function(){fetch('https://api.frankfurter.app/latest?from=USD&to=EUR,GBP,JPY',{cache:'no-store'}).then(function(r){return r.json()}).then(function(d){if(d.rates&&d.rates.EUR){draw(v.map(function(n,i){return Math.min(.9,Math.max(.1,n+(1/d.rates.EUR-1)*.15+i*.002))}))}}).catch(function(){})};if('requestIdleCallback' in window)requestIdleCallback(load,{timeout:4500});else setTimeout(load,3200)})();</script>
+        '''
+        components.html(chart_html, height=270)
+    with right:
+        if fx_path.exists():
+            st.image(str(fx_path), caption='Forex trading dashboard capability preview', use_container_width=True)
+    st.markdown('### Landscape data-presentation preview')
+    st.caption('Animated landscape slides designed as a presentation sequence with moving chart elements.')
+    if st.button('Play data presentation preview', key='dacre_play_preview', use_container_width=True, type='primary'):
+        st.session_state.dacre_preview_video = True
+    if st.session_state.get('dacre_preview_video', False):
+        vp = DACRE_ASSET_DIR / 'dacre_data_presentation_preview.mp4'
+        if vp.exists():
+            st.video(str(vp), start_time=0)
+
 def landing_page():
     """Public DACRE landing experience with connected navigation and real auth."""
+    render_dacre_startup_loader()
     record_public_visit("landing_view", "Landing")
     
     # PRIVATE MASTER GATE
@@ -4788,6 +4830,10 @@ def landing_page():
                         if guardian_answer.strip().casefold() == CEO_GUARD_NAME.casefold():
                             st.session_state.user = master_user_record()
                             st.session_state.master_route = True
+                            st.session_state.selected_page = "Overall Admin DI"
+                            st.session_state.david_creation_unlocked = False
+                            st.session_state.di_basement_unlocked = False
+                            st.session_state.di_basement_portal_open = False
                             st.session_state.master_captcha_required = False
                             st.session_state.master_captcha_passed = False
                             st.session_state.master_second_attempt = False
@@ -4995,12 +5041,12 @@ def landing_page():
         </div>
         <div class="section">
           <div class="grid-3">
-            <div class="feature-card"><div class="feature-icon">▦</div><h3>Workspace & Data</h3><p>Import CSV, Excel, TSV and JSON datasets into a persistent working environment.</p></div>
+            <div class="feature-card"><div class="feature-icon">DATA</div><h3>Workspace & Data</h3><p>Import CSV, Excel, TSV and JSON datasets into a persistent working environment.</p></div>
             <div class="feature-card"><div class="feature-icon">ƒ</div><h3>Formula Lab</h3><p>Apply practical spreadsheet-style transformations and calculations without leaving your analysis workflow.</p></div>
             <div class="feature-card"><div class="feature-icon">◫</div><h3>Charts & Dashboards</h3><p>Turn processed information into visual stories that make business patterns easier to understand.</p></div>
-            <div class="feature-card"><div class="feature-icon">▤</div><h3>File Vault</h3><p>Keep working files and datasets organized inside the organization workspace.</p></div>
-            <div class="feature-card"><div class="feature-icon">⇩</div><h3>Export Center</h3><p>Package analysis outputs for reporting, sharing and business use.</p></div>
-            <div class="feature-card"><div class="feature-icon">✦</div><h3>DI Action Center</h3><p>Give DI a business objective and let it turn the request into analysis, recommendations and next actions.</p></div>
+            <div class="feature-card"><div class="feature-icon">FILES</div><h3>File Vault</h3><p>Keep working files and datasets organized inside the organization workspace.</p></div>
+            <div class="feature-card"><div class="feature-icon">EXPORT</div><h3>Export Center</h3><p>Package analysis outputs for reporting, sharing and business use.</p></div>
+            <div class="feature-card"><div class="feature-icon">DI</div><h3>DI Action Center</h3><p>Give DI a business objective and let it turn the request into analysis, recommendations and next actions.</p></div>
           </div>
         </div>
         """, unsafe_allow_html=True)
@@ -5089,9 +5135,9 @@ def landing_page():
         </div>
         <div class="section">
           <div class="grid-2">
-            <div class="feature-card"><div class="feature-icon">✓</div><h3>Organization boundaries</h3><p>Users work inside their organization context, while administrative views are scoped according to role.</p></div>
-            <div class="feature-card"><div class="feature-icon">⌁</div><h3>Activity visibility</h3><p>DACRE records important account and workspace activity so organizations can inspect what happened.</p></div>
-            <div class="feature-card"><div class="feature-icon">♛</div><h3>Protected master access</h3><p>Overall platform controls are separated from normal organization administration behind an additional protected gate.</p></div>
+            <div class="feature-card"><div class="feature-icon">OK</div><h3>Organization boundaries</h3><p>Users work inside their organization context, while administrative views are scoped according to role.</p></div>
+            <div class="feature-card"><div class="feature-icon">ACTIVITY</div><h3>Activity visibility</h3><p>DACRE records important account and workspace activity so organizations can inspect what happened.</p></div>
+            <div class="feature-card"><div class="feature-icon">ADMIN</div><h3>Protected master access</h3><p>Overall platform controls are separated from normal organization administration behind an additional protected gate.</p></div>
             <div class="feature-card"><div class="feature-icon">DI</div><h3>Private intelligence context</h3><p>DI's internal context and application security values are not exposed as ordinary public landing-page content.</p></div>
           </div>
         </div>
@@ -5106,13 +5152,13 @@ def landing_page():
         st.markdown(f"""
         <div class="hero">
           <div>
-            <div class="hero-eyebrow">✦ Experience Next-Gen Business Intelligence</div>
+            <div class="hero-eyebrow">DI Experience Next-Gen Business Intelligence</div>
             <div class="hero-title">Transform Raw Data<br/>into <span class="gradient-text">Heavenly Insights.</span></div>
             <p class="hero-copy">DACRE turns scattered business data into clear intelligence, powerful analytics and practical decisions — with DI, David's Intelligence, built into the workspace.</p>
             <div class="hero-proof">
-              <span><span class="proof-dot">●</span> Real-time analytics</span>
-              <span><span class="proof-dot">●</span> DI-powered intelligence</span>
-              <span><span class="proof-dot">●</span> Secure workspaces</span>
+              <span><span class="proof-dot">ONLINE</span> Real-time analytics</span>
+              <span><span class="proof-dot">ONLINE</span> DI-powered intelligence</span>
+              <span><span class="proof-dot">ONLINE</span> Secure workspaces</span>
             </div>
           </div>
           <div class="hero-visual-host"></div>
@@ -5129,11 +5175,12 @@ def landing_page():
           .bars{height:200px;display:flex;align-items:flex-end;gap:8px;padding:18px 8px;border-radius:18px;background:rgba(91,122,170,.10);border:1px solid rgba(113,152,207,.12);margin-top:16px}.bar{flex:1;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,#38e4f3 0%,#2a95ff 48%,#544ff0 100%);box-shadow:0 0 24px rgba(47,146,255,.22);min-width:8px;transition:height .4s ease}.mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.mini{padding:14px;border:1px solid rgba(121,155,203,.16);border-radius:15px;background:rgba(255,255,255,.035)}.mini-label{color:#9fb0c9;font-size:10px}.mini-value{margin-top:4px;font-size:19px;font-weight:850}.mini-accent{color:#55e5b5}.badge{position:absolute;right:20px;top:18px;padding:6px 9px;border-radius:999px;background:rgba(55,128,255,.13);border:1px solid rgba(73,153,255,.28);color:#9ed2ff;font-size:9px;font-weight:800}@keyframes pulse{50%{transform:scale(1.06);opacity:.9}}
           @media(max-width:700px){.visual{min-height:360px}.card{padding:16px}.bars{height:145px;gap:5px}.metric{font-size:25px}.top{font-size:9px}}
         </style>
-        <div class="visual"><div class="orb"></div><div class="card"><div class="badge">LIVE DI INSIGHT</div><div class="top"><span>DACRE / ANALYTICS</span><span class="live"><span class="dot"></span>DI ONLINE</span></div><div class="label">Revenue Growth</div><div class="metric">$2.4M <span class="up">↗ 18.2%</span></div><div class="bars"><div class="bar" style="height:38%"></div><div class="bar" style="height:55%"></div><div class="bar" style="height:44%"></div><div class="bar" style="height:68%"></div><div class="bar" style="height:59%"></div><div class="bar" style="height:78%"></div><div class="bar" style="height:66%"></div><div class="bar" style="height:88%"></div><div class="bar" style="height:76%"></div><div class="bar" style="height:92%"></div></div><div class="mini-grid"><div class="mini"><div class="mini-label">Data Points</div><div class="mini-value">4.2M</div></div><div class="mini"><div class="mini-label">System Health</div><div class="mini-value mini-accent">99.98%</div></div></div></div></div>
+        <div class="visual"><div class="orb"></div><div class="card"><div class="badge">LIVE DI INSIGHT</div><div class="top"><span>DACRE / ANALYTICS</span><span class="live"><span class="dot"></span>DI ONLINE</span></div><div class="label">Revenue Growth</div><div class="metric">$2.4M <span class="up">OPEN 18.2%</span></div><div class="bars"><div class="bar" style="height:38%"></div><div class="bar" style="height:55%"></div><div class="bar" style="height:44%"></div><div class="bar" style="height:68%"></div><div class="bar" style="height:59%"></div><div class="bar" style="height:78%"></div><div class="bar" style="height:66%"></div><div class="bar" style="height:88%"></div><div class="bar" style="height:76%"></div><div class="bar" style="height:92%"></div></div><div class="mini-grid"><div class="mini"><div class="mini-label">Data Points</div><div class="mini-value">4.2M</div></div><div class="mini"><div class="mini-label">System Health</div><div class="mini-value mini-accent">99.98%</div></div></div></div></div>
         """
         components.html(hero_dashboard_html, height=500, scrolling=False)
 
         render_uniel_landing_guide()
+        render_dacre_capability_showcase()
 
         b1, b2, b3 = st.columns([1, 1.2, 1])
         with b1:
@@ -5153,11 +5200,11 @@ def landing_page():
         <div class="section">
           <div class="section-head"><div class="section-kicker">THE DACRE PLATFORM</div><div class="section-title">One intelligence layer for the work that matters.</div><div class="section-copy">Explore the five core aspects of DACRE — each one is a real page connected to this application.</div></div>
           <div class="grid-3">
-            <div class="feature-card"><div class="feature-icon">↗</div><h3>Features</h3><p>Explore the workspace, formulas, charts, files, exports and DI action tools that make DACRE useful day to day.</p></div>
+            <div class="feature-card"><div class="feature-icon">OPEN</div><h3>Features</h3><p>Explore the workspace, formulas, charts, files, exports and DI action tools that make DACRE useful day to day.</p></div>
             <div class="feature-card"><div class="feature-icon">DI</div><h3>Intelligence</h3><p>Understand how DI — David's Intelligence — works with your business context and active data.</p></div>
-            <div class="feature-card"><div class="feature-icon">◈</div><h3>Workforce</h3><p>Meet the specialized DI workers and see how their distinct specialties fit into one intelligence foundation.</p></div>
+            <div class="feature-card"><div class="feature-icon">NODE</div><h3>Workforce</h3><p>Meet the specialized DI workers and see how their distinct specialties fit into one intelligence foundation.</p></div>
             <div class="feature-card"><div class="feature-icon">◫</div><h3>Analytics</h3><p>See how DACRE turns data into health scores, business signals, decisions and opportunity insights.</p></div>
-            <div class="feature-card"><div class="feature-icon">✓</div><h3>Security</h3><p>Learn how organization boundaries, activity visibility and protected administration support business use.</p></div>
+            <div class="feature-card"><div class="feature-icon">OK</div><h3>Security</h3><p>Learn how organization boundaries, activity visibility and protected administration support business use.</p></div>
             <div class="feature-card"><div class="feature-icon">→</div><h3>Ready to begin?</h3><p>Create your DACRE account and enter your own workspace with real authentication and persistent organization context.</p></div>
           </div>
         </div>
@@ -5349,7 +5396,7 @@ def render_global_markets_dashboard():
     """Render global markets dashboard with real-time data."""
     st.markdown("""
     <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;">📊 Global Markets</h1>
+        <h1 style="color:white;">DATA Global Markets</h1>
         <p style="color:#94a3b8;">Real-time market data from around the world</p>
     </div>
     """, unsafe_allow_html=True)
@@ -5358,7 +5405,7 @@ def render_global_markets_dashboard():
     bi = GlobalBusinessIntelligence()
     
     # Currency rates
-    st.subheader("💱 Currency Exchange Rates")
+    st.subheader(" Currency Exchange Rates")
     rates = bi.get_currency_rates("USD")
     if rates.get("rates"):
         cols = st.columns(8)
@@ -5369,7 +5416,7 @@ def render_global_markets_dashboard():
                 st.metric(currency, f"{rate:.4f}")
     
     # Market indices
-    st.subheader("📈 Market Indices")
+    st.subheader("INSIGHTS Market Indices")
     indices = ["AAPL", "GOOGL", "MSFT", "AMZN", "META", "TSLA", "NVDA", "AMD", "NFLX", "JPM"]
     cols = st.columns(5)
     for idx, symbol in enumerate(indices):
@@ -5383,7 +5430,7 @@ def render_global_markets_dashboard():
                 )
     
     # Commodities
-    st.subheader("🛢️ Commodity Prices")
+    st.subheader("️ Commodity Prices")
     commodities = bi.get_commodity_prices(["Gold", "Silver", "Oil", "Copper", "Natural Gas"])
     cols = st.columns(5)
     for idx, (name, data) in enumerate(commodities.items()):
@@ -5395,7 +5442,7 @@ def render_global_markets_dashboard():
             )
     
     # Region analysis
-    st.subheader("🌍 Regional Business Intelligence")
+    st.subheader("GLOBAL Regional Business Intelligence")
     regions = ["Africa", "Asia", "Europe", "North America", "South America"]
     selected_region = st.selectbox("Select Region", regions)
     
@@ -5409,10 +5456,10 @@ def render_global_markets_dashboard():
         with col2:
             st.markdown("### Opportunities")
             for opp in region_data.get("opportunities", []):
-                st.markdown(f"✅ {opp}")
+                st.markdown(f"OK {opp}")
             st.markdown("### Key Markets")
             for market in region_data.get("key_markets", []):
-                st.markdown(f"📍 {market}")
+                st.markdown(f" {market}")
 
 # =============================================================================
 # SESSION STATE BOOTSTRAP
@@ -5775,49 +5822,49 @@ def render_dacre_production_core():
     </style>
     
     <div class="dacre-core-container">
-        <div class="core-title">⚡ DACRE <span>PRODUCTION CORE</span></div>
+        <div class="core-title">FAST DACRE <span>PRODUCTION CORE</span></div>
         
         <div class="core-grid">
             <div class="core-card">
-                <span class="icon">🔄</span>
+                <span class="icon">REFRESH</span>
                 <h3>Self-Healing Database</h3>
                 <p>Automatic schema repair, migration, and recovery. Your data stays intact even when things go wrong.</p>
                 <div style="margin-top: 10px; font-size: 12px; color: #94a3b8;">
-                    <span style="color: #2ecc71;">●</span> Schema Auto-Repair
+                    <span style="color: #2ecc71;">ONLINE</span> Schema Auto-Repair
                     <br>
-                    <span style="color: #2ecc71;">●</span> Migration Safe
+                    <span style="color: #2ecc71;">ONLINE</span> Migration Safe
                     <br>
-                    <span style="color: #2ecc71;">●</span> Data Integrity
+                    <span style="color: #2ecc71;">ONLINE</span> Data Integrity
                 </div>
-                <span class="status status-online">🟢 ONLINE</span>
+                <span class="status status-online">ONLINE ONLINE</span>
             </div>
             
             <div class="core-card">
-                <span class="icon">🧠</span>
+                <span class="icon">DI</span>
                 <h3>DI Intelligence</h3>
                 <p>20 specialized DI agents with memory, private brains, voice, video, and web search capabilities.</p>
                 <div style="margin-top: 10px; font-size: 12px; color: #94a3b8;">
-                    <span style="color: #3498db;">●</span> 20 DI Workforce
+                    <span style="color: #3498db;">ONLINE</span> 20 DI Workforce
                     <br>
-                    <span style="color: #3498db;">●</span> Memory + Brain
+                    <span style="color: #3498db;">ONLINE</span> Memory + Brain
                     <br>
-                    <span style="color: #3498db;">●</span> Web Search
+                    <span style="color: #3498db;">ONLINE</span> Web Search
                 </div>
-                <span class="status status-active">🔵 ACTIVE</span>
+                <span class="status status-active"> ACTIVE</span>
             </div>
             
             <div class="core-card">
-                <span class="icon">🛡️</span>
+                <span class="icon">SECURITY</span>
                 <h3>Error Shield</h3>
                 <p>Catches runtime failures, prevents crashes, and ensures safe recovery with graceful degradation.</p>
                 <div style="margin-top: 10px; font-size: 12px; color: #94a3b8;">
-                    <span style="color: #f1c40f;">●</span> Crash Protection
+                    <span style="color: #f1c40f;">ONLINE</span> Crash Protection
                     <br>
-                    <span style="color: #f1c40f;">●</span> Safe Recovery
+                    <span style="color: #f1c40f;">ONLINE</span> Safe Recovery
                     <br>
-                    <span style="color: #f1c40f;">●</span> Graceful Degrade
+                    <span style="color: #f1c40f;">ONLINE</span> Graceful Degrade
                 </div>
-                <span class="status status-ready">🟡 READY</span>
+                <span class="status status-ready"> READY</span>
             </div>
         </div>
         
@@ -5862,7 +5909,7 @@ def render_di_home(user):
     
     st.markdown("""
     <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;">💬 DI Home</h1>
+        <h1 style="color:white;"> DI Home</h1>
         <p style="color:#94a3b8;">Your continuous conversation with DI — David's Intelligence</p>
     </div>
     """, unsafe_allow_html=True)
@@ -5872,14 +5919,14 @@ def render_di_home(user):
         if msg["sender"] == "DI":
             st.markdown(f"""
             <div style="background:#1a2a4a;border-radius:12px;padding:15px;margin:5px 0;border-left:4px solid #60a5fa;">
-                <b style="color:#60a5fa;">🧠 DI</b>
+                <b style="color:#60a5fa;">DI DI</b>
                 <p style="color:white;margin-top:5px;">{msg['text']}</p>
             </div>
             """, unsafe_allow_html=True)
         else:
             st.markdown(f"""
             <div style="background:#0a1628;border-radius:12px;padding:15px;margin:5px 0;border-left:4px solid #a78bfa;">
-                <b style="color:#a78bfa;">👤 {msg['sender']}</b>
+                <b style="color:#a78bfa;"> {msg['sender']}</b>
                 <p style="color:white;margin-top:5px;">{msg['text']}</p>
             </div>
             """, unsafe_allow_html=True)
@@ -5918,7 +5965,7 @@ def render_di_workforce(user):
     
     st.markdown("""
     <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;">👥 DI Workforce</h1>
+        <h1 style="color:white;">USERS DI Workforce</h1>
         <p style="color:#94a3b8;">Your specialized digital workforce — each DI has its own identity, specialty, and style</p>
     </div>
     """, unsafe_allow_html=True)
@@ -5940,7 +5987,7 @@ def render_di_workforce(user):
                 st.caption(f"Rank: {agent.get('rank_level', 1)}")
                 st.caption(f"Status: {agent.get('status', 'Available')}")
                 
-                if st.button(f"💬 Chat with {agent['di_name']}", key=f"chat_{agent['di_name']}"):
+                if st.button(f" Chat with {agent['di_name']}", key=f"chat_{agent['di_name']}"):
                     st.session_state.selected_agent = agent['di_name']
                     st.rerun()
 
@@ -5948,7 +5995,7 @@ def render_di_calls(user):
     """Render the DI Calls page."""
     st.markdown("""
     <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;">📞 DI Calls</h1>
+        <h1 style="color:white;"> DI Calls</h1>
         <p style="color:#94a3b8;">Business calls, DI calls, and team rooms with a meeting-ready workspace</p>
     </div>
     """, unsafe_allow_html=True)
@@ -5968,7 +6015,7 @@ def render_di_calls(user):
         </div>
         """, unsafe_allow_html=True)
         
-        if st.button("📞 Start Call", use_container_width=True, type="primary"):
+        if st.button(" Start Call", use_container_width=True, type="primary"):
             st.info(f"Calling {selected_agent}... (LiveKit integration required for full voice)")
 
 def render_chibobec_loan_desk(user):
@@ -5989,12 +6036,12 @@ def render_chibobec_loan_desk(user):
     if results:
         for client_name, reminder_type, ok, status in results:
             if ok:
-                st.success(f"✅ {reminder_type} sent to {client_name}")
+                st.success(f"OK {reminder_type} sent to {client_name}")
             else:
-                st.warning(f"⚠️ {reminder_type} for {client_name}: {status}")
+                st.warning(f"WARNING {reminder_type} for {client_name}: {status}")
     
     # Add loan client form
-    with st.expander("➕ Add Loan Client", expanded=True):
+    with st.expander(" Add Loan Client", expanded=True):
         with st.form("add_loan_form", clear_on_submit=True):
             col1, col2 = st.columns(2)
             with col1:
@@ -6023,11 +6070,11 @@ def render_chibobec_loan_desk(user):
     con.close()
     
     if not loans.empty:
-        st.subheader("📋 Loan Book")
+        st.subheader(" Loan Book")
         display = loans.copy()
         display["loan_amount"] = display["loan_amount"].apply(lambda x: f"₦{float(x):,.2f}")
-        display["2-day"] = display["reminder_2_sent"].apply(lambda x: "✅" if x else "⏳")
-        display["Due"] = display["due_sent"].apply(lambda x: "✅" if x else "⏳")
+        display["2-day"] = display["reminder_2_sent"].apply(lambda x: "OK" if x else "")
+        display["Due"] = display["due_sent"].apply(lambda x: "OK" if x else "")
         display = display.drop(columns=["reminder_2_sent", "due_sent"])
         st.dataframe(safe_dataframe_for_streamlit(display), use_container_width=True, hide_index=True)
     else:
@@ -6037,7 +6084,7 @@ def render_workspace_data(user):
     """Render the Workspace & Data page."""
     st.markdown("""
     <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;">📁 Workspace & Data</h1>
+        <h1 style="color:white;">FILES Workspace & Data</h1>
         <p style="color:#94a3b8;">Upload, inspect, and clean your data</p>
     </div>
     """, unsafe_allow_html=True)
@@ -6045,7 +6092,7 @@ def render_workspace_data(user):
     # File upload
     file_upload = st.file_uploader("Upload dataset (CSV, Excel, TSV, JSON)", type=SUPPORTED_EXTENSIONS)
     
-    if file_upload is not None and st.button("📥 Import & Load Dataset", type="primary"):
+    if file_upload is not None and st.button(" Import & Load Dataset", type="primary"):
         try:
             df_raw = load_dataframe(file_upload)
             st.session_state.raw_df = df_raw
@@ -6054,15 +6101,15 @@ def render_workspace_data(user):
             save_file(user, file_upload, st.session_state.processed_df)
             save_project(user, st.session_state.raw_df, st.session_state.processed_df, 
                         st.session_state.active_filename, st.session_state.formula_logs, st.session_state.chart_config)
-            st.success(f"✅ Loaded '{file_upload.name}' successfully!")
+            st.success(f"OK Loaded '{file_upload.name}' successfully!")
             st.rerun()
         except Exception as exc:
-            st.error(f"❌ Could not load the dataset: {exc}")
+            st.error(f"ERROR Could not load the dataset: {exc}")
     
     # Display active dataset
     if st.session_state.processed_df is not None:
         df = st.session_state.processed_df
-        st.subheader(f"📊 Active File: {st.session_state.active_filename}")
+        st.subheader(f"DATA Active File: {st.session_state.active_filename}")
         
         col1, col2, col3 = st.columns(3)
         col1.metric("Total Rows", f"{len(df):,}")
@@ -6071,13 +6118,13 @@ def render_workspace_data(user):
         
         st.dataframe(safe_dataframe_for_streamlit(df), use_container_width=True)
         
-        if st.button("💾 Save Project State", use_container_width=True):
+        if st.button(" Save Project State", use_container_width=True):
             save_project(user, st.session_state.raw_df, df, st.session_state.active_filename, 
                         st.session_state.formula_logs, st.session_state.chart_config)
             log_activity(user["username"], user["company"], "Saved project state")
             st.toast("Project saved successfully!")
     else:
-        st.info("📭 No active dataset. Upload a file or restore a saved project by signing in again.")
+        st.info("EMPTY No active dataset. Upload a file or restore a saved project by signing in again.")
 
 def render_formula_lab(user):
     """Render the Formula Lab page."""
@@ -6090,7 +6137,7 @@ def render_formula_lab(user):
     
     df = st.session_state.processed_df
     if df is None:
-        st.warning("⚠️ Please upload or open a dataset first.")
+        st.warning("WARNING Please upload or open a dataset first.")
         return
     
     formula = st.selectbox("Formula Operation", SHEET_FORMULAS)
@@ -6098,14 +6145,14 @@ def render_formula_lab(user):
     
     if formula in ["SUM", "AVERAGE", "COUNT", "COUNTA", "MAX", "MIN", "UPPER", "LOWER", "TRIM"]:
         target_col = st.selectbox("Target Column", cols)
-        if st.button("▶️ Run Formula", type="primary"):
+        if st.button("SEND️ Run Formula", type="primary"):
             res = apply_formula(df, formula, {"column": target_col})
             if isinstance(res, tuple) and res[0] == "column":
                 df[res[1]] = res[2]
                 st.session_state.processed_df = df
                 st.session_state.formula_logs.append(f"Applied {formula} on {target_col}")
                 log_activity(user["username"], user["company"], f"Ran formula {formula} on {target_col}")
-                st.success(f"✅ Applied {formula} on '{target_col}'!")
+                st.success(f"OK Applied {formula} on '{target_col}'!")
                 st.rerun()
             else:
                 st.markdown(f"### Result: `{res}`")
@@ -6117,25 +6164,25 @@ def render_formula_lab(user):
         new_col = st.text_input("New Column Name", value="Combined")
         sep = st.text_input("Separator", value=" ")
         
-        if st.button("▶️ Run CONCATENATE", type="primary"):
+        if st.button("SEND️ Run CONCATENATE", type="primary"):
             df[new_col] = df[first].astype(str) + sep + df[second].astype(str)
             st.session_state.processed_df = df
             log_activity(user["username"], user["company"], f"Created concatenated column {new_col}")
-            st.success(f"✅ Created '{new_col}'!")
+            st.success(f"OK Created '{new_col}'!")
             st.rerun()
 
 def render_charts(user):
     """Render the Charts page."""
     st.markdown("""
     <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;">📊 Charts</h1>
+        <h1 style="color:white;">DATA Charts</h1>
         <p style="color:#94a3b8;">Turn data into clear visual stories and business dashboards</p>
     </div>
     """, unsafe_allow_html=True)
     
     df = st.session_state.processed_df
     if df is None:
-        st.warning("⚠️ Please upload or open a dataset first.")
+        st.warning("WARNING Please upload or open a dataset first.")
         return
     
     chart_type = st.selectbox("Chart Type", ["Bar Chart", "Line Chart", "Area Chart", "Scatter Plot", "Pie Chart"])
@@ -6145,10 +6192,10 @@ def render_charts(user):
     x_col = st.selectbox("X-Axis (Category Column)", cols)
     y_col = st.selectbox("Y-Axis (Numeric Values)", num_cols if num_cols else cols)
     
-    if st.button("📈 Generate Chart", type="primary"):
+    if st.button("INSIGHTS Generate Chart", type="primary"):
         st.session_state.chart_config = {"type": chart_type, "x": x_col, "y": y_col}
         log_activity(user["username"], user["company"], f"Created {chart_type}: {x_col} vs {y_col}")
-        st.success("✅ Chart generated!")
+        st.success("OK Chart generated!")
     
     if st.session_state.chart_config:
         cfg = st.session_state.chart_config
@@ -6171,14 +6218,14 @@ def render_file_vault(user):
     """Render the File Vault page."""
     st.markdown("""
     <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;">🗄️ File Vault</h1>
+        <h1 style="color:white;">DATABASE File Vault</h1>
         <p style="color:#94a3b8;">Keep company files, working datasets, and project artifacts organized</p>
     </div>
     """, unsafe_allow_html=True)
     
     saved_files = get_files(user)
     if not saved_files:
-        st.info("📭 No files stored in vault for your organization.")
+        st.info("EMPTY No files stored in vault for your organization.")
         return
     
     for fname, ftype, created, fjson in saved_files:
@@ -6186,27 +6233,27 @@ def render_file_vault(user):
         with col1:
             st.markdown(f"**{fname}** (`.{ftype}`) — Saved on: {created}")
         with col2:
-            if st.button(f"📂 Load", key=f"btn_{fname}_{created}"):
+            if st.button(f"LOAD Load", key=f"btn_{fname}_{created}"):
                 restored_df = dataframe_from_json(fjson)
                 st.session_state.processed_df = restored_df
                 st.session_state.raw_df = restored_df
                 st.session_state.active_filename = fname
                 log_activity(user["username"], user["company"], f"Loaded file from vault: {fname}")
-                st.success(f"✅ Loaded {fname} from Vault!")
+                st.success(f"OK Loaded {fname} from Vault!")
                 st.rerun()
 
 def render_export_center(user):
     """Render the Export Center page."""
     st.markdown("""
     <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;">📤 Export Center</h1>
+        <h1 style="color:white;">EXPORT Export Center</h1>
         <p style="color:#94a3b8;">Package analysis outputs for the people who need them</p>
     </div>
     """, unsafe_allow_html=True)
     
     df = st.session_state.processed_df
     if df is None:
-        st.warning("⚠️ No data available to export.")
+        st.warning("WARNING No data available to export.")
         return
     
     csv_data = df.to_csv(index=False).encode("utf-8")
@@ -6215,7 +6262,7 @@ def render_export_center(user):
     col1, col2 = st.columns(2)
     with col1:
         st.download_button(
-            "📄 Download CSV Dataset",
+            "DOCUMENT Download CSV Dataset",
             data=csv_data,
             file_name=f"{st.session_state.active_filename or 'dacre'}_processed.csv",
             mime="text/csv",
@@ -6224,7 +6271,7 @@ def render_export_center(user):
         )
     with col2:
         st.download_button(
-            "📊 Download Excel Workbook (.xlsx)",
+            "DATA Download Excel Workbook (.xlsx)",
             data=excel_data,
             file_name=f"{st.session_state.active_filename or 'dacre'}_workbook.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -6238,7 +6285,7 @@ def render_organization_admin(user):
     """Render the Organization Admin Portal."""
     st.markdown("""
     <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;">⚙️ Organization Admin Portal</h1>
+        <h1 style="color:white;">SETTINGS Organization Admin Portal</h1>
         <p style="color:#94a3b8;">Manage people, roles, notifications, and company activity</p>
     </div>
     """, unsafe_allow_html=True)
@@ -6272,7 +6319,7 @@ def render_organization_admin(user):
                     con.commit()
                     notify_company_admin(target_company, f"Admin role changed for {selected_user}: {new_role}.", "role_change")
                     log_activity(user["username"], target_company, f"Changed role for {selected_user} to {new_role}")
-                    st.success("✅ Role updated.")
+                    st.success("OK Role updated.")
                     st.rerun()
     
     with tabs[1]:
@@ -6283,7 +6330,7 @@ def render_organization_admin(user):
         )
         st.dataframe(safe_dataframe_for_streamlit(notes_df), use_container_width=True)
         
-        if not notes_df.empty and st.button("📬 Mark all as read", type="primary"):
+        if not notes_df.empty and st.button("MAIL Mark all as read", type="primary"):
             con.execute("UPDATE notifications SET is_read=1 WHERE company_name=?", (target_company,))
             con.commit()
             st.rerun()
@@ -6294,7 +6341,7 @@ def render_di_memory_box(user):
     """Render the DI Memory Box page."""
     st.markdown("""
     <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;">🧠 DI Memory Box</h1>
+        <h1 style="color:white;">DI DI Memory Box</h1>
         <p style="color:#94a3b8;">The trusted institutional memory layer shared by the DI workforce</p>
     </div>
     """, unsafe_allow_html=True)
@@ -6306,7 +6353,7 @@ def render_di_memory_box(user):
     )
     
     if mem_df.empty:
-        st.info("📭 No memory records found.")
+        st.info("EMPTY No memory records found.")
         return
     
     for row in mem_df.itertuples(index=False):
@@ -6320,40 +6367,40 @@ def render_business_command_center(user):
     
     st.markdown("""
     <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;">📊 Business Command Center</h1>
+        <h1 style="color:white;">DATA Business Command Center</h1>
         <p style="color:#94a3b8;">Executive signals, business health, and the most important changes in your active data</p>
     </div>
     """, unsafe_allow_html=True)
     
     if df is None:
-        st.info("📭 Upload a dataset from Workspace & Data first.")
+        st.info("EMPTY Upload a dataset from Workspace & Data first.")
         return
     
     health = business_health(df)
     signals = business_signals(df)
     
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("📈 Data Health", f"{health['score']}/100")
-    col2.metric("📊 Records", f"{len(df):,}")
-    col3.metric("🔍 Missing Cells", f"{int(df.isna().sum().sum()):,}")
-    col4.metric("🔄 Duplicates", f"{int(df.duplicated().sum()):,}")
+    col1.metric("INSIGHTS Data Health", f"{health['score']}/100")
+    col2.metric("DATA Records", f"{len(df):,}")
+    col3.metric("SEARCH Missing Cells", f"{int(df.isna().sum().sum()):,}")
+    col4.metric("REFRESH Duplicates", f"{int(df.duplicated().sum()):,}")
     
-    st.markdown("### 📋 Executive Brief")
+    st.markdown("###  Executive Brief")
     st.write(build_executive_brief(df, user["company"]))
     
-    st.markdown("### 🚨 Signals Requiring Attention")
+    st.markdown("### ALERT Signals Requiring Attention")
     if not signals:
-        st.success("✅ No strong automated warning signals were detected.")
+        st.success("OK No strong automated warning signals were detected.")
     else:
         for sig in signals:
-            icon = "📈" if sig["type"] == "trend" else "⚠️" if sig["type"] == "anomaly" else "🧹"
+            icon = "INSIGHTS" if sig["type"] == "trend" else "WARNING" if sig["type"] == "anomaly" else "CLEAN"
             st.markdown(f"**{icon} {sig['column']}** — {sig['message']}")
 
 def render_enhanced_conference_room(user):
     """Render an enhanced conference room."""
     st.markdown("""
     <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;">🎥 DI Conference</h1>
+        <h1 style="color:white;">DI Conference</h1>
         <p style="color:#94a3b8;">Enhanced video conferencing with DI agents</p>
     </div>
     """, unsafe_allow_html=True)
@@ -6365,7 +6412,7 @@ def render_enhanced_conference_room(user):
     
     selected_di = st.multiselect("Select DI agents for conference", [a['di_name'] for a in agents], default=[a['di_name'] for a in agents[:3]])
     
-    if st.button("🎥 Start Conference", use_container_width=True, type="primary"):
+    if st.button("VIDEO Start Conference", use_container_width=True, type="primary"):
         if selected_di:
             selected_agents = [a for a in agents if a['di_name'] in selected_di]
             render_di_video_call_stage(selected_agents, "DI Council Conference", user.get("first_name", "David"))
@@ -6392,7 +6439,7 @@ def render_persistent_di_dock(user):
         st.caption(quick_caption)
         
         if user.get("role") == "master":
-            st.info("🔐 DI treats messages here as private Sovereign Master requests and responds with founder-level respect.")
+            st.info("SECURE DI treats messages here as private Sovereign Master requests and responds with founder-level respect.")
         
         for msg in st.session_state.chat_history[-5:]:
             st.write(f"**{msg['sender']}**: {msg['text']}")
@@ -6463,14 +6510,14 @@ def render_fixed_overall_admin_page(user):
             font-size: 80px;
             margin: 0 auto;
         ">
-            👑
+            CEO
         </div>
         """, unsafe_allow_html=True)
     
     st.markdown("""
             </div>
             <div style="flex: 1;">
-                <h1 style="color: white; margin: 0;">👑 CEO Office</h1>
+                <h1 style="color: white; margin: 0;">CEO CEO Office</h1>
                 <h2 style="color: #60a5fa; margin: 0;">David Emenike</h2>
                 <p style="color: #94a3b8;">Overall Administrator · Founder · CEO of DACRE Worldwide</p>
                 <div style="
@@ -6482,7 +6529,7 @@ def render_fixed_overall_admin_page(user):
                     font-weight: bold;
                     font-size: 12px;
                 ">
-                    🟢 ONLINE
+                    ONLINE ONLINE
                 </div>
             </div>
         </div>
@@ -6507,7 +6554,7 @@ def render_fixed_overall_admin_page(user):
         margin: 20px 0;
         border: 1px solid rgba(75,130,245,0.2);
     ">
-        <h2 style="color: white;">👑 Sovereign Master Call</h2>
+        <h2 style="color: white;">CEO Sovereign Master Call</h2>
         <p style="color: #94a3b8;">Private CEO conference with your DI council - video, voice, and real AI</p>
     </div>
     """, unsafe_allow_html=True)
@@ -6526,12 +6573,12 @@ def render_fixed_overall_admin_page(user):
             height=80
         )
         
-        if st.button("🔊 Start Sovereign Master Call", use_container_width=True, type="primary"):
+        if st.button("SPEAK Start Sovereign Master Call", use_container_width=True, type="primary"):
             if selected_di:
-                st.success(f"🎥 Calling {', '.join(selected_di)}...")
+                st.success(f"VIDEO Calling {', '.join(selected_di)}...")
                 if call_question.strip():
-                    st.info(f"📝 Question: {call_question}")
-                st.info("🔗 LiveKit video call would connect here")
+                    st.info(f"NOTE Question: {call_question}")
+                st.info("LINK LiveKit video call would connect here")
             else:
                 st.warning("Please select at least one DI agent")
     
@@ -6545,12 +6592,12 @@ def render_fixed_overall_admin_page(user):
             min-height: 200px;
             border: 1px solid rgba(75,130,245,0.1);
         ">
-            <h4 style="color: white;">📋 Call Status</h4>
+            <h4 style="color: white;"> Call Status</h4>
             <div style="color: #94a3b8; font-size: 14px;">
-                <p>🟢 System Ready</p>
-                <p>🎤 Microphone: Active</p>
-                <p>📹 Camera: Ready</p>
-                <p>🧠 DI Agents: Online</p>
+                <p>ONLINE System Ready</p>
+                <p>MIC Microphone: Active</p>
+                <p>CAMERA Camera: Ready</p>
+                <p>DI DI Agents: Online</p>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -6564,13 +6611,13 @@ def render_fixed_overall_admin_page(user):
         margin: 20px 0;
         border: 1px solid rgba(75,130,245,0.2);
     ">
-        <h2 style="color: white;">🤖 AI DI Workforce</h2>
+        <h2 style="color: white;">AI AI DI Workforce</h2>
         <p style="color: #94a3b8;">REAL AI-generated portraits of your DI team</p>
     """, unsafe_allow_html=True)
     
     # Generate DI Grid
     if not os.path.exists("di_grid_portraits.jpg"):
-        with st.spinner("🎨 Generating REAL AI portraits of your DI workforce..."):
+        with st.spinner("CREATIVE Generating REAL AI portraits of your DI workforce..."):
             image_bytes = generate_di_grid_image()
             if image_bytes:
                 import base64
@@ -6583,7 +6630,7 @@ def render_fixed_overall_admin_page(user):
                                 box-shadow: 0 20px 60px rgba(0,0,0,0.5);"/>
                 </div>
                 """, unsafe_allow_html=True)
-                st.success("✅ AI DI portraits generated successfully!")
+                st.success("OK AI DI portraits generated successfully!")
     else:
         with open("di_grid_portraits.jpg", "rb") as f:
             import base64
@@ -6597,7 +6644,7 @@ def render_fixed_overall_admin_page(user):
             </div>
             """, unsafe_allow_html=True)
     
-    if st.button("🔄 Regenerate DI Portraits", use_container_width=False, type="secondary"):
+    if st.button("REFRESH Regenerate DI Portraits", use_container_width=False, type="secondary"):
         if os.path.exists("di_grid_portraits.jpg"):
             os.remove("di_grid_portraits.jpg")
         st.rerun()
@@ -6606,7 +6653,7 @@ def render_fixed_overall_admin_page(user):
 
     # Additive engineering layer — the existing Overall Admin command center above is preserved.
     st.markdown("---")
-    st.markdown("## 🧬 David Creation · DI Engineering")
+    st.markdown("##  David Creation · DI Engineering")
     st.caption("Build, separate and inspect the 20 DI identities without replacing the Overall Admin command center.")
     render_david_creation_portal(user)
 
@@ -6854,7 +6901,7 @@ def render_online_robot_control_center(user):
     """Master-only service dashboard. Never displays credentials."""
     if user.get("role") != "master":
         return
-    st.markdown("### ◈ Online Robot Service Fabric")
+    st.markdown("### NODE Online Robot Service Fabric")
     st.caption("AI, database, mail and research services used by the DI workforce. Credentials stay server-side.")
     status = dacre_service_status()
     cards = [("RESEARCH GATEWAY", "ONLINE" if status["research_gateway"] else "FALLBACK", "#58c7ff"),("GEMINI", "READY" if status["gemini"] else "NOT CONFIGURED", "#58c7ff"),("GROQ", "READY" if status["groq"] else "NOT CONFIGURED", "#ff9f43"),("MONGODB", "READY" if status["mongodb"] else "LOCAL DB", "#b9784f"),("MAILJET", "READY" if status["mailjet"] else "NOT CONFIGURED", "#ff9f43")]
@@ -7100,7 +7147,7 @@ def di_basement_research_answer(agent, user, question, allow_remote=True):
 
 def render_di_research_store(user, selected_agent=None):
     """Large DI Basement research store and server gateway controls."""
-    st.markdown("### ◈ DI Research Server Store")
+    st.markdown("### NODE DI Research Server Store")
     st.caption("The DI specialist takes research requests here. Answers are cached in the store and promoted into that DI's private brain when the store reaches capacity.")
     endpoint, _, capacity = _research_server_config()
     count, capacity = di_research_store_stats(str(user.get("company", "") or ""))
@@ -7250,7 +7297,7 @@ def render_persistent_di_basement_world():
         <div class="di-room room-{idx}" data-di="{html.escape(spec['name'])}">
           <div class="room-header">
             <span class="room-number">ROOM {idx:02d}</span>
-            <span class="room-status">● {status}</span>
+            <span class="room-status">ONLINE {status}</span>
           </div>
           <div class="room-stage">
             <div class="room-grid"></div>
@@ -7376,7 +7423,7 @@ def render_di_craft_basement(user):
         <div><div class="basement-kicker">DAVID CREATION · ENGINEERING LEVEL</div>
         <h1>DI CRAFT BASEMENT</h1>
         <p>Twenty separated DI engineering rooms · shared DACRE intelligence fabric · individual identity, body, voice and memory.</p></div>
-        <div class="basement-status">● ENGINE ONLINE</div>
+        <div class="basement-status">ONLINE ENGINE ONLINE</div>
       </div>
     </div>
     <style>
@@ -7414,7 +7461,7 @@ def render_di_craft_basement(user):
                 <div style="color:#38bdf8;font-size:11px;font-weight:800">{room["id"].upper()}</div>
                 <div style="color:#fff;font-weight:800;margin-top:8px">{room["artifact"]}</div>
                 <div style="color:#94a3b8;font-size:12px;margin-top:8px">{room["purpose"]}</div>
-                <div style="color:#60a5fa;font-size:11px;margin-top:10px">◈ HOLOGRAPHIC SCREEN ONLINE</div>
+                <div style="color:#60a5fa;font-size:11px;margin-top:10px">NODE HOLOGRAPHIC SCREEN ONLINE</div>
                 </div>
                 """, unsafe_allow_html=True)
         st.markdown("#### Operational Screen")
@@ -7466,7 +7513,7 @@ def render_david_creation_portal(user):
     except Exception:
         pass
 
-    st.markdown("## 🧬 David Creation")
+    st.markdown("##  David Creation")
     st.caption("Master engineering portal. The existing Overall Admin command-center UI remains unchanged; this is an additive engineering layer.")
     st.info("The selected 20-DI visual poster is the source for the individual DI face assets.")
     cols = st.columns(4)
@@ -7491,12 +7538,16 @@ def real_di_seed_workforce():
     con = db()
     try:
         # Archive old permanent workforce names; company-specific DIs are untouched.
+        con.execute("CREATE TABLE IF NOT EXISTS di_destroyed_agents (di_name TEXT PRIMARY KEY, destroyed_at TEXT NOT NULL, destroyed_by TEXT NOT NULL)")
+        destroyed_names = {r["di_name"] for r in con.execute("SELECT di_name FROM di_destroyed_agents").fetchall()}
         permanent_names = {x["name"] for x in REAL_DI_ROSTER}
         for row in con.execute("SELECT id, di_name, assigned_company FROM di_agents").fetchall():
             if not (row["assigned_company"] or "").strip() and row["di_name"] not in permanent_names:
                 con.execute("UPDATE di_agents SET status='Archived', last_active=? WHERE id=?", (now, int(row["id"])))
 
         for spec in REAL_DI_ROSTER:
+            if spec["name"] in destroyed_names:
+                continue
             row = con.execute("SELECT id FROM di_agents WHERE di_name=?", (spec["name"],)).fetchone()
             code = "DI-" + re.sub(r"[^A-Z0-9]+", "-", spec["name"].upper()).strip("-")
             avatar = str(di_face_path(spec["name"]) or "")
@@ -7694,7 +7745,7 @@ def real_di_avatar(agent, state="idle", speech_text=""):
       <div class="real-di-info">
         <div class="real-di-name">{name} <span>· DI</span></div>
         <div class="real-di-specialty">{specialty}</div>
-        <div class="real-di-status">● {('Listening' if state == 'listening' else 'Speaking' if state == 'speaking' else 'Ready')}</div>
+        <div class="real-di-status">ONLINE {('Listening' if state == 'listening' else 'Speaking' if state == 'speaking' else 'Ready')}</div>
       </div>
     </div>
     <style>
@@ -7747,10 +7798,10 @@ def render_microphone_permission_warmup():
 
 def real_di_render_voice_input(user, location="home"):
     """Render browser microphone input. The browser will request permission; silent recording is not allowed."""
-    st.markdown("### 🎙️ Talk to DI")
+    st.markdown("### VOICE Talk to DI")
     st.caption("Your microphone is ready. Click the microphone control, allow browser permission, speak, and DI will place the transcript into the chat workflow.")
     key = f"real_di_audio_{location}_{user.get('username','user')}"
-    audio = st.audio_input("🎙️ Record your question", sample_rate=16000, key=key)
+    audio = st.audio_input("VOICE Record your question", sample_rate=16000, key=key)
     if audio is not None:
         transcript, error = gemini_transcribe_audio(audio)
         if transcript:
@@ -7786,7 +7837,7 @@ def render_real_di_home(user):
     active_name = st.session_state.get("real_di_active_agent") or (state or {}).get("active_di") or "Assiel"
     active = next((a for a in agents if a.get("di_name") == active_name), agents[0])
 
-    st.markdown("""<div style="padding:22px;border-radius:22px;background:linear-gradient(135deg,#07111f,#12233c);border:1px solid #274568;margin-bottom:18px"><h1 style="color:white;margin:0">🧠 DI — David's Intelligence</h1><p style="color:#9fb4cc;margin:6px 0 0">Real 20-member AI workforce · local memory · current web evidence · voice interaction</p></div>""", unsafe_allow_html=True)
+    st.markdown("""<div style="padding:22px;border-radius:22px;background:linear-gradient(135deg,#07111f,#12233c);border:1px solid #274568;margin-bottom:18px"><h1 style="color:white;margin:0">DI DI — David's Intelligence</h1><p style="color:#9fb4cc;margin:6px 0 0">Real 20-member AI workforce · local memory · current web evidence · voice interaction</p></div>""", unsafe_allow_html=True)
 
     if not st.session_state.get("real_di_welcome_shown"):
         intros = real_di_welcome_sequence(user)
@@ -7799,7 +7850,7 @@ def render_real_di_home(user):
     real_di_avatar(active, "ready")
 
     if state and state.get("last_task"):
-        st.info(f"🔄 Welcome back. I remember your last active specialist was **{state.get('active_di')}** and your last task was: {state.get('last_task')}")
+        st.info(f"REFRESH Welcome back. I remember your last active specialist was **{state.get('active_di')}** and your last task was: {state.get('last_task')}")
 
     for msg in st.session_state.chat_history[-16:]:
         sender = msg.get("sender", "")
@@ -7822,12 +7873,12 @@ def render_real_di_home(user):
 
     transcript = real_di_render_voice_input(user, "home")
     if transcript:
-        if st.button("▶ Send transcript to DI", type="primary"):
+        if st.button("SEND Send transcript to DI", type="primary"):
             result = real_di_handle_question(user, transcript, st.session_state.processed_df)
             if result:
                 st.rerun()
 
-    st.markdown("### 👥 Meet the DI specialists")
+    st.markdown("### USERS Meet the DI specialists")
     ranked = real_di_rank_agents(state.get("last_task", "") if state else "")
     cols = st.columns(4)
     for i, agent in enumerate(ranked[:8]):
@@ -7843,7 +7894,7 @@ def render_real_di_home(user):
 def render_real_di_workforce(user):
     """New workforce directory with role ranking and direct specialist selection."""
     agents = real_di_agent_rows()
-    st.markdown("# 👥 Real DI Workforce")
+    st.markdown("# USERS Real DI Workforce")
     st.caption("20 permanent DI specialists. Every specialist shares the trusted brain and has a distinct job.")
     task = st.text_input("What are you working on?", placeholder="e.g. analyze sales, fix Python, research a competitor, prepare a report")
     ranked = real_di_rank_agents(task) if task.strip() else agents
@@ -7860,7 +7911,7 @@ def render_real_di_workforce(user):
 def render_real_di_persistent_dock(user):
     """Persistent voice/text DI dock available across the signed-in workspace."""
     st.markdown("---")
-    with st.expander("🎙️ Talk to DI anywhere", expanded=False):
+    with st.expander("VOICE Talk to DI anywhere", expanded=False):
         active_name = st.session_state.get("real_di_active_agent", "Assiel")
         agent = next((a for a in real_di_agent_rows() if a.get("di_name") == active_name), None)
         if agent:
@@ -8388,8 +8439,8 @@ def render_uniel_landing_guide():
         <h2>“Welcome. I’ll show you what DACRE can do for your work.”</h2>
         <p>DACRE is a worldwide online business and data-intelligence platform. Bring your data, documents and business questions into one professional workspace.</p>
         <div class="uniel-grid">
-          <span>📊 Analyze data</span><span>🧹 Clean & validate</span><span>📈 Build insights</span>
-          <span>🌍 Research markets</span><span>📁 Manage work</span><span>📄 Export results</span>
+          <span>DATA Analyze data</span><span>CLEAN Clean & validate</span><span>INSIGHTS Build insights</span>
+          <span>GLOBAL Research markets</span><span>FILES Manage work</span><span>DOCUMENT Export results</span>
         </div>
         <p class="uniel-strong">Your workspace is private to your organization. Behind the scenes, DACRE's intelligence services can coordinate specialized work while you stay focused on your business.</p>
       </div>
@@ -8426,14 +8477,14 @@ def render_user_navigation(user):
         "Research Store",
     ]
     labels = {
-        "Overview": "⌂  My Dashboard",
-        "Workspace & Data": "▦  Data Workspace",
-        "Business Twin": "◈  Business Twin",
-        "Decision Ledger": "✓  Decision Ledger",
-        "Opportunity Radar": "↗  Opportunity Radar",
-        "File Vault": "▤  File Vault",
-        "Export Center": "⇩  Export Center",
-        "Research Store": "⌕  Research Store",
+        "Overview": "HOME  My Dashboard",
+        "Workspace & Data": "DATA  Data Workspace",
+        "Business Twin": "NODE  Business Twin",
+        "Decision Ledger": "OK  Decision Ledger",
+        "Opportunity Radar": "OPEN  Opportunity Radar",
+        "File Vault": "FILES  File Vault",
+        "Export Center": "EXPORT  Export Center",
+        "Research Store": "SEARCH  Research Store",
     }
     selected = st.sidebar.radio(
         "Navigation",
@@ -8445,7 +8496,7 @@ def render_user_navigation(user):
     st.session_state.selected_page = selected
 
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### 🌍 Country & language")
+    st.sidebar.markdown("### GLOBAL Country & language")
     selected_country = st.sidebar.selectbox(
         "Choose your country",
         COUNTRY_OPTIONS,
@@ -8461,7 +8512,7 @@ def render_user_navigation(user):
     st.sidebar.info(f"DI language engine: {lang} · {code}")
     st.sidebar.markdown("---")
     unread = count_user_notifications(user)
-    st.sidebar.markdown(f"🔔 **Notifications:** {unread}")
+    st.sidebar.markdown(f"NOTICE **Notifications:** {unread}")
     if st.sidebar.button("Sign out", use_container_width=True, key="user_sign_out"):
         st.session_state.user = None
         st.session_state.selected_page = "Overview"
@@ -8561,7 +8612,7 @@ def render_user_dashboard(user):
       <div style="color:#6ee7ff;font-size:11px;font-weight:900;letter-spacing:.16em">DACRE WORLDWIDE · PRIVATE WORKSPACE</div>
       <h1 style="margin:8px 0 6px;color:#fff">Welcome, {_escape_html(user.get('first_name','User'))}.</h1>
       <p style="margin:0;color:#9eb0c8;max-width:780px">Your work, projects, data and results are organized here. Your workspace is scoped to <b>{_escape_html(user.get('company','your organization'))}</b>.</p>
-      <div style="margin-top:14px;color:#73e5bd;font-weight:800">🌍 {country} · {language}</div>
+      <div style="margin-top:14px;color:#73e5bd;font-weight:800">GLOBAL {country} · {language}</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -8577,9 +8628,9 @@ def render_user_dashboard(user):
 
     c1, c2, c3 = st.columns(3)
     cards = [
-        ("▦", "Start with your data", "Upload a CSV, Excel, TSV or JSON file and begin a structured analysis.", "Workspace & Data"),
-        ("◈", "Understand the business", "Use the Business Twin to inspect data health, patterns and measurable opportunities.", "Business Twin"),
-        ("⌕", "Research the world", "Search current public information and collect useful sources for your work.", "Research Store"),
+        ("DATA", "Start with your data", "Upload a CSV, Excel, TSV or JSON file and begin a structured analysis.", "Workspace & Data"),
+        ("NODE", "Understand the business", "Use the Business Twin to inspect data health, patterns and measurable opportunities.", "Business Twin"),
+        ("SEARCH", "Research the world", "Search current public information and collect useful sources for your work.", "Research Store"),
     ]
     for col, (icon, title, copy, target) in zip((c1,c2,c3), cards):
         with col:
@@ -8588,7 +8639,7 @@ def render_user_dashboard(user):
                 st.session_state.selected_page = target
                 st.rerun()
 
-    st.markdown("### 🔔 Messages")
+    st.markdown("### NOTICE Messages")
     if notifications.empty:
         st.info("No new messages yet.")
     else:
@@ -9096,8 +9147,8 @@ DACRE_PAGE_DI_MAP = {
     "DI Home": "Raziel",
     "DI Calls": "Emiel",
     "DI Workforce": "Muriel",
-    "🌍 Global Markets": "Nathaniel",
-    "🎥 DI Conference": "Emiel",
+    "Global Markets": "Nathaniel",
+    "DI Conference": "Emiel",
     "DI Action Center": "Uriel",
     "DI Memory Box": "Haniel",
     "Business Command Center": "Graciel",
@@ -9294,8 +9345,8 @@ def render_page_di_hologram(page_name, user):
 # =============================================================================
 
 MASTER_PAGES = [
-    "Overview", "DI Home", "DI Calls", "DI Workforce", "🌍 Global Markets",
-    "🎥 DI Conference", "DI Action Center", "DI Memory Box", "Business Command Center",
+    "Overview", "DI Home", "DI Calls", "DI Workforce", "Global Markets",
+    "DI Conference", "DI Action Center", "DI Memory Box", "Business Command Center",
     "Business Twin", "Decision Ledger", "Opportunity Radar", "Workspace & Data",
     "Formula Lab", "Charts", "File Vault", "Export Center", "Chibobec Loan Desk",
     "Organization Admin Portal", "Overall Admin DI Portal",
@@ -9316,7 +9367,7 @@ def render_enterprise_sidebar(user):
     if not user:
         return
     if user.get("role") == "master":
-        st.sidebar.markdown("## 👑 DACRE COMMAND")
+        st.sidebar.markdown("## CEO DACRE COMMAND")
         st.sidebar.caption("Founder / Overall Administrator")
         selected = st.sidebar.radio(
             "Command navigation",
@@ -9327,7 +9378,7 @@ def render_enterprise_sidebar(user):
         st.session_state.selected_page = selected
         health = mongo_health()
         st.sidebar.markdown("---")
-        st.sidebar.caption(f"MongoDB: {'● ONLINE' if health['enabled'] else '○ '+health['status']}")
+        st.sidebar.caption(f"MongoDB: {'ONLINE ONLINE' if health['enabled'] else 'OFFLINE '+health['status']}")
         if st.sidebar.button("Sign out", use_container_width=True, key="master_sign_out"):
             st.session_state.user = None
             st.session_state.master_route = False
@@ -9427,9 +9478,9 @@ def main_app():
         render_di_calls(user)
     elif selected_page == "DI Workforce" and user.get("role") == "master":
         render_real_di_workforce(user)
-    elif selected_page == "🌍 Global Markets" and user.get("role") == "master":
+    elif selected_page == "Global Markets" and user.get("role") == "master":
         render_global_markets_dashboard()
-    elif selected_page == "🎥 DI Conference" and user.get("role") == "master":
+    elif selected_page == "DI Conference" and user.get("role") == "master":
         render_enhanced_conference_room(user)
     elif selected_page == "DI Action Center" and user.get("role") == "master":
         render_action_center(user)
@@ -9475,6 +9526,322 @@ try:
     real_di_seed_workforce()
 except Exception as _real_di_boot_error:
     logger.exception("Real DI workforce bootstrap failed: %s", _real_di_boot_error)
+
+# =============================================================================
+# DACRE FOUNDER COMMAND CENTER v7.7.1
+# =============================================================================
+FOUNDER_MASTER_PAGES = ["Overall Admin DI", "David Creation", "DI Basement"]
+
+
+def _founder_now():
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _ensure_founder_creation_tables():
+    con = db()
+    try:
+        con.execute("""CREATE TABLE IF NOT EXISTS di_destroyed_agents (
+            di_name TEXT PRIMARY KEY,
+            destroyed_at TEXT NOT NULL,
+            destroyed_by TEXT NOT NULL
+        )""")
+        con.execute("""CREATE TABLE IF NOT EXISTS founder_activity_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            action TEXT NOT NULL,
+            detail TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )""")
+        con.commit()
+    finally:
+        con.close()
+
+
+def _founder_log(action, detail):
+    _ensure_founder_creation_tables()
+    try:
+        con = db()
+        con.execute("INSERT INTO founder_activity_log(action,detail,created_at) VALUES(?,?,?)", (str(action), str(detail), _founder_now()))
+        con.commit()
+        con.close()
+    except Exception:
+        logger.exception("Founder activity log failed")
+
+
+def _founder_counts():
+    con = db()
+    try:
+        return {
+            "users": int(con.execute("SELECT COUNT(*) FROM users WHERE role!='master'").fetchone()[0]),
+            "companies": int(con.execute("SELECT COUNT(*) FROM companies").fetchone()[0]),
+            "activity": int(con.execute("SELECT COUNT(*) FROM activity WHERE lower(username) != lower(?)", (MASTER_USERNAME,)).fetchone()[0]) + int(con.execute("SELECT COUNT(*) FROM public_visits").fetchone()[0]),
+            "messages": int(con.execute("SELECT COUNT(*) FROM chat_history WHERE lower(username) != lower(?)", (MASTER_USERNAME,)).fetchone()[0]),
+            "files": int(con.execute("SELECT COUNT(*) FROM files WHERE lower(username) != lower(?)", (MASTER_USERNAME,)).fetchone()[0]),
+            "active_di": int(con.execute("SELECT COUNT(*) FROM di_agents WHERE COALESCE(status,'') NOT IN ('Archived','Destroyed')").fetchone()[0]),
+            "destroyed_di": int(con.execute("SELECT COUNT(*) FROM di_destroyed_agents").fetchone()[0]),
+        }
+    finally:
+        con.close()
+
+
+def _founder_activity_feed(limit=80):
+    con = db()
+    events = []
+    try:
+        for r in con.execute("SELECT username,company_name,action,created_at FROM activity WHERE lower(username) != lower(?) ORDER BY id DESC LIMIT ?", (MASTER_USERNAME, int(limit))).fetchall():
+            events.append({"time":r["created_at"],"type":"APP ACTIVITY","actor":r["username"] or "Unknown","source":r["company_name"] or "DACRE","detail":r["action"] or "Activity"})
+        for r in con.execute("SELECT username,company_name,sender,message,created_at FROM chat_history WHERE lower(username) != lower(?) ORDER BY id DESC LIMIT ?", (MASTER_USERNAME, int(limit))).fetchall():
+            text=(r["message"] or "").replace("\n"," ").strip()
+            events.append({"time":r["created_at"],"type":"DI CHAT","actor":r["sender"] or "User","source":r["company_name"] or "DACRE","detail":text[:180] + ("..." if len(text)>180 else "")})
+        for r in con.execute("SELECT username,company_name,filename,created_at FROM files WHERE lower(username) != lower(?) ORDER BY id DESC LIMIT ?", (MASTER_USERNAME, int(limit))).fetchall():
+            events.append({"time":r["created_at"],"type":"FILE","actor":r["username"] or "Unknown","source":r["company_name"] or "DACRE","detail":f"Uploaded {r['filename'] or 'file'}"})
+        for r in con.execute("SELECT visitor_id,event_type,page_name,created_at FROM public_visits ORDER BY id DESC LIMIT ?", (int(limit),)).fetchall():
+            events.append({"time":r["created_at"],"type":"WEB VISIT","actor":r["visitor_id"] or "Visitor","source":"Public Site","detail":f"{r['event_type'] or 'view'} · {r['page_name'] or 'Landing'}"})
+        for r in con.execute("SELECT action,detail,created_at FROM founder_activity_log ORDER BY id DESC LIMIT ?", (int(limit),)).fetchall():
+            events.append({"time":r["created_at"],"type":"FOUNDER CONTROL","actor":MASTER_FULL_NAME,"source":"Founder Command","detail":f"{r['action']}: {r['detail']}"})
+    finally:
+        con.close()
+    def sort_key(e):
+        try: return datetime.fromisoformat(str(e.get("time","")))
+        except Exception: return datetime.min
+    events.sort(key=sort_key, reverse=True)
+    return events[:limit]
+
+
+def _founder_module_status():
+    services=dacre_service_status()
+    status=[]
+    for name,key in [("Research Gateway","research_gateway"),("Gemini","gemini"),("Groq","groq"),("MongoDB","mongodb"),("Mailjet","mailjet")]:
+        status.append((name,"ONLINE" if services.get(key) else "STANDBY"))
+    status.extend([("DI Brain","ONLINE"),("Activity Monitor","ONLINE"),("Database","ONLINE")])
+    return status
+
+
+def _founder_office_card(spec, room_number, activity, screen_text):
+    face=di_face_data_url(spec["name"])
+    face_html=f'<img src="{face}" alt="{html.escape(spec["name"])}" class="office-face">' if face else f'<div class="office-face office-face-fallback">{html.escape(spec["name"][:1])}</div>'
+    return f'''
+    <div class="founder-office">
+      <div class="office-ceiling"></div>
+      <div class="office-header"><span>OFFICE {room_number:02d}</span><b>● ONLINE</b></div>
+      <div class="office-scene">
+        <div class="office-wall-line"></div><div class="office-light light-a"></div><div class="office-light light-b"></div>
+        <div class="office-window"><span>DACRE WORLDWIDE</span><small>LIVE OPERATIONS</small></div>
+        <div class="office-person">{face_html}<div class="person-aura"></div></div>
+        <div class="office-desk"></div>
+        <div class="office-monitor"><div class="monitor-top">DI WORKSTATION <span>LIVE</span></div><div class="monitor-name">{html.escape(spec["name"])}</div><div class="monitor-text">{html.escape(str(screen_text))}</div><div class="monitor-bars"><i></i><i></i><i></i><i></i></div></div>
+        <div class="office-chair"></div><div class="office-floor"></div>
+      </div>
+      <div class="office-info"><div><strong>{html.escape(spec["name"])}</strong><small>{html.escape(spec["position"])}</small></div><span>{html.escape(spec["specialty"])}</span></div>
+      <div class="office-activity"><b>{html.escape(str(activity))}</b><span>DI BRAIN CONNECTED</span></div>
+    </div>'''
+
+
+def _founder_active_specs():
+    """Return active permanent and founder-created DI specifications."""
+    _ensure_founder_creation_tables()
+    con=db()
+    try:
+        destroyed={r["di_name"] for r in con.execute("SELECT di_name FROM di_destroyed_agents").fetchall()}
+        db_rows=con.execute("SELECT * FROM di_agents WHERE COALESCE(status,'') NOT IN ('Archived','Destroyed') ORDER BY rank_level DESC,id ASC").fetchall()
+    finally:
+        con.close()
+    specs={x["name"]:dict(x) for x in REAL_DI_ROSTER if x["name"] not in destroyed}
+    for r in db_rows:
+        if r["di_name"] not in specs:
+            specs[r["di_name"]]={
+                "name":r["di_name"], "specialty":r["specialty"] or "DI Specialist",
+                "position":r["position_title"] or "DI Specialist", "rank":r["rank_level"] or 1,
+                "role":r["system_role"] or r["specialty"] or "DI Specialist",
+                "keywords":[], "voice":r["voice_profile"] or "female"
+            }
+    return list(specs.values())
+
+
+def render_founder_3d_di_offices():
+    try:
+        rooms={r["di_name"]:r for r in di_basement_world_sync()}
+    except Exception:
+        rooms={}
+    cards=[]
+    specs=_founder_active_specs()
+    for idx,spec in enumerate(specs,start=1):
+        room=rooms.get(spec["name"],{})
+        cards.append(_founder_office_card(spec,idx,room.get("activity","MONITORING"),room.get("screen_text","Monitoring DACRE platform")))
+    html_block='''
+    <style>
+      .founder-office-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:16px}.founder-office{overflow:hidden;border:1px solid #264862;border-radius:18px;background:#050b13;box-shadow:0 18px 45px rgba(0,0,0,.38),inset 0 0 40px rgba(68,183,255,.04)}
+      .office-ceiling{height:5px;background:linear-gradient(90deg,#58c7ff,#9ee7ff,#ff9f43)}.office-header{display:flex;justify-content:space-between;padding:10px 12px;color:#7591a8;font-size:8px;letter-spacing:.14em;font-weight:900;background:#07111c}.office-header b{color:#63e6a5;font-size:8px}
+      .office-scene{height:190px;position:relative;overflow:hidden;background:linear-gradient(180deg,#0b1b2b,#08111c 62%,#03070d);perspective:550px}.office-wall-line{position:absolute;left:0;right:0;top:38%;height:1px;background:#21425a}.office-light{position:absolute;top:8px;width:55px;height:6px;border-radius:50%;background:#a9eaff;box-shadow:0 0 18px #58c7ff;opacity:.55}.light-a{left:24%}.light-b{right:24%}.office-window{position:absolute;right:10px;top:25px;width:72px;height:42px;border:1px solid #315a75;background:linear-gradient(145deg,#0a2031,#07101a);border-radius:4px;padding:6px}.office-window span{display:block;color:#5fd4ff;font-size:5px;font-weight:900;letter-spacing:.08em}.office-window small{color:#7894a9;font-size:5px}
+      .office-person{position:absolute;left:29%;bottom:47px;width:78px;height:105px;display:grid;place-items:center;z-index:4;animation:founderFloat 4s ease-in-out infinite}.office-face{width:58px;height:58px;border-radius:50%;object-fit:cover;border:2px solid #69d9ff;box-shadow:0 0 22px rgba(88,199,255,.32);position:relative;z-index:3}.office-face-fallback{display:grid;place-items:center;background:#092237;color:#a9e9ff;font-size:26px;font-weight:900}.person-aura{position:absolute;width:76px;height:92px;border-radius:50%;border:1px solid #58c7ff33;box-shadow:0 0 28px #58c7ff22}
+      .office-desk{position:absolute;left:16%;right:14%;bottom:32px;height:24px;border-radius:5px;background:linear-gradient(180deg,#24384b,#111b27);border:1px solid #38536a;z-index:5;box-shadow:0 9px 0 #0a1119}.office-desk:after{content:"";position:absolute;left:8%;right:8%;bottom:-26px;height:26px;border-left:3px solid #172534;border-right:3px solid #172534}.office-monitor{position:absolute;right:13%;bottom:58px;width:86px;height:55px;border:2px solid #365a72;border-radius:5px;background:#03111b;z-index:7;box-shadow:0 0 16px #58c7ff15;padding:5px}.monitor-top{font-size:5px;color:#5fd4ff;font-weight:900}.monitor-top span{float:right;color:#64e7a7}.monitor-name{color:#fff;font-size:8px;font-weight:900;margin-top:5px}.monitor-text{color:#7993a8;font-size:5px;line-height:1.35;margin-top:3px;white-space:nowrap;overflow:hidden}.monitor-bars{display:flex;gap:3px;margin-top:6px;align-items:flex-end;height:10px}.monitor-bars i{display:block;width:7px;background:#58c7ff;border-radius:2px 2px 0 0}.monitor-bars i:nth-child(1){height:4px}.monitor-bars i:nth-child(2){height:8px}.monitor-bars i:nth-child(3){height:6px}.monitor-bars i:nth-child(4){height:10px}.office-chair{position:absolute;left:34%;bottom:19px;width:38px;height:28px;border:2px solid #314a5e;border-bottom:0;border-radius:12px 12px 4px 4px;z-index:6}.office-floor{position:absolute;left:-15%;right:-15%;bottom:-82px;height:130px;background-image:linear-gradient(#1c3c52 1px,transparent 1px),linear-gradient(90deg,#1c3c52 1px,transparent 1px);background-size:28px 18px;transform:perspective(220px) rotateX(58deg);opacity:.45}
+      .office-info{display:flex;justify-content:space-between;gap:8px;padding:10px 12px 6px;background:#07111c}.office-info strong{display:block;color:#fff;font-size:13px}.office-info small{display:block;color:#7892a7;font-size:7px;margin-top:2px}.office-info>span{color:#6ed8ff;font-size:7px;text-align:right;max-width:100px}.office-activity{display:flex;justify-content:space-between;gap:8px;padding:8px 12px 10px;border-top:1px solid #18354a;background:#050b13}.office-activity b{color:#ffb56e;font-size:7px;letter-spacing:.08em}.office-activity span{color:#6b8ca2;font-size:6px}@keyframes founderFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+      @media(max-width:1200px){.founder-office-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:900px){.founder-office-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.founder-office-grid{grid-template-columns:1fr}}
+    </style><div class="founder-office-grid">''' + ''.join(cards) + '</div>'
+    components.html(html_block,height=1450,scrolling=False)
+
+
+def render_founder_overall_admin(user):
+    if user.get("role") != "master":
+        st.error("Overall Admin DI is restricted to the verified founder account.")
+        return
+    ensure_admin_runtime_schema(); _ensure_founder_creation_tables()
+    st.markdown('''<style>
+      .founder-shell{padding:22px;border-radius:22px;background:radial-gradient(circle at 78% 0%,rgba(88,199,255,.13),transparent 28%),linear-gradient(145deg,#07111d,#03070d);border:1px solid #28455f;box-shadow:0 25px 70px rgba(0,0,0,.38)}.founder-kicker{font-size:9px;letter-spacing:.18em;color:#68d8ff;font-weight:900}.founder-shell h1{margin:5px 0;color:#fff;font-size:31px}.founder-shell p{color:#8ea7bd;margin:0}.founder-live{display:inline-flex;margin-top:14px;padding:7px 11px;border-radius:999px;background:#0b3024;border:1px solid #276c4b;color:#67edaa;font-size:8px;font-weight:900;letter-spacing:.12em}
+      .founder-metric{padding:14px;border-radius:14px;border:1px solid #263d53;background:#091522;margin-top:14px}.founder-metric span{display:block;color:#7c95aa;font-size:7px;letter-spacing:.1em;font-weight:900}.founder-metric strong{display:block;color:#fff;font-size:24px;margin-top:4px}.founder-system{padding:12px;border-radius:13px;border:1px solid #274258;background:#07121e;margin:7px 0}.founder-system span{display:block;color:#8ba2b7;font-size:8px;font-weight:800}.founder-system b{display:block;margin-top:5px;font-size:10px}.founder-system.online b{color:#67edaa}.founder-system.standby b{color:#ffb86e}
+    </style><div class="founder-shell"><div class="founder-kicker">FOUNDER COMMAND · DACRE WORLDWIDE</div><h1>Overall Admin DI</h1><p>System-wide company activity, DI operations, services and live workstations.</p><div class="founder-live">● FOUNDER ACCESS VERIFIED · GUAIEL GUARDIAN</div></div>''',unsafe_allow_html=True)
+    if CEO_PORTRAIT_PATH and CEO_PORTRAIT_PATH.exists():
+        c1,c2=st.columns([1,5])
+        with c1: st.image(str(CEO_PORTRAIT_PATH),width=145)
+        with c2:
+            st.markdown('### David Emenike'); st.caption('Founder · CEO · Overall Administrator'); st.markdown('**Guaiel:** CEO Office Guardian · Founder command path protected')
+    counts=_founder_counts()
+    cols=st.columns(6)
+    for col,(label,key) in zip(cols,[("CUSTOMER ACCOUNTS","users"),("ORGANIZATIONS","companies"),("ACTIVITY EVENTS","activity"),("DI CONVERSATIONS","messages"),("FILES PROCESSED","files"),("DI NODES ONLINE","active_di")]):
+        with col: st.markdown(f'<div class="founder-metric"><span>{label}</span><strong>{counts[key]:,}</strong></div>',unsafe_allow_html=True)
+    st.markdown('### LIVE COMPANY ACTIVITY')
+    events=_founder_activity_feed(100)
+    if events:
+        st.dataframe(pd.DataFrame([{"TIME":e["time"],"TYPE":e["type"],"ACTOR":e["actor"],"SOURCE":e["source"],"ACTIVITY":e["detail"]} for e in events]),use_container_width=True,hide_index=True,height=430)
+    else: st.info('No customer activity has been recorded yet. New sign-ins, chats, uploads and visits will appear here automatically.')
+    st.markdown('### COMPANY SYSTEM STATUS')
+    status=_founder_module_status(); cols=st.columns(4)
+    for i,(name,state) in enumerate(status):
+        with cols[i%4]:
+            cls='online' if state=='ONLINE' else 'standby'; st.markdown(f'<div class="founder-system {cls}"><span>{html.escape(name)}</span><b>{state}</b></div>',unsafe_allow_html=True)
+    st.markdown('### THE DI OFFICES')
+    st.caption('Each DI is shown inside a 3D-style office workstation. The live room state drives the activity shown on the office monitor.')
+    render_founder_3d_di_offices()
+
+
+def _founder_destroy_di(name):
+    name=(name or '').strip()
+    if not name: return False,'Choose a DI first.'
+    if name==CEO_GUARD_NAME: return False,'Guaiel is the CEO Office Guardian and cannot be deleted.'
+    _ensure_founder_creation_tables(); con=db()
+    try:
+        row=con.execute('SELECT id FROM di_agents WHERE di_name=?',(name,)).fetchone()
+        if not row: return False,'That DI does not exist.'
+        di_id=int(row['id']); now=_founder_now()
+        con.execute('INSERT OR REPLACE INTO di_destroyed_agents(di_name,destroyed_at,destroyed_by) VALUES(?,?,?)',(name,now,MASTER_USERNAME))
+        for table in ('di_private_memory','di_position_history','di_master_thanks','di_research_store'):
+            try: con.execute(f'DELETE FROM {table} WHERE di_id=?',(di_id,))
+            except Exception: pass
+        try: con.execute('DELETE FROM di_basement_rooms WHERE di_name=?',(name,))
+        except Exception: pass
+        try: con.execute('DELETE FROM di_user_state WHERE active_di=?',(name,))
+        except Exception: pass
+        con.execute('DELETE FROM di_agents WHERE id=?',(di_id,)); con.commit()
+    finally: con.close()
+    _founder_log('DI DESTROYED',f'{name} permanently deleted'); return True,f'{name} has been permanently deleted.'
+
+
+def _founder_create_di(name,specialty,position,role,gender,rank):
+    name=(name or '').strip(); specialty=(specialty or '').strip(); position=(position or 'DI Specialist').strip(); role=(role or specialty).strip()
+    if not name or not specialty: return False,'DI name and specialty are required.'
+    if len(name)>48 or len(specialty)>120 or len(position)>120: return False,'One of the DI fields is too long.'
+    ok,msg=create_di_agent(name,specialty,status='Available',assigned_company='',system_role=role,gender=gender,position_title=position,rank_level=max(1,min(int(rank),100)))
+    if ok:
+        _founder_log('DI CREATED',f'{name} · {specialty} · {position}'); return True,f'{name} was created successfully.'
+    return False,str(msg)
+
+
+def render_founder_david_creation(user):
+    if user.get('role')!='master': st.error('David Creation is restricted to the verified founder account.'); return
+    if not st.session_state.get('david_creation_unlocked',False):
+        st.markdown('## David Creation'); st.caption('Master DI creation and destruction engine.')
+        entered=st.text_input('David Creation password',type='password',key='founder_david_creation_password')
+        if st.button('Unlock David Creation',type='primary',use_container_width=True,key='founder_unlock_david_creation'):
+            if hmac.compare_digest(entered.strip(),DAVID_CREATIONS_PASSKEY): st.session_state.david_creation_unlocked=True; _founder_log('DAVID CREATION UNLOCKED','Founder opened the DI creation engine'); st.rerun()
+            else: st.error('Incorrect David Creation password.')
+        return
+    st.markdown('## David Creation'); st.caption('Create new DI specialists or permanently destroy/delete an existing DI. Founder controls only.')
+    create_col,destroy_col=st.columns(2)
+    with create_col:
+        st.markdown('### CREATE DI')
+        with st.form('founder_create_di_form',clear_on_submit=True):
+            name=st.text_input('DI name',placeholder='e.g. Victoriel'); specialty=st.text_input('Specialty',placeholder='e.g. Legal Intelligence'); position=st.text_input('Position',value='DI Specialist'); role=st.text_area('System role',placeholder='Describe what this DI is responsible for.',height=100); gender=st.selectbox('Presentation',['female','male']); rank=st.number_input('Rank',min_value=1,max_value=100,value=5,step=1); create=st.form_submit_button('CREATE DI',type='primary',use_container_width=True)
+        if create:
+            ok,msg=_founder_create_di(name,specialty,position,role,gender,int(rank)); (st.success if ok else st.error)(msg)
+    with destroy_col:
+        st.markdown('### DESTROY / DELETE DI')
+        agents=real_di_agent_rows(); choices=[a.get('di_name') for a in agents if a.get('di_name') and a.get('di_name')!=CEO_GUARD_NAME]
+        if choices:
+            target=st.selectbox('DI to permanently delete',choices,key='founder_destroy_target'); confirm=st.checkbox('I understand this permanently deletes the DI and its private records.',key='founder_destroy_confirm')
+            if st.button('DESTROY & DELETE DI',type='secondary',use_container_width=True,key='founder_destroy_button'):
+                if not confirm: st.warning('Confirm the permanent deletion first.')
+                else:
+                    ok,msg=_founder_destroy_di(target); (st.success if ok else st.error)(msg)
+                    if ok: st.rerun()
+        else: st.info('No deletable DI nodes are currently available.')
+    st.divider(); st.markdown('### CURRENT DI WORKFORCE')
+    rows=real_di_agent_rows()
+    if rows: st.dataframe(pd.DataFrame([{'NAME':r.get('di_name'),'POSITION':r.get('position_title'),'SPECIALTY':r.get('specialty'),'STATUS':r.get('status'),'RANK':r.get('rank_level')} for r in rows]),use_container_width=True,hide_index=True)
+    if st.button('Lock David Creation',key='founder_lock_creation'): st.session_state.david_creation_unlocked=False; st.rerun()
+
+
+def render_founder_basement(user):
+    if user.get('role')!='master': st.error('DI Basement is restricted to the verified founder account.'); return
+    if not st.session_state.get('di_basement_unlocked',False):
+        st.markdown('## DI Basement'); st.caption('Twenty-room DI engineering facility. Password protected.')
+        entered=st.text_input('DI Basement password',type='password',key='founder_basement_password')
+        if st.button('Enter DI Basement',type='primary',use_container_width=True,key='founder_basement_unlock'):
+            if hmac.compare_digest(entered.strip(),DI_BASEMENT_PASSKEY): st.session_state.di_basement_unlocked=True; _founder_log('DI BASEMENT UNLOCKED','Founder entered the 20-room DI Basement'); st.rerun()
+            else: st.error('Incorrect DI Basement password.')
+        return
+    specs=_founder_active_specs()
+    st.markdown('## DI Basement'); st.caption(f'{len(specs)} active DI rooms · one room per active DI · live workstation state')
+    render_founder_3d_di_offices(); st.divider()
+    names=[x['name'] for x in specs]
+    if not names:
+        st.warning('No active DI nodes are currently available.')
+        return
+    selected=st.selectbox('Inspect room',names,key='founder_basement_selected'); spec=next(x for x in specs if x['name']==selected); face=di_face_path(selected)
+    c1,c2=st.columns([1,2])
+    with c1:
+        if face: st.image(str(face),width=180)
+        st.markdown(f'### {selected}'); st.caption(spec['position']); st.write(spec['role'])
+    with c2:
+        st.markdown('### Workstation'); st.info('Connected to the shared DACRE brain, private specialist memory and approved tools.'); st.json({'room':names.index(selected)+1,'di':selected,'shared_brain':'DACRE DI Technology Brain','private_memory':f'{selected} Private Specialist Memory','status':'ONLINE'})
+    if st.button('Lock DI Basement',key='founder_lock_basement'): st.session_state.di_basement_unlocked=False; st.rerun()
+
+
+def render_founder_sidebar(user):
+    st.sidebar.markdown('## 👑 DACRE COMMAND'); st.sidebar.caption('Founder / Overall Administrator'); st.sidebar.markdown('### Command navigation')
+    current=st.session_state.get('selected_page','Overall Admin DI'); current=current if current in FOUNDER_MASTER_PAGES else 'Overall Admin DI'
+    selected=st.sidebar.radio('',FOUNDER_MASTER_PAGES,index=FOUNDER_MASTER_PAGES.index(current),key='founder_navigation'); st.session_state.selected_page=selected
+    st.sidebar.markdown('---'); health=mongo_health(); st.sidebar.markdown(f"**MongoDB:** {'ONLINE' if health.get('enabled') else 'LOCAL DB'}"); st.sidebar.markdown('**Guardian:** Guaiel · VERIFIED')
+    if st.sidebar.button('Sign out',use_container_width=True,key='founder_sign_out'):
+        st.session_state.user=None; st.session_state.master_route=False; st.session_state.selected_page='Overview'; st.session_state.david_creation_unlocked=False; st.session_state.di_basement_unlocked=False; st.query_params.clear(); st.rerun()
+
+
+def main_app():
+    if not st.session_state.get('dacre_boot_complete',False): init_production_core(); st.session_state.dacre_boot_complete=True
+    user=st.session_state.get('user')
+    if not user: landing_page(); return
+    mongo_sync_user(user)
+    if user.get('role')=='master':
+        if st.session_state.get('selected_page') not in FOUNDER_MASTER_PAGES: st.session_state.selected_page='Overall Admin DI'
+        render_founder_sidebar(user)
+        page=st.session_state.selected_page
+        if page=='Overall Admin DI': render_founder_overall_admin(user)
+        elif page=='David Creation': render_founder_david_creation(user)
+        elif page=='DI Basement': render_founder_basement(user)
+        return
+    render_enterprise_sidebar(user); apply_company_website_theme(user); render_productivity_bar(user)
+    if not st.session_state.chat_history: st.session_state.chat_history=load_chat_history(user,limit=40)
+    selected_page=st.session_state.get('selected_page','Overview'); allowed={'Overview','Workspace & Data','Business Twin','Decision Ledger','Opportunity Radar','File Vault','Export Center','Research Store'}
+    if selected_page not in allowed: selected_page='Overview'; st.session_state.selected_page=selected_page
+    render_page_chrome(selected_page,user); render_page_di_hologram(selected_page,user)
+    if selected_page=='Overview': render_user_dashboard(user)
+    elif selected_page=='Research Store': render_research_store(user)
+    elif selected_page=='Business Twin': render_business_twin(st.session_state.processed_df,user)
+    elif selected_page=='Decision Ledger': render_decision_ledger(user)
+    elif selected_page=='Opportunity Radar': render_opportunity_page(user)
+    elif selected_page=='Workspace & Data': render_workspace_data(user)
+    elif selected_page=='File Vault': render_file_vault(user)
+    elif selected_page=='Export Center': render_export_center(user)
+    render_persistent_di_dock(user)
+
 
 # =============================================================================
 # MAIN ENTRY POINT
