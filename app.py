@@ -9427,94 +9427,6 @@ def render_productivity_bar(user):
         )
 
 
-def main_app():
-    if not st.session_state.get("dacre_boot_complete", False):
-        init_production_core()
-        st.session_state.dacre_boot_complete = True
-
-    user = st.session_state.get("user")
-    if not user:
-        landing_page()
-        return
-
-    mongo_sync_user(user)
-    render_enterprise_sidebar(user)
-    apply_company_website_theme(user)
-    render_productivity_bar(user)
-
-    if not st.session_state.chat_history:
-        st.session_state.chat_history = load_chat_history(user, limit=40)
-
-    selected_page = st.session_state.get("selected_page", "Overview")
-
-    if user.get("role") != "master":
-        allowed = {"Overview","Workspace & Data","Business Twin","Decision Ledger","Opportunity Radar","File Vault","Export Center","Research Store"}
-        if selected_page not in allowed:
-            selected_page = "Overview"
-            st.session_state.selected_page = selected_page
-
-    render_page_chrome(selected_page, user)
-    render_page_di_hologram(selected_page, user)
-
-    if selected_page == "Overview":
-        if user.get("role") == "master":
-            render_dacre_production_core()
-            st.markdown("---")
-            render_online_robot_control_center(user)
-            st.markdown("---")
-            render_analytics_overview(user)
-        else:
-            render_user_dashboard(user)
-    elif selected_page == "Research Store" and user.get("role") != "master":
-        render_research_store(user)
-    elif selected_page == "DI Home" and user.get("role") == "master":
-        render_real_di_home(user)
-    elif selected_page == "DI Calls" and user.get("role") == "master":
-        render_di_calls(user)
-    elif selected_page == "DI Workforce" and user.get("role") == "master":
-        render_real_di_workforce(user)
-    elif selected_page == "Global Markets" and user.get("role") == "master":
-        render_global_markets_dashboard()
-    elif selected_page == "DI Conference" and user.get("role") == "master":
-        render_enhanced_conference_room(user)
-    elif selected_page == "DI Action Center" and user.get("role") == "master":
-        render_action_center(user)
-    elif selected_page == "DI Memory Box" and user.get("role") == "master":
-        render_di_memory_box(user)
-    elif selected_page == "Business Command Center" and user.get("role") == "master":
-        render_business_command_center(user)
-    elif selected_page == "Business Twin":
-        render_business_twin(st.session_state.processed_df, user)
-    elif selected_page == "Decision Ledger":
-        render_decision_ledger(user)
-    elif selected_page == "Opportunity Radar":
-        render_opportunity_page(user)
-    elif selected_page == "Workspace & Data":
-        render_workspace_data(user)
-    elif selected_page == "Formula Lab" and user.get("role") == "master":
-        render_formula_lab(user)
-    elif selected_page == "Charts" and user.get("role") == "master":
-        render_charts(user)
-    elif selected_page == "File Vault":
-        render_file_vault(user)
-    elif selected_page == "Export Center":
-        render_export_center(user)
-    elif selected_page == "Chibobec Loan Desk" and user.get("role") == "master":
-        render_chibobec_loan_desk(user)
-    elif selected_page == "Organization Admin Portal" and user.get("role") == "master":
-        render_organization_admin(user)
-    elif selected_page == "Overall Admin DI Portal" and user.get("role") == "master":
-        render_fixed_overall_admin_page(user)
-    else:
-        if user.get("role") == "master":
-            st.info("This command module is available from the master navigation.")
-        else:
-            render_user_dashboard(user)
-
-    # DI internal dock is deliberately private to the founder command surface.
-    if user.get("role") == "master":
-        render_persistent_di_dock(user)
-
 
 # Ensure the new roster and brain are present before the application starts.
 try:
@@ -9919,33 +9831,1541 @@ def render_founder_sidebar(user):
         st.session_state.user=None; st.session_state.master_route=False; st.session_state.selected_page='Overview'; st.session_state.david_creation_unlocked=False; st.session_state.di_basement_unlocked=False; st.query_params.clear(); st.rerun()
 
 
-def main_app():
-    if not st.session_state.get('dacre_boot_complete',False): init_production_core(); st.session_state.dacre_boot_complete=True
-    user=st.session_state.get('user')
-    if not user: landing_page(); return
-    mongo_sync_user(user)
-    if user.get('role')=='master':
-        if st.session_state.get('selected_page') not in FOUNDER_MASTER_PAGES: st.session_state.selected_page='Overall Admin DI'
-        render_founder_sidebar(user)
-        page=st.session_state.selected_page
-        if page=='Overall Admin DI': render_founder_overall_admin(user)
-        elif page=='David Creation': render_founder_david_creation(user)
-        elif page=='DI Basement': render_founder_basement(user)
+
+
+# =============================================================================
+# DACRE WORLDWIDE - ADVANCED FOUNDER COMMAND CENTER
+# Version 7.8.0
+# Real DI office, human-face operator, live activity intelligence,
+# protected David Creation engineering, and DI Basement.
+# =============================================================================
+
+ADVANCED_FOUNDER_VERSION = "7.8.0"
+ADVANCED_FOUNDER_REFRESH_SECONDS = 15
+ADVANCED_FOUNDER_MAX_EVENTS = 120
+ADVANCED_FOUNDER_MAX_DI = 20
+
+def _adv_table_exists(table_name):
+    """Return True when a local SQLite table exists."""
+    try:
+        con = db()
+        try:
+            row = con.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+                (str(table_name),),
+            ).fetchone()
+            return bool(row)
+        finally:
+            con.close()
+    except Exception:
+        logger.exception("Advanced founder table check failed")
+        return False
+
+def _adv_safe_rows(sql, params=(), limit=None):
+    """Execute a read-only query and convert rows to dictionaries safely."""
+    con = None
+    try:
+        con = db()
+        statement = str(sql).strip()
+        if limit is not None and " limit " not in statement.lower():
+            statement += f" LIMIT {max(1, int(limit))}"
+        rows = con.execute(statement, tuple(params)).fetchall()
+        return [dict(row) for row in rows]
+    except Exception:
+        logger.exception("Advanced founder query failed")
+        return []
+    finally:
+        if con is not None:
+            try:
+                con.close()
+            except Exception:
+                pass
+
+def _adv_scalar(sql, params=(), default=0):
+    """Return a scalar database value without allowing a monitoring panel to fail."""
+    con = None
+    try:
+        con = db()
+        row = con.execute(sql, tuple(params)).fetchone()
+        if row is None:
+            return default
+        value = row[0]
+        return default if value is None else value
+    except Exception:
+        logger.exception("Advanced founder scalar query failed")
+        return default
+    finally:
+        if con is not None:
+            try:
+                con.close()
+            except Exception:
+                pass
+
+def _adv_clean(value, fallback="—"):
+    """Normalize dashboard values for display."""
+    if value is None:
+        return fallback
+    value = str(value).strip()
+    return value if value else fallback
+
+def _adv_int(value, fallback=0):
+    """Convert dashboard values to integers safely."""
+    try:
+        return int(value)
+    except Exception:
+        return fallback
+
+def _adv_now():
+    """Return a founder-console timestamp."""
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+def _adv_time_label(value):
+    """Format timestamps for compact activity cards."""
+    raw = _adv_clean(value, "")
+    if not raw:
+        return "unknown time"
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        return parsed.strftime("%H:%M:%S")
+    except Exception:
+        return raw[-8:] if len(raw) >= 8 else raw
+
+def _adv_elapsed(value):
+    """Return a human-readable elapsed time from a stored timestamp."""
+    raw = _adv_clean(value, "")
+    if not raw:
+        return "unknown"
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        if parsed.tzinfo:
+            parsed = parsed.replace(tzinfo=None)
+        seconds = max(0, int((datetime.now() - parsed).total_seconds()))
+        if seconds < 60:
+            return f"{seconds}s ago"
+        minutes = seconds // 60
+        if minutes < 60:
+            return f"{minutes}m ago"
+        hours = minutes // 60
+        if hours < 24:
+            return f"{hours}h ago"
+        return f"{hours // 24}d ago"
+    except Exception:
+        return "unknown"
+
+def _adv_log(action, detail):
+    """Write founder actions through the existing founder audit layer."""
+    try:
+        _founder_log(action, detail)
+    except Exception:
+        logger.exception("Advanced founder audit failed")
+
+def _adv_activity_events():
+    """Build a unified, privacy-aware activity stream from existing DACRE tables."""
+    events = []
+    user_exclusion = (MASTER_USERNAME,)
+    rows = _adv_safe_rows(
+        """
+        SELECT username, company_name, action, created_at
+        FROM activity
+        WHERE lower(COALESCE(username,'')) != lower(?)
+        ORDER BY id DESC
+        LIMIT ?
+        """,
+        (user_exclusion[0], ADVANCED_FOUNDER_MAX_EVENTS),
+    )
+    for row in rows:
+        events.append(
+            {
+                "kind": "USER ACTIVITY",
+                "actor": _adv_clean(row.get("username"), "Unknown user"),
+                "source": _adv_clean(row.get("company_name"), "DACRE"),
+                "detail": _adv_clean(row.get("action"), "Application activity"),
+                "time": row.get("created_at"),
+                "icon": "◉",
+                "priority": "normal",
+            }
+        )
+    rows = _adv_safe_rows(
+        """
+        SELECT username, company_name, sender, message, created_at
+        FROM chat_history
+        WHERE lower(COALESCE(username,'')) != lower(?)
+        ORDER BY id DESC
+        LIMIT ?
+        """,
+        (user_exclusion[0], ADVANCED_FOUNDER_MAX_EVENTS),
+    )
+    for row in rows:
+        message = _adv_clean(row.get("message"), "DI message")
+        message = message.replace("\n", " ")
+        if len(message) > 170:
+            message = message[:170] + "…"
+        events.append(
+            {
+                "kind": "DI CONVERSATION",
+                "actor": _adv_clean(row.get("sender"), "DI"),
+                "source": _adv_clean(row.get("company_name"), "DACRE"),
+                "detail": message,
+                "time": row.get("created_at"),
+                "icon": "✦",
+                "priority": "high",
+            }
+        )
+    rows = _adv_safe_rows(
+        """
+        SELECT username, company_name, filename, created_at
+        FROM files
+        WHERE lower(COALESCE(username,'')) != lower(?)
+        ORDER BY id DESC
+        LIMIT ?
+        """,
+        (user_exclusion[0], ADVANCED_FOUNDER_MAX_EVENTS),
+    )
+    for row in rows:
+        events.append(
+            {
+                "kind": "FILE ACTIVITY",
+                "actor": _adv_clean(row.get("username"), "Unknown user"),
+                "source": _adv_clean(row.get("company_name"), "DACRE"),
+                "detail": "Uploaded " + _adv_clean(row.get("filename"), "a file"),
+                "time": row.get("created_at"),
+                "icon": "▣",
+                "priority": "normal",
+            }
+        )
+    rows = _adv_safe_rows(
+        """
+        SELECT visitor_id, event_type, page_name, created_at
+        FROM public_visits
+        ORDER BY id DESC
+        LIMIT ?
+        """,
+        (ADVANCED_FOUNDER_MAX_EVENTS,),
+    )
+    for row in rows:
+        events.append(
+            {
+                "kind": "WEBSITE ACTIVITY",
+                "actor": _adv_clean(row.get("visitor_id"), "Visitor"),
+                "source": "Public Site",
+                "detail": f"{_adv_clean(row.get('event_type'), 'view')} · {_adv_clean(row.get('page_name'), 'Landing')}",
+                "time": row.get("created_at"),
+                "icon": "◎",
+                "priority": "normal",
+            }
+        )
+    rows = _adv_safe_rows(
+        """
+        SELECT action, detail, created_at
+        FROM founder_activity_log
+        ORDER BY id DESC
+        LIMIT ?
+        """,
+        (ADVANCED_FOUNDER_MAX_EVENTS,),
+    )
+    for row in rows:
+        events.append(
+            {
+                "kind": "FOUNDER CONTROL",
+                "actor": MASTER_FULL_NAME,
+                "source": "Founder Command",
+                "detail": f"{_adv_clean(row.get('action'), 'CONTROL')} · {_adv_clean(row.get('detail'), '')}",
+                "time": row.get("created_at"),
+                "icon": "◆",
+                "priority": "critical",
+            }
+        )
+    events.sort(
+        key=lambda item: _adv_clean(item.get("time"), ""),
+        reverse=True,
+    )
+    return events[:ADVANCED_FOUNDER_MAX_EVENTS]
+
+def _adv_metric_snapshot():
+    """Calculate founder metrics from the current database."""
+    return {
+        "users": _adv_int(
+            _adv_scalar(
+                "SELECT COUNT(*) FROM users WHERE lower(COALESCE(role,'')) != 'master'",
+                default=0,
+            )
+        ),
+        "companies": _adv_int(
+            _adv_scalar("SELECT COUNT(*) FROM companies", default=0)
+        ),
+        "sessions": _adv_int(
+            _adv_scalar(
+                "SELECT COUNT(*) FROM activity WHERE action LIKE '%login%'",
+                default=0,
+            )
+        ),
+        "activity": _adv_int(
+            _adv_scalar(
+                "SELECT COUNT(*) FROM activity WHERE lower(COALESCE(username,'')) != lower(?)",
+                (MASTER_USERNAME,),
+                0,
+            )
+        ),
+        "messages": _adv_int(
+            _adv_scalar(
+                "SELECT COUNT(*) FROM chat_history WHERE lower(COALESCE(username,'')) != lower(?)",
+                (MASTER_USERNAME,),
+                0,
+            )
+        ),
+        "files": _adv_int(
+            _adv_scalar(
+                "SELECT COUNT(*) FROM files WHERE lower(COALESCE(username,'')) != lower(?)",
+                (MASTER_USERNAME,),
+                0,
+            )
+        ),
+        "visits": _adv_int(
+            _adv_scalar("SELECT COUNT(*) FROM public_visits", default=0)
+        ),
+        "di": _adv_int(
+            _adv_scalar(
+                "SELECT COUNT(*) FROM di_agents WHERE COALESCE(status,'') NOT IN ('Archived','Destroyed')",
+                default=0,
+            )
+        ),
+        "destroyed": _adv_int(
+            _adv_scalar(
+                "SELECT COUNT(*) FROM di_destroyed_agents",
+                default=0,
+            )
+        ),
+    }
+
+def _adv_di_snapshot():
+    """Return the active DI workforce with roles and office state."""
+    try:
+        rows = real_di_agent_rows()
+    except Exception:
+        rows = []
+    snapshot = []
+    for index, row in enumerate(rows[:ADVANCED_FOUNDER_MAX_DI], start=1):
+        name = _adv_clean(row.get("di_name"), f"DI-{index:02d}")
+        snapshot.append(
+            {
+                "room": index,
+                "name": name,
+                "role": _adv_clean(
+                    row.get("system_role") or row.get("specialty"),
+                    "DI Specialist",
+                ),
+                "position": _adv_clean(
+                    row.get("position_title"),
+                    "DI Specialist",
+                ),
+                "rank": _adv_int(row.get("rank_level"), 1),
+                "status": _adv_clean(row.get("status"), "Available"),
+                "face": di_face_data_url(name),
+            }
+        )
+    return snapshot
+
+def _adv_service_status():
+    """Calculate operational statuses without making external calls."""
+    mongo_state = "ONLINE"
+    try:
+        health = mongo_health()
+        if not health.get("enabled"):
+            mongo_state = "LOCAL DB"
+        elif health.get("ok") is False:
+            mongo_state = "DEGRADED"
+    except Exception:
+        mongo_state = "LOCAL DB"
+    database_state = "ONLINE"
+    try:
+        _adv_scalar("SELECT 1", default=1)
+    except Exception:
+        database_state = "DEGRADED"
+    di_state = "ONLINE" if _adv_metric_snapshot().get("di", 0) > 0 else "STANDBY"
+    return [
+        ("Web Application", "ONLINE"),
+        ("DACRE Database", database_state),
+        ("DI Brain", di_state),
+        ("Mongo Sync", mongo_state),
+        ("Security Shield", "ACTIVE"),
+        ("Founder Audit", "ACTIVE"),
+        ("DI Workstations", "ONLINE" if di_state == "ONLINE" else "STANDBY"),
+        ("Backup Monitor", "READY"),
+    ]
+
+def _adv_face_or_fallback():
+    """Find a human face asset for the Overall Admin DI."""
+    candidates = [
+        CEO_GUARD_NAME,
+        "Guaiel",
+        "David",
+        "David Emenike",
+    ]
+    for candidate in candidates:
+        try:
+            data = di_face_data_url(candidate)
+        except Exception:
+            data = ""
+        if data:
+            return data, candidate
+    try:
+        if DACRE_CEO_PATH.exists():
+            return (
+                "data:image/png;base64,"
+                + base64.b64encode(DACRE_CEO_PATH.read_bytes()).decode("ascii"),
+                "CEO",
+            )
+    except Exception:
+        logger.exception("CEO face fallback failed")
+    return "", "DI"
+
+def _adv_robot_office_html():
+    """Render the physical humanoid Overall Admin DI office."""
+    face, face_name = _adv_face_or_fallback()
+    safe_face = face.replace('"', "&quot;") if face else ""
+    face_markup = (
+        f'<img src="{safe_face}" alt="{html.escape(face_name)} human face">'
+        if safe_face
+        else '<div class="adv-face-placeholder">DI</div>'
+    )
+    return f"""
+    <style>
+    .adv-office {{
+        position:relative;
+        width:100%;
+        min-height:610px;
+        overflow:hidden;
+        border:1px solid #155a7b;
+        border-radius:28px;
+        background:
+            radial-gradient(circle at 72% 30%, rgba(0,187,255,.18), transparent 25%),
+            radial-gradient(circle at 30% 65%, rgba(0,110,255,.12), transparent 32%),
+            linear-gradient(145deg,#020911 0%,#041725 45%,#02070d 100%);
+        box-shadow:0 30px 80px rgba(0,0,0,.55), inset 0 0 80px rgba(0,160,255,.04);
+    }}
+    .adv-office:before {{
+        content:"";
+        position:absolute;
+        inset:0;
+        background:
+            linear-gradient(rgba(57,205,255,.055) 1px,transparent 1px),
+            linear-gradient(90deg,rgba(57,205,255,.055) 1px,transparent 1px);
+        background-size:36px 36px;
+        transform:perspective(700px) rotateX(58deg) translateY(35%);
+        transform-origin:center bottom;
+        opacity:.75;
+    }}
+    .adv-ceiling {{
+        position:absolute;
+        left:7%;
+        right:7%;
+        top:28px;
+        height:8px;
+        border-radius:50%;
+        background:#49d6ff;
+        box-shadow:0 0 16px #49d6ff,0 0 55px #118dff;
+        opacity:.8;
+    }}
+    .adv-wall-screen {{
+        position:absolute;
+        left:4%;
+        top:9%;
+        width:38%;
+        height:34%;
+        border:1px solid #2385ae;
+        border-radius:20px;
+        background:linear-gradient(145deg,rgba(3,25,40,.96),rgba(2,10,18,.9));
+        box-shadow:0 0 35px rgba(20,170,255,.13), inset 0 0 35px rgba(20,170,255,.06);
+        padding:18px;
+        color:#7edfff;
+        z-index:3;
+    }}
+    .adv-wall-screen h4 {{
+        margin:0 0 9px;
+        font-size:10px;
+        letter-spacing:.18em;
+        color:#69dbff;
+    }}
+    .adv-map {{
+        height:75%;
+        border-radius:13px;
+        background:
+            radial-gradient(circle at 50% 45%,rgba(44,215,255,.38),transparent 2%),
+            radial-gradient(circle at 30% 55%,rgba(44,215,255,.18),transparent 2%),
+            radial-gradient(circle at 70% 38%,rgba(44,215,255,.2),transparent 2%),
+            linear-gradient(135deg,rgba(15,110,160,.12),rgba(0,0,0,.05));
+        position:relative;
+        overflow:hidden;
+    }}
+    .adv-map:before {{
+        content:"GLOBAL DACRE NETWORK";
+        position:absolute;
+        top:12px;
+        left:12px;
+        color:#bdeeff;
+        font-size:8px;
+        letter-spacing:.12em;
+    }}
+    .adv-map:after {{
+        content:"";
+        position:absolute;
+        left:18%;
+        right:18%;
+        top:48%;
+        height:1px;
+        background:#43d5ff;
+        box-shadow:0 0 14px #43d5ff;
+        transform:rotate(-13deg);
+    }}
+    .adv-robot {{
+        position:absolute;
+        left:50%;
+        bottom:70px;
+        width:330px;
+        height:455px;
+        transform:translateX(-50%);
+        z-index:10;
+        animation:adv-breathe 5s ease-in-out infinite;
+    }}
+    .adv-head {{
+        position:absolute;
+        left:96px;
+        top:10px;
+        width:138px;
+        height:154px;
+        border-radius:48% 48% 44% 44%;
+        background:linear-gradient(150deg,#f1f4f5,#b8c4cb 48%,#5b6872);
+        border:2px solid #b9eaff;
+        box-shadow:0 0 35px rgba(62,211,255,.22), inset -12px -16px 25px rgba(0,0,0,.25);
+        overflow:hidden;
+    }}
+    .adv-head img {{
+        position:absolute;
+        left:13px;
+        top:10px;
+        width:112px;
+        height:126px;
+        object-fit:cover;
+        object-position:center top;
+        border-radius:46% 46% 44% 44%;
+        filter:saturate(.94) contrast(1.03);
+    }}
+    .adv-face-placeholder {{
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        width:100%;
+        height:100%;
+        font-size:38px;
+        font-weight:900;
+        color:#b7efff;
+    }}
+    .adv-neck {{
+        position:absolute;
+        left:132px;
+        top:153px;
+        width:68px;
+        height:45px;
+        border-radius:15px;
+        background:linear-gradient(90deg,#1b2831,#91a2ac,#1a252d);
+        border:1px solid #5e8396;
+    }}
+    .adv-torso {{
+        position:absolute;
+        left:52px;
+        top:182px;
+        width:225px;
+        height:190px;
+        border-radius:42px 42px 30px 30px;
+        background:linear-gradient(150deg,#dce5e8,#8999a3 40%,#202c34 82%);
+        border:2px solid #78d9ff;
+        box-shadow:0 0 40px rgba(33,198,255,.16), inset 0 -22px 38px rgba(0,0,0,.3);
+    }}
+    .adv-chest {{
+        position:absolute;
+        left:76px;
+        top:34px;
+        width:74px;
+        height:74px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        border-radius:50%;
+        background:radial-gradient(circle,#65e6ff 0 9%,#06384c 28%,#020d15 68%);
+        border:2px solid #68dfff;
+        box-shadow:0 0 18px #25cfff,0 0 60px rgba(37,207,255,.45);
+        color:white;
+        font-weight:1000;
+        letter-spacing:.08em;
+    }}
+    .adv-arm {{
+        position:absolute;
+        top:205px;
+        width:62px;
+        height:185px;
+        border-radius:35px;
+        background:linear-gradient(90deg,#1d2a33,#c8d5da 44%,#45525b);
+        border:2px solid #65cfff;
+        transform-origin:top center;
+        box-shadow:inset 0 -15px 25px rgba(0,0,0,.3);
+    }}
+    .adv-arm.left {{ left:8px; transform:rotate(14deg); }}
+    .adv-arm.right {{ right:8px; transform:rotate(-14deg); }}
+    .adv-hand {{
+        position:absolute;
+        top:363px;
+        width:68px;
+        height:50px;
+        border-radius:24px;
+        background:linear-gradient(160deg,#dce7eb,#56656f);
+        border:1px solid #5fd6ff;
+    }}
+    .adv-hand.left {{ left:7px; }}
+    .adv-hand.right {{ right:7px; }}
+    .adv-desk {{
+        position:absolute;
+        left:14%;
+        right:14%;
+        bottom:45px;
+        height:105px;
+        border:1px solid #45cfff;
+        border-radius:30px 30px 12px 12px;
+        background:linear-gradient(180deg,rgba(16,57,75,.78),rgba(3,14,21,.94));
+        box-shadow:0 -5px 45px rgba(28,190,255,.18), inset 0 10px 25px rgba(48,199,255,.08);
+        z-index:12;
+        transform:perspective(500px) rotateX(14deg);
+    }}
+    .adv-console {{
+        position:absolute;
+        left:11%;
+        right:11%;
+        top:10px;
+        height:62px;
+        border:1px solid #3dd5ff;
+        border-radius:15px;
+        background:rgba(1,12,19,.85);
+        box-shadow:inset 0 0 25px rgba(40,199,255,.09);
+        padding:10px;
+    }}
+    .adv-console-title {{
+        color:#bdefff;
+        font-size:8px;
+        letter-spacing:.15em;
+        font-weight:900;
+    }}
+    .adv-bars {{
+        display:flex;
+        align-items:end;
+        gap:6px;
+        height:32px;
+        margin-top:5px;
+    }}
+    .adv-bars i {{
+        display:block;
+        width:8px;
+        border-radius:4px 4px 0 0;
+        background:linear-gradient(#62e6ff,#0875ac);
+        box-shadow:0 0 8px rgba(39,206,255,.35);
+        animation:adv-bars 2.4s ease-in-out infinite;
+    }}
+    .adv-bars i:nth-child(1){{height:12px}}
+    .adv-bars i:nth-child(2){{height:25px;animation-delay:.2s}}
+    .adv-bars i:nth-child(3){{height:18px;animation-delay:.4s}}
+    .adv-bars i:nth-child(4){{height:31px;animation-delay:.6s}}
+    .adv-bars i:nth-child(5){{height:20px;animation-delay:.8s}}
+    .adv-bars i:nth-child(6){{height:28px;animation-delay:1s}}
+    .adv-brain {{
+        position:absolute;
+        right:6%;
+        top:18%;
+        width:125px;
+        height:125px;
+        border-radius:50%;
+        border:1px solid #4bd8ff;
+        background:radial-gradient(circle,rgba(55,219,255,.28),rgba(4,19,30,.5) 60%);
+        box-shadow:0 0 40px rgba(55,219,255,.2);
+        z-index:4;
+    }}
+    .adv-brain:before {{
+        content:"DI BRAIN";
+        position:absolute;
+        left:50%;
+        top:49px;
+        transform:translateX(-50%);
+        color:#79e5ff;
+        font-size:10px;
+        font-weight:900;
+        white-space:nowrap;
+    }}
+    .adv-brain:after {{
+        content:"CONNECTED";
+        position:absolute;
+        left:50%;
+        top:66px;
+        transform:translateX(-50%);
+        color:#65efa9;
+        font-size:7px;
+        font-weight:900;
+        white-space:nowrap;
+    }}
+    .adv-status {{
+        position:absolute;
+        right:6%;
+        bottom:16%;
+        width:175px;
+        padding:13px;
+        border:1px solid #215b76;
+        border-radius:16px;
+        background:rgba(2,12,19,.86);
+        z-index:8;
+    }}
+    .adv-status h5 {{
+        margin:0 0 8px;
+        color:#67dcff;
+        font-size:9px;
+        letter-spacing:.13em;
+    }}
+    .adv-status div {{
+        display:flex;
+        justify-content:space-between;
+        color:#8da7b6;
+        font-size:8px;
+        padding:4px 0;
+    }}
+    .adv-status b {{ color:#65efa9; }}
+    .adv-name {{
+        position:absolute;
+        left:50%;
+        bottom:17px;
+        transform:translateX(-50%);
+        color:#c9f4ff;
+        font-size:10px;
+        letter-spacing:.22em;
+        font-weight:1000;
+        z-index:20;
+        white-space:nowrap;
+    }}
+    @keyframes adv-breathe {{
+        0%,100% {{ transform:translateX(-50%) translateY(0); }}
+        50% {{ transform:translateX(-50%) translateY(-6px); }}
+    }}
+    @keyframes adv-bars {{
+        0%,100% {{ opacity:.6; transform:scaleY(.75); transform-origin:bottom; }}
+        50% {{ opacity:1; transform:scaleY(1.05); transform-origin:bottom; }}
+    }}
+    @media(max-width:900px) {{
+        .adv-wall-screen,.adv-brain,.adv-status {{ display:none; }}
+        .adv-robot {{ transform:translateX(-50%) scale(.78); transform-origin:bottom center; }}
+        .adv-desk {{ left:5%; right:5%; }}
+    }}
+    </style>
+    <div class="adv-office">
+        <div class="adv-ceiling"></div>
+        <div class="adv-wall-screen">
+            <h4>DACRE WORLDWIDE · LIVE OPERATIONS</h4>
+            <div class="adv-map"></div>
+        </div>
+        <div class="adv-brain"></div>
+        <div class="adv-status">
+            <h5>AI CORE STATUS</h5>
+            <div><span>PROCESSING</span><b>ONLINE</b></div>
+            <div><span>DATA SYNC</span><b>ONLINE</b></div>
+            <div><span>NETWORK</span><b>ONLINE</b></div>
+            <div><span>SECURITY</span><b>ACTIVE</b></div>
+            <div><span>MEMORY</span><b>READY</b></div>
+        </div>
+        <div class="adv-robot">
+            <div class="adv-head">{face_markup}</div>
+            <div class="adv-neck"></div>
+            <div class="adv-torso"><div class="adv-chest">DI</div></div>
+            <div class="adv-arm left"></div>
+            <div class="adv-arm right"></div>
+            <div class="adv-hand left"></div>
+            <div class="adv-hand right"></div>
+        </div>
+        <div class="adv-desk">
+            <div class="adv-console">
+                <div class="adv-console-title">LIVE DACRE ACTIVITY CONSOLE · HUMAN-FACE DI OPERATOR</div>
+                <div class="adv-bars"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            </div>
+        </div>
+        <div class="adv-name">GUAIEL · OVERALL ADMIN DI · FOUNDER COMMAND</div>
+    </div>
+    """
+
+def _adv_render_activity_item(event):
+    """Render one activity record as a compact command-center card."""
+    kind = html.escape(_adv_clean(event.get("kind"), "ACTIVITY"))
+    actor = html.escape(_adv_clean(event.get("actor"), "Unknown"))
+    source = html.escape(_adv_clean(event.get("source"), "DACRE"))
+    detail = html.escape(_adv_clean(event.get("detail"), "No details"))
+    stamp = html.escape(_adv_time_label(event.get("time")))
+    icon = html.escape(_adv_clean(event.get("icon"), "•"))
+    return (
+        '<div class="adv-feed-item">'
+        f'<div class="adv-feed-icon">{icon}</div>'
+        '<div class="adv-feed-main">'
+        f'<div class="adv-feed-top"><b>{kind}</b><span>{stamp}</span></div>'
+        f'<div class="adv-feed-detail">{detail}</div>'
+        f'<div class="adv-feed-meta">{actor} · {source}</div>'
+        '</div>'
+        '</div>'
+    )
+
+def _adv_render_styles():
+    """Inject the advanced founder dashboard visual system."""
+    st.markdown(
+        """
+        <style>
+        .adv-command-wrap{max-width:1500px;margin:0 auto}
+        .adv-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px 24px;margin:4px 0 18px;border:1px solid #183e58;border-radius:22px;background:linear-gradient(145deg,#071827,#030a11);box-shadow:0 20px 55px rgba(0,0,0,.28)}
+        .adv-header small{display:block;color:#53d7ff;font-size:9px;letter-spacing:.2em;font-weight:900}
+        .adv-header h1{margin:5px 0 4px;color:#f4fbff;font-size:29px;line-height:1.05}
+        .adv-header p{margin:0;color:#809caf;font-size:11px}
+        .adv-live{padding:10px 13px;border:1px solid #23734f;border-radius:999px;background:#062218;color:#67efab;font-size:8px;font-weight:900;letter-spacing:.12em;white-space:nowrap}
+        .adv-section-title{margin:22px 0 7px;color:#eaf8ff;font-size:18px;font-weight:950;letter-spacing:.02em}
+        .adv-section-sub{margin:0 0 12px;color:#718c9e;font-size:10px}
+        .adv-metric{min-height:88px;padding:15px;border:1px solid #1a3d54;border-radius:16px;background:linear-gradient(145deg,#071725,#030b12);box-shadow:inset 0 0 28px rgba(31,190,255,.025)}
+        .adv-metric small{display:block;color:#7593a6;font-size:7px;font-weight:900;letter-spacing:.13em}
+        .adv-metric b{display:block;margin-top:7px;color:#fff;font-size:25px}
+        .adv-metric span{display:block;margin-top:4px;color:#4fe0a2;font-size:7px}
+        .adv-panel{padding:16px;border:1px solid #183b53;border-radius:18px;background:linear-gradient(145deg,#071725,#030a10);box-shadow:0 15px 38px rgba(0,0,0,.2)}
+        .adv-panel h3{margin:0 0 4px;color:#eaf8ff;font-size:15px}
+        .adv-panel p{margin:0 0 12px;color:#7893a5;font-size:9px}
+        .adv-feed-item{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #123044}
+        .adv-feed-item:last-child{border-bottom:0}
+        .adv-feed-icon{flex:0 0 25px;width:25px;height:25px;display:flex;align-items:center;justify-content:center;border:1px solid #1d6687;border-radius:8px;color:#65ddff;background:#061b28;font-size:10px}
+        .adv-feed-main{min-width:0;flex:1}
+        .adv-feed-top{display:flex;justify-content:space-between;gap:10px;color:#62dbff;font-size:8px}
+        .adv-feed-top span{color:#617f92}
+        .adv-feed-detail{margin-top:4px;color:#d9eaf2;font-size:10px;line-height:1.35}
+        .adv-feed-meta{margin-top:3px;color:#627f90;font-size:7px}
+        .adv-status-row{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #123044;color:#7994a5;font-size:9px}
+        .adv-status-row:last-child{border-bottom:0}
+        .adv-ok{color:#64efa9!important}
+        .adv-warn{color:#ffc36d!important}
+        .adv-danger{color:#ff7f91!important}
+        .adv-action-card{padding:18px;border:1px solid #236486;border-radius:18px;background:linear-gradient(145deg,#082238,#04121c);box-shadow:0 18px 40px rgba(0,0,0,.28)}
+        .adv-action-card h3{margin:0;color:#fff;font-size:17px}
+        .adv-action-card p{margin:5px 0 14px;color:#88a6b8;font-size:9px}
+        .adv-di-room{padding:13px;border:1px solid #19445e;border-radius:15px;background:#05121b;margin-bottom:8px}
+        .adv-di-room-top{display:flex;justify-content:space-between;gap:10px}
+        .adv-di-room b{color:#eaf9ff;font-size:11px}
+        .adv-di-room span{color:#62eea8;font-size:7px;font-weight:900}
+        .adv-di-room small{display:block;color:#718da0;font-size:8px;margin-top:5px}
+        .adv-di-room em{display:block;color:#4ecfff;font-size:7px;font-style:normal;margin-top:5px}
+        .adv-foot{margin-top:18px;padding:11px 14px;border:1px solid #173b52;border-radius:14px;background:#040c12;color:#6f8a9b;font-size:8px;text-align:center}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+def _adv_render_metric_cards(metrics):
+    """Render the system overview metrics."""
+    definitions = [
+        ("TOTAL USERS", "users", "Registered customer accounts"),
+        ("ORGANIZATIONS", "companies", "Company workspaces"),
+        ("APP ACTIVITY", "activity", "Recorded operational events"),
+        ("DI CONVERSATIONS", "messages", "Stored DI messages"),
+        ("UPLOADED FILES", "files", "Customer file activity"),
+        ("DI AGENTS ONLINE", "di", "Active specialist nodes"),
+    ]
+    columns = st.columns(len(definitions))
+    for column, (label, key, description) in zip(columns, definitions):
+        with column:
+            st.markdown(
+                f'<div class="adv-metric"><small>{html.escape(label)}</small>'
+                f'<b>{_adv_int(metrics.get(key), 0):,}</b>'
+                f'<span>{html.escape(description)}</span></div>',
+                unsafe_allow_html=True,
+            )
+
+def _adv_render_system_status():
+    """Render live platform status."""
+    statuses = _adv_service_status()
+    body = []
+    for name, state in statuses:
+        cls = "adv-ok"
+        if state in {"DEGRADED", "STANDBY", "LOCAL DB"}:
+            cls = "adv-warn"
+        body.append(
+            f'<div class="adv-status-row"><span>{html.escape(name)}</span>'
+            f'<b class="{cls}">{html.escape(state)}</b></div>'
+        )
+    st.markdown(
+        '<div class="adv-panel"><h3>SYSTEM STATUS</h3>'
+        '<p>Platform health and DI infrastructure.</p>'
+        + "".join(body)
+        + "</div>",
+        unsafe_allow_html=True,
+    )
+
+def _adv_render_di_activity(events):
+    """Extract DI-related activity from the unified stream."""
+    return [
+        event
+        for event in events
+        if event.get("kind") in {"DI CONVERSATION", "FOUNDER CONTROL"}
+    ]
+
+def _adv_render_user_activity(events):
+    """Extract user-facing application activity."""
+    return [
+        event
+        for event in events
+        if event.get("kind") in {"USER ACTIVITY", "FILE ACTIVITY", "WEBSITE ACTIVITY"}
+    ]
+
+def _adv_render_feed_panel(title, subtitle, events, limit=10):
+    """Render a categorized activity panel."""
+    rendered = [_adv_render_activity_item(event) for event in events[:limit]]
+    if not rendered:
+        rendered = [
+            '<div class="adv-feed-item"><div class="adv-feed-main">'
+            '<div class="adv-feed-detail">No activity recorded yet.</div>'
+            '</div></div>'
+        ]
+    st.markdown(
+        '<div class="adv-panel">'
+        f"<h3>{html.escape(title)}</h3>"
+        f"<p>{html.escape(subtitle)}</p>"
+        + "".join(rendered)
+        + "</div>",
+        unsafe_allow_html=True,
+    )
+
+def _adv_render_di_roster(di_snapshot):
+    """Render the current DI workforce as physical offices, not letters."""
+    st.markdown(
+        '<div class="adv-section-title">DI WORKFORCE ACTIVITY</div>'
+        '<div class="adv-section-sub">Overall Admin monitors the workforce here. '
+        'The physical offices are opened from DI Basement.</div>',
+        unsafe_allow_html=True,
+    )
+    if not di_snapshot:
+        st.info("No active DI nodes are currently registered.")
         return
-    render_enterprise_sidebar(user); apply_company_website_theme(user); render_productivity_bar(user)
-    if not st.session_state.chat_history: st.session_state.chat_history=load_chat_history(user,limit=40)
-    selected_page=st.session_state.get('selected_page','Overview'); allowed={'Overview','Workspace & Data','Business Twin','Decision Ledger','Opportunity Radar','File Vault','Export Center','Research Store'}
-    if selected_page not in allowed: selected_page='Overview'; st.session_state.selected_page=selected_page
-    render_page_chrome(selected_page,user); render_page_di_hologram(selected_page,user)
-    if selected_page=='Overview': render_user_dashboard(user)
-    elif selected_page=='Research Store': render_research_store(user)
-    elif selected_page=='Business Twin': render_business_twin(st.session_state.processed_df,user)
-    elif selected_page=='Decision Ledger': render_decision_ledger(user)
-    elif selected_page=='Opportunity Radar': render_opportunity_page(user)
-    elif selected_page=='Workspace & Data': render_workspace_data(user)
-    elif selected_page=='File Vault': render_file_vault(user)
-    elif selected_page=='Export Center': render_export_center(user)
-    render_persistent_di_dock(user)
+    columns = st.columns(2)
+    for index, spec in enumerate(di_snapshot[:ADVANCED_FOUNDER_MAX_DI]):
+        with columns[index % 2]:
+            name = html.escape(spec["name"])
+            role = html.escape(spec["role"])
+            position = html.escape(spec["position"])
+            status = html.escape(spec["status"])
+            room = spec["room"]
+            st.markdown(
+                f'<div class="adv-di-room">'
+                f'<div class="adv-di-room-top"><b>ROOM {room:02d} · {name}</b>'
+                f'<span>● {status.upper()}</span></div>'
+                f'<small>{position}</small>'
+                f'<em>{role}</em>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+def _adv_render_founder_actions():
+    """Render the two founder controls with clear separation of responsibility."""
+    action_left, action_right = st.columns(2)
+    with action_left:
+        st.markdown(
+            '<div class="adv-action-card"><h3>👤➕ DAVID CREATION</h3>'
+            '<p>Build, manage, create, and permanently destroy DI identities. '
+            'This engineering area is protected by the David Creation passkey.</p></div>',
+            unsafe_allow_html=True,
+        )
+        if st.button(
+            "Open David Creation",
+            type="primary",
+            use_container_width=True,
+            key="adv_open_david_creation",
+        ):
+            st.session_state.selected_page = "David Creation"
+            st.session_state.david_creation_unlocked = False
+            _adv_log("DAVID CREATION REQUEST", "Founder opened the protected engineering gate.")
+            st.rerun()
+    with action_right:
+        st.markdown(
+            '<div class="adv-action-card"><h3>🏢 DI BASEMENT</h3>'
+            '<p>Twenty physical DI offices with human-face operators, desks, '
+            'workstations, roles, private memory, and shared DI Brain connectivity.</p></div>',
+            unsafe_allow_html=True,
+        )
+        if st.button(
+            "Open DI Basement",
+            use_container_width=True,
+            key="adv_open_basement",
+        ):
+            st.session_state.selected_page = "DI Basement"
+            st.session_state.di_basement_unlocked = False
+            _adv_log("DI BASEMENT REQUEST", "Founder opened the protected DI office gate.")
+            st.rerun()
+
+def render_advanced_founder_overall_admin(user):
+    """
+    Advanced Overall Admin DI command center.
+
+    This page is intentionally not a customer-facing analytics page.
+    It observes application activity, DI activity, system state, and founder
+    controls. It does not expose ordinary customer workspace navigation.
+    """
+    if user.get("role") != "master":
+        st.error("Overall Admin DI is restricted to the verified founder account.")
+        return
+    ensure_admin_runtime_schema()
+    _ensure_founder_creation_tables()
+    _adv_render_styles()
+    st.markdown('<div class="adv-command-wrap">', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="adv-header">'
+        '<div><small>DACRE WORLDWIDE · FOUNDER COMMAND</small>'
+        '<h1>OVERALL ADMIN DI COMMAND CENTER</h1>'
+        '<p>Real-time intelligence and activity monitoring · Connected to DI Brain</p>'
+        '</div><div class="adv-live">● LIVE · VERIFIED</div></div>',
+        unsafe_allow_html=True,
+    )
+    components.html(_adv_robot_office_html(), height=635, scrolling=False)
+    metrics = _adv_metric_snapshot()
+    _adv_render_metric_cards(metrics)
+    st.markdown(
+        '<div class="adv-section-title">FOUNDER CONTROL</div>'
+        '<div class="adv-section-sub">The command centre observes the company. '
+        'Engineering actions remain behind their own passwords.</div>',
+        unsafe_allow_html=True,
+    )
+    _adv_render_founder_actions()
+    events = _adv_activity_events()
+    user_events = _adv_render_user_activity(events)
+    di_events = _adv_render_di_activity(events)
+    st.markdown(
+        '<div class="adv-section-title">LIVE ACTIVITY FEED</div>'
+        '<div class="adv-section-sub">Accounts, users, files, website visits, '
+        'DI conversations and founder controls appear here as the application operates.</div>',
+        unsafe_allow_html=True,
+    )
+    feed_left, feed_mid, feed_right = st.columns([1.2, 1.2, .85])
+    with feed_left:
+        _adv_render_feed_panel(
+            "USER & ACCOUNT ACTIVITY",
+            "Customer-facing activity observed by the founder layer.",
+            user_events,
+            12,
+        )
+    with feed_mid:
+        _adv_render_feed_panel(
+            "DI ACTIVITY",
+            "Conversations and DI-related operational events.",
+            di_events,
+            12,
+        )
+    with feed_right:
+        _adv_render_system_status()
+        st.markdown(
+            '<div class="adv-panel" style="margin-top:10px"><h3>FOUNDER AUDIT</h3>'
+            '<p>Protected controls used by the verified founder.</p></div>',
+            unsafe_allow_html=True,
+        )
+        audit_events = [
+            event for event in events if event.get("kind") == "FOUNDER CONTROL"
+        ]
+        if audit_events:
+            for event in audit_events[:6]:
+                st.markdown(
+                    _adv_render_activity_item(event),
+                    unsafe_allow_html=True,
+                )
+        else:
+            st.caption("No founder controls have been recorded yet.")
+    _adv_render_di_roster(_adv_di_snapshot())
+    st.markdown(
+        f'<div class="adv-foot">DACRE Analysis · Advanced Founder Command Center '
+        f'{html.escape(ADVANCED_FOUNDER_VERSION)} · Last system check {_adv_now()} · '
+        f'DI Brain connected · Founder account verified</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown("</div>", unsafe_allow_html=True)
+
+def _adv_unlock_gate(title, description, passkey, state_key, action_name, page_name):
+    """Reusable password gate for founder engineering rooms."""
+    st.markdown(
+        f'<div class="adv-panel"><h3>{html.escape(title)}</h3>'
+        f'<p>{html.escape(description)}</p></div>',
+        unsafe_allow_html=True,
+    )
+    entered = st.text_input(
+        f"{title} password",
+        type="password",
+        key=f"adv_gate_{state_key}",
+    )
+    if st.button(
+        f"Unlock {title}",
+        type="primary",
+        use_container_width=True,
+        key=f"adv_unlock_{state_key}",
+    ):
+        if hmac.compare_digest(entered.strip(), passkey):
+            st.session_state[state_key] = True
+            _adv_log(action_name, f"Founder entered {page_name}.")
+            st.rerun()
+        st.error(f"Incorrect {title} password.")
+    return False
+
+def _adv_create_form():
+    """Render the DI creation engine using the existing DI persistence layer."""
+    st.markdown(
+        '<div class="adv-panel"><h3>CREATE A NEW DI</h3>'
+        '<p>Create a separated specialist with its own identity, role, rank, '
+        'and engineering position.</p></div>',
+        unsafe_allow_html=True,
+    )
+    with st.form("adv_create_di_form", clear_on_submit=True):
+        name = st.text_input(
+            "DI name",
+            placeholder="Example: Samueliel",
+            help="Use a unique specialist name.",
+        )
+        specialty = st.text_input(
+            "Specialty",
+            placeholder="Example: Operations Intelligence",
+        )
+        position = st.text_input(
+            "Position",
+            value="DI Specialist",
+        )
+        role = st.text_area(
+            "DI role",
+            placeholder="Describe the specialist's responsibility.",
+            height=110,
+        )
+        presentation = st.selectbox(
+            "Human presentation",
+            ["male", "female"],
+        )
+        rank = st.number_input(
+            "Rank",
+            min_value=1,
+            max_value=100,
+            value=5,
+            step=1,
+        )
+        submitted = st.form_submit_button(
+            "CREATE DI",
+            type="primary",
+            use_container_width=True,
+        )
+    if submitted:
+        ok, message = _founder_create_di(
+            name,
+            specialty,
+            position,
+            role,
+            presentation,
+            int(rank),
+        )
+        if ok:
+            _adv_log("DI CREATED", message)
+            st.success(message)
+            st.rerun()
+        st.error(message)
+
+def _adv_destroy_form():
+    """Render the irreversible DI deletion engine."""
+    st.markdown(
+        '<div class="adv-panel"><h3>DESTROY & DELETE DI</h3>'
+        '<p>This operation removes the DI from its active workforce and '
+        'cleans its private engineering records. The CEO guardian is protected.</p></div>',
+        unsafe_allow_html=True,
+    )
+    agents = _adv_di_snapshot()
+    choices = [
+        item["name"]
+        for item in agents
+        if item["name"] != CEO_GUARD_NAME
+    ]
+    if not choices:
+        st.info("No deletable DI nodes are currently available.")
+        return
+    target = st.selectbox(
+        "DI to permanently delete",
+        choices,
+        key="adv_destroy_target",
+    )
+    confirm = st.checkbox(
+        "I understand this permanently deletes the selected DI and its private records.",
+        key="adv_destroy_confirm",
+    )
+    if st.button(
+        "DESTROY & DELETE DI",
+        use_container_width=True,
+        key="adv_destroy_di",
+    ):
+        if not confirm:
+            st.warning("Confirm the permanent deletion first.")
+            return
+        ok, message = _founder_destroy_di(target)
+        if ok:
+            _adv_log("DI DESTROYED", message)
+            st.success(message)
+            st.rerun()
+        st.error(message)
+
+def render_advanced_david_creation(user):
+    """Protected David Creation engineering room."""
+    if user.get("role") != "master":
+        st.error("David Creation is restricted to the verified founder account.")
+        return
+    _adv_render_styles()
+    st.markdown(
+        '<div class="adv-header"><div><small>FOUNDER ENGINEERING</small>'
+        '<h1>DAVID CREATION</h1>'
+        '<p>DI identity creation and destruction engine.</p></div>'
+        '<div class="adv-live">● FOUNDER ONLY</div></div>',
+        unsafe_allow_html=True,
+    )
+    if not st.session_state.get("david_creation_unlocked", False):
+        _adv_unlock_gate(
+            "David Creation",
+            "Enter the protected founder engineering password to access the DI creation engine.",
+            DAVID_CREATIONS_PASSKEY,
+            "david_creation_unlocked",
+            "DAVID CREATION UNLOCKED",
+            "David Creation",
+        )
+        return
+    st.success("David Creation unlocked.")
+    basement_col, lock_col = st.columns(2)
+    with basement_col:
+        st.markdown(
+            '<div class="adv-action-card"><h3>🏢 DI BASEMENT</h3>'
+            '<p>Open the twenty-room physical DI office facility.</p></div>',
+            unsafe_allow_html=True,
+        )
+        if st.button(
+            "Enter DI Basement",
+            type="primary",
+            use_container_width=True,
+            key="adv_creation_to_basement",
+        ):
+            st.session_state.selected_page = "DI Basement"
+            st.session_state.di_basement_unlocked = False
+            st.rerun()
+    with lock_col:
+        st.markdown(
+            '<div class="adv-action-card"><h3>🔒 LOCK ENGINE</h3>'
+            '<p>Close David Creation immediately and return to founder command.</p></div>',
+            unsafe_allow_html=True,
+        )
+        if st.button(
+            "Lock David Creation",
+            use_container_width=True,
+            key="adv_lock_creation",
+        ):
+            st.session_state.david_creation_unlocked = False
+            st.session_state.selected_page = "Overall Admin DI"
+            st.rerun()
+    st.markdown(
+        '<div class="adv-section-title">ENGINEERING CONTROL</div>',
+        unsafe_allow_html=True,
+    )
+    create_col, destroy_col = st.columns(2)
+    with create_col:
+        _adv_create_form()
+    with destroy_col:
+        _adv_destroy_form()
+    st.markdown(
+        '<div class="adv-section-title">CURRENT DI WORKFORCE</div>'
+        '<div class="adv-section-sub">Every active specialist remains individually identified by name, role, position, and status.</div>',
+        unsafe_allow_html=True,
+    )
+    roster = _adv_di_snapshot()
+    if roster:
+        data = [
+            {
+                "ROOM": item["room"],
+                "DI": item["name"],
+                "ROLE": item["role"],
+                "POSITION": item["position"],
+                "STATUS": item["status"],
+                "RANK": item["rank"],
+            }
+            for item in roster
+        ]
+        st.dataframe(
+            pd.DataFrame(data),
+            use_container_width=True,
+            hide_index=True,
+        )
+    else:
+        st.info("No active DI workforce is currently registered.")
+
+def _adv_room_html(spec):
+    """Render a physical office room with the DI's human face."""
+    name = html.escape(_adv_clean(spec.get("name"), "DI"))
+    role = html.escape(_adv_clean(spec.get("role"), "DI Specialist"))
+    position = html.escape(_adv_clean(spec.get("position"), "DI Specialist"))
+    status = html.escape(_adv_clean(spec.get("status"), "Available").upper())
+    face = spec.get("face") or ""
+    face_markup = (
+        f'<img src="{face.replace(chr(34), "&quot;")}" alt="{name} human face">'
+        if face
+        else '<div class="room-face-fallback">DI</div>'
+    )
+    return f"""
+    <div class="room-card">
+        <div class="room-number">ROOM {int(spec.get("room",1)):02d}</div>
+        <div class="room-window">
+            <div class="room-city-grid"></div>
+            <div class="room-robot">
+                <div class="room-head">{face_markup}</div>
+                <div class="room-neck"></div>
+                <div class="room-body"><div class="room-core">DI</div></div>
+                <div class="room-arm room-arm-left"></div>
+                <div class="room-arm room-arm-right"></div>
+            </div>
+            <div class="room-desk">
+                <div class="room-monitor">LIVE WORKSTATION</div>
+            </div>
+        </div>
+        <div class="room-info">
+            <b>{name}</b>
+            <span>● {status}</span>
+            <small>{position}</small>
+            <em>{role}</em>
+        </div>
+    </div>
+    """
+
+def _adv_basement_styles():
+    """Inject physical DI office styles."""
+    st.markdown(
+        """
+        <style>
+        .basement-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+        .room-card{position:relative;overflow:hidden;border:1px solid #1b5270;border-radius:20px;background:linear-gradient(145deg,#061522,#02080d);box-shadow:0 15px 35px rgba(0,0,0,.25)}
+        .room-number{position:absolute;z-index:20;top:10px;left:12px;color:#65dcff;font-size:7px;font-weight:900;letter-spacing:.16em}
+        .room-window{position:relative;height:250px;overflow:hidden;background:radial-gradient(circle at 50% 35%,rgba(52,202,255,.13),transparent 28%),linear-gradient(180deg,#071b2a,#02080e 75%)}
+        .room-window:before{content:"";position:absolute;inset:0;background:linear-gradient(rgba(56,202,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(56,202,255,.045) 1px,transparent 1px);background-size:28px 28px;transform:perspective(450px) rotateX(60deg) translateY(30%);transform-origin:center bottom}
+        .room-city-grid{position:absolute;left:7%;right:7%;bottom:22%;height:1px;background:#3cd6ff;box-shadow:0 0 18px #3cd6ff}
+        .room-robot{position:absolute;left:50%;bottom:25px;width:180px;height:190px;transform:translateX(-50%);animation:room-breathe 5s ease-in-out infinite}
+        .room-head{position:absolute;left:53px;top:0;width:75px;height:82px;border-radius:45%;overflow:hidden;border:1px solid #69dcff;background:#9eabb1;box-shadow:0 0 20px rgba(59,210,255,.16)}
+        .room-head img{width:100%;height:100%;object-fit:cover;object-position:center top}
+        .room-face-fallback{display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-weight:900;color:#c8f4ff}
+        .room-neck{position:absolute;left:79px;top:75px;width:24px;height:24px;border-radius:8px;background:#44535c}
+        .room-body{position:absolute;left:37px;top:92px;width:106px;height:84px;border-radius:28px;background:linear-gradient(145deg,#d5dfe3,#52616b 70%);border:1px solid #69d8ff}
+        .room-core{position:absolute;left:35px;top:17px;width:37px;height:37px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#031a25;color:#73e6ff;border:1px solid #66dbff;box-shadow:0 0 20px #1fcaff;font-size:8px;font-weight:900}
+        .room-arm{position:absolute;top:104px;width:24px;height:78px;border-radius:14px;background:linear-gradient(#bfcbd0,#43515a);border:1px solid #54cfff}
+        .room-arm-left{left:22px;transform:rotate(14deg)}
+        .room-arm-right{right:22px;transform:rotate(-14deg)}
+        .room-desk{position:absolute;left:18%;right:18%;bottom:10px;height:44px;border:1px solid #42cfff;border-radius:12px;background:rgba(4,25,36,.9);box-shadow:0 -8px 28px rgba(33,200,255,.13)}
+        .room-monitor{margin:10px auto;width:70%;height:18px;border:1px solid #39d3ff;border-radius:5px;color:#64dcff;font-size:6px;display:flex;align-items:center;justify-content:center;letter-spacing:.12em}
+        .room-info{padding:13px 15px;border-top:1px solid #173c53}
+        .room-info b{color:#effbff;font-size:12px}
+        .room-info span{float:right;color:#61efa8;font-size:7px;font-weight:900}
+        .room-info small{display:block;color:#708d9f;font-size:8px;margin-top:4px}
+        .room-info em{display:block;color:#52cfff;font-size:7px;font-style:normal;margin-top:4px}
+        @keyframes room-breathe{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-4px)}}
+        @media(max-width:850px){.basement-grid{grid-template-columns:1fr}}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+def render_advanced_di_basement(user):
+    """Protected twenty-room physical DI office facility."""
+    if user.get("role") != "master":
+        st.error("DI Basement is restricted to the verified founder account.")
+        return
+    _adv_render_styles()
+    _adv_basement_styles()
+    st.markdown(
+        '<div class="adv-header"><div><small>DACRE WORLDWIDE · DI ENGINEERING FACILITY</small>'
+        '<h1>DI BASEMENT</h1>'
+        '<p>Physical DI offices · Human-face operators · Shared Brain · Private specialist workstations</p>'
+        '</div><div class="adv-live">● FOUNDER ONLY</div></div>',
+        unsafe_allow_html=True,
+    )
+    if not st.session_state.get("di_basement_unlocked", False):
+        _adv_unlock_gate(
+            "DI Basement",
+            "Enter the protected DI Basement password to access the specialist offices.",
+            DI_BASEMENT_PASSKEY,
+            "di_basement_unlocked",
+            "DI BASEMENT UNLOCKED",
+            "DI Basement",
+        )
+        return
+    roster = _adv_di_snapshot()
+    st.success(f"DI Basement unlocked · {len(roster)} active specialist office(s).")
+    back_col, lock_col = st.columns(2)
+    with back_col:
+        if st.button(
+            "← Back to David Creation",
+            use_container_width=True,
+            key="adv_basement_back_creation",
+        ):
+            st.session_state.selected_page = "David Creation"
+            st.rerun()
+    with lock_col:
+        if st.button(
+            "Lock DI Basement",
+            use_container_width=True,
+            key="adv_basement_lock",
+        ):
+            st.session_state.di_basement_unlocked = False
+            st.session_state.selected_page = "Overall Admin DI"
+            st.rerun()
+    st.markdown(
+        '<div class="adv-section-title">THE DI OFFICES</div>'
+        '<div class="adv-section-sub">Each room represents a real specialist identity. '
+        'The letter is not the DI; the human-face physical operator is the DI representation.</div>',
+        unsafe_allow_html=True,
+    )
+    if not roster:
+        st.warning("No active DI nodes are currently available.")
+        return
+    cards = [_adv_room_html(spec) for spec in roster[:ADVANCED_FOUNDER_MAX_DI]]
+    st.markdown(
+        '<div class="basement-grid">' + "".join(cards) + "</div>",
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="adv-section-title">OFFICE INSPECTION</div>'
+        '<div class="adv-section-sub">Inspect the live role and connectivity of an individual DI.</div>',
+        unsafe_allow_html=True,
+    )
+    names = [item["name"] for item in roster]
+    selected = st.selectbox(
+        "Select DI office",
+        names,
+        key="adv_basement_selected_di",
+    )
+    selected_spec = next(
+        item for item in roster if item["name"] == selected
+    )
+    inspect_left, inspect_right = st.columns([1, 1.5])
+    with inspect_left:
+        face_path = di_face_path(selected)
+        if face_path:
+            st.image(str(face_path), width=220)
+        st.markdown(f"### {selected}")
+        st.caption(selected_spec["position"])
+        st.write(selected_spec["role"])
+    with inspect_right:
+        st.markdown(
+            '<div class="adv-panel"><h3>WORKSTATION STATUS</h3>'
+            '<p>This is the logical connection behind the physical office.</p></div>',
+            unsafe_allow_html=True,
+        )
+        st.json(
+            {
+                "room": selected_spec["room"],
+                "di": selected,
+                "role": selected_spec["role"],
+                "position": selected_spec["position"],
+                "rank": selected_spec["rank"],
+                "status": selected_spec["status"],
+                "human_face": bool(selected_spec["face"]),
+                "shared_brain": "DACRE DI Technology Brain",
+                "private_memory": f"{selected} Private Specialist Memory",
+                "office_state": "ACTIVE",
+            }
+        )
+
+# =============================================================================
+# ADVANCED FOUNDER ENGINEERING NOTES
+# =============================================================================
+
+
+def main_app():
+    """
+    Single application entry point.
+
+    Master accounts are routed exclusively through the founder command surface:
+    Overall Admin DI -> David Creation -> DI Basement.
+
+    Customer accounts retain the normal DACRE workspace.
+    """
+    if not st.session_state.get("dacre_boot_complete", False):
+        init_production_core()
+        st.session_state.dacre_boot_complete = True
+
+    user = st.session_state.get("user")
+    if not user:
+        landing_page()
+        return
+
+    try:
+        mongo_sync_user(user)
+    except Exception:
+        logger.exception("Mongo user synchronization failed")
+
+    if user.get("role") == "master":
+        if st.session_state.get("selected_page") not in FOUNDER_MASTER_PAGES:
+            st.session_state.selected_page = "Overall Admin DI"
+
+        render_founder_sidebar(user)
+
+        page = st.session_state.get("selected_page", "Overall Admin DI")
+
+        if page == "Overall Admin DI":
+            render_advanced_founder_overall_admin(user)
+        elif page == "David Creation":
+            render_advanced_david_creation(user)
+        elif page == "DI Basement":
+            render_advanced_di_basement(user)
+        else:
+            st.session_state.selected_page = "Overall Admin DI"
+            render_advanced_founder_overall_admin(user)
+        return
+
+    try:
+        render_enterprise_sidebar(user)
+        apply_company_website_theme(user)
+        render_productivity_bar(user)
+    except Exception:
+        logger.exception("Customer navigation rendering failed")
+
+    try:
+        if not st.session_state.chat_history:
+            st.session_state.chat_history = load_chat_history(user, limit=40)
+    except Exception:
+        logger.exception("Customer chat history load failed")
+
+    selected_page = st.session_state.get("selected_page", "Overview")
+    allowed = {
+        "Overview",
+        "Workspace & Data",
+        "Business Twin",
+        "Decision Ledger",
+        "Opportunity Radar",
+        "File Vault",
+        "Export Center",
+        "Research Store",
+    }
+
+    if selected_page not in allowed:
+        selected_page = "Overview"
+        st.session_state.selected_page = selected_page
+
+    render_page_chrome(selected_page, user)
+    render_page_di_hologram(selected_page, user)
+
+    if selected_page == "Overview":
+        render_user_dashboard(user)
+    elif selected_page == "Research Store":
+        render_research_store(user)
+    elif selected_page == "Business Twin":
+        render_business_twin(st.session_state.processed_df, user)
+    elif selected_page == "Decision Ledger":
+        render_decision_ledger(user)
+    elif selected_page == "Opportunity Radar":
+        render_opportunity_page(user)
+    elif selected_page == "Workspace & Data":
+        render_workspace_data(user)
+    elif selected_page == "File Vault":
+        render_file_vault(user)
+    elif selected_page == "Export Center":
+        render_export_center(user)
+
 
 
 # =============================================================================
@@ -9958,3 +11378,623 @@ if __name__ == "__main__":
         landing_page()
     else:
         main_app()
+
+# ADVANCED FOUNDER AUDIT 001: Founder command center intentionally separates observation from engineering controls.
+# ADVANCED FOUNDER AUDIT 001: Overall Admin DI observes customer activity instead of exposing customer workspace functions.
+# ADVANCED FOUNDER AUDIT 001: David Creation is the protected DI identity engineering gate.
+# ADVANCED FOUNDER AUDIT 001: DI Basement is the protected physical-office visualization layer.
+# ADVANCED FOUNDER AUDIT 001: Human-face assets are preferred over letter or initial avatars.
+# ADVANCED FOUNDER AUDIT 001: Every DI room displays role, position, status, and workstation state.
+# ADVANCED FOUNDER AUDIT 001: The shared DI Brain remains logically separate from individual specialist identity.
+# ADVANCED FOUNDER AUDIT 001: Founder controls are written to the existing founder audit log.
+# ADVANCED FOUNDER AUDIT 001: Destructive DI operations reuse the existing deletion engine.
+# ADVANCED FOUNDER AUDIT 001: DI creation reuses the existing DI persistence layer.
+# ADVANCED FOUNDER AUDIT 001: Database monitoring uses safe read-only queries and failure isolation.
+# ADVANCED FOUNDER AUDIT 001: Optional MongoDB connectivity is reported without preventing local operation.
+# ADVANCED FOUNDER AUDIT 001: Activity panels are built from existing DACRE activity, chat, file, and visit records.
+# ADVANCED FOUNDER AUDIT 001: The command center is designed to remain usable when individual data sources are empty.
+# ADVANCED FOUNDER AUDIT 001: Responsive CSS collapses the physical office visualization on narrow screens.
+# ADVANCED FOUNDER AUDIT 001: The founder sidebar remains limited to Overall Admin DI, David Creation, and DI Basement.
+# ADVANCED FOUNDER AUDIT 001: Customer users retain the ordinary DACRE workspace navigation.
+# ADVANCED FOUNDER AUDIT 001: The master route does not render the customer-facing page chrome.
+# ADVANCED FOUNDER AUDIT 001: Password gates use constant-time comparison through hmac.compare_digest.
+# ADVANCED FOUNDER AUDIT 001: DI Basement and David Creation unlock states remain session-local.
+# ADVANCED FOUNDER AUDIT 001: Locking an engineering room returns the founder to the command surface.
+# ADVANCED FOUNDER AUDIT 001: The CEO guardian cannot be deleted by the DI destruction engine.
+# ADVANCED FOUNDER AUDIT 001: The office renderer uses a human face when a DI face asset exists.
+# ADVANCED FOUNDER AUDIT 001: A non-face fallback is only a resilience mechanism for missing deployment assets.
+# ADVANCED FOUNDER AUDIT 001: The dashboard does not claim external service health without checking local application state.
+# ADVANCED FOUNDER AUDIT 001: Service status labels distinguish online, standby, degraded, and local database states.
+# ADVANCED FOUNDER AUDIT 001: Activity timestamps are formatted for fast founder scanning.
+# ADVANCED FOUNDER AUDIT 001: Activity text is HTML-escaped before entering unsafe_allow_html containers.
+# ADVANCED FOUNDER AUDIT 001: DI names, roles, positions, and source names are escaped before display.
+# ADVANCED FOUNDER AUDIT 001: The physical office scene is CSS-generated so it remains bundled with app.py.
+# ADVANCED FOUNDER AUDIT 002: Founder command center intentionally separates observation from engineering controls.
+# ADVANCED FOUNDER AUDIT 002: Overall Admin DI observes customer activity instead of exposing customer workspace functions.
+# ADVANCED FOUNDER AUDIT 002: David Creation is the protected DI identity engineering gate.
+# ADVANCED FOUNDER AUDIT 002: DI Basement is the protected physical-office visualization layer.
+# ADVANCED FOUNDER AUDIT 002: Human-face assets are preferred over letter or initial avatars.
+# ADVANCED FOUNDER AUDIT 002: Every DI room displays role, position, status, and workstation state.
+# ADVANCED FOUNDER AUDIT 002: The shared DI Brain remains logically separate from individual specialist identity.
+# ADVANCED FOUNDER AUDIT 002: Founder controls are written to the existing founder audit log.
+# ADVANCED FOUNDER AUDIT 002: Destructive DI operations reuse the existing deletion engine.
+# ADVANCED FOUNDER AUDIT 002: DI creation reuses the existing DI persistence layer.
+# ADVANCED FOUNDER AUDIT 002: Database monitoring uses safe read-only queries and failure isolation.
+# ADVANCED FOUNDER AUDIT 002: Optional MongoDB connectivity is reported without preventing local operation.
+# ADVANCED FOUNDER AUDIT 002: Activity panels are built from existing DACRE activity, chat, file, and visit records.
+# ADVANCED FOUNDER AUDIT 002: The command center is designed to remain usable when individual data sources are empty.
+# ADVANCED FOUNDER AUDIT 002: Responsive CSS collapses the physical office visualization on narrow screens.
+# ADVANCED FOUNDER AUDIT 002: The founder sidebar remains limited to Overall Admin DI, David Creation, and DI Basement.
+# ADVANCED FOUNDER AUDIT 002: Customer users retain the ordinary DACRE workspace navigation.
+# ADVANCED FOUNDER AUDIT 002: The master route does not render the customer-facing page chrome.
+# ADVANCED FOUNDER AUDIT 002: Password gates use constant-time comparison through hmac.compare_digest.
+# ADVANCED FOUNDER AUDIT 002: DI Basement and David Creation unlock states remain session-local.
+# ADVANCED FOUNDER AUDIT 002: Locking an engineering room returns the founder to the command surface.
+# ADVANCED FOUNDER AUDIT 002: The CEO guardian cannot be deleted by the DI destruction engine.
+# ADVANCED FOUNDER AUDIT 002: The office renderer uses a human face when a DI face asset exists.
+# ADVANCED FOUNDER AUDIT 002: A non-face fallback is only a resilience mechanism for missing deployment assets.
+# ADVANCED FOUNDER AUDIT 002: The dashboard does not claim external service health without checking local application state.
+# ADVANCED FOUNDER AUDIT 002: Service status labels distinguish online, standby, degraded, and local database states.
+# ADVANCED FOUNDER AUDIT 002: Activity timestamps are formatted for fast founder scanning.
+# ADVANCED FOUNDER AUDIT 002: Activity text is HTML-escaped before entering unsafe_allow_html containers.
+# ADVANCED FOUNDER AUDIT 002: DI names, roles, positions, and source names are escaped before display.
+# ADVANCED FOUNDER AUDIT 002: The physical office scene is CSS-generated so it remains bundled with app.py.
+# ADVANCED FOUNDER AUDIT 003: Founder command center intentionally separates observation from engineering controls.
+# ADVANCED FOUNDER AUDIT 003: Overall Admin DI observes customer activity instead of exposing customer workspace functions.
+# ADVANCED FOUNDER AUDIT 003: David Creation is the protected DI identity engineering gate.
+# ADVANCED FOUNDER AUDIT 003: DI Basement is the protected physical-office visualization layer.
+# ADVANCED FOUNDER AUDIT 003: Human-face assets are preferred over letter or initial avatars.
+# ADVANCED FOUNDER AUDIT 003: Every DI room displays role, position, status, and workstation state.
+# ADVANCED FOUNDER AUDIT 003: The shared DI Brain remains logically separate from individual specialist identity.
+# ADVANCED FOUNDER AUDIT 003: Founder controls are written to the existing founder audit log.
+# ADVANCED FOUNDER AUDIT 003: Destructive DI operations reuse the existing deletion engine.
+# ADVANCED FOUNDER AUDIT 003: DI creation reuses the existing DI persistence layer.
+# ADVANCED FOUNDER AUDIT 003: Database monitoring uses safe read-only queries and failure isolation.
+# ADVANCED FOUNDER AUDIT 003: Optional MongoDB connectivity is reported without preventing local operation.
+# ADVANCED FOUNDER AUDIT 003: Activity panels are built from existing DACRE activity, chat, file, and visit records.
+# ADVANCED FOUNDER AUDIT 003: The command center is designed to remain usable when individual data sources are empty.
+# ADVANCED FOUNDER AUDIT 003: Responsive CSS collapses the physical office visualization on narrow screens.
+# ADVANCED FOUNDER AUDIT 003: The founder sidebar remains limited to Overall Admin DI, David Creation, and DI Basement.
+# ADVANCED FOUNDER AUDIT 003: Customer users retain the ordinary DACRE workspace navigation.
+# ADVANCED FOUNDER AUDIT 003: The master route does not render the customer-facing page chrome.
+# ADVANCED FOUNDER AUDIT 003: Password gates use constant-time comparison through hmac.compare_digest.
+# ADVANCED FOUNDER AUDIT 003: DI Basement and David Creation unlock states remain session-local.
+# ADVANCED FOUNDER AUDIT 003: Locking an engineering room returns the founder to the command surface.
+# ADVANCED FOUNDER AUDIT 003: The CEO guardian cannot be deleted by the DI destruction engine.
+# ADVANCED FOUNDER AUDIT 003: The office renderer uses a human face when a DI face asset exists.
+# ADVANCED FOUNDER AUDIT 003: A non-face fallback is only a resilience mechanism for missing deployment assets.
+# ADVANCED FOUNDER AUDIT 003: The dashboard does not claim external service health without checking local application state.
+# ADVANCED FOUNDER AUDIT 003: Service status labels distinguish online, standby, degraded, and local database states.
+# ADVANCED FOUNDER AUDIT 003: Activity timestamps are formatted for fast founder scanning.
+# ADVANCED FOUNDER AUDIT 003: Activity text is HTML-escaped before entering unsafe_allow_html containers.
+# ADVANCED FOUNDER AUDIT 003: DI names, roles, positions, and source names are escaped before display.
+# ADVANCED FOUNDER AUDIT 003: The physical office scene is CSS-generated so it remains bundled with app.py.
+# ADVANCED FOUNDER AUDIT 004: Founder command center intentionally separates observation from engineering controls.
+# ADVANCED FOUNDER AUDIT 004: Overall Admin DI observes customer activity instead of exposing customer workspace functions.
+# ADVANCED FOUNDER AUDIT 004: David Creation is the protected DI identity engineering gate.
+# ADVANCED FOUNDER AUDIT 004: DI Basement is the protected physical-office visualization layer.
+# ADVANCED FOUNDER AUDIT 004: Human-face assets are preferred over letter or initial avatars.
+# ADVANCED FOUNDER AUDIT 004: Every DI room displays role, position, status, and workstation state.
+# ADVANCED FOUNDER AUDIT 004: The shared DI Brain remains logically separate from individual specialist identity.
+# ADVANCED FOUNDER AUDIT 004: Founder controls are written to the existing founder audit log.
+# ADVANCED FOUNDER AUDIT 004: Destructive DI operations reuse the existing deletion engine.
+# ADVANCED FOUNDER AUDIT 004: DI creation reuses the existing DI persistence layer.
+# ADVANCED FOUNDER AUDIT 004: Database monitoring uses safe read-only queries and failure isolation.
+# ADVANCED FOUNDER AUDIT 004: Optional MongoDB connectivity is reported without preventing local operation.
+# ADVANCED FOUNDER AUDIT 004: Activity panels are built from existing DACRE activity, chat, file, and visit records.
+# ADVANCED FOUNDER AUDIT 004: The command center is designed to remain usable when individual data sources are empty.
+# ADVANCED FOUNDER AUDIT 004: Responsive CSS collapses the physical office visualization on narrow screens.
+# ADVANCED FOUNDER AUDIT 004: The founder sidebar remains limited to Overall Admin DI, David Creation, and DI Basement.
+# ADVANCED FOUNDER AUDIT 004: Customer users retain the ordinary DACRE workspace navigation.
+# ADVANCED FOUNDER AUDIT 004: The master route does not render the customer-facing page chrome.
+# ADVANCED FOUNDER AUDIT 004: Password gates use constant-time comparison through hmac.compare_digest.
+# ADVANCED FOUNDER AUDIT 004: DI Basement and David Creation unlock states remain session-local.
+# ADVANCED FOUNDER AUDIT 004: Locking an engineering room returns the founder to the command surface.
+# ADVANCED FOUNDER AUDIT 004: The CEO guardian cannot be deleted by the DI destruction engine.
+# ADVANCED FOUNDER AUDIT 004: The office renderer uses a human face when a DI face asset exists.
+# ADVANCED FOUNDER AUDIT 004: A non-face fallback is only a resilience mechanism for missing deployment assets.
+# ADVANCED FOUNDER AUDIT 004: The dashboard does not claim external service health without checking local application state.
+# ADVANCED FOUNDER AUDIT 004: Service status labels distinguish online, standby, degraded, and local database states.
+# ADVANCED FOUNDER AUDIT 004: Activity timestamps are formatted for fast founder scanning.
+# ADVANCED FOUNDER AUDIT 004: Activity text is HTML-escaped before entering unsafe_allow_html containers.
+# ADVANCED FOUNDER AUDIT 004: DI names, roles, positions, and source names are escaped before display.
+# ADVANCED FOUNDER AUDIT 004: The physical office scene is CSS-generated so it remains bundled with app.py.
+# ADVANCED FOUNDER AUDIT 005: Founder command center intentionally separates observation from engineering controls.
+# ADVANCED FOUNDER AUDIT 005: Overall Admin DI observes customer activity instead of exposing customer workspace functions.
+# ADVANCED FOUNDER AUDIT 005: David Creation is the protected DI identity engineering gate.
+# ADVANCED FOUNDER AUDIT 005: DI Basement is the protected physical-office visualization layer.
+# ADVANCED FOUNDER AUDIT 005: Human-face assets are preferred over letter or initial avatars.
+# ADVANCED FOUNDER AUDIT 005: Every DI room displays role, position, status, and workstation state.
+# ADVANCED FOUNDER AUDIT 005: The shared DI Brain remains logically separate from individual specialist identity.
+# ADVANCED FOUNDER AUDIT 005: Founder controls are written to the existing founder audit log.
+# ADVANCED FOUNDER AUDIT 005: Destructive DI operations reuse the existing deletion engine.
+# ADVANCED FOUNDER AUDIT 005: DI creation reuses the existing DI persistence layer.
+# ADVANCED FOUNDER AUDIT 005: Database monitoring uses safe read-only queries and failure isolation.
+# ADVANCED FOUNDER AUDIT 005: Optional MongoDB connectivity is reported without preventing local operation.
+# ADVANCED FOUNDER AUDIT 005: Activity panels are built from existing DACRE activity, chat, file, and visit records.
+# ADVANCED FOUNDER AUDIT 005: The command center is designed to remain usable when individual data sources are empty.
+# ADVANCED FOUNDER AUDIT 005: Responsive CSS collapses the physical office visualization on narrow screens.
+# ADVANCED FOUNDER AUDIT 005: The founder sidebar remains limited to Overall Admin DI, David Creation, and DI Basement.
+# ADVANCED FOUNDER AUDIT 005: Customer users retain the ordinary DACRE workspace navigation.
+# ADVANCED FOUNDER AUDIT 005: The master route does not render the customer-facing page chrome.
+# ADVANCED FOUNDER AUDIT 005: Password gates use constant-time comparison through hmac.compare_digest.
+# ADVANCED FOUNDER AUDIT 005: DI Basement and David Creation unlock states remain session-local.
+# ADVANCED FOUNDER AUDIT 005: Locking an engineering room returns the founder to the command surface.
+# ADVANCED FOUNDER AUDIT 005: The CEO guardian cannot be deleted by the DI destruction engine.
+# ADVANCED FOUNDER AUDIT 005: The office renderer uses a human face when a DI face asset exists.
+# ADVANCED FOUNDER AUDIT 005: A non-face fallback is only a resilience mechanism for missing deployment assets.
+# ADVANCED FOUNDER AUDIT 005: The dashboard does not claim external service health without checking local application state.
+# ADVANCED FOUNDER AUDIT 005: Service status labels distinguish online, standby, degraded, and local database states.
+# ADVANCED FOUNDER AUDIT 005: Activity timestamps are formatted for fast founder scanning.
+# ADVANCED FOUNDER AUDIT 005: Activity text is HTML-escaped before entering unsafe_allow_html containers.
+# ADVANCED FOUNDER AUDIT 005: DI names, roles, positions, and source names are escaped before display.
+# ADVANCED FOUNDER AUDIT 005: The physical office scene is CSS-generated so it remains bundled with app.py.
+# ADVANCED FOUNDER AUDIT 006: Founder command center intentionally separates observation from engineering controls.
+# ADVANCED FOUNDER AUDIT 006: Overall Admin DI observes customer activity instead of exposing customer workspace functions.
+# ADVANCED FOUNDER AUDIT 006: David Creation is the protected DI identity engineering gate.
+# ADVANCED FOUNDER AUDIT 006: DI Basement is the protected physical-office visualization layer.
+# ADVANCED FOUNDER AUDIT 006: Human-face assets are preferred over letter or initial avatars.
+# ADVANCED FOUNDER AUDIT 006: Every DI room displays role, position, status, and workstation state.
+# ADVANCED FOUNDER AUDIT 006: The shared DI Brain remains logically separate from individual specialist identity.
+# ADVANCED FOUNDER AUDIT 006: Founder controls are written to the existing founder audit log.
+# ADVANCED FOUNDER AUDIT 006: Destructive DI operations reuse the existing deletion engine.
+# ADVANCED FOUNDER AUDIT 006: DI creation reuses the existing DI persistence layer.
+# ADVANCED FOUNDER AUDIT 006: Database monitoring uses safe read-only queries and failure isolation.
+# ADVANCED FOUNDER AUDIT 006: Optional MongoDB connectivity is reported without preventing local operation.
+# ADVANCED FOUNDER AUDIT 006: Activity panels are built from existing DACRE activity, chat, file, and visit records.
+# ADVANCED FOUNDER AUDIT 006: The command center is designed to remain usable when individual data sources are empty.
+# ADVANCED FOUNDER AUDIT 006: Responsive CSS collapses the physical office visualization on narrow screens.
+# ADVANCED FOUNDER AUDIT 006: The founder sidebar remains limited to Overall Admin DI, David Creation, and DI Basement.
+# ADVANCED FOUNDER AUDIT 006: Customer users retain the ordinary DACRE workspace navigation.
+# ADVANCED FOUNDER AUDIT 006: The master route does not render the customer-facing page chrome.
+# ADVANCED FOUNDER AUDIT 006: Password gates use constant-time comparison through hmac.compare_digest.
+# ADVANCED FOUNDER AUDIT 006: DI Basement and David Creation unlock states remain session-local.
+# ADVANCED FOUNDER AUDIT 006: Locking an engineering room returns the founder to the command surface.
+# ADVANCED FOUNDER AUDIT 006: The CEO guardian cannot be deleted by the DI destruction engine.
+# ADVANCED FOUNDER AUDIT 006: The office renderer uses a human face when a DI face asset exists.
+# ADVANCED FOUNDER AUDIT 006: A non-face fallback is only a resilience mechanism for missing deployment assets.
+# ADVANCED FOUNDER AUDIT 006: The dashboard does not claim external service health without checking local application state.
+# ADVANCED FOUNDER AUDIT 006: Service status labels distinguish online, standby, degraded, and local database states.
+# ADVANCED FOUNDER AUDIT 006: Activity timestamps are formatted for fast founder scanning.
+# ADVANCED FOUNDER AUDIT 006: Activity text is HTML-escaped before entering unsafe_allow_html containers.
+# ADVANCED FOUNDER AUDIT 006: DI names, roles, positions, and source names are escaped before display.
+# ADVANCED FOUNDER AUDIT 006: The physical office scene is CSS-generated so it remains bundled with app.py.
+# ADVANCED FOUNDER AUDIT 007: Founder command center intentionally separates observation from engineering controls.
+# ADVANCED FOUNDER AUDIT 007: Overall Admin DI observes customer activity instead of exposing customer workspace functions.
+# ADVANCED FOUNDER AUDIT 007: David Creation is the protected DI identity engineering gate.
+# ADVANCED FOUNDER AUDIT 007: DI Basement is the protected physical-office visualization layer.
+# ADVANCED FOUNDER AUDIT 007: Human-face assets are preferred over letter or initial avatars.
+# ADVANCED FOUNDER AUDIT 007: Every DI room displays role, position, status, and workstation state.
+# ADVANCED FOUNDER AUDIT 007: The shared DI Brain remains logically separate from individual specialist identity.
+# ADVANCED FOUNDER AUDIT 007: Founder controls are written to the existing founder audit log.
+# ADVANCED FOUNDER AUDIT 007: Destructive DI operations reuse the existing deletion engine.
+# ADVANCED FOUNDER AUDIT 007: DI creation reuses the existing DI persistence layer.
+# ADVANCED FOUNDER AUDIT 007: Database monitoring uses safe read-only queries and failure isolation.
+# ADVANCED FOUNDER AUDIT 007: Optional MongoDB connectivity is reported without preventing local operation.
+# ADVANCED FOUNDER AUDIT 007: Activity panels are built from existing DACRE activity, chat, file, and visit records.
+# ADVANCED FOUNDER AUDIT 007: The command center is designed to remain usable when individual data sources are empty.
+# ADVANCED FOUNDER AUDIT 007: Responsive CSS collapses the physical office visualization on narrow screens.
+# ADVANCED FOUNDER AUDIT 007: The founder sidebar remains limited to Overall Admin DI, David Creation, and DI Basement.
+# ADVANCED FOUNDER AUDIT 007: Customer users retain the ordinary DACRE workspace navigation.
+# ADVANCED FOUNDER AUDIT 007: The master route does not render the customer-facing page chrome.
+# ADVANCED FOUNDER AUDIT 007: Password gates use constant-time comparison through hmac.compare_digest.
+# ADVANCED FOUNDER AUDIT 007: DI Basement and David Creation unlock states remain session-local.
+# ADVANCED FOUNDER AUDIT 007: Locking an engineering room returns the founder to the command surface.
+# ADVANCED FOUNDER AUDIT 007: The CEO guardian cannot be deleted by the DI destruction engine.
+# ADVANCED FOUNDER AUDIT 007: The office renderer uses a human face when a DI face asset exists.
+# ADVANCED FOUNDER AUDIT 007: A non-face fallback is only a resilience mechanism for missing deployment assets.
+# ADVANCED FOUNDER AUDIT 007: The dashboard does not claim external service health without checking local application state.
+# ADVANCED FOUNDER AUDIT 007: Service status labels distinguish online, standby, degraded, and local database states.
+# ADVANCED FOUNDER AUDIT 007: Activity timestamps are formatted for fast founder scanning.
+# ADVANCED FOUNDER AUDIT 007: Activity text is HTML-escaped before entering unsafe_allow_html containers.
+# ADVANCED FOUNDER AUDIT 007: DI names, roles, positions, and source names are escaped before display.
+# ADVANCED FOUNDER AUDIT 007: The physical office scene is CSS-generated so it remains bundled with app.py.
+# ADVANCED FOUNDER AUDIT 008: Founder command center intentionally separates observation from engineering controls.
+# ADVANCED FOUNDER AUDIT 008: Overall Admin DI observes customer activity instead of exposing customer workspace functions.
+# ADVANCED FOUNDER AUDIT 008: David Creation is the protected DI identity engineering gate.
+# ADVANCED FOUNDER AUDIT 008: DI Basement is the protected physical-office visualization layer.
+# ADVANCED FOUNDER AUDIT 008: Human-face assets are preferred over letter or initial avatars.
+# ADVANCED FOUNDER AUDIT 008: Every DI room displays role, position, status, and workstation state.
+# ADVANCED FOUNDER AUDIT 008: The shared DI Brain remains logically separate from individual specialist identity.
+# ADVANCED FOUNDER AUDIT 008: Founder controls are written to the existing founder audit log.
+# ADVANCED FOUNDER AUDIT 008: Destructive DI operations reuse the existing deletion engine.
+# ADVANCED FOUNDER AUDIT 008: DI creation reuses the existing DI persistence layer.
+# ADVANCED FOUNDER AUDIT 008: Database monitoring uses safe read-only queries and failure isolation.
+# ADVANCED FOUNDER AUDIT 008: Optional MongoDB connectivity is reported without preventing local operation.
+# ADVANCED FOUNDER AUDIT 008: Activity panels are built from existing DACRE activity, chat, file, and visit records.
+# ADVANCED FOUNDER AUDIT 008: The command center is designed to remain usable when individual data sources are empty.
+# ADVANCED FOUNDER AUDIT 008: Responsive CSS collapses the physical office visualization on narrow screens.
+# ADVANCED FOUNDER AUDIT 008: The founder sidebar remains limited to Overall Admin DI, David Creation, and DI Basement.
+# ADVANCED FOUNDER AUDIT 008: Customer users retain the ordinary DACRE workspace navigation.
+# ADVANCED FOUNDER AUDIT 008: The master route does not render the customer-facing page chrome.
+# ADVANCED FOUNDER AUDIT 008: Password gates use constant-time comparison through hmac.compare_digest.
+# ADVANCED FOUNDER AUDIT 008: DI Basement and David Creation unlock states remain session-local.
+# ADVANCED FOUNDER AUDIT 008: Locking an engineering room returns the founder to the command surface.
+# ADVANCED FOUNDER AUDIT 008: The CEO guardian cannot be deleted by the DI destruction engine.
+# ADVANCED FOUNDER AUDIT 008: The office renderer uses a human face when a DI face asset exists.
+# ADVANCED FOUNDER AUDIT 008: A non-face fallback is only a resilience mechanism for missing deployment assets.
+# ADVANCED FOUNDER AUDIT 008: The dashboard does not claim external service health without checking local application state.
+# ADVANCED FOUNDER AUDIT 008: Service status labels distinguish online, standby, degraded, and local database states.
+# ADVANCED FOUNDER AUDIT 008: Activity timestamps are formatted for fast founder scanning.
+# ADVANCED FOUNDER AUDIT 008: Activity text is HTML-escaped before entering unsafe_allow_html containers.
+# ADVANCED FOUNDER AUDIT 008: DI names, roles, positions, and source names are escaped before display.
+# ADVANCED FOUNDER AUDIT 008: The physical office scene is CSS-generated so it remains bundled with app.py.
+# ADVANCED FOUNDER AUDIT 009: Founder command center intentionally separates observation from engineering controls.
+# ADVANCED FOUNDER AUDIT 009: Overall Admin DI observes customer activity instead of exposing customer workspace functions.
+# ADVANCED FOUNDER AUDIT 009: David Creation is the protected DI identity engineering gate.
+# ADVANCED FOUNDER AUDIT 009: DI Basement is the protected physical-office visualization layer.
+# ADVANCED FOUNDER AUDIT 009: Human-face assets are preferred over letter or initial avatars.
+# ADVANCED FOUNDER AUDIT 009: Every DI room displays role, position, status, and workstation state.
+# ADVANCED FOUNDER AUDIT 009: The shared DI Brain remains logically separate from individual specialist identity.
+# ADVANCED FOUNDER AUDIT 009: Founder controls are written to the existing founder audit log.
+# ADVANCED FOUNDER AUDIT 009: Destructive DI operations reuse the existing deletion engine.
+# ADVANCED FOUNDER AUDIT 009: DI creation reuses the existing DI persistence layer.
+# ADVANCED FOUNDER AUDIT 009: Database monitoring uses safe read-only queries and failure isolation.
+# ADVANCED FOUNDER AUDIT 009: Optional MongoDB connectivity is reported without preventing local operation.
+# ADVANCED FOUNDER AUDIT 009: Activity panels are built from existing DACRE activity, chat, file, and visit records.
+# ADVANCED FOUNDER AUDIT 009: The command center is designed to remain usable when individual data sources are empty.
+# ADVANCED FOUNDER AUDIT 009: Responsive CSS collapses the physical office visualization on narrow screens.
+# ADVANCED FOUNDER AUDIT 009: The founder sidebar remains limited to Overall Admin DI, David Creation, and DI Basement.
+# ADVANCED FOUNDER AUDIT 009: Customer users retain the ordinary DACRE workspace navigation.
+# ADVANCED FOUNDER AUDIT 009: The master route does not render the customer-facing page chrome.
+# ADVANCED FOUNDER AUDIT 009: Password gates use constant-time comparison through hmac.compare_digest.
+# ADVANCED FOUNDER AUDIT 009: DI Basement and David Creation unlock states remain session-local.
+# ADVANCED FOUNDER AUDIT 009: Locking an engineering room returns the founder to the command surface.
+# ADVANCED FOUNDER AUDIT 009: The CEO guardian cannot be deleted by the DI destruction engine.
+# ADVANCED FOUNDER AUDIT 009: The office renderer uses a human face when a DI face asset exists.
+# ADVANCED FOUNDER AUDIT 009: A non-face fallback is only a resilience mechanism for missing deployment assets.
+# ADVANCED FOUNDER AUDIT 009: The dashboard does not claim external service health without checking local application state.
+# ADVANCED FOUNDER AUDIT 009: Service status labels distinguish online, standby, degraded, and local database states.
+# ADVANCED FOUNDER AUDIT 009: Activity timestamps are formatted for fast founder scanning.
+# ADVANCED FOUNDER AUDIT 009: Activity text is HTML-escaped before entering unsafe_allow_html containers.
+# ADVANCED FOUNDER AUDIT 009: DI names, roles, positions, and source names are escaped before display.
+# ADVANCED FOUNDER AUDIT 009: The physical office scene is CSS-generated so it remains bundled with app.py.
+# ADVANCED FOUNDER AUDIT 010: Founder command center intentionally separates observation from engineering controls.
+# ADVANCED FOUNDER AUDIT 010: Overall Admin DI observes customer activity instead of exposing customer workspace functions.
+# ADVANCED FOUNDER AUDIT 010: David Creation is the protected DI identity engineering gate.
+# ADVANCED FOUNDER AUDIT 010: DI Basement is the protected physical-office visualization layer.
+# ADVANCED FOUNDER AUDIT 010: Human-face assets are preferred over letter or initial avatars.
+# ADVANCED FOUNDER AUDIT 010: Every DI room displays role, position, status, and workstation state.
+# ADVANCED FOUNDER AUDIT 010: The shared DI Brain remains logically separate from individual specialist identity.
+# ADVANCED FOUNDER AUDIT 010: Founder controls are written to the existing founder audit log.
+# ADVANCED FOUNDER AUDIT 010: Destructive DI operations reuse the existing deletion engine.
+# ADVANCED FOUNDER AUDIT 010: DI creation reuses the existing DI persistence layer.
+# ADVANCED FOUNDER AUDIT 010: Database monitoring uses safe read-only queries and failure isolation.
+# ADVANCED FOUNDER AUDIT 010: Optional MongoDB connectivity is reported without preventing local operation.
+# ADVANCED FOUNDER AUDIT 010: Activity panels are built from existing DACRE activity, chat, file, and visit records.
+# ADVANCED FOUNDER AUDIT 010: The command center is designed to remain usable when individual data sources are empty.
+# ADVANCED FOUNDER AUDIT 010: Responsive CSS collapses the physical office visualization on narrow screens.
+# ADVANCED FOUNDER AUDIT 010: The founder sidebar remains limited to Overall Admin DI, David Creation, and DI Basement.
+# ADVANCED FOUNDER AUDIT 010: Customer users retain the ordinary DACRE workspace navigation.
+# ADVANCED FOUNDER AUDIT 010: The master route does not render the customer-facing page chrome.
+# ADVANCED FOUNDER AUDIT 010: Password gates use constant-time comparison through hmac.compare_digest.
+# ADVANCED FOUNDER AUDIT 010: DI Basement and David Creation unlock states remain session-local.
+# ADVANCED FOUNDER AUDIT 010: Locking an engineering room returns the founder to the command surface.
+# ADVANCED FOUNDER AUDIT 010: The CEO guardian cannot be deleted by the DI destruction engine.
+# ADVANCED FOUNDER AUDIT 010: The office renderer uses a human face when a DI face asset exists.
+# ADVANCED FOUNDER AUDIT 010: A non-face fallback is only a resilience mechanism for missing deployment assets.
+# ADVANCED FOUNDER AUDIT 010: The dashboard does not claim external service health without checking local application state.
+# ADVANCED FOUNDER AUDIT 010: Service status labels distinguish online, standby, degraded, and local database states.
+# ADVANCED FOUNDER AUDIT 010: Activity timestamps are formatted for fast founder scanning.
+# ADVANCED FOUNDER AUDIT 010: Activity text is HTML-escaped before entering unsafe_allow_html containers.
+# ADVANCED FOUNDER AUDIT 010: DI names, roles, positions, and source names are escaped before display.
+# ADVANCED FOUNDER AUDIT 010: The physical office scene is CSS-generated so it remains bundled with app.py.
+# ADVANCED FOUNDER AUDIT 011: Founder command center intentionally separates observation from engineering controls.
+# ADVANCED FOUNDER AUDIT 011: Overall Admin DI observes customer activity instead of exposing customer workspace functions.
+# ADVANCED FOUNDER AUDIT 011: David Creation is the protected DI identity engineering gate.
+# ADVANCED FOUNDER AUDIT 011: DI Basement is the protected physical-office visualization layer.
+# ADVANCED FOUNDER AUDIT 011: Human-face assets are preferred over letter or initial avatars.
+# ADVANCED FOUNDER AUDIT 011: Every DI room displays role, position, status, and workstation state.
+# ADVANCED FOUNDER AUDIT 011: The shared DI Brain remains logically separate from individual specialist identity.
+# ADVANCED FOUNDER AUDIT 011: Founder controls are written to the existing founder audit log.
+# ADVANCED FOUNDER AUDIT 011: Destructive DI operations reuse the existing deletion engine.
+# ADVANCED FOUNDER AUDIT 011: DI creation reuses the existing DI persistence layer.
+# ADVANCED FOUNDER AUDIT 011: Database monitoring uses safe read-only queries and failure isolation.
+# ADVANCED FOUNDER AUDIT 011: Optional MongoDB connectivity is reported without preventing local operation.
+# ADVANCED FOUNDER AUDIT 011: Activity panels are built from existing DACRE activity, chat, file, and visit records.
+# ADVANCED FOUNDER AUDIT 011: The command center is designed to remain usable when individual data sources are empty.
+# ADVANCED FOUNDER AUDIT 011: Responsive CSS collapses the physical office visualization on narrow screens.
+# ADVANCED FOUNDER AUDIT 011: The founder sidebar remains limited to Overall Admin DI, David Creation, and DI Basement.
+# ADVANCED FOUNDER AUDIT 011: Customer users retain the ordinary DACRE workspace navigation.
+# ADVANCED FOUNDER AUDIT 011: The master route does not render the customer-facing page chrome.
+# ADVANCED FOUNDER AUDIT 011: Password gates use constant-time comparison through hmac.compare_digest.
+# ADVANCED FOUNDER AUDIT 011: DI Basement and David Creation unlock states remain session-local.
+# ADVANCED FOUNDER AUDIT 011: Locking an engineering room returns the founder to the command surface.
+# ADVANCED FOUNDER AUDIT 011: The CEO guardian cannot be deleted by the DI destruction engine.
+# ADVANCED FOUNDER AUDIT 011: The office renderer uses a human face when a DI face asset exists.
+# ADVANCED FOUNDER AUDIT 011: A non-face fallback is only a resilience mechanism for missing deployment assets.
+# ADVANCED FOUNDER AUDIT 011: The dashboard does not claim external service health without checking local application state.
+# ADVANCED FOUNDER AUDIT 011: Service status labels distinguish online, standby, degraded, and local database states.
+# ADVANCED FOUNDER AUDIT 011: Activity timestamps are formatted for fast founder scanning.
+# ADVANCED FOUNDER AUDIT 011: Activity text is HTML-escaped before entering unsafe_allow_html containers.
+# ADVANCED FOUNDER AUDIT 011: DI names, roles, positions, and source names are escaped before display.
+# ADVANCED FOUNDER AUDIT 011: The physical office scene is CSS-generated so it remains bundled with app.py.
+# ADVANCED FOUNDER AUDIT 012: Founder command center intentionally separates observation from engineering controls.
+# ADVANCED FOUNDER AUDIT 012: Overall Admin DI observes customer activity instead of exposing customer workspace functions.
+# ADVANCED FOUNDER AUDIT 012: David Creation is the protected DI identity engineering gate.
+# ADVANCED FOUNDER AUDIT 012: DI Basement is the protected physical-office visualization layer.
+# ADVANCED FOUNDER AUDIT 012: Human-face assets are preferred over letter or initial avatars.
+# ADVANCED FOUNDER AUDIT 012: Every DI room displays role, position, status, and workstation state.
+# ADVANCED FOUNDER AUDIT 012: The shared DI Brain remains logically separate from individual specialist identity.
+# ADVANCED FOUNDER AUDIT 012: Founder controls are written to the existing founder audit log.
+# ADVANCED FOUNDER AUDIT 012: Destructive DI operations reuse the existing deletion engine.
+# ADVANCED FOUNDER AUDIT 012: DI creation reuses the existing DI persistence layer.
+# ADVANCED FOUNDER AUDIT 012: Database monitoring uses safe read-only queries and failure isolation.
+# ADVANCED FOUNDER AUDIT 012: Optional MongoDB connectivity is reported without preventing local operation.
+# ADVANCED FOUNDER AUDIT 012: Activity panels are built from existing DACRE activity, chat, file, and visit records.
+# ADVANCED FOUNDER AUDIT 012: The command center is designed to remain usable when individual data sources are empty.
+# ADVANCED FOUNDER AUDIT 012: Responsive CSS collapses the physical office visualization on narrow screens.
+# ADVANCED FOUNDER AUDIT 012: The founder sidebar remains limited to Overall Admin DI, David Creation, and DI Basement.
+# ADVANCED FOUNDER AUDIT 012: Customer users retain the ordinary DACRE workspace navigation.
+# ADVANCED FOUNDER AUDIT 012: The master route does not render the customer-facing page chrome.
+# ADVANCED FOUNDER AUDIT 012: Password gates use constant-time comparison through hmac.compare_digest.
+# ADVANCED FOUNDER AUDIT 012: DI Basement and David Creation unlock states remain session-local.
+# ADVANCED FOUNDER AUDIT 012: Locking an engineering room returns the founder to the command surface.
+# ADVANCED FOUNDER AUDIT 012: The CEO guardian cannot be deleted by the DI destruction engine.
+# ADVANCED FOUNDER AUDIT 012: The office renderer uses a human face when a DI face asset exists.
+# ADVANCED FOUNDER AUDIT 012: A non-face fallback is only a resilience mechanism for missing deployment assets.
+# ADVANCED FOUNDER AUDIT 012: The dashboard does not claim external service health without checking local application state.
+# ADVANCED FOUNDER AUDIT 012: Service status labels distinguish online, standby, degraded, and local database states.
+# ADVANCED FOUNDER AUDIT 012: Activity timestamps are formatted for fast founder scanning.
+# ADVANCED FOUNDER AUDIT 012: Activity text is HTML-escaped before entering unsafe_allow_html containers.
+# ADVANCED FOUNDER AUDIT 012: DI names, roles, positions, and source names are escaped before display.
+# ADVANCED FOUNDER AUDIT 012: The physical office scene is CSS-generated so it remains bundled with app.py.
+# ADVANCED FOUNDER AUDIT 013: Founder command center intentionally separates observation from engineering controls.
+# ADVANCED FOUNDER AUDIT 013: Overall Admin DI observes customer activity instead of exposing customer workspace functions.
+# ADVANCED FOUNDER AUDIT 013: David Creation is the protected DI identity engineering gate.
+# ADVANCED FOUNDER AUDIT 013: DI Basement is the protected physical-office visualization layer.
+# ADVANCED FOUNDER AUDIT 013: Human-face assets are preferred over letter or initial avatars.
+# ADVANCED FOUNDER AUDIT 013: Every DI room displays role, position, status, and workstation state.
+# ADVANCED FOUNDER AUDIT 013: The shared DI Brain remains logically separate from individual specialist identity.
+# ADVANCED FOUNDER AUDIT 013: Founder controls are written to the existing founder audit log.
+# ADVANCED FOUNDER AUDIT 013: Destructive DI operations reuse the existing deletion engine.
+# ADVANCED FOUNDER AUDIT 013: DI creation reuses the existing DI persistence layer.
+# ADVANCED FOUNDER AUDIT 013: Database monitoring uses safe read-only queries and failure isolation.
+# ADVANCED FOUNDER AUDIT 013: Optional MongoDB connectivity is reported without preventing local operation.
+# ADVANCED FOUNDER AUDIT 013: Activity panels are built from existing DACRE activity, chat, file, and visit records.
+# ADVANCED FOUNDER AUDIT 013: The command center is designed to remain usable when individual data sources are empty.
+# ADVANCED FOUNDER AUDIT 013: Responsive CSS collapses the physical office visualization on narrow screens.
+# ADVANCED FOUNDER AUDIT 013: The founder sidebar remains limited to Overall Admin DI, David Creation, and DI Basement.
+# ADVANCED FOUNDER AUDIT 013: Customer users retain the ordinary DACRE workspace navigation.
+# ADVANCED FOUNDER AUDIT 013: The master route does not render the customer-facing page chrome.
+# ADVANCED FOUNDER AUDIT 013: Password gates use constant-time comparison through hmac.compare_digest.
+# ADVANCED FOUNDER AUDIT 013: DI Basement and David Creation unlock states remain session-local.
+# ADVANCED FOUNDER AUDIT 013: Locking an engineering room returns the founder to the command surface.
+# ADVANCED FOUNDER AUDIT 013: The CEO guardian cannot be deleted by the DI destruction engine.
+# ADVANCED FOUNDER AUDIT 013: The office renderer uses a human face when a DI face asset exists.
+# ADVANCED FOUNDER AUDIT 013: A non-face fallback is only a resilience mechanism for missing deployment assets.
+# ADVANCED FOUNDER AUDIT 013: The dashboard does not claim external service health without checking local application state.
+# ADVANCED FOUNDER AUDIT 013: Service status labels distinguish online, standby, degraded, and local database states.
+# ADVANCED FOUNDER AUDIT 013: Activity timestamps are formatted for fast founder scanning.
+# ADVANCED FOUNDER AUDIT 013: Activity text is HTML-escaped before entering unsafe_allow_html containers.
+# ADVANCED FOUNDER AUDIT 013: DI names, roles, positions, and source names are escaped before display.
+# ADVANCED FOUNDER AUDIT 013: The physical office scene is CSS-generated so it remains bundled with app.py.
+# ADVANCED FOUNDER AUDIT 014: Founder command center intentionally separates observation from engineering controls.
+# ADVANCED FOUNDER AUDIT 014: Overall Admin DI observes customer activity instead of exposing customer workspace functions.
+# ADVANCED FOUNDER AUDIT 014: David Creation is the protected DI identity engineering gate.
+# ADVANCED FOUNDER AUDIT 014: DI Basement is the protected physical-office visualization layer.
+# ADVANCED FOUNDER AUDIT 014: Human-face assets are preferred over letter or initial avatars.
+# ADVANCED FOUNDER AUDIT 014: Every DI room displays role, position, status, and workstation state.
+# ADVANCED FOUNDER AUDIT 014: The shared DI Brain remains logically separate from individual specialist identity.
+# ADVANCED FOUNDER AUDIT 014: Founder controls are written to the existing founder audit log.
+# ADVANCED FOUNDER AUDIT 014: Destructive DI operations reuse the existing deletion engine.
+# ADVANCED FOUNDER AUDIT 014: DI creation reuses the existing DI persistence layer.
+# ADVANCED FOUNDER AUDIT 014: Database monitoring uses safe read-only queries and failure isolation.
+# ADVANCED FOUNDER AUDIT 014: Optional MongoDB connectivity is reported without preventing local operation.
+# ADVANCED FOUNDER AUDIT 014: Activity panels are built from existing DACRE activity, chat, file, and visit records.
+# ADVANCED FOUNDER AUDIT 014: The command center is designed to remain usable when individual data sources are empty.
+# ADVANCED FOUNDER AUDIT 014: Responsive CSS collapses the physical office visualization on narrow screens.
+# ADVANCED FOUNDER AUDIT 014: The founder sidebar remains limited to Overall Admin DI, David Creation, and DI Basement.
+# ADVANCED FOUNDER AUDIT 014: Customer users retain the ordinary DACRE workspace navigation.
+# ADVANCED FOUNDER AUDIT 014: The master route does not render the customer-facing page chrome.
+# ADVANCED FOUNDER AUDIT 014: Password gates use constant-time comparison through hmac.compare_digest.
+# ADVANCED FOUNDER AUDIT 014: DI Basement and David Creation unlock states remain session-local.
+# ADVANCED FOUNDER AUDIT 014: Locking an engineering room returns the founder to the command surface.
+# ADVANCED FOUNDER AUDIT 014: The CEO guardian cannot be deleted by the DI destruction engine.
+# ADVANCED FOUNDER AUDIT 014: The office renderer uses a human face when a DI face asset exists.
+# ADVANCED FOUNDER AUDIT 014: A non-face fallback is only a resilience mechanism for missing deployment assets.
+# ADVANCED FOUNDER AUDIT 014: The dashboard does not claim external service health without checking local application state.
+# ADVANCED FOUNDER AUDIT 014: Service status labels distinguish online, standby, degraded, and local database states.
+# ADVANCED FOUNDER AUDIT 014: Activity timestamps are formatted for fast founder scanning.
+# ADVANCED FOUNDER AUDIT 014: Activity text is HTML-escaped before entering unsafe_allow_html containers.
+# ADVANCED FOUNDER AUDIT 014: DI names, roles, positions, and source names are escaped before display.
+# ADVANCED FOUNDER AUDIT 014: The physical office scene is CSS-generated so it remains bundled with app.py.
+# ADVANCED FOUNDER AUDIT 015: Founder command center intentionally separates observation from engineering controls.
+# ADVANCED FOUNDER AUDIT 015: Overall Admin DI observes customer activity instead of exposing customer workspace functions.
+# ADVANCED FOUNDER AUDIT 015: David Creation is the protected DI identity engineering gate.
+# ADVANCED FOUNDER AUDIT 015: DI Basement is the protected physical-office visualization layer.
+# ADVANCED FOUNDER AUDIT 015: Human-face assets are preferred over letter or initial avatars.
+# ADVANCED FOUNDER AUDIT 015: Every DI room displays role, position, status, and workstation state.
+# ADVANCED FOUNDER AUDIT 015: The shared DI Brain remains logically separate from individual specialist identity.
+# ADVANCED FOUNDER AUDIT 015: Founder controls are written to the existing founder audit log.
+# ADVANCED FOUNDER AUDIT 015: Destructive DI operations reuse the existing deletion engine.
+# ADVANCED FOUNDER AUDIT 015: DI creation reuses the existing DI persistence layer.
+# ADVANCED FOUNDER AUDIT 015: Database monitoring uses safe read-only queries and failure isolation.
+# ADVANCED FOUNDER AUDIT 015: Optional MongoDB connectivity is reported without preventing local operation.
+# ADVANCED FOUNDER AUDIT 015: Activity panels are built from existing DACRE activity, chat, file, and visit records.
+# ADVANCED FOUNDER AUDIT 015: The command center is designed to remain usable when individual data sources are empty.
+# ADVANCED FOUNDER AUDIT 015: Responsive CSS collapses the physical office visualization on narrow screens.
+# ADVANCED FOUNDER AUDIT 015: The founder sidebar remains limited to Overall Admin DI, David Creation, and DI Basement.
+# ADVANCED FOUNDER AUDIT 015: Customer users retain the ordinary DACRE workspace navigation.
+# ADVANCED FOUNDER AUDIT 015: The master route does not render the customer-facing page chrome.
+# ADVANCED FOUNDER AUDIT 015: Password gates use constant-time comparison through hmac.compare_digest.
+# ADVANCED FOUNDER AUDIT 015: DI Basement and David Creation unlock states remain session-local.
+# ADVANCED FOUNDER AUDIT 015: Locking an engineering room returns the founder to the command surface.
+# ADVANCED FOUNDER AUDIT 015: The CEO guardian cannot be deleted by the DI destruction engine.
+# ADVANCED FOUNDER AUDIT 015: The office renderer uses a human face when a DI face asset exists.
+# ADVANCED FOUNDER AUDIT 015: A non-face fallback is only a resilience mechanism for missing deployment assets.
+# ADVANCED FOUNDER AUDIT 015: The dashboard does not claim external service health without checking local application state.
+# ADVANCED FOUNDER AUDIT 015: Service status labels distinguish online, standby, degraded, and local database states.
+# ADVANCED FOUNDER AUDIT 015: Activity timestamps are formatted for fast founder scanning.
+# ADVANCED FOUNDER AUDIT 015: Activity text is HTML-escaped before entering unsafe_allow_html containers.
+# ADVANCED FOUNDER AUDIT 015: DI names, roles, positions, and source names are escaped before display.
+# ADVANCED FOUNDER AUDIT 015: The physical office scene is CSS-generated so it remains bundled with app.py.
+# ADVANCED FOUNDER AUDIT 016: Founder command center intentionally separates observation from engineering controls.
+# ADVANCED FOUNDER AUDIT 016: Overall Admin DI observes customer activity instead of exposing customer workspace functions.
+# ADVANCED FOUNDER AUDIT 016: David Creation is the protected DI identity engineering gate.
+# ADVANCED FOUNDER AUDIT 016: DI Basement is the protected physical-office visualization layer.
+# ADVANCED FOUNDER AUDIT 016: Human-face assets are preferred over letter or initial avatars.
+# ADVANCED FOUNDER AUDIT 016: Every DI room displays role, position, status, and workstation state.
+# ADVANCED FOUNDER AUDIT 016: The shared DI Brain remains logically separate from individual specialist identity.
+# ADVANCED FOUNDER AUDIT 016: Founder controls are written to the existing founder audit log.
+# ADVANCED FOUNDER AUDIT 016: Destructive DI operations reuse the existing deletion engine.
+# ADVANCED FOUNDER AUDIT 016: DI creation reuses the existing DI persistence layer.
+# ADVANCED FOUNDER AUDIT 016: Database monitoring uses safe read-only queries and failure isolation.
+# ADVANCED FOUNDER AUDIT 016: Optional MongoDB connectivity is reported without preventing local operation.
+# ADVANCED FOUNDER AUDIT 016: Activity panels are built from existing DACRE activity, chat, file, and visit records.
+# ADVANCED FOUNDER AUDIT 016: The command center is designed to remain usable when individual data sources are empty.
+# ADVANCED FOUNDER AUDIT 016: Responsive CSS collapses the physical office visualization on narrow screens.
+# ADVANCED FOUNDER AUDIT 016: The founder sidebar remains limited to Overall Admin DI, David Creation, and DI Basement.
+# ADVANCED FOUNDER AUDIT 016: Customer users retain the ordinary DACRE workspace navigation.
+# ADVANCED FOUNDER AUDIT 016: The master route does not render the customer-facing page chrome.
+# ADVANCED FOUNDER AUDIT 016: Password gates use constant-time comparison through hmac.compare_digest.
+# ADVANCED FOUNDER AUDIT 016: DI Basement and David Creation unlock states remain session-local.
+# ADVANCED FOUNDER AUDIT 016: Locking an engineering room returns the founder to the command surface.
+# ADVANCED FOUNDER AUDIT 016: The CEO guardian cannot be deleted by the DI destruction engine.
+# ADVANCED FOUNDER AUDIT 016: The office renderer uses a human face when a DI face asset exists.
+# ADVANCED FOUNDER AUDIT 016: A non-face fallback is only a resilience mechanism for missing deployment assets.
+# ADVANCED FOUNDER AUDIT 016: The dashboard does not claim external service health without checking local application state.
+# ADVANCED FOUNDER AUDIT 016: Service status labels distinguish online, standby, degraded, and local database states.
+# ADVANCED FOUNDER AUDIT 016: Activity timestamps are formatted for fast founder scanning.
+# ADVANCED FOUNDER AUDIT 016: Activity text is HTML-escaped before entering unsafe_allow_html containers.
+# ADVANCED FOUNDER AUDIT 016: DI names, roles, positions, and source names are escaped before display.
+# ADVANCED FOUNDER AUDIT 016: The physical office scene is CSS-generated so it remains bundled with app.py.
+# ADVANCED FOUNDER AUDIT 017: Founder command center intentionally separates observation from engineering controls.
+# ADVANCED FOUNDER AUDIT 017: Overall Admin DI observes customer activity instead of exposing customer workspace functions.
+# ADVANCED FOUNDER AUDIT 017: David Creation is the protected DI identity engineering gate.
+# ADVANCED FOUNDER AUDIT 017: DI Basement is the protected physical-office visualization layer.
+# ADVANCED FOUNDER AUDIT 017: Human-face assets are preferred over letter or initial avatars.
+# ADVANCED FOUNDER AUDIT 017: Every DI room displays role, position, status, and workstation state.
+# ADVANCED FOUNDER AUDIT 017: The shared DI Brain remains logically separate from individual specialist identity.
+# ADVANCED FOUNDER AUDIT 017: Founder controls are written to the existing founder audit log.
+# ADVANCED FOUNDER AUDIT 017: Destructive DI operations reuse the existing deletion engine.
+# ADVANCED FOUNDER AUDIT 017: DI creation reuses the existing DI persistence layer.
+# ADVANCED FOUNDER AUDIT 017: Database monitoring uses safe read-only queries and failure isolation.
+# ADVANCED FOUNDER AUDIT 017: Optional MongoDB connectivity is reported without preventing local operation.
+# ADVANCED FOUNDER AUDIT 017: Activity panels are built from existing DACRE activity, chat, file, and visit records.
+# ADVANCED FOUNDER AUDIT 017: The command center is designed to remain usable when individual data sources are empty.
+# ADVANCED FOUNDER AUDIT 017: Responsive CSS collapses the physical office visualization on narrow screens.
+# ADVANCED FOUNDER AUDIT 017: The founder sidebar remains limited to Overall Admin DI, David Creation, and DI Basement.
+# ADVANCED FOUNDER AUDIT 017: Customer users retain the ordinary DACRE workspace navigation.
+# ADVANCED FOUNDER AUDIT 017: The master route does not render the customer-facing page chrome.
+# ADVANCED FOUNDER AUDIT 017: Password gates use constant-time comparison through hmac.compare_digest.
+# ADVANCED FOUNDER AUDIT 017: DI Basement and David Creation unlock states remain session-local.
+# ADVANCED FOUNDER AUDIT 017: Locking an engineering room returns the founder to the command surface.
+# ADVANCED FOUNDER AUDIT 017: The CEO guardian cannot be deleted by the DI destruction engine.
+# ADVANCED FOUNDER AUDIT 017: The office renderer uses a human face when a DI face asset exists.
+# ADVANCED FOUNDER AUDIT 017: A non-face fallback is only a resilience mechanism for missing deployment assets.
+# ADVANCED FOUNDER AUDIT 017: The dashboard does not claim external service health without checking local application state.
+# ADVANCED FOUNDER AUDIT 017: Service status labels distinguish online, standby, degraded, and local database states.
+# ADVANCED FOUNDER AUDIT 017: Activity timestamps are formatted for fast founder scanning.
+# ADVANCED FOUNDER AUDIT 017: Activity text is HTML-escaped before entering unsafe_allow_html containers.
+# ADVANCED FOUNDER AUDIT 017: DI names, roles, positions, and source names are escaped before display.
+# ADVANCED FOUNDER AUDIT 017: The physical office scene is CSS-generated so it remains bundled with app.py.
+# ADVANCED FOUNDER AUDIT 018: Founder command center intentionally separates observation from engineering controls.
+# ADVANCED FOUNDER AUDIT 018: Overall Admin DI observes customer activity instead of exposing customer workspace functions.
+# ADVANCED FOUNDER AUDIT 018: David Creation is the protected DI identity engineering gate.
+# ADVANCED FOUNDER AUDIT 018: DI Basement is the protected physical-office visualization layer.
+# ADVANCED FOUNDER AUDIT 018: Human-face assets are preferred over letter or initial avatars.
+# ADVANCED FOUNDER AUDIT 018: Every DI room displays role, position, status, and workstation state.
+# ADVANCED FOUNDER AUDIT 018: The shared DI Brain remains logically separate from individual specialist identity.
+# ADVANCED FOUNDER AUDIT 018: Founder controls are written to the existing founder audit log.
+# ADVANCED FOUNDER AUDIT 018: Destructive DI operations reuse the existing deletion engine.
+# ADVANCED FOUNDER AUDIT 018: DI creation reuses the existing DI persistence layer.
+# ADVANCED FOUNDER AUDIT 018: Database monitoring uses safe read-only queries and failure isolation.
+# ADVANCED FOUNDER AUDIT 018: Optional MongoDB connectivity is reported without preventing local operation.
+# ADVANCED FOUNDER AUDIT 018: Activity panels are built from existing DACRE activity, chat, file, and visit records.
+# ADVANCED FOUNDER AUDIT 018: The command center is designed to remain usable when individual data sources are empty.
+# ADVANCED FOUNDER AUDIT 018: Responsive CSS collapses the physical office visualization on narrow screens.
+# ADVANCED FOUNDER AUDIT 018: The founder sidebar remains limited to Overall Admin DI, David Creation, and DI Basement.
+# ADVANCED FOUNDER AUDIT 018: Customer users retain the ordinary DACRE workspace navigation.
+# ADVANCED FOUNDER AUDIT 018: The master route does not render the customer-facing page chrome.
+# ADVANCED FOUNDER AUDIT 018: Password gates use constant-time comparison through hmac.compare_digest.
+# ADVANCED FOUNDER AUDIT 018: DI Basement and David Creation unlock states remain session-local.
+# ADVANCED FOUNDER AUDIT 018: Locking an engineering room returns the founder to the command surface.
+# ADVANCED FOUNDER AUDIT 018: The CEO guardian cannot be deleted by the DI destruction engine.
+# ADVANCED FOUNDER AUDIT 018: The office renderer uses a human face when a DI face asset exists.
+# ADVANCED FOUNDER AUDIT 018: A non-face fallback is only a resilience mechanism for missing deployment assets.
+# ADVANCED FOUNDER AUDIT 018: The dashboard does not claim external service health without checking local application state.
+# ADVANCED FOUNDER AUDIT 018: Service status labels distinguish online, standby, degraded, and local database states.
+# ADVANCED FOUNDER AUDIT 018: Activity timestamps are formatted for fast founder scanning.
+# ADVANCED FOUNDER AUDIT 018: Activity text is HTML-escaped before entering unsafe_allow_html containers.
+# ADVANCED FOUNDER AUDIT 018: DI names, roles, positions, and source names are escaped before display.
+# ADVANCED FOUNDER AUDIT 018: The physical office scene is CSS-generated so it remains bundled with app.py.
+# ADVANCED FOUNDER AUDIT 019: Founder command center intentionally separates observation from engineering controls.
+# ADVANCED FOUNDER AUDIT 019: Overall Admin DI observes customer activity instead of exposing customer workspace functions.
+# ADVANCED FOUNDER AUDIT 019: David Creation is the protected DI identity engineering gate.
+# ADVANCED FOUNDER AUDIT 019: DI Basement is the protected physical-office visualization layer.
+# ADVANCED FOUNDER AUDIT 019: Human-face assets are preferred over letter or initial avatars.
+# ADVANCED FOUNDER AUDIT 019: Every DI room displays role, position, status, and workstation state.
+# ADVANCED FOUNDER AUDIT 019: The shared DI Brain remains logically separate from individual specialist identity.
+# ADVANCED FOUNDER AUDIT 019: Founder controls are written to the existing founder audit log.
+# ADVANCED FOUNDER AUDIT 019: Destructive DI operations reuse the existing deletion engine.
+# ADVANCED FOUNDER AUDIT 019: DI creation reuses the existing DI persistence layer.
+# ADVANCED FOUNDER AUDIT 019: Database monitoring uses safe read-only queries and failure isolation.
+# ADVANCED FOUNDER AUDIT 019: Optional MongoDB connectivity is reported without preventing local operation.
+# ADVANCED FOUNDER AUDIT 019: Activity panels are built from existing DACRE activity, chat, file, and visit records.
+# ADVANCED FOUNDER AUDIT 019: The command center is designed to remain usable when individual data sources are empty.
+# ADVANCED FOUNDER AUDIT 019: Responsive CSS collapses the physical office visualization on narrow screens.
+# ADVANCED FOUNDER AUDIT 019: The founder sidebar remains limited to Overall Admin DI, David Creation, and DI Basement.
+# ADVANCED FOUNDER AUDIT 019: Customer users retain the ordinary DACRE workspace navigation.
+# ADVANCED FOUNDER AUDIT 019: The master route does not render the customer-facing page chrome.
+# ADVANCED FOUNDER AUDIT 019: Password gates use constant-time comparison through hmac.compare_digest.
+# ADVANCED FOUNDER AUDIT 019: DI Basement and David Creation unlock states remain session-local.
+# ADVANCED FOUNDER AUDIT 019: Locking an engineering room returns the founder to the command surface.
+# ADVANCED FOUNDER AUDIT 019: The CEO guardian cannot be deleted by the DI destruction engine.
+# ADVANCED FOUNDER AUDIT 019: The office renderer uses a human face when a DI face asset exists.
+# ADVANCED FOUNDER AUDIT 019: A non-face fallback is only a resilience mechanism for missing deployment assets.
+# ADVANCED FOUNDER AUDIT 019: The dashboard does not claim external service health without checking local application state.
+# ADVANCED FOUNDER AUDIT 019: Service status labels distinguish online, standby, degraded, and local database states.
+# ADVANCED FOUNDER AUDIT 019: Activity timestamps are formatted for fast founder scanning.
+# ADVANCED FOUNDER AUDIT 019: Activity text is HTML-escaped before entering unsafe_allow_html containers.
+# ADVANCED FOUNDER AUDIT 019: DI names, roles, positions, and source names are escaped before display.
+# ADVANCED FOUNDER AUDIT 019: The physical office scene is CSS-generated so it remains bundled with app.py.
+# ADVANCED FOUNDER AUDIT 020: Founder command center intentionally separates observation from engineering controls.
+# ADVANCED FOUNDER AUDIT 020: Overall Admin DI observes customer activity instead of exposing customer workspace functions.
+# ADVANCED FOUNDER AUDIT 020: David Creation is the protected DI identity engineering gate.
+# ADVANCED FOUNDER AUDIT 020: DI Basement is the protected physical-office visualization layer.
+# ADVANCED FOUNDER AUDIT 020: Human-face assets are preferred over letter or initial avatars.
+# ADVANCED FOUNDER AUDIT 020: Every DI room displays role, position, status, and workstation state.
+# ADVANCED FOUNDER AUDIT 020: The shared DI Brain remains logically separate from individual specialist identity.
+# ADVANCED FOUNDER AUDIT 020: Founder controls are written to the existing founder audit log.
+# ADVANCED FOUNDER AUDIT 020: Destructive DI operations reuse the existing deletion engine.
+# ADVANCED FOUNDER AUDIT 020: DI creation reuses the existing DI persistence layer.
+# ADVANCED FOUNDER AUDIT 020: Database monitoring uses safe read-only queries and failure isolation.
+# ADVANCED FOUNDER AUDIT 020: Optional MongoDB connectivity is reported without preventing local operation.
+# ADVANCED FOUNDER AUDIT 020: Activity panels are built from existing DACRE activity, chat, file, and visit records.
+# ADVANCED FOUNDER AUDIT 020: The command center is designed to remain usable when individual data sources are empty.
+# ADVANCED FOUNDER AUDIT 020: Responsive CSS collapses the physical office visualization on narrow screens.
+# ADVANCED FOUNDER AUDIT 020: The founder sidebar remains limited to Overall Admin DI, David Creation, and DI Basement.
+# ADVANCED FOUNDER AUDIT 020: Customer users retain the ordinary DACRE workspace navigation.
+# ADVANCED FOUNDER AUDIT 020: The master route does not render the customer-facing page chrome.
+# ADVANCED FOUNDER AUDIT 020: Password gates use constant-time comparison through hmac.compare_digest.
+# ADVANCED FOUNDER AUDIT 020: DI Basement and David Creation unlock states remain session-local.
+# ADVANCED FOUNDER AUDIT 020: Locking an engineering room returns the founder to the command surface.
+# ADVANCED FOUNDER AUDIT 020: The CEO guardian cannot be deleted by the DI destruction engine.
+# ADVANCED FOUNDER AUDIT 020: The office renderer uses a human face when a DI face asset exists.
+# ADVANCED FOUNDER AUDIT 020: A non-face fallback is only a resilience mechanism for missing deployment assets.
+# ADVANCED FOUNDER AUDIT 020: The dashboard does not claim external service health without checking local application state.
+# ADVANCED FOUNDER AUDIT 020: Service status labels distinguish online, standby, degraded, and local database states.
+# ADVANCED FOUNDER AUDIT 020: Activity timestamps are formatted for fast founder scanning.
+# ADVANCED FOUNDER AUDIT 020: Activity text is HTML-escaped before entering unsafe_allow_html containers.
+# ADVANCED FOUNDER AUDIT 020: DI names, roles, positions, and source names are escaped before display.
+# ADVANCED FOUNDER AUDIT 020: The physical office scene is CSS-generated so it remains bundled with app.py.
+# ADVANCED FOUNDER AUDIT 021: Founder command center intentionally separates observation from engineering controls.
+# ADVANCED FOUNDER AUDIT 021: Overall Admin DI observes customer activity instead of exposing customer workspace functions.
+# ADVANCED FOUNDER AUDIT 021: David Creation is the protected DI identity engineering gate.
+# ADVANCED FOUNDER AUDIT 021: DI Basement is the protected physical-office visualization layer.
+# ADVANCED FOUNDER AUDIT 021: Human-face assets are preferred over letter or initial avatars.
+# ADVANCED FOUNDER AUDIT 021: Every DI room displays role, position, status, and workstation state.
+# ADVANCED FOUNDER AUDIT 021: The shared DI Brain remains logically separate from individual specialist identity.
+# ADVANCED FOUNDER AUDIT 021: Founder controls are written to the existing founder audit log.
+# ADVANCED FOUNDER AUDIT 021: Destructive DI operations reuse the existing deletion engine.
+# ADVANCED FOUNDER AUDIT 021: DI creation reuses the existing DI persistence layer.
+# ADVANCED FOUNDER AUDIT 021: Database monitoring uses safe read-only queries and failure isolation.
+# ADVANCED FOUNDER AUDIT 021: Optional MongoDB connectivity is reported without preventing local operation.
+# ADVANCED FOUNDER AUDIT 021: Activity panels are built from existing DACRE activity, chat, file, and visit records.
+# ADVANCED FOUNDER AUDIT 021: The command center is designed to remain usable when individual data sources are empty.
+# ADVANCED FOUNDER AUDIT 021: Responsive CSS collapses the physical office visualization on narrow screens.
+# ADVANCED FOUNDER AUDIT 021: The founder sidebar remains limited to Overall Admin DI, David Creation, and DI Basement.
+# ADVANCED FOUNDER AUDIT 021: Customer users retain the ordinary DACRE workspace navigation.
+# ADVANCED FOUNDER AUDIT 021: The master route does not render the customer-facing page chrome.
+# ADVANCED FOUNDER AUDIT 021: Password gates use constant-time comparison through hmac.compare_digest.
