@@ -1,6 +1,6 @@
 # =============================================================================
 # DACRE WORLDWIDE - COMPLETE PRODUCTION BUILD (FIXED)
-# Version: 7.7.2 - Founder Command Center / Physical DI Robot 3D Office Fabric
+# Version: 7.7.3 - Founder Command Center / Live Human-Face DI Command Center
 # Total Lines: ~12,000+
 # Features: Self-Healing DB, DI Intelligence, Error Shield, Voice, Video, AI
 # =============================================================================
@@ -9523,7 +9523,7 @@ except Exception as _real_di_boot_error:
     logger.exception("Real DI workforce bootstrap failed: %s", _real_di_boot_error)
 
 # =============================================================================
-# DACRE FOUNDER COMMAND CENTER v7.7.1
+# DACRE FOUNDER COMMAND CENTER v7.7.3
 # =============================================================================
 FOUNDER_MASTER_PAGES = ["Overall Admin DI", "David Creation", "DI Basement"]
 
@@ -9706,38 +9706,117 @@ def render_founder_3d_di_offices():
     components.html(html_block,height=1450,scrolling=False)
 
 
+def _render_founder_admin_robot():
+    """Large live Overall Admin DI hero: human face + physical robot body + workstation."""
+    face = di_face_data_url(CEO_GUARD_NAME) or (
+        "data:image/png;base64," + base64.b64encode(CEO_PORTRAIT_PATH.read_bytes()).decode("ascii")
+        if CEO_PORTRAIT_PATH and CEO_PORTRAIT_PATH.exists() else ""
+    )
+    face_html = (
+        f'<img class="oa-face" src="{face}" alt="Guaiel human face"><div class="oa-face-shield"></div>'
+        if face else '<div class="oa-face oa-face-fallback"><span>G</span></div>'
+    )
+    html_block = f"""
+    <style>
+      .oa-hero{{position:relative;min-height:520px;overflow:hidden;border-radius:26px;border:1px solid #1d5275;background:radial-gradient(circle at 50% 25%,rgba(39,172,255,.18),transparent 27%),linear-gradient(145deg,#06111c,#02060b 72%);box-shadow:0 30px 80px rgba(0,0,0,.48),inset 0 0 90px rgba(0,162,255,.06);font-family:Arial,sans-serif;color:#fff}}
+      .oa-grid{{position:absolute;inset:0;background-image:linear-gradient(rgba(43,133,176,.13) 1px,transparent 1px),linear-gradient(90deg,rgba(43,133,176,.13) 1px,transparent 1px);background-size:48px 48px;transform:perspective(700px) rotateX(58deg) scale(1.35);transform-origin:center bottom;opacity:.55}}
+      .oa-ring{{position:absolute;left:50%;top:55%;width:430px;height:140px;transform:translate(-50%,-50%) rotateX(66deg);border:1px solid #38bfff77;border-radius:50%;box-shadow:0 0 35px #24aaff22,0 0 80px #24aaff11;animation:oaPulse 4s ease-in-out infinite}}
+      .oa-header{{position:absolute;left:26px;right:26px;top:22px;display:flex;justify-content:space-between;z-index:30}}
+      .oa-title small{{display:block;color:#54caff;font-size:9px;font-weight:900;letter-spacing:.2em}} .oa-title b{{display:block;font-size:28px;margin-top:5px}} .oa-title span{{display:block;color:#90a9bb;font-size:12px;margin-top:5px}}
+      .oa-live{{padding:8px 12px;border:1px solid #28694c;background:#09251b;border-radius:999px;color:#69efaa;font-size:10px;font-weight:900;align-self:flex-start}}
+      .oa-robot{{position:absolute;left:50%;bottom:70px;width:330px;height:370px;transform:translateX(-50%);z-index:20;filter:drop-shadow(0 0 35px rgba(48,191,255,.25));animation:oaFloat 4s ease-in-out infinite}}
+      .oa-head{{position:absolute;left:50%;top:8px;width:132px;height:148px;transform:translateX(-50%);border:3px solid #66d9ff;border-radius:46% 46% 42% 42%;background:linear-gradient(145deg,#e8f2f7 0%,#9aacb8 42%,#2b3e4c 72%,#101d28 100%);box-shadow:inset -16px -10px 22px #07131e55,0 0 30px #4fc9ff44;overflow:hidden;z-index:15}}
+      .oa-face{{position:absolute;left:13px;top:12px;width:106px;height:116px;border-radius:44% 44% 40% 40%;object-fit:cover;object-position:center top;border:1px solid #c8f4ff66;filter:saturate(.9) contrast(1.08);background:#1a2a37}}
+      .oa-face-shield{{position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgba(5,14,23,.25));pointer-events:none}}
+      .oa-face-fallback{{display:flex;align-items:center;justify-content:center;color:#8eefff;font-size:42px;font-weight:900;background:radial-gradient(circle,#5de0ff 0 8%,#0b2c45 30%,#020a12 72%)}}
+      .oa-eye{{position:absolute;top:67px;width:13px;height:6px;border-radius:8px;background:#8eefff;box-shadow:0 0 14px #54caff;z-index:20}} .oa-eye.l{{left:28px}} .oa-eye.r{{right:28px}}
+      .oa-neck{{position:absolute;left:50%;top:150px;width:42px;height:34px;transform:translateX(-50%);background:linear-gradient(90deg,#182a38,#879aa7,#182a38);border:2px solid #527184;border-radius:9px;z-index:9}}
+      .oa-torso{{position:absolute;left:50%;top:166px;width:178px;height:174px;transform:translateX(-50%);border:3px solid #5f8398;border-radius:34px 34px 26px 26px;background:linear-gradient(150deg,#dfe9ee 0%,#8095a2 38%,#2b404e 63%,#10202b 100%);box-shadow:inset 0 0 30px #fff2,0 0 30px #50cfff25;z-index:8}}
+      .oa-chest{{position:absolute;left:50%;top:34px;width:72px;height:72px;transform:translateX(-50%);border-radius:50%;border:2px solid #63dfff;background:radial-gradient(circle,#4ddcff 0 9%,#073149 11% 42%,#02121f 45% 100%);box-shadow:0 0 28px #49d8ff88,0 0 70px #49d8ff22}}
+      .oa-chest b{{position:absolute;left:50%;top:27px;transform:translateX(-50%);font-size:17px;color:#d9fbff;letter-spacing:.06em}}
+      .oa-shoulder{{position:absolute;top:178px;width:72px;height:54px;border:3px solid #557487;border-radius:30px;background:linear-gradient(145deg,#d5e0e5,#4d6574);z-index:6}} .oa-shoulder.l{{left:20px;transform:rotate(12deg)}} .oa-shoulder.r{{right:20px;transform:rotate(-12deg)}}
+      .oa-arm{{position:absolute;top:220px;width:38px;height:105px;border:3px solid #587386;border-radius:20px;background:linear-gradient(180deg,#9fb0ba,#314956);z-index:5}} .oa-arm.l{{left:28px;transform:rotate(8deg)}} .oa-arm.r{{right:28px;transform:rotate(-8deg)}}
+      .oa-hand{{position:absolute;top:312px;width:43px;height:38px;border:3px solid #607b8d;border-radius:16px;background:linear-gradient(160deg,#a8b8c1,#344d5c);z-index:7}} .oa-hand.l{{left:18px}} .oa-hand.r{{right:18px}}
+      .oa-desk{{position:absolute;left:50%;bottom:33px;width:520px;height:92px;transform:translateX(-50%);border:2px solid #2b617d;border-radius:20px;background:linear-gradient(180deg,rgba(20,53,72,.9),rgba(4,13,21,.95));box-shadow:0 -12px 45px #21b8ff13,inset 0 0 30px #28bfff0c;z-index:17}}
+      .oa-screen{{position:absolute;left:50%;top:12px;width:380px;height:58px;transform:translateX(-50%);border:1px solid #3bcaff;border-radius:10px;background:#03121d;box-shadow:0 0 18px #32c7ff22;padding:8px}} .oa-screen b{{color:#6cddff;font-size:9px;letter-spacing:.1em}} .oa-bars{{display:flex;gap:7px;align-items:flex-end;height:25px;margin-top:4px}} .oa-bars i{{width:15px;background:#35c8ff;border-radius:2px 2px 0 0;box-shadow:0 0 8px #35c8ff55}} .oa-bars i:nth-child(1){{height:8px}} .oa-bars i:nth-child(2){{height:17px}} .oa-bars i:nth-child(3){{height:13px}} .oa-bars i:nth-child(4){{height:22px}} .oa-bars i:nth-child(5){{height:16px}} .oa-bars i:nth-child(6){{height:25px}}
+      .oa-card{{position:absolute;top:145px;width:190px;padding:14px;border:1px solid #245b78;border-radius:16px;background:rgba(3,12,20,.86);box-shadow:0 18px 40px #0006;z-index:28}} .oa-card h4{{margin:0;color:#5fd7ff;font-size:9px;letter-spacing:.14em}} .oa-card strong{{display:block;font-size:25px;margin-top:6px}} .oa-card p{{margin:4px 0 0;color:#8aa5b9;font-size:9px}} .oa-card.left{{left:24px}} .oa-card.right{{right:24px}}
+      .oa-brain{{position:absolute;right:34px;top:82px;width:95px;height:95px;border:1px solid #40d2ff77;border-radius:50%;background:radial-gradient(circle,#4fd7ff22,#051522 66%);box-shadow:0 0 35px #39c9ff22;z-index:27}} .oa-brain:before{{content:'DI BRAIN';position:absolute;left:50%;top:40px;transform:translateX(-50%);color:#65ddff;font-size:9px;font-weight:900;white-space:nowrap}} .oa-brain:after{{content:'CONNECTED';position:absolute;left:50%;top:56px;transform:translateX(-50%);color:#68edaa;font-size:6px;font-weight:900;white-space:nowrap}}
+      @keyframes oaFloat{{0%,100%{{transform:translateX(-50%) translateY(0)}}50%{{transform:translateX(-50%) translateY(-7px)}}}} @keyframes oaPulse{{0%,100%{{opacity:.45;transform:translate(-50%,-50%) rotateX(66deg) scale(1)}}50%{{opacity:.9;transform:translate(-50%,-50%) rotateX(66deg) scale(1.04)}}}}
+      @media(max-width:850px){{.oa-card{{display:none}}.oa-desk{{width:90%}}.oa-screen{{width:72%}}.oa-title b{{font-size:21px}}}}
+    </style>
+    <div class="oa-hero">
+      <div class="oa-grid"></div><div class="oa-ring"></div>
+      <div class="oa-header"><div class="oa-title"><small>DACRE WORLDWIDE · FOUNDER COMMAND</small><b>OVERALL ADMIN DI</b><span>Real-time intelligence and activity monitoring · Connected to DI Brain</span></div><div class="oa-live">● LIVE · VERIFIED</div></div>
+      <div class="oa-card left"><h4>SYSTEM OVERVIEW</h4><strong>ACTIVITY</strong><p>Users, accounts, files, chats, visits and DI operations are monitored here.</p></div>
+      <div class="oa-card right"><h4>FOUNDER DI</h4><strong>GUAIEL</strong><p>Human-face DI operator · CEO Office Guardian · Founder command path</p></div>
+      <div class="oa-brain"></div>
+      <div class="oa-robot">
+        <div class="oa-head">{face_html}<i class="oa-eye l"></i><i class="oa-eye r"></i></div>
+        <div class="oa-neck"></div><div class="oa-shoulder l"></div><div class="oa-shoulder r"></div>
+        <div class="oa-torso"><div class="oa-chest"><b>DI</b></div></div>
+        <div class="oa-arm l"></div><div class="oa-arm r"></div><div class="oa-hand l"></div><div class="oa-hand r"></div>
+      </div>
+      <div class="oa-desk"><div class="oa-screen"><b>LIVE DACRE ACTIVITY CONSOLE · GUAIEL</b><div class="oa-bars"><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div>
+    </div>
+    """
+    components.html(html_block, height=540, scrolling=False)
+
+
 def render_founder_overall_admin(user):
     if user.get("role") != "master":
         st.error("Overall Admin DI is restricted to the verified founder account.")
         return
     ensure_admin_runtime_schema(); _ensure_founder_creation_tables()
-    st.markdown('''<style>
-      .founder-shell{padding:22px;border-radius:22px;background:radial-gradient(circle at 78% 0%,rgba(88,199,255,.13),transparent 28%),linear-gradient(145deg,#07111d,#03070d);border:1px solid #28455f;box-shadow:0 25px 70px rgba(0,0,0,.38)}.founder-kicker{font-size:9px;letter-spacing:.18em;color:#68d8ff;font-weight:900}.founder-shell h1{margin:5px 0;color:#fff;font-size:31px}.founder-shell p{color:#8ea7bd;margin:0}.founder-live{display:inline-flex;margin-top:14px;padding:7px 11px;border-radius:999px;background:#0b3024;border:1px solid #276c4b;color:#67edaa;font-size:8px;font-weight:900;letter-spacing:.12em}
-      .founder-metric{padding:14px;border-radius:14px;border:1px solid #263d53;background:#091522;margin-top:14px}.founder-metric span{display:block;color:#7c95aa;font-size:7px;letter-spacing:.1em;font-weight:900}.founder-metric strong{display:block;color:#fff;font-size:24px;margin-top:4px}.founder-system{padding:12px;border-radius:13px;border:1px solid #274258;background:#07121e;margin:7px 0}.founder-system span{display:block;color:#8ba2b7;font-size:8px;font-weight:800}.founder-system b{display:block;margin-top:5px;font-size:10px}.founder-system.online b{color:#67edaa}.founder-system.standby b{color:#ffb86e}
-    </style><div class="founder-shell"><div class="founder-kicker">FOUNDER COMMAND · DACRE WORLDWIDE</div><h1>Overall Admin DI</h1><p>System-wide company activity, DI operations, services and live workstations.</p><div class="founder-live">● FOUNDER ACCESS VERIFIED · GUAIEL GUARDIAN</div></div>''',unsafe_allow_html=True)
-    if CEO_PORTRAIT_PATH and CEO_PORTRAIT_PATH.exists():
-        c1,c2=st.columns([1,5])
-        with c1: st.image(str(CEO_PORTRAIT_PATH),width=145)
-        with c2:
-            st.markdown('### David Emenike'); st.caption('Founder · CEO · Overall Administrator'); st.markdown('**Guaiel:** CEO Office Guardian · Founder command path protected')
-    counts=_founder_counts()
+    counts = _founder_counts()
+    st.markdown("""<style>
+      .oa-section{margin:22px 0 10px;color:#fff;font-size:18px;font-weight:900;letter-spacing:.02em}
+      .oa-sub{color:#7894aa;font-size:11px;margin-top:-5px;margin-bottom:10px}
+      .oa-metric{padding:15px;border:1px solid #21435d;border-radius:16px;background:linear-gradient(145deg,#081623,#040a10);box-shadow:inset 0 0 22px rgba(44,181,255,.035)}
+      .oa-metric span{display:block;color:#7896aa;font-size:7px;letter-spacing:.13em;font-weight:900}.oa-metric b{display:block;color:#fff;font-size:24px;margin-top:5px}
+      .oa-feed{padding:11px 13px;border:1px solid #1d3b53;border-radius:12px;background:#06111b;margin-bottom:7px}.oa-feed-top{display:flex;justify-content:space-between;gap:8px;color:#62d7ff;font-size:8px;font-weight:900}.oa-feed-body{color:#dce9f1;font-size:10px;margin-top:5px}.oa-feed-meta{color:#718da1;font-size:7px;margin-top:4px}
+      .oa-action{padding:16px;border-radius:16px;border:1px solid #2b6384;background:linear-gradient(145deg,#092238,#06121c);box-shadow:0 14px 35px rgba(0,0,0,.25)}.oa-action h3{margin:0;color:#fff;font-size:16px}.oa-action p{color:#83a0b4;font-size:9px;margin:5px 0 12px}
+      .oa-status{padding:10px 12px;border:1px solid #1e3f55;border-radius:12px;background:#06111a;margin-bottom:7px}.oa-status span{color:#7e99ab;font-size:8px}.oa-status b{float:right;font-size:8px}.oa-ok{color:#67edaa}.oa-warn{color:#ffba6d}
+    </style>""", unsafe_allow_html=True)
+    _render_founder_admin_robot()
+    st.markdown('<div class="oa-section">FOUNDER COMMAND</div><div class="oa-sub">Overall Admin DI watches what is happening across DACRE. Engineering controls stay behind the David Creation gate.</div>', unsafe_allow_html=True)
+    action_col, status_col = st.columns([1.15, 1])
+    with action_col:
+        st.markdown('<div class="oa-action"><h3>👤➕ David Creation</h3><p>Open the protected DI creation and destruction engine. Password required: <b>My children</b>.</p></div>', unsafe_allow_html=True)
+        if st.button('Open David Creation', use_container_width=True, type='primary', key='oa_open_david_creation'):
+            st.session_state.selected_page = 'David Creation'; st.rerun()
+    with status_col:
+        st.markdown('<div class="oa-action"><h3>🧠 DI Brain</h3><p>Shared intelligence connection and founder monitoring status.</p></div>', unsafe_allow_html=True)
+        st.markdown('<div class="oa-status"><span>DI Brain</span><b class="oa-ok">CONNECTED</b></div><div class="oa-status"><span>Activity Monitor</span><b class="oa-ok">LIVE</b></div><div class="oa-status"><span>Database</span><b class="oa-ok">ONLINE</b></div>', unsafe_allow_html=True)
+    st.markdown('<div class="oa-section">LIVE PLATFORM ACTIVITY</div><div class="oa-sub">These are activities happening inside the DACRE application, not the customer-facing app controls.</div>', unsafe_allow_html=True)
+    metric_defs=[('CUSTOMER ACCOUNTS','users'),('ORGANIZATIONS','companies'),('ACTIVITY EVENTS','activity'),('DI CONVERSATIONS','messages'),('FILES PROCESSED','files'),('DI NODES ONLINE','active_di')]
     cols=st.columns(6)
-    for col,(label,key) in zip(cols,[("CUSTOMER ACCOUNTS","users"),("ORGANIZATIONS","companies"),("ACTIVITY EVENTS","activity"),("DI CONVERSATIONS","messages"),("FILES PROCESSED","files"),("DI NODES ONLINE","active_di")]):
-        with col: st.markdown(f'<div class="founder-metric"><span>{label}</span><strong>{counts[key]:,}</strong></div>',unsafe_allow_html=True)
-    st.markdown('### LIVE COMPANY ACTIVITY')
-    events=_founder_activity_feed(100)
+    for col,(label,key) in zip(cols,metric_defs):
+        with col: st.markdown(f'<div class="oa-metric"><span>{label}</span><b>{counts.get(key,0):,}</b></div>',unsafe_allow_html=True)
+    events=_founder_activity_feed(80)
     if events:
-        st.dataframe(pd.DataFrame([{"TIME":e["time"],"TYPE":e["type"],"ACTOR":e["actor"],"SOURCE":e["source"],"ACTIVITY":e["detail"]} for e in events]),use_container_width=True,hide_index=True,height=430)
-    else: st.info('No customer activity has been recorded yet. New sign-ins, chats, uploads and visits will appear here automatically.')
-    st.markdown('### COMPANY SYSTEM STATUS')
-    status=_founder_module_status(); cols=st.columns(4)
-    for i,(name,state) in enumerate(status):
-        with cols[i%4]:
-            cls='online' if state=='ONLINE' else 'standby'; st.markdown(f'<div class="founder-system {cls}"><span>{html.escape(name)}</span><b>{state}</b></div>',unsafe_allow_html=True)
-    st.markdown('### THE DI OFFICES')
-    st.caption('Each DI is shown inside a 3D-style office workstation. The live room state drives the activity shown on the office monitor.')
-    render_founder_3d_di_offices()
-
+        left,right=st.columns([1.65,1])
+        with left:
+            st.markdown('#### Activity stream')
+            for e in events[:24]:
+                st.markdown(f'<div class="oa-feed"><div class="oa-feed-top"><span>{html.escape(str(e.get("type","ACTIVITY")))}</span><span>{html.escape(str(e.get("time","")))}</span></div><div class="oa-feed-body">{html.escape(str(e.get("detail","")))}</div><div class="oa-feed-meta">{html.escape(str(e.get("actor","Unknown")))} · {html.escape(str(e.get("source","DACRE")))}</div></div>',unsafe_allow_html=True)
+        with right:
+            st.markdown('#### Platform status')
+            for name,state in _founder_module_status():
+                cls='oa-ok' if state=='ONLINE' else 'oa-warn'
+                st.markdown(f'<div class="oa-status"><span>{html.escape(name)}</span><b class="{cls}">{html.escape(state)}</b></div>',unsafe_allow_html=True)
+            st.markdown('#### Founder audit')
+            founder_events=[x for x in _founder_activity_feed(40) if x.get('type')=='FOUNDER CONTROL'][:8]
+            if founder_events:
+                for e in founder_events:
+                    st.markdown(f'<div class="oa-feed"><div class="oa-feed-top"><span>FOUNDER CONTROL</span><span>{html.escape(str(e.get("time","")))}</span></div><div class="oa-feed-body">{html.escape(str(e.get("detail","")))}</div></div>',unsafe_allow_html=True)
+            else: st.caption('Founder controls will appear here when used.')
+    else:
+        st.info('No customer activity has been recorded yet. Sign-ins, chats, uploads, account changes and public-site activity will appear here automatically.')
+    st.markdown('<div class="oa-section">DI OPERATIONS</div><div class="oa-sub">Overall Admin sees operational activity here. Physical DI offices are entered through the protected DI Basement inside David Creation.</div>', unsafe_allow_html=True)
+    di_rows=real_di_agent_rows()
+    if di_rows:
+        st.dataframe(pd.DataFrame([{'DI':r.get('di_name'),'ROLE':r.get('system_role') or r.get('specialty'),'POSITION':r.get('position_title'),'STATUS':r.get('status'),'RANK':r.get('rank_level')} for r in di_rows]),use_container_width=True,hide_index=True,height=260)
+    else: st.info('No DI nodes are currently registered.')
 
 def _founder_destroy_di(name):
     name=(name or '').strip()
