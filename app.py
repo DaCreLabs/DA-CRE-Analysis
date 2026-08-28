@@ -53,190 +53,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 st.markdown("""<style>html,body,[data-testid="stAppViewContainer"]{overflow-x:hidden!important}[data-testid="stMainBlockContainer"]{width:100%!important;max-width:1440px!important;padding-left:clamp(10px,2vw,32px)!important;padding-right:clamp(10px,2vw,32px)!important}img,video,iframe{max-width:100%}@media(max-width:768px){[data-testid="stMainBlockContainer"]{padding-left:10px!important;padding-right:10px!important}.stButton>button{min-height:44px!important}h1{font-size:clamp(26px,7vw,40px)!important}}</style>""",unsafe_allow_html=True)
-st.markdown("""
-<style>
-/* ========================================================================
-   DACRE WORLDWIDE — PROFESSIONAL ONLINE COMPANY UI SYSTEM
-   Light enterprise surface + black typography + DACRE blue actions.
-   ======================================================================== */
-:root{
-  --dacre-blue:#1769ff;
-  --dacre-blue-dark:#0b4fd1;
-  --dacre-blue-soft:#eaf2ff;
-  --dacre-ink:#101828;
-  --dacre-muted:#667085;
-  --dacre-border:#e4e7ec;
-  --dacre-surface:#ffffff;
-  --dacre-bg:#f7f9fc;
-  --dacre-success:#12b76a;
-  --dacre-shadow:0 10px 30px rgba(16,24,40,.07);
-}
-html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"]{
-  background:var(--dacre-bg) !important;
-  color:var(--dacre-ink) !important;
-}
-[data-testid="stHeader"]{
-  background:rgba(255,255,255,.96) !important;
-  border-bottom:1px solid var(--dacre-border) !important;
-  box-shadow:0 1px 8px rgba(16,24,40,.04) !important;
-}
-/* Keep Streamlit's hamburger/menu usable, clean and black. */
-[data-testid="stSidebarCollapseButton"],
-button[aria-label*="sidebar" i],
-button[title*="sidebar" i]{
-  display:flex !important;
-  visibility:visible !important;
-  opacity:1 !important;
-  position:relative !important;
-  left:auto !important;
-  width:38px !important;
-  height:38px !important;
-  margin:8px !important;
-  padding:0 !important;
-  align-items:center !important;
-  justify-content:center !important;
-  background:#fff !important;
-  border:1px solid #d0d5dd !important;
-  border-radius:10px !important;
-  color:#101828 !important;
-  box-shadow:0 2px 8px rgba(16,24,40,.06) !important;
-}
-[data-testid="stSidebarCollapseButton"] svg,
-button[aria-label*="sidebar" i] svg,
-button[title*="sidebar" i] svg{color:#101828 !important;fill:#101828 !important;stroke:#101828 !important;}
-/* Do not hide the whole header — only the Streamlit deployment controls. */
-[data-testid="stToolbar"], .stToolbar, .stDeployButton, #MainMenu, [data-testid="stStatusWidget"]{
-  display:none !important;
-}
-footer{display:none !important;}
-[data-testid="stSidebar"]{
-  background:#fff !important;
-  border-right:1px solid var(--dacre-border) !important;
-  box-shadow:4px 0 20px rgba(16,24,40,.035) !important;
-}
-[data-testid="stSidebar"] *{color:var(--dacre-ink);}
-[data-testid="stSidebar"] .stMarkdown p,
-[data-testid="stSidebar"] .stCaption{color:var(--dacre-muted) !important;}
-[data-testid="stSidebar"] hr{border-color:var(--dacre-border) !important;}
-[data-testid="stSidebar"] button{
-  border-radius:10px !important;
-  border:1px solid transparent !important;
-  font-weight:650 !important;
-}
-[data-testid="stSidebar"] button:hover{background:var(--dacre-blue-soft) !important;border-color:#c7dbff !important;}
-.block-container{max-width:1500px !important;padding:28px 34px 70px !important;}
-[data-testid="stVerticalBlock"]{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}
-/* Main Streamlit controls */
-.stButton > button,
-.stDownloadButton > button{
-  min-height:42px !important;
-  border-radius:10px !important;
-  border:1px solid #d0d5dd !important;
-  background:#fff !important;
-  color:#101828 !important;
-  font-weight:700 !important;
-  box-shadow:0 1px 2px rgba(16,24,40,.04) !important;
-  transition:all .16s ease !important;
-}
-.stButton > button:hover,
-.stDownloadButton > button:hover{border-color:#9bbcff !important;background:#f8fbff !important;transform:translateY(-1px);}
-.stButton > button[kind="primary"],
-.stButton > button[data-testid="baseButton-primary"]{
-  background:var(--dacre-blue) !important;
-  border-color:var(--dacre-blue) !important;
-  color:#fff !important;
-  box-shadow:0 5px 14px rgba(23,105,255,.20) !important;
-}
-.stButton > button[kind="primary"]:hover,
-.stButton > button[data-testid="baseButton-primary"]:hover{background:var(--dacre-blue-dark) !important;color:#fff !important;}
-input, textarea, [data-baseweb="select"] > div{
-  background:#fff !important;
-  color:#101828 !important;
-  border-color:#d0d5dd !important;
-  border-radius:10px !important;
-}
-label, .stTextInput label, .stSelectbox label, .stFileUploader label{color:#344054 !important;font-weight:650 !important;}
-[data-testid="stMetric"]{background:#fff;border:1px solid var(--dacre-border);border-radius:14px;padding:14px;box-shadow:var(--dacre-shadow);}
-[data-testid="stMetricLabel"]{color:#667085 !important;}
-[data-testid="stMetricValue"]{color:#101828 !important;}
-.stAlert{border-radius:12px !important;}
-/* Enterprise chrome */
-.dacre-page-chrome{
-  display:flex;align-items:center;justify-content:space-between;gap:20px;
-  padding:18px 22px;margin:0 0 22px;
-  background:#fff;border:1px solid var(--dacre-border);border-radius:16px;
-  box-shadow:var(--dacre-shadow);position:relative;overflow:hidden;
-}
-.dacre-page-chrome:before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--dacre-blue);}
-.page-chrome-left{display:flex;align-items:center;gap:13px;min-width:0;}
-.dacre-page-chrome .page-icon{
-  width:44px;height:44px;border-radius:12px;display:grid;place-items:center;
-  background:var(--dacre-blue-soft);color:var(--dacre-blue);font-weight:900;font-size:20px;
-  border:1px solid #cfe0ff;
-}
-.dacre-page-chrome .page-kicker{font-size:10px;font-weight:850;letter-spacing:.12em;color:#667085;text-transform:uppercase;}
-.dacre-page-chrome .page-title{font-size:24px;line-height:1.15;font-weight:800;color:#101828;margin-top:3px;letter-spacing:-.025em;}
-.dacre-page-chrome .page-subtitle{font-size:13px;color:#667085;margin-top:4px;}
-.page-chrome-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;}
-.chrome-pill{padding:7px 10px;border-radius:999px;background:#ecfdf3;color:#087443;border:1px solid #abefc6;font-size:10px;font-weight:800;white-space:nowrap;}
-.chrome-pill.soft{background:#f2f4f7;color:#475467;border-color:#eaecf0;}
-/* Global online-company quick action bar */
-.dacre-quickbar{
-  display:flex;align-items:center;justify-content:space-between;gap:14px;
-  padding:11px 14px;margin:0 0 20px;background:#101828;color:#fff;border-radius:14px;
-  box-shadow:0 8px 24px rgba(16,24,40,.13);
-}
-.dacre-quickbar .quick-brand{font-size:12px;font-weight:850;letter-spacing:.06em;white-space:nowrap;}
-.dacre-quickbar .quick-status{font-size:11px;color:#d0d5dd;white-space:nowrap;}
-.dacre-quickbar .quick-status b{color:#84caff;}
-/* Common light dashboard surfaces */
-.user-nav-brand{display:flex !important;gap:10px;align-items:center;padding:8px 4px 16px;}
-.user-nav-brand b{font-size:20px;letter-spacing:.08em;color:#101828 !important;}
-.user-nav-brand small{display:block;color:#667085 !important;font-size:9px;letter-spacing:.18em;}
-.user-nav-dot{width:10px;height:10px;border-radius:50%;background:#12b76a;box-shadow:0 0 12px rgba(18,183,106,.35);}
-.user-dash{border:1px solid var(--dacre-border) !important;border-radius:18px !important;padding:28px !important;background:#fff !important;box-shadow:var(--dacre-shadow) !important;}
-.user-dash h1,.user-dash h2,.user-dash h3,.user-dash b{color:#101828 !important;}
-.user-dash p{color:#667085 !important;}
-.user-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:20px 0;}
-.user-kpi{padding:18px;border-radius:14px;background:#fff;border:1px solid var(--dacre-border);box-shadow:var(--dacre-shadow);}
-.user-kpi b{font-size:28px;display:block;color:#101828 !important;}.user-kpi span{color:#667085 !important;font-size:12px;}
-.user-work-card{padding:20px;border-radius:16px;background:#fff;border:1px solid var(--dacre-border);height:100%;box-shadow:var(--dacre-shadow);}
-.user-work-card h3{margin:0;color:#101828 !important;}.user-work-card p{color:#667085 !important;line-height:1.6;}
-.notice-card{padding:14px 16px;border-left:3px solid var(--dacre-blue);background:#fff;border-top:1px solid var(--dacre-border);border-right:1px solid var(--dacre-border);border-bottom:1px solid var(--dacre-border);border-radius:10px;margin:8px 0;box-shadow:0 3px 12px rgba(16,24,40,.04);}
-/* Make markdown headings readable across the business app. */
-.main h1,.main h2,.main h3,.main h4{color:#101828 !important;}
-.main p,.main li{color:#344054;}
-@media(max-width:900px){
-  .block-container{padding:22px 18px 60px !important;}
-  .dacre-page-chrome{align-items:flex-start;}
-  .page-chrome-right{display:none;}
-  .user-kpis{grid-template-columns:1fr 1fr;}
-}
-@media(max-width:620px){
-  .block-container{padding:16px 12px 50px !important;}
-  .dacre-page-chrome{padding:15px 16px;}
-  .dacre-page-chrome .page-title{font-size:20px;}
-  .dacre-quickbar{align-items:flex-start;flex-direction:column;}
-  .user-kpis{grid-template-columns:1fr 1fr;}
-}
-/* DACRE 7.3 DARK ONLINE ROBOT THEME */
-:root{--dacre-bg:#050914;--dacre-surface:#0b1220;--dacre-surface-2:#101a2b;--dacre-border:#203149;--dacre-blue:#58c7ff;--dacre-blue-dark:#1d8fd0;--dacre-orange:#ff9f43;--dacre-copper:#b9784f;--dacre-text:#f4f8ff;--dacre-muted:#a7b7ca;--dacre-shadow:0 18px 55px rgba(0,0,0,.34)}
-.stApp,[data-testid="stAppViewContainer"],.main{background:radial-gradient(circle at 70% -10%,rgba(88,199,255,.10),transparent 35%),#050914!important;color:#f4f8ff!important}
-[data-testid="stSidebar"]{background:linear-gradient(180deg,#05070d,#0a101b 65%,#070b12)!important;border-right:1px solid #1b2a3d!important}
-[data-testid="stSidebar"] *{color:#f5f9ff!important}
-[data-testid="stSidebar"] button{background:#05070b!important;border:1px solid #2a3c53!important;color:#fff!important}
-[data-testid="stSidebar"] button:hover{background:#132033!important;border-color:#58c7ff!important}
-.main h1,.main h2,.main h3,.main h4,.main h5,.main h6{color:#f7fbff!important}.main p,.main li,.main label,.stCaption{color:#c1cede!important}
-.stTextInput input,.stTextArea textarea,.stNumberInput input,.stSelectbox div[data-baseweb="select"]>div,.stMultiSelect div[data-baseweb="select"]>div,.stDateInput input{background:#0b1220!important;color:#fff!important;border-color:#2b4059!important}
-.stTextInput input::placeholder,.stTextArea textarea::placeholder{color:#71839a!important}.stButton>button{background:#0b1422!important;color:#fff!important;border:1px solid #2d425b!important;border-radius:12px!important}
-.stButton>button:hover{border-color:#58c7ff!important;box-shadow:0 0 22px rgba(88,199,255,.14)!important;transform:translateY(-1px)!important}.stButton>button[kind="primary"],.stButton>button[data-testid="baseButton-primary"]{background:linear-gradient(135deg,#178dd0,#58c7ff)!important;color:#04111b!important;border:0!important;font-weight:900!important}
-[data-testid="stMetric"]{background:linear-gradient(145deg,#0d1727,#0a111d)!important;border:1px solid #263a52!important;color:#fff!important;box-shadow:0 18px 55px rgba(0,0,0,.34)!important}[data-testid="stMetricLabel"],[data-testid="stMetricValue"]{color:#fff!important}.stAlert{background:#0d1727!important;border-color:#2c4560!important;color:#fff!important}
-.dacre-page-chrome{background:linear-gradient(145deg,#0c1524,#09111d)!important;border-color:#263b54!important;box-shadow:0 18px 55px rgba(0,0,0,.34)!important}.dacre-page-chrome:before{background:linear-gradient(180deg,#58c7ff,#ff9f43,#b9784f)!important}.dacre-page-chrome .page-kicker{color:#79d3ff!important}.dacre-page-chrome .page-title{color:#fff!important}.dacre-page-chrome .page-subtitle{color:#aabbd0!important}.dacre-page-chrome .page-icon{background:#0d1b2d!important;color:#58c7ff!important;border-color:#31506d!important}
-.chrome-pill{background:#102d24!important;color:#78f0b0!important;border-color:#276448!important}.chrome-pill.soft{background:#151d2a!important;color:#b7c6d8!important;border-color:#2a3c53!important}.dacre-quickbar{background:linear-gradient(90deg,#05080e,#0d1725 65%,#13253a)!important;border:1px solid #263e58!important}
-.user-dash,.user-kpi,.user-work-card,.notice-card{background:#0b1422!important;border-color:#263b54!important;box-shadow:0 18px 55px rgba(0,0,0,.34)!important}.user-dash h1,.user-dash h2,.user-dash h3,.user-dash b,.user-kpi b,.user-work-card h3{color:#fff!important}.user-dash p,.user-kpi span,.user-work-card p{color:#b1bfd0!important}
-.dacre-dark-section{background:linear-gradient(145deg,#0b1422,#101b2b);border:1px solid #2a405b;border-radius:20px;padding:22px;box-shadow:0 18px 55px rgba(0,0,0,.34)}.dacre-section-blue{border-left:5px solid #58c7ff!important}.dacre-section-orange{border-left:5px solid #ff9f43!important}.dacre-section-copper{border-left:5px solid #b9784f!important}
-</style>
-""", unsafe_allow_html=True)
+st.markdown('\n<style>\n/* ========================================================================\n   DACRE WORLDWIDE — PROFESSIONAL ONLINE COMPANY UI SYSTEM\n   Light enterprise surface + black typography + DACRE blue actions.\n   ======================================================================== */\n:root{\n  --dacre-blue:#1769ff;\n  --dacre-blue-dark:#0b4fd1;\n  --dacre-blue-soft:#eaf2ff;\n  --dacre-ink:#101828;\n  --dacre-muted:#667085;\n  --dacre-border:#e4e7ec;\n  --dacre-surface:#ffffff;\n  --dacre-bg:#f7f9fc;\n  --dacre-success:#12b76a;\n  --dacre-shadow:0 10px 30px rgba(16,24,40,.07);\n}\nhtml, body, [data-testid="stAppViewContainer"], [data-testid="stApp"]{\n  background:var(--dacre-bg) !important;\n  color:var(--dacre-ink) !important;\n}\n[data-testid="stHeader"]{\n  background:rgba(255,255,255,.96) !important;\n  border-bottom:1px solid var(--dacre-border) !important;\n  box-shadow:0 1px 8px rgba(16,24,40,.04) !important;\n}\n/* Keep Streamlit\'s hamburger/menu usable, clean and black. */\n[data-testid="stSidebarCollapseButton"],\nbutton[aria-label*="sidebar" i],\nbutton[title*="sidebar" i]{\n  display:flex !important;\n  visibility:visible !important;\n  opacity:1 !important;\n  position:relative !important;\n  left:auto !important;\n  width:38px !important;\n  height:38px !important;\n  margin:8px !important;\n  padding:0 !important;\n  align-items:center !important;\n  justify-content:center !important;\n  background:#fff !important;\n  border:1px solid #d0d5dd !important;\n  border-radius:10px !important;\n  color:#101828 !important;\n  box-shadow:0 2px 8px rgba(16,24,40,.06) !important;\n}\n[data-testid="stSidebarCollapseButton"] svg,\nbutton[aria-label*="sidebar" i] svg,\nbutton[title*="sidebar" i] svg{color:#101828 !important;fill:#101828 !important;stroke:#101828 !important;}\n/* Do not hide the whole header — only the Streamlit deployment controls. */\n[data-testid="stToolbar"], .stToolbar, .stDeployButton, #MainMenu, [data-testid="stStatusWidget"]{\n  display:none !important;\n}\nfooter{display:none !important;}\n[data-testid="stSidebar"]{\n  background:#fff !important;\n  border-right:1px solid var(--dacre-border) !important;\n  box-shadow:4px 0 20px rgba(16,24,40,.035) !important;\n}\n[data-testid="stSidebar"] *{color:var(--dacre-ink);}\n[data-testid="stSidebar"] .stMarkdown p,\n[data-testid="stSidebar"] .stCaption{color:var(--dacre-muted) !important;}\n[data-testid="stSidebar"] hr{border-color:var(--dacre-border) !important;}\n[data-testid="stSidebar"] button{\n  border-radius:10px !important;\n  border:1px solid transparent !important;\n  font-weight:650 !important;\n}\n[data-testid="stSidebar"] button:hover{background:var(--dacre-blue-soft) !important;border-color:#c7dbff !important;}\n.block-container{max-width:1500px !important;padding:28px 34px 70px !important;}\n[data-testid="stVerticalBlock"]{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}\n/* Main Streamlit controls */\n.stButton > button,\n.stDownloadButton > button{\n  min-height:42px !important;\n  border-radius:10px !important;\n  border:1px solid #d0d5dd !important;\n  background:#fff !important;\n  color:#101828 !important;\n  font-weight:700 !important;\n  box-shadow:0 1px 2px rgba(16,24,40,.04) !important;\n  transition:all .16s ease !important;\n}\n.stButton > button:hover,\n.stDownloadButton > button:hover{border-color:#9bbcff !important;background:#f8fbff !important;transform:translateY(-1px);}\n.stButton > button[kind="primary"],\n.stButton > button[data-testid="baseButton-primary"]{\n  background:var(--dacre-blue) !important;\n  border-color:var(--dacre-blue) !important;\n  color:#fff !important;\n  box-shadow:0 5px 14px rgba(23,105,255,.20) !important;\n}\n.stButton > button[kind="primary"]:hover,\n.stButton > button[data-testid="baseButton-primary"]:hover{background:var(--dacre-blue-dark) !important;color:#fff !important;}\ninput, textarea, [data-baseweb="select"] > div{\n  background:#fff !important;\n  color:#101828 !important;\n  border-color:#d0d5dd !important;\n  border-radius:10px !important;\n}\nlabel, .stTextInput label, .stSelectbox label, .stFileUploader label{color:#344054 !important;font-weight:650 !important;}\n[data-testid="stMetric"]{background:#fff;border:1px solid var(--dacre-border);border-radius:14px;padding:14px;box-shadow:var(--dacre-shadow);}\n[data-testid="stMetricLabel"]{color:#667085 !important;}\n[data-testid="stMetricValue"]{color:#101828 !important;}\n.stAlert{border-radius:12px !important;}\n/* Enterprise chrome */\n.dacre-page-chrome{\n  display:flex;align-items:center;justify-content:space-between;gap:20px;\n  padding:18px 22px;margin:0 0 22px;\n  background:#fff;border:1px solid var(--dacre-border);border-radius:16px;\n  box-shadow:var(--dacre-shadow);position:relative;overflow:hidden;\n}\n.dacre-page-chrome:before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--dacre-blue);}\n.page-chrome-left{display:flex;align-items:center;gap:13px;min-width:0;}\n.dacre-page-chrome .page-icon{\n  width:44px;height:44px;border-radius:12px;display:grid;place-items:center;\n  background:var(--dacre-blue-soft);color:var(--dacre-blue);font-weight:900;font-size:20px;\n  border:1px solid #cfe0ff;\n}\n.dacre-page-chrome .page-kicker{font-size:10px;font-weight:850;letter-spacing:.12em;color:#667085;text-transform:uppercase;}\n.dacre-page-chrome .page-title{font-size:24px;line-height:1.15;font-weight:800;color:#101828;margin-top:3px;letter-spacing:-.025em;}\n.dacre-page-chrome .page-subtitle{font-size:13px;color:#667085;margin-top:4px;}\n.page-chrome-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;}\n.chrome-pill{padding:7px 10px;border-radius:999px;background:#ecfdf3;color:#087443;border:1px solid #abefc6;font-size:10px;font-weight:800;white-space:nowrap;}\n.chrome-pill.soft{background:#f2f4f7;color:#475467;border-color:#eaecf0;}\n/* Global online-company quick action bar */\n.dacre-quickbar{\n  display:flex;align-items:center;justify-content:space-between;gap:14px;\n  padding:11px 14px;margin:0 0 20px;background:#101828;color:#fff;border-radius:14px;\n  box-shadow:0 8px 24px rgba(16,24,40,.13);\n}\n.dacre-quickbar .quick-brand{font-size:12px;font-weight:850;letter-spacing:.06em;white-space:nowrap;}\n.dacre-quickbar .quick-status{font-size:11px;color:#d0d5dd;white-space:nowrap;}\n.dacre-quickbar .quick-status b{color:#84caff;}\n/* Common light dashboard surfaces */\n.user-nav-brand{display:flex !important;gap:10px;align-items:center;padding:8px 4px 16px;}\n.user-nav-brand b{font-size:20px;letter-spacing:.08em;color:#101828 !important;}\n.user-nav-brand small{display:block;color:#667085 !important;font-size:9px;letter-spacing:.18em;}\n.user-nav-dot{width:10px;height:10px;border-radius:50%;background:#12b76a;box-shadow:0 0 12px rgba(18,183,106,.35);}\n.user-dash{border:1px solid var(--dacre-border) !important;border-radius:18px !important;padding:28px !important;background:#fff !important;box-shadow:var(--dacre-shadow) !important;}\n.user-dash h1,.user-dash h2,.user-dash h3,.user-dash b{color:#101828 !important;}\n.user-dash p{color:#667085 !important;}\n.user-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:20px 0;}\n.user-kpi{padding:18px;border-radius:14px;background:#fff;border:1px solid var(--dacre-border);box-shadow:var(--dacre-shadow);}\n.user-kpi b{font-size:28px;display:block;color:#101828 !important;}.user-kpi span{color:#667085 !important;font-size:12px;}\n.user-work-card{padding:20px;border-radius:16px;background:#fff;border:1px solid var(--dacre-border);height:100%;box-shadow:var(--dacre-shadow);}\n.user-work-card h3{margin:0;color:#101828 !important;}.user-work-card p{color:#667085 !important;line-height:1.6;}\n.notice-card{padding:14px 16px;border-left:3px solid var(--dacre-blue);background:#fff;border-top:1px solid var(--dacre-border);border-right:1px solid var(--dacre-border);border-bottom:1px solid var(--dacre-border);border-radius:10px;margin:8px 0;box-shadow:0 3px 12px rgba(16,24,40,.04);}\n/* Make markdown headings readable across the business app. */\n.main h1,.main h2,.main h3,.main h4{color:#101828 !important;}\n.main p,.main li{color:#344054;}\n@media(max-width:900px){\n  .block-container{padding:22px 18px 60px !important;}\n  .dacre-page-chrome{align-items:flex-start;}\n  .page-chrome-right{display:none;}\n  .user-kpis{grid-template-columns:1fr 1fr;}\n}\n@media(max-width:620px){\n  .block-container{padding:16px 12px 50px !important;}\n  .dacre-page-chrome{padding:15px 16px;}\n  .dacre-page-chrome .page-title{font-size:20px;}\n  .dacre-quickbar{align-items:flex-start;flex-direction:column;}\n  .user-kpis{grid-template-columns:1fr 1fr;}\n}\n/* DACRE 7.3 DARK ONLINE ROBOT THEME */\n:root{--dacre-bg:#050914;--dacre-surface:#0b1220;--dacre-surface-2:#101a2b;--dacre-border:#203149;--dacre-blue:#58c7ff;--dacre-blue-dark:#1d8fd0;--dacre-orange:#ff9f43;--dacre-copper:#b9784f;--dacre-text:#f4f8ff;--dacre-muted:#a7b7ca;--dacre-shadow:0 18px 55px rgba(0,0,0,.34)}\n.stApp,[data-testid="stAppViewContainer"],.main{background:radial-gradient(circle at 70% -10%,rgba(88,199,255,.10),transparent 35%),#050914!important;color:#f4f8ff!important}\n[data-testid="stSidebar"]{background:linear-gradient(180deg,#05070d,#0a101b 65%,#070b12)!important;border-right:1px solid #1b2a3d!important}\n[data-testid="stSidebar"] *{color:#f5f9ff!important}\n[data-testid="stSidebar"] button{background:#05070b!important;border:1px solid #2a3c53!important;color:#fff!important}\n[data-testid="stSidebar"] button:hover{background:#132033!important;border-color:#58c7ff!important}\n.main h1,.main h2,.main h3,.main h4,.main h5,.main h6{color:#f7fbff!important}.main p,.main li,.main label,.stCaption{color:#c1cede!important}\n.stTextInput input,.stTextArea textarea,.stNumberInput input,.stSelectbox div[data-baseweb="select"]>div,.stMultiSelect div[data-baseweb="select"]>div,.stDateInput input{background:#0b1220!important;color:#fff!important;border-color:#2b4059!important}\n.stTextInput input::placeholder,.stTextArea textarea::placeholder{color:#71839a!important}.stButton>button{background:#0b1422!important;color:#fff!important;border:1px solid #2d425b!important;border-radius:12px!important}\n.stButton>button:hover{border-color:#58c7ff!important;box-shadow:0 0 22px rgba(88,199,255,.14)!important;transform:translateY(-1px)!important}.stButton>button[kind="primary"],.stButton>button[data-testid="baseButton-primary"]{background:linear-gradient(135deg,#178dd0,#58c7ff)!important;color:#04111b!important;border:0!important;font-weight:900!important}\n[data-testid="stMetric"]{background:linear-gradient(145deg,#0d1727,#0a111d)!important;border:1px solid #263a52!important;color:#fff!important;box-shadow:0 18px 55px rgba(0,0,0,.34)!important}[data-testid="stMetricLabel"],[data-testid="stMetricValue"]{color:#fff!important}.stAlert{background:#0d1727!important;border-color:#2c4560!important;color:#fff!important}\n.dacre-page-chrome{background:linear-gradient(145deg,#0c1524,#09111d)!important;border-color:#263b54!important;box-shadow:0 18px 55px rgba(0,0,0,.34)!important}.dacre-page-chrome:before{background:linear-gradient(180deg,#58c7ff,#ff9f43,#b9784f)!important}.dacre-page-chrome .page-kicker{color:#79d3ff!important}.dacre-page-chrome .page-title{color:#fff!important}.dacre-page-chrome .page-subtitle{color:#aabbd0!important}.dacre-page-chrome .page-icon{background:#0d1b2d!important;color:#58c7ff!important;border-color:#31506d!important}\n.chrome-pill{background:#102d24!important;color:#78f0b0!important;border-color:#276448!important}.chrome-pill.soft{background:#151d2a!important;color:#b7c6d8!important;border-color:#2a3c53!important}.dacre-quickbar{background:linear-gradient(90deg,#05080e,#0d1725 65%,#13253a)!important;border:1px solid #263e58!important}\n.user-dash,.user-kpi,.user-work-card,.notice-card{background:#0b1422!important;border-color:#263b54!important;box-shadow:0 18px 55px rgba(0,0,0,.34)!important}.user-dash h1,.user-dash h2,.user-dash h3,.user-dash b,.user-kpi b,.user-work-card h3{color:#fff!important}.user-dash p,.user-kpi span,.user-work-card p{color:#b1bfd0!important}\n.dacre-dark-section{background:linear-gradient(145deg,#0b1422,#101b2b);border:1px solid #2a405b;border-radius:20px;padding:22px;box-shadow:0 18px 55px rgba(0,0,0,.34)}.dacre-section-blue{border-left:5px solid #58c7ff!important}.dacre-section-orange{border-left:5px solid #ff9f43!important}.dacre-section-copper{border-left:5px solid #b9784f!important}\n</style>\n', unsafe_allow_html=True)
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance, ImageOps, ImageChops; import requests
 import yfinance as yf; import plotly.graph_objects as go
 import plotly.express as px; from plotly.subplots import make_subplots
@@ -571,107 +388,33 @@ def _core_di_technology_seed():
     ]
 def _ensure_core_tables(con):
     ddl = {
-        "companies": """CREATE TABLE IF NOT EXISTS companies (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL,
-            owner_username TEXT, admin_password_hash TEXT, website_url TEXT, created_at TEXT)""",
-        "users": """CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, first_name TEXT, last_name TEXT,
-            username TEXT UNIQUE NOT NULL, company_name TEXT, email TEXT UNIQUE,
-            email_password TEXT, password_hash TEXT, passkey_hash TEXT, role TEXT DEFAULT 'user',
-            login_count INTEGER DEFAULT 0, created_at TEXT, last_login TEXT)""",
-        "files": """CREATE TABLE IF NOT EXISTS files (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, company_name TEXT,
-            filename TEXT, file_type TEXT, file_json TEXT, created_at TEXT)""",
-        "projects": """CREATE TABLE IF NOT EXISTS projects (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, company_name TEXT,
-            project_name TEXT, active_filename TEXT, raw_json TEXT, processed_json TEXT,
-            formula_logs TEXT, chart_config TEXT, updated_at TEXT)""",
-        "activity": """CREATE TABLE IF NOT EXISTS activity (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, company_name TEXT,
-            action TEXT, created_at TEXT)""",
-        "company_website_profile": """CREATE TABLE IF NOT EXISTS company_website_profile (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT UNIQUE, website_url TEXT,
-            page_title TEXT, description TEXT, headings TEXT, summary TEXT,
-            theme_primary TEXT, theme_accent TEXT, theme_background TEXT, theme_text TEXT,
-            fetched_at TEXT, fetch_status TEXT)""",
-        "public_visits": """CREATE TABLE IF NOT EXISTS public_visits (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, visitor_id TEXT, event_type TEXT,
-            page_name TEXT, referrer TEXT, created_at TEXT)""",
-        "emails_log": """CREATE TABLE IF NOT EXISTS emails_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, recipient_email TEXT, recipient_name TEXT,
-            company_name TEXT, subject TEXT, body TEXT, sender_email TEXT, status TEXT, sent_at TEXT)""",
-        "notifications": """CREATE TABLE IF NOT EXISTS notifications (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT, username TEXT,
-            event_type TEXT, message TEXT, is_read INTEGER DEFAULT 0, created_at TEXT)""",
-        "chat_history": """CREATE TABLE IF NOT EXISTS chat_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, company_name TEXT,
-            role TEXT, sender TEXT, message TEXT, created_at TEXT)""",
-        "loan_clients": """CREATE TABLE IF NOT EXISTS loan_clients (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, company_name TEXT,
-            client_name TEXT, whatsapp_number TEXT, loan_amount REAL, lent_date TEXT,
-            due_date TEXT, created_at TEXT, updated_at TEXT)""",
-        "whatsapp_delivery_log": """CREATE TABLE IF NOT EXISTS whatsapp_delivery_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, loan_id INTEGER, company_name TEXT,
-            client_name TEXT, phone TEXT, reminder_type TEXT, template_name TEXT,
-            message_id TEXT, status TEXT, response TEXT, created_at TEXT)""",
-        "di_memory": """CREATE TABLE IF NOT EXISTS di_memory (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL DEFAULT '',
-            category TEXT, title TEXT, content TEXT, priority INTEGER DEFAULT 1000,
-            active INTEGER DEFAULT 1, created_at TEXT, updated_at TEXT)""",
-        "di_agents": """CREATE TABLE IF NOT EXISTS di_agents (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, di_name TEXT UNIQUE NOT NULL, di_code TEXT,
-            specialty TEXT, status TEXT DEFAULT 'Available', assigned_company TEXT,
-            system_role TEXT, avatar_url TEXT, voice_profile TEXT, thinking_style TEXT,
-            position_title TEXT DEFAULT 'DI Specialist', rank_level INTEGER DEFAULT 1,
-            appointed_at TEXT, appointed_by TEXT, created_by TEXT, created_at TEXT, last_active TEXT)""",
-        "di_private_memory": """CREATE TABLE IF NOT EXISTS di_private_memory (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, di_id INTEGER NOT NULL, title TEXT,
-            content TEXT, source TEXT DEFAULT 'master', created_by TEXT, created_at TEXT,
-            updated_at TEXT, active INTEGER DEFAULT 1)""",
-        "di_research_store": """CREATE TABLE IF NOT EXISTS di_research_store (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            company_name TEXT NOT NULL DEFAULT '',
-            di_id INTEGER,
-            di_name TEXT NOT NULL DEFAULT 'DI',
-            question TEXT NOT NULL,
-            answer TEXT NOT NULL,
-            source TEXT NOT NULL DEFAULT 'local',
-            server_endpoint TEXT DEFAULT '',
-            created_at TEXT NOT NULL,
-            last_accessed TEXT NOT NULL
-        )""",
-        "di_position_history": """CREATE TABLE IF NOT EXISTS di_position_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, di_id INTEGER, old_position TEXT,
-            new_position TEXT, old_rank INTEGER, new_rank INTEGER, appointed_by TEXT, created_at TEXT)""",
-        "di_master_thanks": """CREATE TABLE IF NOT EXISTS di_master_thanks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, di_id INTEGER, message TEXT, created_at TEXT)""",
-        "sovereign_calls": """CREATE TABLE IF NOT EXISTS sovereign_calls (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, room_name TEXT UNIQUE, title TEXT,
-            host_username TEXT, created_at TEXT, ended_at TEXT, status TEXT DEFAULT 'active')""",
-        "sovereign_call_members": """CREATE TABLE IF NOT EXISTS sovereign_call_members (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, call_id INTEGER, di_id INTEGER,
-            joined_at TEXT, left_at TEXT)""",
-        "sovereign_call_messages": """CREATE TABLE IF NOT EXISTS sovereign_call_messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, call_id INTEGER, speaker_type TEXT,
-            speaker_id TEXT, speaker_name TEXT, message TEXT, created_at TEXT)""",
-        "david_creations": """CREATE TABLE IF NOT EXISTS david_creations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, category TEXT, title TEXT, content TEXT,
-            created_at TEXT, updated_at TEXT)""",
-        "call_rooms": """CREATE TABLE IF NOT EXISTS call_rooms (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT, room_name TEXT,
-            title TEXT, host_username TEXT, mode TEXT DEFAULT 'team', created_at TEXT)""",
-        "call_participants": """CREATE TABLE IF NOT EXISTS call_participants (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, room_name TEXT, username TEXT,
-            display_name TEXT, joined_at TEXT, left_at TEXT)""",
-        "decision_ledger": """CREATE TABLE IF NOT EXISTS decision_ledger (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT, username TEXT,
-            decision TEXT, context TEXT, expected_outcome TEXT, result TEXT, created_at TEXT)""",
-        "opportunity_radar": """CREATE TABLE IF NOT EXISTS opportunity_radar (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT, title TEXT,
-            description TEXT, score REAL, created_at TEXT)""",
-        "di_action_log": """CREATE TABLE IF NOT EXISTS di_action_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT, username TEXT,
-            agent_name TEXT, action_type TEXT, request TEXT, result TEXT, created_at TEXT)""",
+        "companies": 'CREATE TABLE IF NOT EXISTS companies (\n            id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL,\n            owner_username TEXT, admin_password_hash TEXT, website_url TEXT, created_at TEXT)',
+        "users": "CREATE TABLE IF NOT EXISTS users (\n            id INTEGER PRIMARY KEY AUTOINCREMENT, first_name TEXT, last_name TEXT,\n            username TEXT UNIQUE NOT NULL, company_name TEXT, email TEXT UNIQUE,\n            email_password TEXT, password_hash TEXT, passkey_hash TEXT, role TEXT DEFAULT 'user',\n            login_count INTEGER DEFAULT 0, created_at TEXT, last_login TEXT)",
+        "files": 'CREATE TABLE IF NOT EXISTS files (\n            id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, company_name TEXT,\n            filename TEXT, file_type TEXT, file_json TEXT, created_at TEXT)',
+        "projects": 'CREATE TABLE IF NOT EXISTS projects (\n            id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, company_name TEXT,\n            project_name TEXT, active_filename TEXT, raw_json TEXT, processed_json TEXT,\n            formula_logs TEXT, chart_config TEXT, updated_at TEXT)',
+        "activity": 'CREATE TABLE IF NOT EXISTS activity (\n            id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, company_name TEXT,\n            action TEXT, created_at TEXT)',
+        "company_website_profile": 'CREATE TABLE IF NOT EXISTS company_website_profile (\n            id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT UNIQUE, website_url TEXT,\n            page_title TEXT, description TEXT, headings TEXT, summary TEXT,\n            theme_primary TEXT, theme_accent TEXT, theme_background TEXT, theme_text TEXT,\n            fetched_at TEXT, fetch_status TEXT)',
+        "public_visits": 'CREATE TABLE IF NOT EXISTS public_visits (\n            id INTEGER PRIMARY KEY AUTOINCREMENT, visitor_id TEXT, event_type TEXT,\n            page_name TEXT, referrer TEXT, created_at TEXT)',
+        "emails_log": 'CREATE TABLE IF NOT EXISTS emails_log (\n            id INTEGER PRIMARY KEY AUTOINCREMENT, recipient_email TEXT, recipient_name TEXT,\n            company_name TEXT, subject TEXT, body TEXT, sender_email TEXT, status TEXT, sent_at TEXT)',
+        "notifications": 'CREATE TABLE IF NOT EXISTS notifications (\n            id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT, username TEXT,\n            event_type TEXT, message TEXT, is_read INTEGER DEFAULT 0, created_at TEXT)',
+        "chat_history": 'CREATE TABLE IF NOT EXISTS chat_history (\n            id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, company_name TEXT,\n            role TEXT, sender TEXT, message TEXT, created_at TEXT)',
+        "loan_clients": 'CREATE TABLE IF NOT EXISTS loan_clients (\n            id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, company_name TEXT,\n            client_name TEXT, whatsapp_number TEXT, loan_amount REAL, lent_date TEXT,\n            due_date TEXT, created_at TEXT, updated_at TEXT)',
+        "whatsapp_delivery_log": 'CREATE TABLE IF NOT EXISTS whatsapp_delivery_log (\n            id INTEGER PRIMARY KEY AUTOINCREMENT, loan_id INTEGER, company_name TEXT,\n            client_name TEXT, phone TEXT, reminder_type TEXT, template_name TEXT,\n            message_id TEXT, status TEXT, response TEXT, created_at TEXT)',
+        "di_memory": "CREATE TABLE IF NOT EXISTS di_memory (\n            id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL DEFAULT '',\n            category TEXT, title TEXT, content TEXT, priority INTEGER DEFAULT 1000,\n            active INTEGER DEFAULT 1, created_at TEXT, updated_at TEXT)",
+        "di_agents": "CREATE TABLE IF NOT EXISTS di_agents (\n            id INTEGER PRIMARY KEY AUTOINCREMENT, di_name TEXT UNIQUE NOT NULL, di_code TEXT,\n            specialty TEXT, status TEXT DEFAULT 'Available', assigned_company TEXT,\n            system_role TEXT, avatar_url TEXT, voice_profile TEXT, thinking_style TEXT,\n            position_title TEXT DEFAULT 'DI Specialist', rank_level INTEGER DEFAULT 1,\n            appointed_at TEXT, appointed_by TEXT, created_by TEXT, created_at TEXT, last_active TEXT)",
+        "di_private_memory": "CREATE TABLE IF NOT EXISTS di_private_memory (\n            id INTEGER PRIMARY KEY AUTOINCREMENT, di_id INTEGER NOT NULL, title TEXT,\n            content TEXT, source TEXT DEFAULT 'master', created_by TEXT, created_at TEXT,\n            updated_at TEXT, active INTEGER DEFAULT 1)",
+        "di_research_store": "CREATE TABLE IF NOT EXISTS di_research_store (\n            id INTEGER PRIMARY KEY AUTOINCREMENT,\n            company_name TEXT NOT NULL DEFAULT '',\n            di_id INTEGER,\n            di_name TEXT NOT NULL DEFAULT 'DI',\n            question TEXT NOT NULL,\n            answer TEXT NOT NULL,\n            source TEXT NOT NULL DEFAULT 'local',\n            server_endpoint TEXT DEFAULT '',\n            created_at TEXT NOT NULL,\n            last_accessed TEXT NOT NULL\n        )",
+        "di_position_history": 'CREATE TABLE IF NOT EXISTS di_position_history (\n            id INTEGER PRIMARY KEY AUTOINCREMENT, di_id INTEGER, old_position TEXT,\n            new_position TEXT, old_rank INTEGER, new_rank INTEGER, appointed_by TEXT, created_at TEXT)',
+        "di_master_thanks": 'CREATE TABLE IF NOT EXISTS di_master_thanks (\n            id INTEGER PRIMARY KEY AUTOINCREMENT, di_id INTEGER, message TEXT, created_at TEXT)',
+        "sovereign_calls": "CREATE TABLE IF NOT EXISTS sovereign_calls (\n            id INTEGER PRIMARY KEY AUTOINCREMENT, room_name TEXT UNIQUE, title TEXT,\n            host_username TEXT, created_at TEXT, ended_at TEXT, status TEXT DEFAULT 'active')",
+        "sovereign_call_members": 'CREATE TABLE IF NOT EXISTS sovereign_call_members (\n            id INTEGER PRIMARY KEY AUTOINCREMENT, call_id INTEGER, di_id INTEGER,\n            joined_at TEXT, left_at TEXT)',
+        "sovereign_call_messages": 'CREATE TABLE IF NOT EXISTS sovereign_call_messages (\n            id INTEGER PRIMARY KEY AUTOINCREMENT, call_id INTEGER, speaker_type TEXT,\n            speaker_id TEXT, speaker_name TEXT, message TEXT, created_at TEXT)',
+        "david_creations": 'CREATE TABLE IF NOT EXISTS david_creations (\n            id INTEGER PRIMARY KEY AUTOINCREMENT, category TEXT, title TEXT, content TEXT,\n            created_at TEXT, updated_at TEXT)',
+        "call_rooms": "CREATE TABLE IF NOT EXISTS call_rooms (\n            id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT, room_name TEXT,\n            title TEXT, host_username TEXT, mode TEXT DEFAULT 'team', created_at TEXT)",
+        "call_participants": 'CREATE TABLE IF NOT EXISTS call_participants (\n            id INTEGER PRIMARY KEY AUTOINCREMENT, room_name TEXT, username TEXT,\n            display_name TEXT, joined_at TEXT, left_at TEXT)',
+        "decision_ledger": 'CREATE TABLE IF NOT EXISTS decision_ledger (\n            id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT, username TEXT,\n            decision TEXT, context TEXT, expected_outcome TEXT, result TEXT, created_at TEXT)',
+        "opportunity_radar": 'CREATE TABLE IF NOT EXISTS opportunity_radar (\n            id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT, title TEXT,\n            description TEXT, score REAL, created_at TEXT)',
+        "di_action_log": 'CREATE TABLE IF NOT EXISTS di_action_log (\n            id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT, username TEXT,\n            agent_name TEXT, action_type TEXT, request TEXT, result TEXT, created_at TEXT)',
     }
     for sql in ddl.values():
         con.execute(sql)
@@ -713,9 +456,7 @@ def ensure_master():
     try:
         now = datetime.now().isoformat(timespec="seconds"); row = con.execute("SELECT id FROM users WHERE username=?", (MASTER_USERNAME,)).fetchone()
         if not row:
-            con.execute("""INSERT INTO users
-                (first_name,last_name,username,company_name,email,password_hash,passkey_hash,role,login_count,created_at)
-                VALUES(?,?,?,?,?,?,?,?,?,?)""",
+            con.execute('INSERT INTO users\n                (first_name,last_name,username,company_name,email,password_hash,passkey_hash,role,login_count,created_at)\n                VALUES(?,?,?,?,?,?,?,?,?,?)',
                 ("David","Emenike",MASTER_USERNAME,"DACRE MASTER","master@dacre.local",
                  hash_password(MASTER_PASSKEY),hash_password(MASTER_PASSKEY),"master",0,now))
         con.execute("INSERT OR IGNORE INTO companies(name,owner_username,created_at) VALUES(?,?,?)",
@@ -749,19 +490,7 @@ def ensure_runtime_schema():
             con.execute("ALTER TABLE chat_history ADD COLUMN sender TEXT")
         if "role" not in cols:
             con.execute("ALTER TABLE chat_history ADD COLUMN role TEXT")
-        con.execute("""
-            UPDATE chat_history
-            SET sender = CASE
-                WHEN sender IS NULL OR TRIM(sender) = '' THEN
-                    CASE
-                        WHEN LOWER(COALESCE(role,'')) IN ('assistant','di','ai') THEN 'DI'
-                        WHEN LOWER(COALESCE(role,'')) IN ('user','human') THEN 'User'
-                        ELSE COALESCE(role, 'User')
-                    END
-                ELSE sender
-            END
-            WHERE sender IS NULL OR TRIM(sender) = ''
-        """)
+        con.execute("\n            UPDATE chat_history\n            SET sender = CASE\n                WHEN sender IS NULL OR TRIM(sender) = '' THEN\n                    CASE\n                        WHEN LOWER(COALESCE(role,'')) IN ('assistant','di','ai') THEN 'DI'\n                        WHEN LOWER(COALESCE(role,'')) IN ('user','human') THEN 'User'\n                        ELSE COALESCE(role, 'User')\n                    END\n                ELSE sender\n            END\n            WHERE sender IS NULL OR TRIM(sender) = ''\n        ")
         con.execute("CREATE INDEX IF NOT EXISTS idx_chat_history_user_company ON chat_history(username, company_name, id)"); con.execute("CREATE INDEX IF NOT EXISTS idx_di_research_store_company ON di_research_store(company_name, id)")
         con.execute("CREATE INDEX IF NOT EXISTS idx_di_research_store_di ON di_research_store(di_id, id)"); con.commit()
     finally:
@@ -779,9 +508,7 @@ def _seed_memory_rows(company_name="", extra_rows=None):
                 (company_name, category, title)
             ).fetchone()
             if not exists:
-                con.execute("""INSERT INTO di_memory
-                    (company_name,category,title,content,priority,active,created_at,updated_at)
-                    VALUES(?,?,?,?,?,?,?,?)""",
+                con.execute('INSERT INTO di_memory\n                    (company_name,category,title,content,priority,active,created_at,updated_at)\n                    VALUES(?,?,?,?,?,?,?,?)',
                     (company_name, category, title, content, int(priority), 1, now, now))
         con.commit()
     finally:
@@ -812,15 +539,11 @@ def get_di_memory(limit=80, query=""):
     try:
         if company_name:
             rows = con.execute(
-                """SELECT id,company_name,category,title,content,priority,active,created_at,updated_at
-                   FROM di_memory
-                   WHERE active=1 AND (company_name='' OR lower(company_name)=lower(?))
-                   ORDER BY priority DESC,id ASC""", (company_name,)
+                "SELECT id,company_name,category,title,content,priority,active,created_at,updated_at\n                   FROM di_memory\n                   WHERE active=1 AND (company_name='' OR lower(company_name)=lower(?))\n                   ORDER BY priority DESC,id ASC", (company_name,)
             ).fetchall()
         else:
             rows = con.execute(
-                """SELECT id,company_name,category,title,content,priority,active,created_at,updated_at
-                   FROM di_memory WHERE active=1 ORDER BY priority DESC,id ASC"""
+                'SELECT id,company_name,category,title,content,priority,active,created_at,updated_at\n                   FROM di_memory WHERE active=1 ORDER BY priority DESC,id ASC'
             ).fetchall()
     finally:
         con.close()
@@ -937,11 +660,7 @@ def send_di_welcome_email(first_name, last_name, company_name, email, email_pass
     if not sent_provider and statuses:
         status = "NOT SENT — configured mail providers failed (" + "; ".join(statuses) + ")"
     con = db()
-    con.execute("""
-        INSERT INTO emails_log
-        (recipient_email, recipient_name, company_name, subject, body, sender_email, status, sent_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
+    con.execute('\n        INSERT INTO emails_log\n        (recipient_email, recipient_name, company_name, subject, body, sender_email, status, sent_at)\n        VALUES (?, ?, ?, ?, ?, ?, ?, ?)\n    ', (
         email, full_name, company_name, subject, body, sender, status,
         datetime.now().isoformat(timespec="seconds"),
     ))
@@ -1040,12 +759,7 @@ def ensure_company_di(company_name):
         code = "DI-ORG-" + re.sub(r"[^A-Z0-9]+", "-", company_name.upper()).strip("-")[:26]
         while con.execute("SELECT 1 FROM di_agents WHERE di_code=?", (code,)).fetchone():
             code += "-ORG"
-        con.execute("""
-            INSERT INTO di_agents
-            (di_name, di_code, specialty, status, assigned_company, system_role,
-             avatar_url, voice_profile, thinking_style, created_by, created_at, last_active)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
-        """, (
+        con.execute('\n            INSERT INTO di_agents\n            (di_name, di_code, specialty, status, assigned_company, system_role,\n             avatar_url, voice_profile, thinking_style, created_by, created_at, last_active)\n            VALUES(?,?,?,?,?,?,?,?,?,?,?,?)\n        ', (
             name, code, "Company Intelligence", "Assigned", company_name,
             "Know the customer's business, website context and workspace data; answer with evidence first.",
             "", "en-NG", "Practical, business-aware, evidence-first and company-specific.",
@@ -1072,24 +786,7 @@ def _store_website_memory(company_name, profile, di_name):
                 "VALUES(?,?,?,?,?,?,?,?)",
                 (company_name, cat, title, content, 850, 1, now, now)
             )
-        con.execute("""
-            INSERT INTO company_website_profile
-            (company_name, website_url, page_title, description, headings, summary,
-             theme_primary, theme_accent, theme_background, theme_text, fetched_at, fetch_status)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
-            ON CONFLICT(company_name) DO UPDATE SET
-                website_url=excluded.website_url,
-                page_title=excluded.page_title,
-                description=excluded.description,
-                headings=excluded.headings,
-                summary=excluded.summary,
-                theme_primary=excluded.theme_primary,
-                theme_accent=excluded.theme_accent,
-                theme_background=excluded.theme_background,
-                theme_text=excluded.theme_text,
-                fetched_at=excluded.fetched_at,
-                fetch_status=excluded.fetch_status
-        """, (
+        con.execute('\n            INSERT INTO company_website_profile\n            (company_name, website_url, page_title, description, headings, summary,\n             theme_primary, theme_accent, theme_background, theme_text, fetched_at, fetch_status)\n            VALUES(?,?,?,?,?,?,?,?,?,?,?,?)\n            ON CONFLICT(company_name) DO UPDATE SET\n                website_url=excluded.website_url,\n                page_title=excluded.page_title,\n                description=excluded.description,\n                headings=excluded.headings,\n                summary=excluded.summary,\n                theme_primary=excluded.theme_primary,\n                theme_accent=excluded.theme_accent,\n                theme_background=excluded.theme_background,\n                theme_text=excluded.theme_text,\n                fetched_at=excluded.fetched_at,\n                fetch_status=excluded.fetch_status\n        ', (
             company_name,
             profile.get("website_url", ""),
             profile.get("page_title", ""),
@@ -1268,11 +965,7 @@ def create_account(first, last, company, email, email_password, passkey, website
             cur.execute("INSERT INTO companies(name,owner_username,admin_password_hash,created_at) VALUES (?,?,?,?)",
                         (company_clean, username_clean, hash_password(passkey_clean), now))
             role = "company_admin"
-        cur.execute("""
-            INSERT INTO users
-            (first_name,last_name,username,company_name,email,email_password,password_hash,passkey_hash,role,login_count,created_at,last_login)
-            VALUES (?,?,?,?,?,?,?,?,?,1,?,?)
-        """, (
+        cur.execute('\n            INSERT INTO users\n            (first_name,last_name,username,company_name,email,email_password,password_hash,passkey_hash,role,login_count,created_at,last_login)\n            VALUES (?,?,?,?,?,?,?,?,?,1,?,?)\n        ', (
             first_clean, last_clean, username_clean, company_clean, email_clean, "",
             hash_password(passkey_clean), hash_password(passkey_clean), role, now, now,
         ))
@@ -1334,27 +1027,8 @@ def _log_whatsapp_delivery(loan_id, company, client_name, phone, reminder_type, 
             con.execute("PRAGMA journal_mode = WAL;")
         except Exception:
             pass
-        con.execute("""
-            CREATE TABLE IF NOT EXISTS whatsapp_delivery_log (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                loan_id INTEGER,
-                company_name TEXT NOT NULL DEFAULT '',
-                client_name TEXT NOT NULL DEFAULT '',
-                whatsapp_number TEXT NOT NULL DEFAULT '',
-                reminder_type TEXT NOT NULL DEFAULT '',
-                template_name TEXT,
-                message_id TEXT,
-                status TEXT NOT NULL DEFAULT '',
-                response TEXT,
-                created_at TEXT NOT NULL DEFAULT ''
-            )
-        """)
-        con.execute("""
-            INSERT INTO whatsapp_delivery_log
-            (loan_id, company_name, client_name, whatsapp_number, reminder_type,
-             template_name, message_id, status, response, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
+        con.execute("\n            CREATE TABLE IF NOT EXISTS whatsapp_delivery_log (\n                id INTEGER PRIMARY KEY AUTOINCREMENT,\n                loan_id INTEGER,\n                company_name TEXT NOT NULL DEFAULT '',\n                client_name TEXT NOT NULL DEFAULT '',\n                whatsapp_number TEXT NOT NULL DEFAULT '',\n                reminder_type TEXT NOT NULL DEFAULT '',\n                template_name TEXT,\n                message_id TEXT,\n                status TEXT NOT NULL DEFAULT '',\n                response TEXT,\n                created_at TEXT NOT NULL DEFAULT ''\n            )\n        ")
+        con.execute('\n            INSERT INTO whatsapp_delivery_log\n            (loan_id, company_name, client_name, whatsapp_number, reminder_type,\n             template_name, message_id, status, response, created_at)\n            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n        ', (
             loan_id, company, client_name, phone, reminder_type,
             template_name, message_id, status, str(response)[:4000],
             datetime.now().isoformat(timespec="seconds"),
@@ -1411,11 +1085,7 @@ def add_loan_client(username, company, client_name, whatsapp_number, loan_amount
         return False, "The due date cannot be earlier than the lending date."
     now = datetime.now().isoformat(timespec="seconds"); con = db()
     try:
-        con.execute("""
-            INSERT INTO loan_clients
-            (username, company_name, client_name, whatsapp_number, loan_amount, lent_date, due_date, created_at, updated_at)
-            VALUES(?,?,?,?,?,?,?,?,?)
-        """, (
+        con.execute('\n            INSERT INTO loan_clients\n            (username, company_name, client_name, whatsapp_number, loan_amount, lent_date, due_date, created_at, updated_at)\n            VALUES(?,?,?,?,?,?,?,?,?)\n        ', (
             username, company, client_name, phone, float(loan_amount or 0),
             str(lent_date), str(due_date), now, now
         ))
@@ -1515,19 +1185,9 @@ def save_project(user, raw_df, processed_df, filename, logs, chart_config=None):
         datetime.now().isoformat(timespec="seconds")
     )
     if existing:
-        con.execute("""
-            UPDATE projects SET
-                project_name=?, active_filename=?, raw_json=?, processed_json=?,
-                formula_logs=?, chart_config=?, updated_at=?
-            WHERE id=?
-        """, (*payload[2:], existing["id"]))
+        con.execute('\n            UPDATE projects SET\n                project_name=?, active_filename=?, raw_json=?, processed_json=?,\n                formula_logs=?, chart_config=?, updated_at=?\n            WHERE id=?\n        ', (*payload[2:], existing["id"]))
     else:
-        con.execute("""
-            INSERT INTO projects
-            (username, company_name, project_name, active_filename, raw_json, processed_json,
-             formula_logs, chart_config, updated_at)
-            VALUES(?,?,?,?,?,?,?,?,?)
-        """, payload)
+        con.execute('\n            INSERT INTO projects\n            (username, company_name, project_name, active_filename, raw_json, processed_json,\n             formula_logs, chart_config, updated_at)\n            VALUES(?,?,?,?,?,?,?,?,?)\n        ', payload)
     con.commit(); con.close()
 def restore_project(user):
     con = db()
@@ -2055,11 +1715,7 @@ def chibobec_login_monitor():
     con = db()
     try:
         users = pd.read_sql_query(
-            """SELECT id, first_name, last_name, username, company_name, email, role,
-                      login_count, created_at, last_login
-               FROM users
-               WHERE lower(company_name) LIKE '%chibobec%'
-               ORDER BY CASE WHEN last_login IS NULL THEN 1 ELSE 0 END, last_login DESC, id DESC""",
+            "SELECT id, first_name, last_name, username, company_name, email, role,\n                      login_count, created_at, last_login\n               FROM users\n               WHERE lower(company_name) LIKE '%chibobec%'\n               ORDER BY CASE WHEN last_login IS NULL THEN 1 ELSE 0 END, last_login DESC, id DESC",
             con,
         )
         if users.empty:
@@ -2197,22 +1853,9 @@ def seed_named_di_workforce():
         for name, specialty, role, style, voice, avatar, position, rank in roster:
             row = con.execute("SELECT id FROM di_agents WHERE di_name=?", (name,)).fetchone(); code = "DI-" + re.sub(r"[^A-Z0-9]+", "-", name.upper()).strip("-")
             if row:
-                con.execute("""
-                    UPDATE di_agents SET 
-                        di_code=?, specialty=?, system_role=?, avatar_url=?, voice_profile=?,
-                        thinking_style=?, position_title=?, rank_level=?,
-                        status=CASE WHEN status='Archived' THEN 'Available' ELSE status END,
-                        last_active=? 
-                    WHERE id=?
-                """, (code, specialty, role, avatar, voice, style, position, rank, now, int(row["id"])))
+                con.execute("\n                    UPDATE di_agents SET \n                        di_code=?, specialty=?, system_role=?, avatar_url=?, voice_profile=?,\n                        thinking_style=?, position_title=?, rank_level=?,\n                        status=CASE WHEN status='Archived' THEN 'Available' ELSE status END,\n                        last_active=? \n                    WHERE id=?\n                ", (code, specialty, role, avatar, voice, style, position, rank, now, int(row["id"])))
             else:
-                con.execute("""
-                    INSERT INTO di_agents
-                    (di_name, di_code, specialty, status, assigned_company, system_role,
-                     avatar_url, voice_profile, thinking_style, position_title, rank_level,
-                     appointed_at, appointed_by, created_by, created_at, last_active)
-                    VALUES(?,?,?,?,'Available',NULL,?,?,?,?,?,?,?,?,?,?)
-                """, (name, code, specialty, role, avatar, voice, style, position, rank, now, MASTER_USERNAME, MASTER_USERNAME, now, now))
+                con.execute("\n                    INSERT INTO di_agents\n                    (di_name, di_code, specialty, status, assigned_company, system_role,\n                     avatar_url, voice_profile, thinking_style, position_title, rank_level,\n                     appointed_at, appointed_by, created_by, created_at, last_active)\n                    VALUES(?,?,?,?,'Available',NULL,?,?,?,?,?,?,?,?,?,?)\n                ", (name, code, specialty, role, avatar, voice, style, position, rank, now, MASTER_USERNAME, MASTER_USERNAME, now, now))
         target_names = {r[0] for r in roster}
         for row in con.execute("SELECT id,di_name,assigned_company FROM di_agents").fetchall():
             if row["di_name"] not in target_names and not (row["assigned_company"] or "").strip():
@@ -2384,11 +2027,7 @@ def save_di_private_memory(di_id, title, content, created_by=MASTER_USERNAME, so
         return False
     now = datetime.now().isoformat(timespec="seconds"); con = db()
     try:
-        con.execute("""
-            INSERT INTO di_private_memory
-            (di_id, title, content, source, created_by, created_at, updated_at, active)
-            VALUES(?,?,?,?,?,?,?,1)
-        """, (int(di_id), title, content, source, created_by, now, now))
+        con.execute('\n            INSERT INTO di_private_memory\n            (di_id, title, content, source, created_by, created_at, updated_at, active)\n            VALUES(?,?,?,?,?,?,?,1)\n        ', (int(di_id), title, content, source, created_by, now, now))
         con.commit(); return True
     finally:
         con.close()
@@ -2399,18 +2038,8 @@ def update_di_position(di_id, position_title, rank_level, assigned_company=None)
         if not row:
             return False, "DI worker not found."
         position_title = (position_title or "DI Specialist").strip() or "DI Specialist"; rank_level = int(rank_level)
-        con.execute("""
-            UPDATE di_agents SET 
-                position_title=?, rank_level=?, 
-                assigned_company=COALESCE(?, assigned_company),
-                appointed_at=?, appointed_by=? 
-            WHERE id=?
-        """, (position_title, rank_level, assigned_company, datetime.now().isoformat(timespec="seconds"), MASTER_USERNAME, int(di_id)))
-        con.execute("""
-            INSERT INTO di_position_history
-            (di_id, old_position, new_position, old_rank, new_rank, appointed_by, created_at)
-            VALUES(?,?,?,?,?,?,?)
-        """, (int(di_id), row["position_title"] or "", position_title, int(row["rank_level"] or 1), rank_level, MASTER_USERNAME, datetime.now().isoformat(timespec="seconds")))
+        con.execute('\n            UPDATE di_agents SET \n                position_title=?, rank_level=?, \n                assigned_company=COALESCE(?, assigned_company),\n                appointed_at=?, appointed_by=? \n            WHERE id=?\n        ', (position_title, rank_level, assigned_company, datetime.now().isoformat(timespec="seconds"), MASTER_USERNAME, int(di_id)))
+        con.execute('\n            INSERT INTO di_position_history\n            (di_id, old_position, new_position, old_rank, new_rank, appointed_by, created_at)\n            VALUES(?,?,?,?,?,?,?)\n        ', (int(di_id), row["position_title"] or "", position_title, int(row["rank_level"] or 1), rank_level, MASTER_USERNAME, datetime.now().isoformat(timespec="seconds")))
         thank = f"Thank you, Master David, for trusting me with the position of {position_title} (Rank {rank_level}). I will honor the responsibility and contribute my specialty to DACRE."; con.execute("INSERT INTO di_master_thanks(di_id, message, created_at) VALUES(?,?,?)", (int(di_id), thank, datetime.now().isoformat(timespec="seconds")))
         con.commit(); return True, thank
     finally:
@@ -2477,13 +2106,7 @@ def create_di_agent(name, specialty, status="Available", assigned_company="", sy
     now = datetime.now().isoformat(timespec="seconds"); slug = re.sub(r"[^A-Z0-9]+", "-", name.upper()).strip("-") or "DI"
     code = f"DI-{slug[:24]}-{datetime.now().strftime('%H%M%S')}"; con = db()
     try:
-        con.execute("""
-            INSERT INTO di_agents
-            (di_name, di_code, specialty, status, assigned_company, system_role,
-             avatar_url, voice_profile, thinking_style, position_title, rank_level,
-             appointed_at, appointed_by, created_by, created_at, last_active)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        """, (
+        con.execute('\n            INSERT INTO di_agents\n            (di_name, di_code, specialty, status, assigned_company, system_role,\n             avatar_url, voice_profile, thinking_style, position_title, rank_level,\n             appointed_at, appointed_by, created_by, created_at, last_active)\n            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)\n        ', (
             name, code, specialty, status, assigned_company or None, system_role,
             avatar_url, gender, "professional, evidence-first and helpful",
             position_title, int(rank_level), now, MASTER_USERNAME, MASTER_USERNAME, now, now
@@ -2566,12 +2189,7 @@ def record_call_participant(room, company, ptype, pid, name):
     con.commit(); con.close()
 def create_decision(company, username, title, context, decision, expected, review_date):
     now = datetime.now().isoformat(timespec='seconds'); con = db()
-    con.execute("""
-        INSERT INTO decision_ledger
-        (company_name, username, title, context, decision, expected_outcome, review_date,
-         status, created_at, updated_at)
-        VALUES(?,?,?,?,?,?,?,'Open',?,?)
-    """, (company, username, title, context, decision, expected, review_date, now, now))
+    con.execute("\n        INSERT INTO decision_ledger\n        (company_name, username, title, context, decision, expected_outcome, review_date,\n         status, created_at, updated_at)\n        VALUES(?,?,?,?,?,?,?,'Open',?,?)\n    ", (company, username, title, context, decision, expected, review_date, now, now))
     con.commit(); con.close()
 def opportunity_radar(df, company, username):
     if df is None or df.empty:
@@ -3279,10 +2897,7 @@ def render_page_chrome(page_name, user):
     """, unsafe_allow_html=True)
 def log_di_action(user, action_type, request, result, agent_name="DI"):
     con = db()
-    con.execute("""
-        INSERT INTO di_action_log(company_name, username, agent_name, action_type, request, result, created_at)
-        VALUES(?,?,?,?,?,?,?)
-    """, (
+    con.execute('\n        INSERT INTO di_action_log(company_name, username, agent_name, action_type, request, result, created_at)\n        VALUES(?,?,?,?,?,?,?)\n    ', (
         user["company"], user["username"], agent_name, action_type, request, result,
         datetime.now().isoformat(timespec="seconds")
     ))
@@ -3290,10 +2905,7 @@ def log_di_action(user, action_type, request, result, agent_name="DI"):
 def get_recent_di_actions(user, limit=20):
     con = db()
     df = pd.read_sql_query(
-        """SELECT agent_name, action_type, request, result, created_at
-           FROM di_action_log
-           WHERE company_name=? AND username=?
-           ORDER BY id DESC LIMIT ?""",
+        'SELECT agent_name, action_type, request, result, created_at\n           FROM di_action_log\n           WHERE company_name=? AND username=?\n           ORDER BY id DESC LIMIT ?',
         con, params=(user["company"], user["username"], int(limit)),
     )
     con.close(); return df
@@ -3364,13 +2976,7 @@ def render_business_twin(df, user):
         )
 def render_action_center(user):
     df = st.session_state.get("processed_df")
-    st.markdown("""
-    <div class="action-center-banner">
-        <span>DI ACTION ENGINE</span>
-        <h2>Give DI a business outcome — not a menu to navigate.</h2>
-        <p>DI can use the same core reasoning, data analysis, memory and research capabilities available from the main Dacre workspace.</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('\n    <div class="action-center-banner">\n        <span>DI ACTION ENGINE</span>\n        <h2>Give DI a business outcome — not a menu to navigate.</h2>\n        <p>DI can use the same core reasoning, data analysis, memory and research capabilities available from the main Dacre workspace.</p>\n    </div>\n    ', unsafe_allow_html=True)
     q = st.text_area(
         "What should DI do?",
         placeholder="Analyze this dataset, investigate a business issue, draft an email, explain a formula, prepare an executive brief, research a current topic...",
@@ -3401,13 +3007,7 @@ def render_action_center(user):
     if not recent.empty:
         st.markdown("### Your DI action history"); st.dataframe(safe_dataframe_for_streamlit(recent), use_container_width=True, hide_index=True)
 def render_decision_ledger(user):
-    st.markdown("""
-    <div class="decision-banner">
-        <span>INSTITUTIONAL MEMORY</span>
-        <h2>Decisions should become company knowledge.</h2>
-        <p>Record the decision, the reason, the expected result and later the actual result. This lets DI learn from the organization's history.</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('\n    <div class="decision-banner">\n        <span>INSTITUTIONAL MEMORY</span>\n        <h2>Decisions should become company knowledge.</h2>\n        <p>Record the decision, the reason, the expected result and later the actual result. This lets DI learn from the organization\'s history.</p>\n    </div>\n    ', unsafe_allow_html=True)
     with st.form("decision_ledger_form", clear_on_submit=True):
         a, b = st.columns(2)
         with a:
@@ -3430,13 +3030,7 @@ def render_decision_ledger(user):
         st.dataframe(safe_dataframe_for_streamlit(decisions), use_container_width=True, hide_index=True)
 def render_opportunity_page(user):
     df = st.session_state.get("processed_df")
-    st.markdown("""
-    <div class="opportunity-banner">
-        <span>OPPORTUNITY RADAR</span>
-        <h2>Find upside before it becomes obvious.</h2>
-        <p>Dacre scans numeric trends in the active dataset and turns measurable changes into investigation prompts.</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('\n    <div class="opportunity-banner">\n        <span>OPPORTUNITY RADAR</span>\n        <h2>Find upside before it becomes obvious.</h2>\n        <p>Dacre scans numeric trends in the active dataset and turns measurable changes into investigation prompts.</p>\n    </div>\n    ', unsafe_allow_html=True)
     opportunities = opportunity_radar(df, user["company"], user["username"])
     if not opportunities:
         st.info("Load a dataset with enough numeric observations to generate measurable opportunity signals."); return
@@ -3474,46 +3068,7 @@ def _landing_auth_panel():
     mode = st.session_state.get("landing_mode", "home")
     if mode not in ("login", "signup"):
         return
-    st.markdown("""
-    <style>
-    .auth-anchor { scroll-margin-top: 20px; }
-    .auth-shell {
-        max-width: 980px;
-        margin: 18px auto 42px;
-        padding: 1px;
-        border-radius: 24px;
-        background: linear-gradient(135deg, rgba(91,73,255,.75), rgba(37,211,238,.55), rgba(255,255,255,.08));
-        box-shadow: 0 28px 90px rgba(0,0,0,.38);
-    }
-    .auth-inner {
-        border-radius: 23px;
-        background: #0b1020;
-        padding: 30px;
-        border: 1px solid rgba(255,255,255,.08);
-    }
-    .auth-title { color:#f7f9ff; font-size:28px; font-weight:800; letter-spacing:-.03em; }
-    .auth-sub { color:#9ba9c2; margin-top:6px; margin-bottom:20px; }
-    .auth-badge {
-        display:inline-flex;
-        align-items:center;
-        gap:8px;
-        padding:6px 10px;
-        border-radius:999px;
-        border:1px solid rgba(126,115,255,.3);
-        background:rgba(92,76,255,.10);
-        color:#bfc5ff;
-        font-size:12px;
-        font-weight:700;
-    }
-    </style>
-    <div id="dacre-auth" class="auth-anchor auth-shell">
-        <div class="auth-inner">
-            <div class="auth-badge">DI DACRE secure workspace access</div>
-            <div class="auth-title">Your DACRE workspace starts here.</div>
-            <div class="auth-sub">Sign in to your existing workspace or create your organization account without leaving the DACRE landing page.</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('\n    <style>\n    .auth-anchor { scroll-margin-top: 20px; }\n    .auth-shell {\n        max-width: 980px;\n        margin: 18px auto 42px;\n        padding: 1px;\n        border-radius: 24px;\n        background: linear-gradient(135deg, rgba(91,73,255,.75), rgba(37,211,238,.55), rgba(255,255,255,.08));\n        box-shadow: 0 28px 90px rgba(0,0,0,.38);\n    }\n    .auth-inner {\n        border-radius: 23px;\n        background: #0b1020;\n        padding: 30px;\n        border: 1px solid rgba(255,255,255,.08);\n    }\n    .auth-title { color:#f7f9ff; font-size:28px; font-weight:800; letter-spacing:-.03em; }\n    .auth-sub { color:#9ba9c2; margin-top:6px; margin-bottom:20px; }\n    .auth-badge {\n        display:inline-flex;\n        align-items:center;\n        gap:8px;\n        padding:6px 10px;\n        border-radius:999px;\n        border:1px solid rgba(126,115,255,.3);\n        background:rgba(92,76,255,.10);\n        color:#bfc5ff;\n        font-size:12px;\n        font-weight:700;\n    }\n    </style>\n    <div id="dacre-auth" class="auth-anchor auth-shell">\n        <div class="auth-inner">\n            <div class="auth-badge">DI DACRE secure workspace access</div>\n            <div class="auth-title">Your DACRE workspace starts here.</div>\n            <div class="auth-sub">Sign in to your existing workspace or create your organization account without leaving the DACRE landing page.</div>\n        </div>\n    </div>\n    ', unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 2.2, 1])
     with c2:
         tab_login, tab_signup = st.tabs(["Sign In", "Create Account"])
@@ -3627,21 +3182,7 @@ def _landing_auth_panel():
                     st.error(msg)
         if st.button("← Continue browsing DACRE", key="landing_auth_back", use_container_width=True):
             st.session_state.landing_mode = "home"; st.rerun()
-        st.markdown("""
-        <style>
-          .ceo-launcher-wrap{margin:28px auto 4px;text-align:center;opacity:.86}
-          .ceo-launcher-wrap a{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:14px;
-            border:1px solid rgba(112,132,255,.24);background:linear-gradient(145deg,rgba(28,41,74,.95),rgba(7,13,28,.95));
-            box-shadow:0 12px 34px rgba(0,0,0,.28),0 0 18px rgba(74,110,255,.10);transition:.2s ease;text-decoration:none}
-          .ceo-launcher-wrap a:hover{transform:translateY(-2px);border-color:rgba(105,145,255,.6);box-shadow:0 16px 40px rgba(0,0,0,.34),0 0 24px rgba(74,110,255,.22)}
-          .ceo-launcher-wrap img{width:28px;height:28px;object-fit:contain;border-radius:8px}
-          .ceo-launcher-caption{margin-top:7px;color:#70809b;font-size:9px;letter-spacing:.12em;text-transform:uppercase;font-weight:800}
-        </style>
-        <div class="ceo-launcher-wrap">
-          <a href="?master_gate=1" title="Private CEO Office">__CEO_LOGO__</a>
-          <div class="ceo-launcher-caption">Private CEO Office</div>
-        </div>
-        """.replace("__CEO_LOGO__", f'<img src="{_dacre_logo_data_uri()}" alt="DACRE" />'), unsafe_allow_html=True)
+        st.markdown('\n        <style>\n          .ceo-launcher-wrap{margin:28px auto 4px;text-align:center;opacity:.86}\n          .ceo-launcher-wrap a{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:14px;\n            border:1px solid rgba(112,132,255,.24);background:linear-gradient(145deg,rgba(28,41,74,.95),rgba(7,13,28,.95));\n            box-shadow:0 12px 34px rgba(0,0,0,.28),0 0 18px rgba(74,110,255,.10);transition:.2s ease;text-decoration:none}\n          .ceo-launcher-wrap a:hover{transform:translateY(-2px);border-color:rgba(105,145,255,.6);box-shadow:0 16px 40px rgba(0,0,0,.34),0 0 24px rgba(74,110,255,.22)}\n          .ceo-launcher-wrap img{width:28px;height:28px;object-fit:contain;border-radius:8px}\n          .ceo-launcher-caption{margin-top:7px;color:#70809b;font-size:9px;letter-spacing:.12em;text-transform:uppercase;font-weight:800}\n        </style>\n        <div class="ceo-launcher-wrap">\n          <a href="?master_gate=1" title="Private CEO Office">__CEO_LOGO__</a>\n          <div class="ceo-launcher-caption">Private CEO Office</div>\n        </div>\n        '.replace("__CEO_LOGO__", f'<img src="{_dacre_logo_data_uri()}" alt="DACRE" />'), unsafe_allow_html=True)
 def render_dacre_startup_loader():
     if st.session_state.get("dacre_intro_seen", False):
         return
@@ -3651,32 +3192,13 @@ def render_dacre_startup_loader():
     except Exception:
         logo_b64 = ""
     logo_html = ('<img class="dacre-startup-logo" src="data:image/png;base64,' + logo_b64 + '" alt="DACRE">' if logo_b64 else '<div class="dacre-startup-logo d">D</div>')
-    html_block = """
-    <style>
-      .dacre-startup{position:fixed;inset:0;z-index:999999;background:#02060c;display:flex;align-items:center;justify-content:center;pointer-events:none;animation:dacreFade 1s ease 5s forwards}
-      .dacre-startup-inner{text-align:center;animation:dacreLift 5s ease forwards}
-      .dacre-startup-logo{width:92px;height:92px;border-radius:24px;object-fit:contain;border:1px solid rgba(98,215,255,.55);box-shadow:0 0 26px rgba(76,207,255,.18),0 0 80px rgba(76,207,255,.12);animation:dacreFloat 1s ease-in-out infinite}
-      .dacre-startup-logo.d{display:grid;place-items:center;color:#bfeeff;font-size:36px;font-weight:950}
-      .dacre-startup-name{margin-top:18px;color:#fff;font-size:17px;font-weight:950;letter-spacing:.3em}
-      .dacre-startup-sub{margin-top:7px;color:#6e91aa;font-size:9px;letter-spacing:.16em}
-      .dacre-startup-progress{width:220px;height:3px;margin:22px auto 0;border-radius:999px;background:#0c1c29;overflow:hidden;border:1px solid #17384d}
-      .dacre-startup-progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,#35bfff,#8ee8ff);animation:dacreProgress 4s linear forwards}
-      @keyframes dacreFloat{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-14px) rotate(1deg)}}
-      @keyframes dacreProgress{to{width:100%}}
-      @keyframes dacreLift{0%,80%{transform:scale(1);opacity:1}100%{transform:scale(.96);opacity:.2}}
-      @keyframes dacreFade{to{opacity:0;visibility:hidden}}
-    </style>
-    <div class="dacre-startup"><div class="dacre-startup-inner">__LOGO__<div class="dacre-startup-name">DACRE</div><div class="dacre-startup-sub">DAVID INTELLIGENCE · ONLINE COMPANY</div><div class="dacre-startup-progress"><i></i></div></div></div>
-    """.replace('__LOGO__', logo_html)
+    html_block = '\n    <style>\n      .dacre-startup{position:fixed;inset:0;z-index:999999;background:#02060c;display:flex;align-items:center;justify-content:center;pointer-events:none;animation:dacreFade 1s ease 5s forwards}\n      .dacre-startup-inner{text-align:center;animation:dacreLift 5s ease forwards}\n      .dacre-startup-logo{width:92px;height:92px;border-radius:24px;object-fit:contain;border:1px solid rgba(98,215,255,.55);box-shadow:0 0 26px rgba(76,207,255,.18),0 0 80px rgba(76,207,255,.12);animation:dacreFloat 1s ease-in-out infinite}\n      .dacre-startup-logo.d{display:grid;place-items:center;color:#bfeeff;font-size:36px;font-weight:950}\n      .dacre-startup-name{margin-top:18px;color:#fff;font-size:17px;font-weight:950;letter-spacing:.3em}\n      .dacre-startup-sub{margin-top:7px;color:#6e91aa;font-size:9px;letter-spacing:.16em}\n      .dacre-startup-progress{width:220px;height:3px;margin:22px auto 0;border-radius:999px;background:#0c1c29;overflow:hidden;border:1px solid #17384d}\n      .dacre-startup-progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,#35bfff,#8ee8ff);animation:dacreProgress 4s linear forwards}\n      @keyframes dacreFloat{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-14px) rotate(1deg)}}\n      @keyframes dacreProgress{to{width:100%}}\n      @keyframes dacreLift{0%,80%{transform:scale(1);opacity:1}100%{transform:scale(.96);opacity:.2}}\n      @keyframes dacreFade{to{opacity:0;visibility:hidden}}\n    </style>\n    <div class="dacre-startup"><div class="dacre-startup-inner">__LOGO__<div class="dacre-startup-name">DACRE</div><div class="dacre-startup-sub">DAVID INTELLIGENCE · ONLINE COMPANY</div><div class="dacre-startup-progress"><i></i></div></div></div>\n    '.replace('__LOGO__', logo_html)
     components.html(html_block, height=0)
 def render_dacre_capability_showcase():
     fx_path = DACRE_ASSET_DIR / 'dacre_forex_dashboard.png'; st.markdown('### What DACRE can do')
     left, right = st.columns([1.05, .95])
     with left:
-        chart_html = '''
-        <div style="height:250px;border:1px solid #24455d;border-radius:18px;background:#06111b;padding:14px;color:#9bb3c8;font-family:Inter,system-ui"><b style="color:#63d7ff;font-size:10px">ONLINE MARKET INTELLIGENCE</b><canvas id="fxc" style="width:100%;height:210px"></canvas></div>
-        <script>(function(){var c=document.getElementById('fxc'),v=[.22,.31,.28,.41,.37,.5,.47,.62,.57,.71,.67,.8];function draw(a){var r=c.getBoundingClientRect(),d=window.devicePixelRatio||1;c.width=r.width*d;c.height=r.height*d;var x=c.getContext('2d');x.scale(d,d);x.strokeStyle='#17374d';for(var y=20;y<r.height;y+=40){x.beginPath();x.moveTo(0,y);x.lineTo(r.width,y);x.stroke()}x.strokeStyle='#59d8ff';x.lineWidth=3;x.beginPath();a.forEach(function(n,i){var X=10+i*(r.width-20)/(a.length-1),Y=r.height-20-n*(r.height-45);if(i)x.lineTo(X,Y);else x.moveTo(X,Y)});x.stroke()}draw(v);var load=function(){fetch('https://api.frankfurter.app/latest?from=USD&to=EUR,GBP,JPY',{cache:'no-store'}).then(function(r){return r.json()}).then(function(d){if(d.rates&&d.rates.EUR){draw(v.map(function(n,i){return Math.min(.9,Math.max(.1,n+(1/d.rates.EUR-1)*.15+i*.002))}))}}).catch(function(){})};if('requestIdleCallback' in window)requestIdleCallback(load,{timeout:4500});else setTimeout(load,3200)})();</script>
-        '''
+        chart_html = '\n        <div style="height:250px;border:1px solid #24455d;border-radius:18px;background:#06111b;padding:14px;color:#9bb3c8;font-family:Inter,system-ui"><b style="color:#63d7ff;font-size:10px">ONLINE MARKET INTELLIGENCE</b><canvas id="fxc" style="width:100%;height:210px"></canvas></div>\n        <script>(function(){var c=document.getElementById(\'fxc\'),v=[.22,.31,.28,.41,.37,.5,.47,.62,.57,.71,.67,.8];function draw(a){var r=c.getBoundingClientRect(),d=window.devicePixelRatio||1;c.width=r.width*d;c.height=r.height*d;var x=c.getContext(\'2d\');x.scale(d,d);x.strokeStyle=\'#17374d\';for(var y=20;y<r.height;y+=40){x.beginPath();x.moveTo(0,y);x.lineTo(r.width,y);x.stroke()}x.strokeStyle=\'#59d8ff\';x.lineWidth=3;x.beginPath();a.forEach(function(n,i){var X=10+i*(r.width-20)/(a.length-1),Y=r.height-20-n*(r.height-45);if(i)x.lineTo(X,Y);else x.moveTo(X,Y)});x.stroke()}draw(v);var load=function(){fetch(\'https://api.frankfurter.app/latest?from=USD&to=EUR,GBP,JPY\',{cache:\'no-store\'}).then(function(r){return r.json()}).then(function(d){if(d.rates&&d.rates.EUR){draw(v.map(function(n,i){return Math.min(.9,Math.max(.1,n+(1/d.rates.EUR-1)*.15+i*.002))}))}}).catch(function(){})};if(\'requestIdleCallback\' in window)requestIdleCallback(load,{timeout:4500});else setTimeout(load,3200)})();</script>\n        '
         components.html(chart_html, height=270)
     with right:
         if fx_path.exists():
@@ -3693,17 +3215,7 @@ def landing_page():
     if st.query_params.get("master_gate") == "1":
         captcha_required = st.session_state.get("master_captcha_required", False); captcha_passed = st.session_state.get("master_captcha_passed", False)
         second_attempt = st.session_state.get("master_second_attempt", False)
-        st.markdown("""
-        <style>
-          .dacre-master-shell { max-width: 720px; margin: 60px auto; padding: 36px;
-            border-radius: 24px; background:#0b1020; border:1px solid rgba(255,255,255,.09);
-            box-shadow:0 30px 90px rgba(0,0,0,.45); }
-        </style>
-        <div class="dacre-master-shell">
-          <div style="color:#f7f9ff;font-size:28px;font-weight:800;">Overall Admin DI — Master Access</div>
-          <div style="color:#9ba9c2;margin-top:8px;">Private system-wide access for the DACRE master administrator.</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown('\n        <style>\n          .dacre-master-shell { max-width: 720px; margin: 60px auto; padding: 36px;\n            border-radius: 24px; background:#0b1020; border:1px solid rgba(255,255,255,.09);\n            box-shadow:0 30px 90px rgba(0,0,0,.45); }\n        </style>\n        <div class="dacre-master-shell">\n          <div style="color:#f7f9ff;font-size:28px;font-weight:800;">Overall Admin DI — Master Access</div>\n          <div style="color:#9ba9c2;margin-top:8px;">Private system-wide access for the DACRE master administrator.</div>\n        </div>\n        ', unsafe_allow_html=True)
         gate_col1, gate_col2, gate_col3 = st.columns([1, 2, 1])
         with gate_col2:
             if captcha_required and not captcha_passed:
@@ -3786,85 +3298,7 @@ def landing_page():
                     st.rerun()
         return
     logo_uri = _dacre_logo_data_uri(); logo = f'<img src="{logo_uri}" alt="DACRE" class="brand-logo"/>' if logo_uri else '<span class="brand-fallback">D</span>'
-    st.markdown("""
-    <style>
-      [data-testid="stSidebar"] { display:none; }
-      .stApp { background:#f7f9fc !important; }
-      .block-container { max-width:1480px !important; padding:18px 28px 55px !important; }
-      .dacre-landing { color:#101828; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
-      .dacre-nav {
-        min-height:70px; display:flex; align-items:center; justify-content:space-between; gap:18px;
-        padding:10px 14px; border:1px solid #e4e7ec; border-radius:14px; background:#fff;
-        box-shadow:0 8px 26px rgba(16,24,40,.07); position:sticky; top:10px; z-index:10;
-      }
-      .dacre-brand { display:flex; align-items:center; gap:12px; min-width:220px; }
-      .brand-logo { width:43px; height:43px; object-fit:contain; border-radius:11px; }
-      .brand-fallback { display:grid; place-items:center; width:43px;height:43px; font-size:21px; background:#1769ff; color:#fff; font-weight:900; border-radius:11px; }
-      .dacre-brand-name { font-size:18px;font-weight:900;letter-spacing:-.025em;color:#101828; }
-      .dacre-brand-sub { color:#667085;font-size:10px;margin-top:2px; }
-      .system-ready { display:inline-flex;align-items:center;gap:7px;color:#344054;font-size:10px;font-weight:800;letter-spacing:.05em;white-space:nowrap; }
-      .ready-dot { width:8px;height:8px;border-radius:50%;background:#12b76a;box-shadow:0 0 10px rgba(18,183,106,.4); }
-      .hero {
-        min-height:610px; display:grid; grid-template-columns:1.05fr .95fr; gap:44px; align-items:center;
-        padding:74px 28px 52px; position:relative;
-      }
-      .hero:before{content:"";position:absolute;left:28px;top:42px;width:6px;height:92px;border-radius:8px;background:#1769ff;}
-      .hero-eyebrow { display:inline-flex; padding:8px 12px; border:1px solid #cfe0ff; background:#eaf2ff; border-radius:999px;color:#0b4fd1;font-size:11px;font-weight:800; }
-      .hero-title { font-size:clamp(46px,6.2vw,80px); line-height:.98; letter-spacing:-.065em; font-weight:900; margin:22px 0 20px; max-width:760px;color:#101828; }
-      .gradient-text { color:#1769ff; }
-      .hero-copy { max-width:650px; color:#475467;font-size:17px;line-height:1.75; }
-      .hero-proof { display:flex; gap:22px; flex-wrap:wrap; margin-top:34px; color:#344054;font-size:12px;font-weight:650; }
-      .proof-dot { color:#1769ff; }
-      .page-hero { padding:62px 28px 28px; }
-      .page-title { font-size:clamp(42px,5.8vw,72px); line-height:1; letter-spacing:-.06em; font-weight:900; margin:14px 0 16px;color:#101828; }
-      .page-copy { max-width:790px; color:#475467; font-size:17px; line-height:1.75; }
-      .section { padding:62px 28px; }
-      .section-head { max-width:820px;margin-bottom:32px; }
-      .section-kicker { color:#1769ff;text-transform:uppercase;letter-spacing:.16em;font-size:10px;font-weight:900; }
-      .section-title { font-size:38px;line-height:1.05;letter-spacing:-.045em;font-weight:850;margin-top:10px;color:#101828; }
-      .section-copy { color:#667085;line-height:1.75;font-size:15px;margin-top:10px; }
-      .grid-3 { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px; }
-      .grid-2 { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px; }
-      .feature-card { padding:24px;min-height:180px;border:1px solid #e4e7ec;border-radius:18px;background:#fff;box-shadow:0 8px 26px rgba(16,24,40,.055);transition:transform .16s ease,box-shadow .16s ease; }
-      .feature-card:hover{transform:translateY(-3px);box-shadow:0 16px 36px rgba(16,24,40,.10);}
-      .feature-icon { width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:#eaf2ff;color:#1769ff;font-weight:900;margin-bottom:16px;border:1px solid #cfe0ff; }
-      .feature-card h3 { margin:0;font-size:20px;letter-spacing:-.025em;color:#101828; }
-      .feature-card p { color:#667085;line-height:1.65;margin:8px 0 0;font-size:14px; }
-      .pill-row { display:flex; gap:9px; flex-wrap:wrap; margin-top:20px; }
-      .pill { padding:8px 11px; border-radius:999px; border:1px solid #cfe0ff; background:#f5f9ff; color:#0b4fd1; font-size:11px; font-weight:700; }
-      .workflow { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px; }
-      .step { padding:20px;border-radius:16px;border:1px solid #e4e7ec;background:#fff;box-shadow:0 6px 20px rgba(16,24,40,.04); }
-      .step-num { color:#1769ff;font-size:10px;font-weight:900;letter-spacing:.14em; }
-      .step h4 { margin:8px 0 7px;font-size:18px;color:#101828; }
-      .step p { color:#667085;font-size:13px;line-height:1.6;margin:0; }
-      .callout { padding:28px;border-radius:18px;border:1px solid #cfe0ff;background:#fff;box-shadow:0 10px 30px rgba(16,24,40,.06);position:relative;overflow:hidden; }
-      .callout:before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:#1769ff;}
-      .callout h3 { margin:0 0 8px;font-size:24px;color:#101828; }
-      .callout p { margin:0;color:#667085;line-height:1.7; }
-      .metric-row { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:20px; }
-      .metric { padding:18px;border-radius:14px;border:1px solid #e4e7ec;background:#fff;box-shadow:0 6px 20px rgba(16,24,40,.04); }
-      .metric small { color:#667085;font-size:10px;text-transform:uppercase;letter-spacing:.12em; }
-      .metric strong { display:block;margin-top:5px;font-size:26px;color:#101828; }
-      .cta { margin:20px 28px 30px;padding:44px 28px;border-radius:20px;border:1px solid #bcd4ff;background:#101828;text-align:center;position:relative;overflow:hidden; }
-      .cta:after{content:"";position:absolute;right:-100px;top:-130px;width:320px;height:320px;border-radius:50%;background:rgba(23,105,255,.28);filter:blur(3px);}
-      .cta h2 { font-size:clamp(30px,4vw,52px);letter-spacing:-.05em;margin:10px 0;color:#fff;position:relative;z-index:1; }
-      .cta p { max-width:680px;margin:0 auto 18px;color:#d0d5dd;line-height:1.7;position:relative;z-index:1; }
-      .footer { display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:26px 28px;color:#667085;font-size:11px; }
-      .hero-visual-host { min-height:500px; }
-      .auth-shell { max-width:980px; margin:28px auto 42px; padding:1px;border-radius:20px;background:#1769ff;box-shadow:0 20px 55px rgba(16,24,40,.12); }
-      .auth-inner { border-radius:19px;background:#fff;padding:30px;border:1px solid #e4e7ec; }
-      .auth-title { color:#101828;font-size:28px;font-weight:800;letter-spacing:-.03em; }
-      .auth-sub { color:#667085;margin-top:6px;margin-bottom:20px; }
-      .auth-badge { display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid #cfe0ff;background:#eaf2ff;color:#0b4fd1;font-size:12px;font-weight:700; }
-      @media(max-width:980px){ .hero{grid-template-columns:1fr;padding-top:52px}.grid-3,.grid-2{grid-template-columns:1fr 1fr}.workflow{grid-template-columns:1fr 1fr}.metric-row{grid-template-columns:1fr 1fr}.hero-visual-host{min-height:430px} }
-      @media(max-width:680px){ .block-container{padding:0 12px 40px !important}.dacre-nav{position:static;padding:12px}.dacre-brand{min-width:auto}.system-ready{display:none}.hero{padding:48px 10px 25px;min-height:auto}.hero-title{font-size:48px}.section,.page-hero{padding:48px 10px 20px}.grid-3,.grid-2,.workflow,.metric-row{grid-template-columns:1fr}.section-title{font-size:31px}.hero-visual-host{min-height:360px}.cta{margin:18px 10px 25px;padding:34px 20px}.footer{padding:22px 10px} }
-    /* DACRE dark landing system */
-.dacre-landing{color:#f5f9ff!important}.dacre-landing .dacre-nav{background:rgba(8,14,24,.94);border-color:#263b54;box-shadow:0 18px 55px rgba(0,0,0,.30);backdrop-filter:blur(14px)}
-.dacre-landing .dacre-brand-name,.dacre-landing .hero-title,.dacre-landing .page-title,.dacre-landing .section-title,.dacre-landing .feature-card h3,.dacre-landing .step h4,.dacre-landing .callout h3,.dacre-landing .metric strong{color:#fff!important}.dacre-landing .dacre-brand-sub,.dacre-landing .hero-copy,.dacre-landing .hero-proof,.dacre-landing .section-copy,.dacre-landing .feature-card p,.dacre-landing .step p,.dacre-landing .callout p,.dacre-landing .metric small,.dacre-landing .footer{color:#aebed0!important}
-.dacre-landing .hero:before{background:linear-gradient(180deg,#58c7ff,#ff9f43)!important}.dacre-landing .hero-eyebrow{background:#0d2235;border-color:#2c5a78;color:#79d3ff}.dacre-landing .gradient-text{color:#58c7ff!important}.dacre-landing .feature-card,.dacre-landing .step,.dacre-landing .metric,.dacre-landing .callout{background:linear-gradient(145deg,#0b1422,#101b2b);border-color:#263b54;box-shadow:0 16px 44px rgba(0,0,0,.28)}
-.dacre-landing .feature-icon{background:#0d2538;color:#58c7ff;border-color:#2c5a78}.dacre-landing .pill{background:#151c28;border-color:#33495f;color:#b9d4e8}.dacre-landing .cta{background:linear-gradient(135deg,#07101b,#11243a);border-color:#31516f}.dacre-landing .footer{border-top:1px solid #203149}.dacre-landing .auth-inner{background:#0b1422;border-color:#263b54}.dacre-landing .auth-title{color:#fff!important}
-</style>
-    """, unsafe_allow_html=True)
+    st.markdown('\n    <style>\n      [data-testid="stSidebar"] { display:none; }\n      .stApp { background:#f7f9fc !important; }\n      .block-container { max-width:1480px !important; padding:18px 28px 55px !important; }\n      .dacre-landing { color:#101828; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }\n      .dacre-nav {\n        min-height:70px; display:flex; align-items:center; justify-content:space-between; gap:18px;\n        padding:10px 14px; border:1px solid #e4e7ec; border-radius:14px; background:#fff;\n        box-shadow:0 8px 26px rgba(16,24,40,.07); position:sticky; top:10px; z-index:10;\n      }\n      .dacre-brand { display:flex; align-items:center; gap:12px; min-width:220px; }\n      .brand-logo { width:43px; height:43px; object-fit:contain; border-radius:11px; }\n      .brand-fallback { display:grid; place-items:center; width:43px;height:43px; font-size:21px; background:#1769ff; color:#fff; font-weight:900; border-radius:11px; }\n      .dacre-brand-name { font-size:18px;font-weight:900;letter-spacing:-.025em;color:#101828; }\n      .dacre-brand-sub { color:#667085;font-size:10px;margin-top:2px; }\n      .system-ready { display:inline-flex;align-items:center;gap:7px;color:#344054;font-size:10px;font-weight:800;letter-spacing:.05em;white-space:nowrap; }\n      .ready-dot { width:8px;height:8px;border-radius:50%;background:#12b76a;box-shadow:0 0 10px rgba(18,183,106,.4); }\n      .hero {\n        min-height:610px; display:grid; grid-template-columns:1.05fr .95fr; gap:44px; align-items:center;\n        padding:74px 28px 52px; position:relative;\n      }\n      .hero:before{content:"";position:absolute;left:28px;top:42px;width:6px;height:92px;border-radius:8px;background:#1769ff;}\n      .hero-eyebrow { display:inline-flex; padding:8px 12px; border:1px solid #cfe0ff; background:#eaf2ff; border-radius:999px;color:#0b4fd1;font-size:11px;font-weight:800; }\n      .hero-title { font-size:clamp(46px,6.2vw,80px); line-height:.98; letter-spacing:-.065em; font-weight:900; margin:22px 0 20px; max-width:760px;color:#101828; }\n      .gradient-text { color:#1769ff; }\n      .hero-copy { max-width:650px; color:#475467;font-size:17px;line-height:1.75; }\n      .hero-proof { display:flex; gap:22px; flex-wrap:wrap; margin-top:34px; color:#344054;font-size:12px;font-weight:650; }\n      .proof-dot { color:#1769ff; }\n      .page-hero { padding:62px 28px 28px; }\n      .page-title { font-size:clamp(42px,5.8vw,72px); line-height:1; letter-spacing:-.06em; font-weight:900; margin:14px 0 16px;color:#101828; }\n      .page-copy { max-width:790px; color:#475467; font-size:17px; line-height:1.75; }\n      .section { padding:62px 28px; }\n      .section-head { max-width:820px;margin-bottom:32px; }\n      .section-kicker { color:#1769ff;text-transform:uppercase;letter-spacing:.16em;font-size:10px;font-weight:900; }\n      .section-title { font-size:38px;line-height:1.05;letter-spacing:-.045em;font-weight:850;margin-top:10px;color:#101828; }\n      .section-copy { color:#667085;line-height:1.75;font-size:15px;margin-top:10px; }\n      .grid-3 { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px; }\n      .grid-2 { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px; }\n      .feature-card { padding:24px;min-height:180px;border:1px solid #e4e7ec;border-radius:18px;background:#fff;box-shadow:0 8px 26px rgba(16,24,40,.055);transition:transform .16s ease,box-shadow .16s ease; }\n      .feature-card:hover{transform:translateY(-3px);box-shadow:0 16px 36px rgba(16,24,40,.10);}\n      .feature-icon { width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:#eaf2ff;color:#1769ff;font-weight:900;margin-bottom:16px;border:1px solid #cfe0ff; }\n      .feature-card h3 { margin:0;font-size:20px;letter-spacing:-.025em;color:#101828; }\n      .feature-card p { color:#667085;line-height:1.65;margin:8px 0 0;font-size:14px; }\n      .pill-row { display:flex; gap:9px; flex-wrap:wrap; margin-top:20px; }\n      .pill { padding:8px 11px; border-radius:999px; border:1px solid #cfe0ff; background:#f5f9ff; color:#0b4fd1; font-size:11px; font-weight:700; }\n      .workflow { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px; }\n      .step { padding:20px;border-radius:16px;border:1px solid #e4e7ec;background:#fff;box-shadow:0 6px 20px rgba(16,24,40,.04); }\n      .step-num { color:#1769ff;font-size:10px;font-weight:900;letter-spacing:.14em; }\n      .step h4 { margin:8px 0 7px;font-size:18px;color:#101828; }\n      .step p { color:#667085;font-size:13px;line-height:1.6;margin:0; }\n      .callout { padding:28px;border-radius:18px;border:1px solid #cfe0ff;background:#fff;box-shadow:0 10px 30px rgba(16,24,40,.06);position:relative;overflow:hidden; }\n      .callout:before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:#1769ff;}\n      .callout h3 { margin:0 0 8px;font-size:24px;color:#101828; }\n      .callout p { margin:0;color:#667085;line-height:1.7; }\n      .metric-row { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:20px; }\n      .metric { padding:18px;border-radius:14px;border:1px solid #e4e7ec;background:#fff;box-shadow:0 6px 20px rgba(16,24,40,.04); }\n      .metric small { color:#667085;font-size:10px;text-transform:uppercase;letter-spacing:.12em; }\n      .metric strong { display:block;margin-top:5px;font-size:26px;color:#101828; }\n      .cta { margin:20px 28px 30px;padding:44px 28px;border-radius:20px;border:1px solid #bcd4ff;background:#101828;text-align:center;position:relative;overflow:hidden; }\n      .cta:after{content:"";position:absolute;right:-100px;top:-130px;width:320px;height:320px;border-radius:50%;background:rgba(23,105,255,.28);filter:blur(3px);}\n      .cta h2 { font-size:clamp(30px,4vw,52px);letter-spacing:-.05em;margin:10px 0;color:#fff;position:relative;z-index:1; }\n      .cta p { max-width:680px;margin:0 auto 18px;color:#d0d5dd;line-height:1.7;position:relative;z-index:1; }\n      .footer { display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:26px 28px;color:#667085;font-size:11px; }\n      .hero-visual-host { min-height:500px; }\n      .auth-shell { max-width:980px; margin:28px auto 42px; padding:1px;border-radius:20px;background:#1769ff;box-shadow:0 20px 55px rgba(16,24,40,.12); }\n      .auth-inner { border-radius:19px;background:#fff;padding:30px;border:1px solid #e4e7ec; }\n      .auth-title { color:#101828;font-size:28px;font-weight:800;letter-spacing:-.03em; }\n      .auth-sub { color:#667085;margin-top:6px;margin-bottom:20px; }\n      .auth-badge { display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid #cfe0ff;background:#eaf2ff;color:#0b4fd1;font-size:12px;font-weight:700; }\n      @media(max-width:980px){ .hero{grid-template-columns:1fr;padding-top:52px}.grid-3,.grid-2{grid-template-columns:1fr 1fr}.workflow{grid-template-columns:1fr 1fr}.metric-row{grid-template-columns:1fr 1fr}.hero-visual-host{min-height:430px} }\n      @media(max-width:680px){ .block-container{padding:0 12px 40px !important}.dacre-nav{position:static;padding:12px}.dacre-brand{min-width:auto}.system-ready{display:none}.hero{padding:48px 10px 25px;min-height:auto}.hero-title{font-size:48px}.section,.page-hero{padding:48px 10px 20px}.grid-3,.grid-2,.workflow,.metric-row{grid-template-columns:1fr}.section-title{font-size:31px}.hero-visual-host{min-height:360px}.cta{margin:18px 10px 25px;padding:34px 20px}.footer{padding:22px 10px} }\n    /* DACRE dark landing system */\n.dacre-landing{color:#f5f9ff!important}.dacre-landing .dacre-nav{background:rgba(8,14,24,.94);border-color:#263b54;box-shadow:0 18px 55px rgba(0,0,0,.30);backdrop-filter:blur(14px)}\n.dacre-landing .dacre-brand-name,.dacre-landing .hero-title,.dacre-landing .page-title,.dacre-landing .section-title,.dacre-landing .feature-card h3,.dacre-landing .step h4,.dacre-landing .callout h3,.dacre-landing .metric strong{color:#fff!important}.dacre-landing .dacre-brand-sub,.dacre-landing .hero-copy,.dacre-landing .hero-proof,.dacre-landing .section-copy,.dacre-landing .feature-card p,.dacre-landing .step p,.dacre-landing .callout p,.dacre-landing .metric small,.dacre-landing .footer{color:#aebed0!important}\n.dacre-landing .hero:before{background:linear-gradient(180deg,#58c7ff,#ff9f43)!important}.dacre-landing .hero-eyebrow{background:#0d2235;border-color:#2c5a78;color:#79d3ff}.dacre-landing .gradient-text{color:#58c7ff!important}.dacre-landing .feature-card,.dacre-landing .step,.dacre-landing .metric,.dacre-landing .callout{background:linear-gradient(145deg,#0b1422,#101b2b);border-color:#263b54;box-shadow:0 16px 44px rgba(0,0,0,.28)}\n.dacre-landing .feature-icon{background:#0d2538;color:#58c7ff;border-color:#2c5a78}.dacre-landing .pill{background:#151c28;border-color:#33495f;color:#b9d4e8}.dacre-landing .cta{background:linear-gradient(135deg,#07101b,#11243a);border-color:#31516f}.dacre-landing .footer{border-top:1px solid #203149}.dacre-landing .auth-inner{background:#0b1422;border-color:#263b54}.dacre-landing .auth-title{color:#fff!important}\n</style>\n    ', unsafe_allow_html=True)
     current_section = st.session_state.get("landing_section", "home"); mode = st.session_state.get("landing_mode", "home")
     st.markdown(f"""
         <div class="dacre-nav">
@@ -3906,107 +3340,27 @@ def landing_page():
             st.rerun()
         return
     if current_section == "features":
-        st.markdown("""
-        <div class="page-hero">
-          <div class="section-kicker">DACRE FEATURES</div>
-          <div class="page-title">Everything needed to move from raw data to useful work.</div>
-          <div class="page-copy">DACRE combines a data workspace, cleaning tools, formulas, charts, files, exports, business intelligence and DI into one connected environment.</div>
-        </div>
-        <div class="section">
-          <div class="grid-3">
-            <div class="feature-card"><div class="feature-icon">DATA</div><h3>Workspace & Data</h3><p>Import CSV, Excel, TSV and JSON datasets into a persistent working environment.</p></div>
-            <div class="feature-card"><div class="feature-icon">ƒ</div><h3>Formula Lab</h3><p>Apply practical spreadsheet-style transformations and calculations without leaving your analysis workflow.</p></div>
-            <div class="feature-card"><div class="feature-icon">◫</div><h3>Charts & Dashboards</h3><p>Turn processed information into visual stories that make business patterns easier to understand.</p></div>
-            <div class="feature-card"><div class="feature-icon">FILES</div><h3>File Vault</h3><p>Keep working files and datasets organized inside the organization workspace.</p></div>
-            <div class="feature-card"><div class="feature-icon">EXPORT</div><h3>Export Center</h3><p>Package analysis outputs for reporting, sharing and business use.</p></div>
-            <div class="feature-card"><div class="feature-icon">DI</div><h3>DI Action Center</h3><p>Give DI a business objective and let it turn the request into analysis, recommendations and next actions.</p></div>
-          </div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown('\n        <div class="page-hero">\n          <div class="section-kicker">DACRE FEATURES</div>\n          <div class="page-title">Everything needed to move from raw data to useful work.</div>\n          <div class="page-copy">DACRE combines a data workspace, cleaning tools, formulas, charts, files, exports, business intelligence and DI into one connected environment.</div>\n        </div>\n        <div class="section">\n          <div class="grid-3">\n            <div class="feature-card"><div class="feature-icon">DATA</div><h3>Workspace & Data</h3><p>Import CSV, Excel, TSV and JSON datasets into a persistent working environment.</p></div>\n            <div class="feature-card"><div class="feature-icon">ƒ</div><h3>Formula Lab</h3><p>Apply practical spreadsheet-style transformations and calculations without leaving your analysis workflow.</p></div>\n            <div class="feature-card"><div class="feature-icon">◫</div><h3>Charts & Dashboards</h3><p>Turn processed information into visual stories that make business patterns easier to understand.</p></div>\n            <div class="feature-card"><div class="feature-icon">FILES</div><h3>File Vault</h3><p>Keep working files and datasets organized inside the organization workspace.</p></div>\n            <div class="feature-card"><div class="feature-icon">EXPORT</div><h3>Export Center</h3><p>Package analysis outputs for reporting, sharing and business use.</p></div>\n            <div class="feature-card"><div class="feature-icon">DI</div><h3>DI Action Center</h3><p>Give DI a business objective and let it turn the request into analysis, recommendations and next actions.</p></div>\n          </div>\n        </div>\n        ', unsafe_allow_html=True)
         if st.button("Use these DACRE features", key="features_cta", use_container_width=True, type="primary"):
             st.session_state.landing_mode = "signup"; st.session_state.landing_section = "home"
             st.rerun()
     elif current_section == "intelligence":
-        st.markdown("""
-        <div class="page-hero">
-          <div class="section-kicker">DI — DAVID'S INTELLIGENCE</div>
-          <div class="page-title">Intelligence that works with your business context.</div>
-          <div class="page-copy">DI is the built-in intelligence layer inside DACRE Analysis. It can explain results, investigate data, help with business questions and work alongside the active workspace.</div>
-        </div>
-        <div class="section">
-          <div class="grid-2">
-            <div class="callout"><h3>Ask questions naturally</h3><p>Move from dashboards to conversation. Ask DI to explain a number, investigate a pattern, draft a brief or recommend what to investigate next.</p></div>
-            <div class="callout"><h3>Work from real context</h3><p>DI can use the current organization, active dataset, institutional memory and available research context instead of treating every request as an isolated question.</p></div>
-            <div class="callout"><h3>Named DI workforce</h3><p>DACRE supports specialized DI workers with distinct identities, specialties and working styles — all under the same DACRE intelligence foundation.</p></div>
-            <div class="callout"><h3>Voice-ready experience</h3><p>The DACRE interface supports browser-based DI voice interaction so users can communicate naturally where their browser supports speech features.</p></div>
-          </div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown('\n        <div class="page-hero">\n          <div class="section-kicker">DI — DAVID\'S INTELLIGENCE</div>\n          <div class="page-title">Intelligence that works with your business context.</div>\n          <div class="page-copy">DI is the built-in intelligence layer inside DACRE Analysis. It can explain results, investigate data, help with business questions and work alongside the active workspace.</div>\n        </div>\n        <div class="section">\n          <div class="grid-2">\n            <div class="callout"><h3>Ask questions naturally</h3><p>Move from dashboards to conversation. Ask DI to explain a number, investigate a pattern, draft a brief or recommend what to investigate next.</p></div>\n            <div class="callout"><h3>Work from real context</h3><p>DI can use the current organization, active dataset, institutional memory and available research context instead of treating every request as an isolated question.</p></div>\n            <div class="callout"><h3>Named DI workforce</h3><p>DACRE supports specialized DI workers with distinct identities, specialties and working styles — all under the same DACRE intelligence foundation.</p></div>\n            <div class="callout"><h3>Voice-ready experience</h3><p>The DACRE interface supports browser-based DI voice interaction so users can communicate naturally where their browser supports speech features.</p></div>\n          </div>\n        </div>\n        ', unsafe_allow_html=True)
         if st.button("Create a workspace and use DI", key="intelligence_cta", use_container_width=True, type="primary"):
             st.session_state.landing_mode = "signup"; st.session_state.landing_section = "home"
             st.rerun()
     elif current_section == "workforce":
-        st.markdown("""
-        <div class="page-hero">
-          <div class="section-kicker">DI WORKFORCE</div>
-          <div class="page-title">Specialized digital workers, coordinated inside DACRE.</div>
-          <div class="page-copy">Each DI worker can have a defined specialty and work style, giving organizations a clearer way to organize intelligence tasks across research, analytics, communication, administration and support.</div>
-        </div>
-        <div class="section">
-          <div class="grid-3">
-            <div class="feature-card"><div class="feature-icon">EM</div><h3>Emiel</h3><p>Email & Messaging — organized communication workflows and business messaging support.</p></div>
-            <div class="feature-card"><div class="feature-icon">OL</div><h3>Oriel</h3><p>Data Analysis — metrics, trends, patterns and evidence-first analytical work.</p></div>
-            <div class="feature-card"><div class="feature-icon">SO</div><h3>Sofiel</h3><p>Research & Intelligence — investigative research and source-conscious summaries.</p></div>
-            <div class="feature-card"><div class="feature-icon">DA</div><h3>Daniel</h3><p>Data Entry & Processing — clean, consistent and accurate repetitive data operations.</p></div>
-            <div class="feature-card"><div class="feature-icon">GR</div><h3>Graciel</h3><p>Business Intelligence — KPIs, dashboards, executive insights and recommendations.</p></div>
-            <div class="feature-card"><div class="feature-icon">JA</div><h3>Jamiel</h3><p>Security & Administration — access controls, audit trails and platform operations.</p></div>
-          </div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown('\n        <div class="page-hero">\n          <div class="section-kicker">DI WORKFORCE</div>\n          <div class="page-title">Specialized digital workers, coordinated inside DACRE.</div>\n          <div class="page-copy">Each DI worker can have a defined specialty and work style, giving organizations a clearer way to organize intelligence tasks across research, analytics, communication, administration and support.</div>\n        </div>\n        <div class="section">\n          <div class="grid-3">\n            <div class="feature-card"><div class="feature-icon">EM</div><h3>Emiel</h3><p>Email & Messaging — organized communication workflows and business messaging support.</p></div>\n            <div class="feature-card"><div class="feature-icon">OL</div><h3>Oriel</h3><p>Data Analysis — metrics, trends, patterns and evidence-first analytical work.</p></div>\n            <div class="feature-card"><div class="feature-icon">SO</div><h3>Sofiel</h3><p>Research & Intelligence — investigative research and source-conscious summaries.</p></div>\n            <div class="feature-card"><div class="feature-icon">DA</div><h3>Daniel</h3><p>Data Entry & Processing — clean, consistent and accurate repetitive data operations.</p></div>\n            <div class="feature-card"><div class="feature-icon">GR</div><h3>Graciel</h3><p>Business Intelligence — KPIs, dashboards, executive insights and recommendations.</p></div>\n            <div class="feature-card"><div class="feature-icon">JA</div><h3>Jamiel</h3><p>Security & Administration — access controls, audit trails and platform operations.</p></div>\n          </div>\n        </div>\n        ', unsafe_allow_html=True)
         if st.button("Open the DI Workforce in DACRE", key="workforce_cta", use_container_width=True, type="primary"):
             st.session_state.landing_mode = "signup"; st.session_state.landing_section = "home"
             st.rerun()
     elif current_section == "analytics":
-        st.markdown("""
-        <div class="page-hero">
-          <div class="section-kicker">ANALYTICS</div>
-          <div class="page-title">See what changed, what matters and what to do next.</div>
-          <div class="page-copy">DACRE translates active business data into clear metrics, health signals, charts and executive-level views that help users move from observation to action.</div>
-        </div>
-        <div class="section">
-          <div class="metric-row">
-            <div class="metric"><small>Data health</small><strong>97 / 100</strong></div>
-            <div class="metric"><small>Live records</small><strong>4.2M+</strong></div>
-            <div class="metric"><small>Insight layer</small><strong>DI</strong></div>
-            <div class="metric"><small>Workspace</small><strong>LIVE</strong></div>
-          </div>
-          <div class="grid-2" style="margin-top:18px;">
-            <div class="callout"><h3>Business Command Center</h3><p>Review data health, executive briefs, trends, anomalies and questions against the active workspace.</p></div>
-            <div class="callout"><h3>Business Twin</h3><p>Build a living snapshot of the current dataset with health scoring, attention signals and measurable opportunities.</p></div>
-            <div class="callout"><h3>Decision Ledger</h3><p>Record decisions, context, expected outcomes and later results so organizational history becomes structured knowledge.</p></div>
-            <div class="callout"><h3>Opportunity Radar</h3><p>Surface measurable growth signals from numeric trends and turn them into investigation prompts.</p></div>
-          </div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown('\n        <div class="page-hero">\n          <div class="section-kicker">ANALYTICS</div>\n          <div class="page-title">See what changed, what matters and what to do next.</div>\n          <div class="page-copy">DACRE translates active business data into clear metrics, health signals, charts and executive-level views that help users move from observation to action.</div>\n        </div>\n        <div class="section">\n          <div class="metric-row">\n            <div class="metric"><small>Data health</small><strong>97 / 100</strong></div>\n            <div class="metric"><small>Live records</small><strong>4.2M+</strong></div>\n            <div class="metric"><small>Insight layer</small><strong>DI</strong></div>\n            <div class="metric"><small>Workspace</small><strong>LIVE</strong></div>\n          </div>\n          <div class="grid-2" style="margin-top:18px;">\n            <div class="callout"><h3>Business Command Center</h3><p>Review data health, executive briefs, trends, anomalies and questions against the active workspace.</p></div>\n            <div class="callout"><h3>Business Twin</h3><p>Build a living snapshot of the current dataset with health scoring, attention signals and measurable opportunities.</p></div>\n            <div class="callout"><h3>Decision Ledger</h3><p>Record decisions, context, expected outcomes and later results so organizational history becomes structured knowledge.</p></div>\n            <div class="callout"><h3>Opportunity Radar</h3><p>Surface measurable growth signals from numeric trends and turn them into investigation prompts.</p></div>\n          </div>\n        </div>\n        ', unsafe_allow_html=True)
         if st.button("Use DACRE Analytics", key="analytics_cta", use_container_width=True, type="primary"):
             st.session_state.landing_mode = "signup"; st.session_state.landing_section = "home"
             st.rerun()
     elif current_section == "security":
-        st.markdown("""
-        <div class="page-hero">
-          <div class="section-kicker">SECURITY</div>
-          <div class="page-title">Protected business workspaces with structured access.</div>
-          <div class="page-copy">DACRE separates organization workspaces, account roles, activity records and protected master administration so business information can be handled within a clear access model.</div>
-        </div>
-        <div class="section">
-          <div class="grid-2">
-            <div class="feature-card"><div class="feature-icon">OK</div><h3>Organization boundaries</h3><p>Users work inside their organization context, while administrative views are scoped according to role.</p></div>
-            <div class="feature-card"><div class="feature-icon">ACTIVITY</div><h3>Activity visibility</h3><p>DACRE records important account and workspace activity so organizations can inspect what happened.</p></div>
-            <div class="feature-card"><div class="feature-icon">ADMIN</div><h3>Protected master access</h3><p>Overall platform controls are separated from normal organization administration behind an additional protected gate.</p></div>
-            <div class="feature-card"><div class="feature-icon">DI</div><h3>Private intelligence context</h3><p>DI's internal context and application security values are not exposed as ordinary public landing-page content.</p></div>
-          </div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown('\n        <div class="page-hero">\n          <div class="section-kicker">SECURITY</div>\n          <div class="page-title">Protected business workspaces with structured access.</div>\n          <div class="page-copy">DACRE separates organization workspaces, account roles, activity records and protected master administration so business information can be handled within a clear access model.</div>\n        </div>\n        <div class="section">\n          <div class="grid-2">\n            <div class="feature-card"><div class="feature-icon">OK</div><h3>Organization boundaries</h3><p>Users work inside their organization context, while administrative views are scoped according to role.</p></div>\n            <div class="feature-card"><div class="feature-icon">ACTIVITY</div><h3>Activity visibility</h3><p>DACRE records important account and workspace activity so organizations can inspect what happened.</p></div>\n            <div class="feature-card"><div class="feature-icon">ADMIN</div><h3>Protected master access</h3><p>Overall platform controls are separated from normal organization administration behind an additional protected gate.</p></div>\n            <div class="feature-card"><div class="feature-icon">DI</div><h3>Private intelligence context</h3><p>DI\'s internal context and application security values are not exposed as ordinary public landing-page content.</p></div>\n          </div>\n        </div>\n        ', unsafe_allow_html=True)
         if st.button("Create a secure DACRE workspace", key="security_cta", use_container_width=True, type="primary"):
             st.session_state.landing_mode = "signup"; st.session_state.landing_section = "home"
             st.rerun()
@@ -4026,18 +3380,7 @@ def landing_page():
           <div class="hero-visual-host"></div>
         </div>
         """, unsafe_allow_html=True)
-        hero_dashboard_html = """
-        <style>
-          *{box-sizing:border-box}html,body{margin:0;padding:0;background:transparent;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#f7fbff;overflow:hidden}
-          .visual{position:relative;width:100%;min-height:470px;display:flex;align-items:center;justify-content:center;padding:14px}
-          .orb{position:absolute;width:330px;height:330px;border-radius:50%;background:radial-gradient(circle,#6d63ff55 0%,#2789ff20 34%,transparent 70%);filter:blur(4px);animation:pulse 4s ease-in-out infinite}
-          .card{position:relative;width:min(560px,94%);border:1px solid rgba(116,160,234,.28);border-radius:26px;background:linear-gradient(145deg,rgba(24,38,67,.97),rgba(6,14,30,.97));padding:22px;box-shadow:0 28px 80px rgba(0,0,0,.5),0 0 40px rgba(54,120,255,.12)}
-          .top{display:flex;justify-content:space-between;align-items:center;color:#b9c8e2;font-size:11px;letter-spacing:.08em;margin-bottom:16px}.live{display:inline-flex;align-items:center;gap:6px;color:#6ef0ba;font-weight:800}.dot{width:7px;height:7px;border-radius:50%;background:#5ce7ad;box-shadow:0 0 12px #5ce7ad}.label{color:#c2d3ea;font-size:12px;margin-bottom:4px}.metric{font-size:31px;font-weight:900;letter-spacing:-.04em}.up{color:#4fe5b3;font-size:12px;margin-left:8px;font-weight:800}
-          .bars{height:200px;display:flex;align-items:flex-end;gap:8px;padding:18px 8px;border-radius:18px;background:rgba(91,122,170,.10);border:1px solid rgba(113,152,207,.12);margin-top:16px}.bar{flex:1;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,#38e4f3 0%,#2a95ff 48%,#544ff0 100%);box-shadow:0 0 24px rgba(47,146,255,.22);min-width:8px;transition:height .4s ease}.mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.mini{padding:14px;border:1px solid rgba(121,155,203,.16);border-radius:15px;background:rgba(255,255,255,.035)}.mini-label{color:#9fb0c9;font-size:10px}.mini-value{margin-top:4px;font-size:19px;font-weight:850}.mini-accent{color:#55e5b5}.badge{position:absolute;right:20px;top:18px;padding:6px 9px;border-radius:999px;background:rgba(55,128,255,.13);border:1px solid rgba(73,153,255,.28);color:#9ed2ff;font-size:9px;font-weight:800}@keyframes pulse{50%{transform:scale(1.06);opacity:.9}}
-          @media(max-width:700px){.visual{min-height:360px}.card{padding:16px}.bars{height:145px;gap:5px}.metric{font-size:25px}.top{font-size:9px}}
-        </style>
-        <div class="visual"><div class="orb"></div><div class="card"><div class="badge">LIVE DI INSIGHT</div><div class="top"><span>DACRE / ANALYTICS</span><span class="live"><span class="dot"></span>DI ONLINE</span></div><div class="label">Revenue Growth</div><div class="metric">$2.4M <span class="up">OPEN 18.2%</span></div><div class="bars"><div class="bar" style="height:38%"></div><div class="bar" style="height:55%"></div><div class="bar" style="height:44%"></div><div class="bar" style="height:68%"></div><div class="bar" style="height:59%"></div><div class="bar" style="height:78%"></div><div class="bar" style="height:66%"></div><div class="bar" style="height:88%"></div><div class="bar" style="height:76%"></div><div class="bar" style="height:92%"></div></div><div class="mini-grid"><div class="mini"><div class="mini-label">Data Points</div><div class="mini-value">4.2M</div></div><div class="mini"><div class="mini-label">System Health</div><div class="mini-value mini-accent">99.98%</div></div></div></div></div>
-        """
+        hero_dashboard_html = '\n        <style>\n          *{box-sizing:border-box}html,body{margin:0;padding:0;background:transparent;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#f7fbff;overflow:hidden}\n          .visual{position:relative;width:100%;min-height:470px;display:flex;align-items:center;justify-content:center;padding:14px}\n          .orb{position:absolute;width:330px;height:330px;border-radius:50%;background:radial-gradient(circle,#6d63ff55 0%,#2789ff20 34%,transparent 70%);filter:blur(4px);animation:pulse 4s ease-in-out infinite}\n          .card{position:relative;width:min(560px,94%);border:1px solid rgba(116,160,234,.28);border-radius:26px;background:linear-gradient(145deg,rgba(24,38,67,.97),rgba(6,14,30,.97));padding:22px;box-shadow:0 28px 80px rgba(0,0,0,.5),0 0 40px rgba(54,120,255,.12)}\n          .top{display:flex;justify-content:space-between;align-items:center;color:#b9c8e2;font-size:11px;letter-spacing:.08em;margin-bottom:16px}.live{display:inline-flex;align-items:center;gap:6px;color:#6ef0ba;font-weight:800}.dot{width:7px;height:7px;border-radius:50%;background:#5ce7ad;box-shadow:0 0 12px #5ce7ad}.label{color:#c2d3ea;font-size:12px;margin-bottom:4px}.metric{font-size:31px;font-weight:900;letter-spacing:-.04em}.up{color:#4fe5b3;font-size:12px;margin-left:8px;font-weight:800}\n          .bars{height:200px;display:flex;align-items:flex-end;gap:8px;padding:18px 8px;border-radius:18px;background:rgba(91,122,170,.10);border:1px solid rgba(113,152,207,.12);margin-top:16px}.bar{flex:1;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,#38e4f3 0%,#2a95ff 48%,#544ff0 100%);box-shadow:0 0 24px rgba(47,146,255,.22);min-width:8px;transition:height .4s ease}.mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.mini{padding:14px;border:1px solid rgba(121,155,203,.16);border-radius:15px;background:rgba(255,255,255,.035)}.mini-label{color:#9fb0c9;font-size:10px}.mini-value{margin-top:4px;font-size:19px;font-weight:850}.mini-accent{color:#55e5b5}.badge{position:absolute;right:20px;top:18px;padding:6px 9px;border-radius:999px;background:rgba(55,128,255,.13);border:1px solid rgba(73,153,255,.28);color:#9ed2ff;font-size:9px;font-weight:800}@keyframes pulse{50%{transform:scale(1.06);opacity:.9}}\n          @media(max-width:700px){.visual{min-height:360px}.card{padding:16px}.bars{height:145px;gap:5px}.metric{font-size:25px}.top{font-size:9px}}\n        </style>\n        <div class="visual"><div class="orb"></div><div class="card"><div class="badge">LIVE DI INSIGHT</div><div class="top"><span>DACRE / ANALYTICS</span><span class="live"><span class="dot"></span>DI ONLINE</span></div><div class="label">Revenue Growth</div><div class="metric">$2.4M <span class="up">OPEN 18.2%</span></div><div class="bars"><div class="bar" style="height:38%"></div><div class="bar" style="height:55%"></div><div class="bar" style="height:44%"></div><div class="bar" style="height:68%"></div><div class="bar" style="height:59%"></div><div class="bar" style="height:78%"></div><div class="bar" style="height:66%"></div><div class="bar" style="height:88%"></div><div class="bar" style="height:76%"></div><div class="bar" style="height:92%"></div></div><div class="mini-grid"><div class="mini"><div class="mini-label">Data Points</div><div class="mini-value">4.2M</div></div><div class="mini"><div class="mini-label">System Health</div><div class="mini-value mini-accent">99.98%</div></div></div></div></div>\n        '
         components.html(hero_dashboard_html, height=500, scrolling=False); render_uniel_landing_guide()
         render_dacre_capability_showcase(); b1, b2, b3 = st.columns([1, 1.2, 1])
         with b1:
@@ -4049,27 +3392,13 @@ def landing_page():
         with b3:
             if st.button("Log In", key="landing_log_in", use_container_width=True):
                 st.session_state.landing_mode = "login"; st.rerun()
-        st.markdown("""
-        <div class="section">
-          <div class="section-head"><div class="section-kicker">THE DACRE PLATFORM</div><div class="section-title">One intelligence layer for the work that matters.</div><div class="section-copy">Explore the five core aspects of DACRE — each one is a real page connected to this application.</div></div>
-          <div class="grid-3">
-            <div class="feature-card"><div class="feature-icon">OPEN</div><h3>Features</h3><p>Explore the workspace, formulas, charts, files, exports and DI action tools that make DACRE useful day to day.</p></div>
-            <div class="feature-card"><div class="feature-icon">DI</div><h3>Intelligence</h3><p>Understand how DI — David's Intelligence — works with your business context and active data.</p></div>
-            <div class="feature-card"><div class="feature-icon">NODE</div><h3>Workforce</h3><p>Meet the specialized DI workers and see how their distinct specialties fit into one intelligence foundation.</p></div>
-            <div class="feature-card"><div class="feature-icon">◫</div><h3>Analytics</h3><p>See how DACRE turns data into health scores, business signals, decisions and opportunity insights.</p></div>
-            <div class="feature-card"><div class="feature-icon">OK</div><h3>Security</h3><p>Learn how organization boundaries, activity visibility and protected administration support business use.</p></div>
-            <div class="feature-card"><div class="feature-icon">→</div><h3>Ready to begin?</h3><p>Create your DACRE account and enter your own workspace with real authentication and persistent organization context.</p></div>
-          </div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown('\n        <div class="section">\n          <div class="section-head"><div class="section-kicker">THE DACRE PLATFORM</div><div class="section-title">One intelligence layer for the work that matters.</div><div class="section-copy">Explore the five core aspects of DACRE — each one is a real page connected to this application.</div></div>\n          <div class="grid-3">\n            <div class="feature-card"><div class="feature-icon">OPEN</div><h3>Features</h3><p>Explore the workspace, formulas, charts, files, exports and DI action tools that make DACRE useful day to day.</p></div>\n            <div class="feature-card"><div class="feature-icon">DI</div><h3>Intelligence</h3><p>Understand how DI — David\'s Intelligence — works with your business context and active data.</p></div>\n            <div class="feature-card"><div class="feature-icon">NODE</div><h3>Workforce</h3><p>Meet the specialized DI workers and see how their distinct specialties fit into one intelligence foundation.</p></div>\n            <div class="feature-card"><div class="feature-icon">◫</div><h3>Analytics</h3><p>See how DACRE turns data into health scores, business signals, decisions and opportunity insights.</p></div>\n            <div class="feature-card"><div class="feature-icon">OK</div><h3>Security</h3><p>Learn how organization boundaries, activity visibility and protected administration support business use.</p></div>\n            <div class="feature-card"><div class="feature-icon">→</div><h3>Ready to begin?</h3><p>Create your DACRE account and enter your own workspace with real authentication and persistent organization context.</p></div>\n          </div>\n        </div>\n        ', unsafe_allow_html=True)
         page_cols = st.columns(5)
         for col, label, target in zip(page_cols, ["Features","Intelligence","Workforce","Analytics","Security"], ["features","intelligence","workforce","analytics","security"]):
             with col:
                 if st.button(label, key=f"landing_card_{target}", use_container_width=True):
                     st.session_state.landing_section = target; st.rerun()
-        st.markdown("""
-        <div class="cta"><div class="section-kicker">START YOUR WORKSPACE</div><h2>Create your DACRE account.</h2><p>Move from scattered information to a connected business intelligence workspace powered by DI — David's Intelligence.</p></div>
-        """, unsafe_allow_html=True)
+        st.markdown('\n        <div class="cta"><div class="section-kicker">START YOUR WORKSPACE</div><h2>Create your DACRE account.</h2><p>Move from scattered information to a connected business intelligence workspace powered by DI — David\'s Intelligence.</p></div>\n        ', unsafe_allow_html=True)
         cta1, cta2 = st.columns([1, 1])
         with cta1:
             if st.button("Create Your DACRE Account", key="landing_bottom_signup", use_container_width=True, type="primary"):
@@ -4077,9 +3406,7 @@ def landing_page():
         with cta2:
             if st.button("Already have an account? Sign In", key="landing_bottom_login", use_container_width=True):
                 st.session_state.landing_mode = "login"; st.rerun()
-    st.markdown("""
-    <div class="footer"><span>© DACRE Analysis · Business & Data Intelligence</span><span>Powered by DI — David's Intelligence</span></div>
-    """, unsafe_allow_html=True)
+    st.markdown('\n    <div class="footer"><span>© DACRE Analysis · Business & Data Intelligence</span><span>Powered by DI — David\'s Intelligence</span></div>\n    ', unsafe_allow_html=True)
     if current_section != "home":
         c1, c2, c3 = st.columns([1, 1, 1])
         with c1:
@@ -4212,12 +3539,7 @@ class GlobalBusinessIntelligence:
         }
         return regions.get(region.lower(), {"error": "Region not found"})
 def render_global_markets_dashboard():
-    st.markdown("""
-    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;">DATA Global Markets</h1>
-        <p style="color:#94a3b8;">Real-time market data from around the world</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('\n    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">\n        <h1 style="color:white;">DATA Global Markets</h1>\n        <p style="color:#94a3b8;">Real-time market data from around the world</p>\n    </div>\n    ', unsafe_allow_html=True)
     bi = GlobalBusinessIntelligence(); st.subheader(" Currency Exchange Rates")
     rates = bi.get_currency_rates("USD")
     if rates.get("rates"):
@@ -4410,228 +3732,10 @@ def init_production_core():
         "timestamp": datetime.now().isoformat()
     }
 def render_dacre_production_core():
-    st.markdown("""
-    <style>
-    .dacre-core-container {
-        background: linear-gradient(145deg, #0a1628, #1a2a4a);
-        border-radius: 24px;
-        padding: 30px;
-        margin: 20px 0;
-        border: 2px solid rgba(75, 130, 245, 0.3);
-        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-        position: relative;; overflow: hidden;
-    }
-    .dacre-core-container::before {
-        content: '';; position: absolute;
-        top: -50%;
-        left: -50%;
-        width: 200%;
-        height: 200%;
-        background: radial-gradient(ellipse at center, rgba(75,130,245,0.05) 0%, transparent 70%);
-        animation: corePulse 8s ease-in-out infinite;
-    }
-    @keyframes corePulse {
-        0%, 100% { transform: scale(1); opacity: 0.5; }
-        50% { transform: scale(1.1); opacity: 1; }
-    }
-    .core-title {
-        text-align: center;
-        color: white;
-        font-size: 28px;
-        font-weight: 900;
-        letter-spacing: 2px;
-        position: relative;
-        z-index: 1;
-    }
-    .core-title span {
-        background: linear-gradient(90deg, #4b82f5, #a78bfa, #f472b6);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-    .core-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 20px;
-        margin: 30px 0;
-        position: relative;
-        z-index: 1;
-    }
-    .core-card {
-        background: rgba(255,255,255,0.05);
-        border-radius: 16px;
-        padding: 25px;
-        text-align: center;
-        border: 1px solid rgba(75,130,245,0.2);
-        transition: all 0.3s ease;
-        backdrop-filter: blur(10px);
-        position: relative;; overflow: hidden;
-    }
-    .core-card:hover {
-        transform: translateY(-5px);
-        border-color: rgba(75,130,245,0.6);
-        box-shadow: 0 10px 40px rgba(75,130,245,0.2);
-    }
-    .core-card .icon {
-        font-size: 48px;
-        margin-bottom: 10px;
-        display: block;
-    }
-    .core-card h3 {
-        color: white;
-        margin: 10px 0;
-        font-size: 18px;
-    }
-    .core-card p {
-        color: #94a3b8;
-        font-size: 13px;
-        line-height: 1.6;
-        margin: 5px 0;
-    }
-    .core-card .status {
-        display: inline-block;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 11px;
-        font-weight: bold;
-        margin-top: 10px;
-    }
-    .status-online { background: rgba(46, 204, 113, 0.2); color: #2ecc71; }
-    .status-active { background: rgba(52, 152, 219, 0.2); color: #3498db; }
-    .status-ready { background: rgba(241, 196, 15, 0.2); color: #f1c40f; }
-    .core-bottom {
-        text-align: center;
-        margin-top: 20px;
-        padding: 20px;
-        background: rgba(75,130,245,0.1);
-        border-radius: 12px;
-        border: 1px solid rgba(75,130,245,0.2);
-        position: relative;
-        z-index: 1;
-    }
-    .core-bottom h2 {
-        color: white;
-        font-size: 24px;
-        margin: 0;
-    }
-    .core-bottom h2 span {
-        background: linear-gradient(90deg, #f59e0b, #fbbf24);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-    .core-bottom p {
-        color: #94a3b8;
-        margin: 5px 0 0 0;
-    }
-    .core-stats {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 15px;
-        margin-top: 20px;
-        position: relative;
-        z-index: 1;
-    }
-    .core-stat {
-        background: rgba(255,255,255,0.03);
-        border-radius: 12px;
-        padding: 15px;
-        text-align: center;
-        border: 1px solid rgba(255,255,255,0.05);
-    }
-    .core-stat .number {
-        font-size: 28px;
-        font-weight: 900;
-        color: white;
-    }
-    .core-stat .label {
-        color: #94a3b8;
-        font-size: 12px;
-        margin-top: 5px;
-    }
-    .core-stat .label span {
-        color: #60a5fa;
-    }
-    @media (max-width: 768px) {
-        .core-grid { grid-template-columns: 1fr; }
-        .core-stats { grid-template-columns: 1fr 1fr; }
-    }
-    </style>
-    <div class="dacre-core-container">
-        <div class="core-title">FAST DACRE <span>PRODUCTION CORE</span></div>
-        <div class="core-grid">
-            <div class="core-card">
-                <span class="icon">REFRESH</span>
-                <h3>Self-Healing Database</h3>
-                <p>Automatic schema repair, migration, and recovery. Your data stays intact even when things go wrong.</p>
-                <div style="margin-top: 10px; font-size: 12px; color: #94a3b8;">
-                    <span style="color: #2ecc71;">ONLINE</span> Schema Auto-Repair
-                    <br>
-                    <span style="color: #2ecc71;">ONLINE</span> Migration Safe
-                    <br>
-                    <span style="color: #2ecc71;">ONLINE</span> Data Integrity
-                </div>
-                <span class="status status-online">ONLINE ONLINE</span>
-            </div>
-            <div class="core-card">
-                <span class="icon">DI</span>
-                <h3>DI Intelligence</h3>
-                <p>20 specialized DI agents with memory, private brains, voice, video, and web search capabilities.</p>
-                <div style="margin-top: 10px; font-size: 12px; color: #94a3b8;">
-                    <span style="color: #3498db;">ONLINE</span> 20 DI Workforce
-                    <br>
-                    <span style="color: #3498db;">ONLINE</span> Memory + Brain
-                    <br>
-                    <span style="color: #3498db;">ONLINE</span> Web Search
-                </div>
-                <span class="status status-active"> ACTIVE</span>
-            </div>
-            <div class="core-card">
-                <span class="icon">SECURITY</span>
-                <h3>Error Shield</h3>
-                <p>Catches runtime failures, prevents crashes, and ensures safe recovery with graceful degradation.</p>
-                <div style="margin-top: 10px; font-size: 12px; color: #94a3b8;">
-                    <span style="color: #f1c40f;">ONLINE</span> Crash Protection
-                    <br>
-                    <span style="color: #f1c40f;">ONLINE</span> Safe Recovery
-                    <br>
-                    <span style="color: #f1c40f;">ONLINE</span> Graceful Degrade
-                </div>
-                <span class="status status-ready"> READY</span>
-            </div>
-        </div>
-        <div class="core-bottom">
-            <h2>⬇ ONE <span>STABLE</span> DACRE APP ⬇</h2>
-            <p>All systems integrated · 99.98% uptime · Enterprise ready</p>
-            <div class="core-stats">
-                <div class="core-stat">
-                    <div class="number">20</div>
-                    <div class="label">DI <span>Agents</span></div>
-                </div>
-                <div class="core-stat">
-                    <div class="number">100%</div>
-                    <div class="label">Self-<span>Healing</span></div>
-                </div>
-                <div class="core-stat">
-                    <div class="number">99.98%</div>
-                    <div class="label">Uptime</div>
-                </div>
-                <div class="core-stat">
-                    <div class="number">∞</div>
-                    <div class="label">Error <span>Shield</span></div>
-                </div>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('\n    <style>\n    .dacre-core-container {\n        background: linear-gradient(145deg, #0a1628, #1a2a4a);\n        border-radius: 24px;\n        padding: 30px;\n        margin: 20px 0;\n        border: 2px solid rgba(75, 130, 245, 0.3);\n        box-shadow: 0 20px 60px rgba(0,0,0,0.5);\n        position: relative;; overflow: hidden;\n    }\n    .dacre-core-container::before {\n        content: \'\';; position: absolute;\n        top: -50%;\n        left: -50%;\n        width: 200%;\n        height: 200%;\n        background: radial-gradient(ellipse at center, rgba(75,130,245,0.05) 0%, transparent 70%);\n        animation: corePulse 8s ease-in-out infinite;\n    }\n    @keyframes corePulse {\n        0%, 100% { transform: scale(1); opacity: 0.5; }\n        50% { transform: scale(1.1); opacity: 1; }\n    }\n    .core-title {\n        text-align: center;\n        color: white;\n        font-size: 28px;\n        font-weight: 900;\n        letter-spacing: 2px;\n        position: relative;\n        z-index: 1;\n    }\n    .core-title span {\n        background: linear-gradient(90deg, #4b82f5, #a78bfa, #f472b6);\n        -webkit-background-clip: text;\n        -webkit-text-fill-color: transparent;\n        background-clip: text;\n    }\n    .core-grid {\n        display: grid;\n        grid-template-columns: 1fr 1fr 1fr;\n        gap: 20px;\n        margin: 30px 0;\n        position: relative;\n        z-index: 1;\n    }\n    .core-card {\n        background: rgba(255,255,255,0.05);\n        border-radius: 16px;\n        padding: 25px;\n        text-align: center;\n        border: 1px solid rgba(75,130,245,0.2);\n        transition: all 0.3s ease;\n        backdrop-filter: blur(10px);\n        position: relative;; overflow: hidden;\n    }\n    .core-card:hover {\n        transform: translateY(-5px);\n        border-color: rgba(75,130,245,0.6);\n        box-shadow: 0 10px 40px rgba(75,130,245,0.2);\n    }\n    .core-card .icon {\n        font-size: 48px;\n        margin-bottom: 10px;\n        display: block;\n    }\n    .core-card h3 {\n        color: white;\n        margin: 10px 0;\n        font-size: 18px;\n    }\n    .core-card p {\n        color: #94a3b8;\n        font-size: 13px;\n        line-height: 1.6;\n        margin: 5px 0;\n    }\n    .core-card .status {\n        display: inline-block;\n        padding: 4px 12px;\n        border-radius: 20px;\n        font-size: 11px;\n        font-weight: bold;\n        margin-top: 10px;\n    }\n    .status-online { background: rgba(46, 204, 113, 0.2); color: #2ecc71; }\n    .status-active { background: rgba(52, 152, 219, 0.2); color: #3498db; }\n    .status-ready { background: rgba(241, 196, 15, 0.2); color: #f1c40f; }\n    .core-bottom {\n        text-align: center;\n        margin-top: 20px;\n        padding: 20px;\n        background: rgba(75,130,245,0.1);\n        border-radius: 12px;\n        border: 1px solid rgba(75,130,245,0.2);\n        position: relative;\n        z-index: 1;\n    }\n    .core-bottom h2 {\n        color: white;\n        font-size: 24px;\n        margin: 0;\n    }\n    .core-bottom h2 span {\n        background: linear-gradient(90deg, #f59e0b, #fbbf24);\n        -webkit-background-clip: text;\n        -webkit-text-fill-color: transparent;\n        background-clip: text;\n    }\n    .core-bottom p {\n        color: #94a3b8;\n        margin: 5px 0 0 0;\n    }\n    .core-stats {\n        display: grid;\n        grid-template-columns: repeat(4, 1fr);\n        gap: 15px;\n        margin-top: 20px;\n        position: relative;\n        z-index: 1;\n    }\n    .core-stat {\n        background: rgba(255,255,255,0.03);\n        border-radius: 12px;\n        padding: 15px;\n        text-align: center;\n        border: 1px solid rgba(255,255,255,0.05);\n    }\n    .core-stat .number {\n        font-size: 28px;\n        font-weight: 900;\n        color: white;\n    }\n    .core-stat .label {\n        color: #94a3b8;\n        font-size: 12px;\n        margin-top: 5px;\n    }\n    .core-stat .label span {\n        color: #60a5fa;\n    }\n    @media (max-width: 768px) {\n        .core-grid { grid-template-columns: 1fr; }\n        .core-stats { grid-template-columns: 1fr 1fr; }\n    }\n    </style>\n    <div class="dacre-core-container">\n        <div class="core-title">FAST DACRE <span>PRODUCTION CORE</span></div>\n        <div class="core-grid">\n            <div class="core-card">\n                <span class="icon">REFRESH</span>\n                <h3>Self-Healing Database</h3>\n                <p>Automatic schema repair, migration, and recovery. Your data stays intact even when things go wrong.</p>\n                <div style="margin-top: 10px; font-size: 12px; color: #94a3b8;">\n                    <span style="color: #2ecc71;">ONLINE</span> Schema Auto-Repair\n                    <br>\n                    <span style="color: #2ecc71;">ONLINE</span> Migration Safe\n                    <br>\n                    <span style="color: #2ecc71;">ONLINE</span> Data Integrity\n                </div>\n                <span class="status status-online">ONLINE ONLINE</span>\n            </div>\n            <div class="core-card">\n                <span class="icon">DI</span>\n                <h3>DI Intelligence</h3>\n                <p>20 specialized DI agents with memory, private brains, voice, video, and web search capabilities.</p>\n                <div style="margin-top: 10px; font-size: 12px; color: #94a3b8;">\n                    <span style="color: #3498db;">ONLINE</span> 20 DI Workforce\n                    <br>\n                    <span style="color: #3498db;">ONLINE</span> Memory + Brain\n                    <br>\n                    <span style="color: #3498db;">ONLINE</span> Web Search\n                </div>\n                <span class="status status-active"> ACTIVE</span>\n            </div>\n            <div class="core-card">\n                <span class="icon">SECURITY</span>\n                <h3>Error Shield</h3>\n                <p>Catches runtime failures, prevents crashes, and ensures safe recovery with graceful degradation.</p>\n                <div style="margin-top: 10px; font-size: 12px; color: #94a3b8;">\n                    <span style="color: #f1c40f;">ONLINE</span> Crash Protection\n                    <br>\n                    <span style="color: #f1c40f;">ONLINE</span> Safe Recovery\n                    <br>\n                    <span style="color: #f1c40f;">ONLINE</span> Graceful Degrade\n                </div>\n                <span class="status status-ready"> READY</span>\n            </div>\n        </div>\n        <div class="core-bottom">\n            <h2>⬇ ONE <span>STABLE</span> DACRE APP ⬇</h2>\n            <p>All systems integrated · 99.98% uptime · Enterprise ready</p>\n            <div class="core-stats">\n                <div class="core-stat">\n                    <div class="number">20</div>\n                    <div class="label">DI <span>Agents</span></div>\n                </div>\n                <div class="core-stat">\n                    <div class="number">100%</div>\n                    <div class="label">Self-<span>Healing</span></div>\n                </div>\n                <div class="core-stat">\n                    <div class="number">99.98%</div>\n                    <div class="label">Uptime</div>\n                </div>\n                <div class="core-stat">\n                    <div class="number">∞</div>\n                    <div class="label">Error <span>Shield</span></div>\n                </div>\n            </div>\n        </div>\n    </div>\n    ', unsafe_allow_html=True)
 def render_di_home(user):
     df = st.session_state.processed_df
-    st.markdown("""
-    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;"> DI Home</h1>
-        <p style="color:#94a3b8;">Your continuous conversation with DI — David's Intelligence</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('\n    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">\n        <h1 style="color:white;"> DI Home</h1>\n        <p style="color:#94a3b8;">Your continuous conversation with DI — David\'s Intelligence</p>\n    </div>\n    ', unsafe_allow_html=True)
     for msg in st.session_state.chat_history[-20:]:
         if msg["sender"] == "DI":
             st.markdown(f"""
@@ -4665,12 +3769,7 @@ def render_di_home(user):
         st.rerun()
 def render_di_workforce(user):
     agents = get_di_agents()
-    st.markdown("""
-    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;">USERS DI Workforce</h1>
-        <p style="color:#94a3b8;">Your specialized digital workforce — each DI has its own identity, specialty, and style</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('\n    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">\n        <h1 style="color:white;">USERS DI Workforce</h1>\n        <p style="color:#94a3b8;">Your specialized digital workforce — each DI has its own identity, specialty, and style</p>\n    </div>\n    ', unsafe_allow_html=True)
     if not agents:
         st.info("No DI workers have been created yet."); return
     cols = st.columns(3)
@@ -4684,12 +3783,7 @@ def render_di_workforce(user):
                 if st.button(f" Chat with {agent['di_name']}", key=f"chat_{agent['di_name']}"):
                     st.session_state.selected_agent = agent['di_name']; st.rerun()
 def render_di_calls(user):
-    st.markdown("""
-    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;"> DI Calls</h1>
-        <p style="color:#94a3b8;">Business calls, DI calls, and team rooms with a meeting-ready workspace</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('\n    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">\n        <h1 style="color:white;"> DI Calls</h1>\n        <p style="color:#94a3b8;">Business calls, DI calls, and team rooms with a meeting-ready workspace</p>\n    </div>\n    ', unsafe_allow_html=True)
     agents = get_di_agents()
     if not agents:
         st.info("No DI workers available for calls."); return
@@ -4749,12 +3843,7 @@ def render_chibobec_loan_desk(user):
     else:
         st.info("No loan clients added yet.")
 def render_workspace_data(user):
-    st.markdown("""
-    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;">FILES Workspace & Data</h1>
-        <p style="color:#94a3b8;">Upload, inspect, and clean your data</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('\n    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">\n        <h1 style="color:white;">FILES Workspace & Data</h1>\n        <p style="color:#94a3b8;">Upload, inspect, and clean your data</p>\n    </div>\n    ', unsafe_allow_html=True)
     file_upload = st.file_uploader("Upload dataset (CSV, Excel, TSV, JSON)", type=SUPPORTED_EXTENSIONS)
     if file_upload is not None and st.button(" Import & Load Dataset", type="primary"):
         try:
@@ -4778,12 +3867,7 @@ def render_workspace_data(user):
     else:
         st.info("EMPTY No active dataset. Upload a file or restore a saved project by signing in again.")
 def render_formula_lab(user):
-    st.markdown("""
-    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;">ƒ Formula Lab</h1>
-        <p style="color:#94a3b8;">Practical spreadsheet-style formulas and transformations</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('\n    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">\n        <h1 style="color:white;">ƒ Formula Lab</h1>\n        <p style="color:#94a3b8;">Practical spreadsheet-style formulas and transformations</p>\n    </div>\n    ', unsafe_allow_html=True)
     df = st.session_state.processed_df
     if df is None:
         st.warning("WARNING Please upload or open a dataset first."); return
@@ -4806,12 +3890,7 @@ def render_formula_lab(user):
             log_activity(user["username"], user["company"], f"Created concatenated column {new_col}"); st.success(f"OK Created '{new_col}'!")
             st.rerun()
 def render_charts(user):
-    st.markdown("""
-    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;">DATA Charts</h1>
-        <p style="color:#94a3b8;">Turn data into clear visual stories and business dashboards</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('\n    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">\n        <h1 style="color:white;">DATA Charts</h1>\n        <p style="color:#94a3b8;">Turn data into clear visual stories and business dashboards</p>\n    </div>\n    ', unsafe_allow_html=True)
     df = st.session_state.processed_df
     if df is None:
         st.warning("WARNING Please upload or open a dataset first."); return
@@ -4837,12 +3916,7 @@ def render_charts(user):
             fig.update_layout(template='plotly_dark')
             st.plotly_chart(fig, use_container_width=True)
 def render_file_vault(user):
-    st.markdown("""
-    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;">DATABASE File Vault</h1>
-        <p style="color:#94a3b8;">Keep company files, working datasets, and project artifacts organized</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('\n    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">\n        <h1 style="color:white;">DATABASE File Vault</h1>\n        <p style="color:#94a3b8;">Keep company files, working datasets, and project artifacts organized</p>\n    </div>\n    ', unsafe_allow_html=True)
     saved_files = get_files(user)
     if not saved_files:
         st.info("EMPTY No files stored in vault for your organization.")
@@ -4861,12 +3935,7 @@ def render_file_vault(user):
                 st.success(f"OK Loaded {fname} from Vault!")
                 st.rerun()
 def render_export_center(user):
-    st.markdown("""
-    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;">EXPORT Export Center</h1>
-        <p style="color:#94a3b8;">Package analysis outputs for the people who need them</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('\n    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">\n        <h1 style="color:white;">EXPORT Export Center</h1>\n        <p style="color:#94a3b8;">Package analysis outputs for the people who need them</p>\n    </div>\n    ', unsafe_allow_html=True)
     df = st.session_state.processed_df
     if df is None:
         st.warning("WARNING No data available to export.")
@@ -4894,12 +3963,7 @@ def render_export_center(user):
         )
     log_activity(user["username"], user["company"], "Opened Export Center")
 def render_organization_admin(user):
-    st.markdown("""
-    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;">SETTINGS Organization Admin Portal</h1>
-        <p style="color:#94a3b8;">Manage people, roles, notifications, and company activity</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('\n    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">\n        <h1 style="color:white;">SETTINGS Organization Admin Portal</h1>\n        <p style="color:#94a3b8;">Manage people, roles, notifications, and company activity</p>\n    </div>\n    ', unsafe_allow_html=True)
     target_company = user["company"] if user.get("role") != "master" else st.selectbox(
         "Organization", pd.read_sql_query("SELECT name FROM companies ORDER BY name", db())["name"].tolist()
     )
@@ -4941,12 +4005,7 @@ def render_organization_admin(user):
             st.rerun()
     con.close()
 def render_di_memory_box(user):
-    st.markdown("""
-    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;">DI DI Memory Box</h1>
-        <p style="color:#94a3b8;">The trusted institutional memory layer shared by the DI workforce</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('\n    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">\n        <h1 style="color:white;">DI DI Memory Box</h1>\n        <p style="color:#94a3b8;">The trusted institutional memory layer shared by the DI workforce</p>\n    </div>\n    ', unsafe_allow_html=True)
     mem_df = pd.read_sql_query(
         "SELECT category, title, content, priority, updated_at FROM di_memory "
         "WHERE active=1 ORDER BY priority DESC, id ASC",
@@ -4961,12 +4020,7 @@ def render_di_memory_box(user):
             st.caption(f"Updated: {row.updated_at}")
 def render_business_command_center(user):
     df = st.session_state.processed_df
-    st.markdown("""
-    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;">DATA Business Command Center</h1>
-        <p style="color:#94a3b8;">Executive signals, business health, and the most important changes in your active data</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('\n    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">\n        <h1 style="color:white;">DATA Business Command Center</h1>\n        <p style="color:#94a3b8;">Executive signals, business health, and the most important changes in your active data</p>\n    </div>\n    ', unsafe_allow_html=True)
     if df is None:
         st.info("EMPTY Upload a dataset from Workspace & Data first.")
         return
@@ -4987,12 +4041,7 @@ def render_business_command_center(user):
             icon = "INSIGHTS" if sig["type"] == "trend" else "WARNING" if sig["type"] == "anomaly" else "CLEAN"
             st.markdown(f"**{icon} {sig['column']}** — {sig['message']}")
 def render_enhanced_conference_room(user):
-    st.markdown("""
-    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
-        <h1 style="color:white;">DI Conference</h1>
-        <p style="color:#94a3b8;">Enhanced video conferencing with DI agents</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('\n    <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">\n        <h1 style="color:white;">DI Conference</h1>\n        <p style="color:#94a3b8;">Enhanced video conferencing with DI agents</p>\n    </div>\n    ', unsafe_allow_html=True)
     agents = get_di_agents()
     if not agents:
         st.info("No DI workers available for conferencing.")
@@ -5043,58 +4092,14 @@ def render_persistent_di_dock(user):
 def render_fixed_overall_admin_page(user):
     ensure_admin_runtime_schema()
     counts = admin_metric_counts()
-    st.markdown("""
-    <div style="
-        background: linear-gradient(145deg, #0a1628, #1a2a4a);
-        border-radius: 20px;
-        padding: 30px;
-        margin-bottom: 20px;
-        border: 1px solid rgba(75,130,245,0.2);
-    ">
-        <div style="display: flex; gap: 30px; align-items: center; flex-wrap: wrap;">
-            <div style="flex: 0 0 200px; text-align: center;">
-    """, unsafe_allow_html=True)
+    st.markdown('\n    <div style="\n        background: linear-gradient(145deg, #0a1628, #1a2a4a);\n        border-radius: 20px;\n        padding: 30px;\n        margin-bottom: 20px;\n        border: 1px solid rgba(75,130,245,0.2);\n    ">\n        <div style="display: flex; gap: 30px; align-items: center; flex-wrap: wrap;">\n            <div style="flex: 0 0 200px; text-align: center;">\n    ', unsafe_allow_html=True)
     if CEO_PORTRAIT_PATH and CEO_PORTRAIT_PATH.exists():
         st.image(str(CEO_PORTRAIT_PATH), width=200, output_format="JPEG")
     elif CEO_PORTRAIT_DATA_URL:
         st.image(CEO_PORTRAIT_DATA_URL, width=200)
     else:
-        st.markdown("""
-        <div style="
-            width: 200px;
-            height: 200px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #4b82f5, #7c3aed);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 80px;
-            margin: 0 auto;
-        ">
-            CEO
-        </div>
-        """, unsafe_allow_html=True)
-    st.markdown("""
-            </div>
-            <div style="flex: 1;">
-                <h1 style="color: white; margin: 0;">CEO CEO Office</h1>
-                <h2 style="color: #60a5fa; margin: 0;">David Emenike</h2>
-                <p style="color: #94a3b8;">Overall Administrator · Founder · CEO of DACRE Worldwide</p>
-                <div style="
-                    display: inline-block;
-                    background: linear-gradient(135deg, #f59e0b, #fbbf24);
-                    color: #1a1a2e;
-                    padding: 5px 15px;
-                    border-radius: 20px;
-                    font-weight: bold;
-                    font-size: 12px;
-                ">
-                    ONLINE ONLINE
-                </div>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+        st.markdown('\n        <div style="\n            width: 200px;\n            height: 200px;\n            border-radius: 50%;\n            background: linear-gradient(135deg, #4b82f5, #7c3aed);\n            display: flex;\n            align-items: center;\n            justify-content: center;\n            font-size: 80px;\n            margin: 0 auto;\n        ">\n            CEO\n        </div>\n        ', unsafe_allow_html=True)
+    st.markdown('\n            </div>\n            <div style="flex: 1;">\n                <h1 style="color: white; margin: 0;">CEO CEO Office</h1>\n                <h2 style="color: #60a5fa; margin: 0;">David Emenike</h2>\n                <p style="color: #94a3b8;">Overall Administrator · Founder · CEO of DACRE Worldwide</p>\n                <div style="\n                    display: inline-block;\n                    background: linear-gradient(135deg, #f59e0b, #fbbf24);\n                    color: #1a1a2e;\n                    padding: 5px 15px;\n                    border-radius: 20px;\n                    font-weight: bold;\n                    font-size: 12px;\n                ">\n                    ONLINE ONLINE\n                </div>\n            </div>\n        </div>\n    </div>\n    ', unsafe_allow_html=True)
     col1, col2, col3, col4, col5, col6 = st.columns(6)
     col1.metric("Business Accounts", counts["users"])
     col2.metric("Organizations", counts["companies"])
@@ -5102,18 +4107,7 @@ def render_fixed_overall_admin_page(user):
     col4.metric("DI Conversations", counts["messages"])
     col5.metric("Stored Files", counts["files"])
     col6.metric("DI Workforce", counts["agents"])
-    st.markdown("""
-    <div style="
-        background: linear-gradient(145deg, #0a1628, #1a2a4a);
-        border-radius: 20px;
-        padding: 20px;
-        margin: 20px 0;
-        border: 1px solid rgba(75,130,245,0.2);
-    ">
-        <h2 style="color: white;">CEO Sovereign Master Call</h2>
-        <p style="color: #94a3b8;">Private CEO conference with your DI council - video, voice, and real AI</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('\n    <div style="\n        background: linear-gradient(145deg, #0a1628, #1a2a4a);\n        border-radius: 20px;\n        padding: 20px;\n        margin: 20px 0;\n        border: 1px solid rgba(75,130,245,0.2);\n    ">\n        <h2 style="color: white;">CEO Sovereign Master Call</h2>\n        <p style="color: #94a3b8;">Private CEO conference with your DI council - video, voice, and real AI</p>\n    </div>\n    ', unsafe_allow_html=True)
     col1, col2 = st.columns([2, 1])
     with col1:
         selected_di = st.multiselect(
@@ -5135,35 +4129,8 @@ def render_fixed_overall_admin_page(user):
             else:
                 st.warning("Please select at least one DI agent")
     with col2:
-        st.markdown("""
-        <div style="
-            background: rgba(0,0,0,0.3);
-            border-radius: 16px;
-            padding: 15px;
-            height: 100%;
-            min-height: 200px;
-            border: 1px solid rgba(75,130,245,0.1);
-        ">
-            <h4 style="color: white;"> Call Status</h4>
-            <div style="color: #94a3b8; font-size: 14px;">
-                <p>ONLINE System Ready</p>
-                <p>MIC Microphone: Active</p>
-                <p>CAMERA Camera: Ready</p>
-                <p>DI DI Agents: Online</p>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-    st.markdown("""
-    <div style="
-        background: linear-gradient(145deg, #0a1628, #1a2a4a);
-        border-radius: 20px;
-        padding: 20px;
-        margin: 20px 0;
-        border: 1px solid rgba(75,130,245,0.2);
-    ">
-        <h2 style="color: white;">AI AI DI Workforce</h2>
-        <p style="color: #94a3b8;">REAL AI-generated portraits of your DI team</p>
-    """, unsafe_allow_html=True)
+        st.markdown('\n        <div style="\n            background: rgba(0,0,0,0.3);\n            border-radius: 16px;\n            padding: 15px;\n            height: 100%;\n            min-height: 200px;\n            border: 1px solid rgba(75,130,245,0.1);\n        ">\n            <h4 style="color: white;"> Call Status</h4>\n            <div style="color: #94a3b8; font-size: 14px;">\n                <p>ONLINE System Ready</p>\n                <p>MIC Microphone: Active</p>\n                <p>CAMERA Camera: Ready</p>\n                <p>DI DI Agents: Online</p>\n            </div>\n        </div>\n        ', unsafe_allow_html=True)
+    st.markdown('\n    <div style="\n        background: linear-gradient(145deg, #0a1628, #1a2a4a);\n        border-radius: 20px;\n        padding: 20px;\n        margin: 20px 0;\n        border: 1px solid rgba(75,130,245,0.2);\n    ">\n        <h2 style="color: white;">AI AI DI Workforce</h2>\n        <p style="color: #94a3b8;">REAL AI-generated portraits of your DI team</p>\n    ', unsafe_allow_html=True)
     if not os.path.exists("di_grid_portraits.jpg"):
         with st.spinner("CREATIVE Generating REAL AI portraits of your DI workforce..."):
             image_bytes = generate_di_grid_image()
@@ -5279,26 +4246,8 @@ REAL_DI_AVATAR_COLORS = {
 def real_di_ensure_tables():
     con = db()
     try:
-        con.execute("""CREATE TABLE IF NOT EXISTS di_user_state (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            company_name TEXT NOT NULL,
-            active_di TEXT,
-            last_task TEXT,
-            last_summary TEXT,
-            last_seen TEXT,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-        )""")
-        con.execute("""CREATE TABLE IF NOT EXISTS di_intro_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL,
-            email TEXT NOT NULL,
-            agent_name TEXT NOT NULL,
-            subject TEXT NOT NULL,
-            status TEXT NOT NULL,
-            created_at TEXT NOT NULL
-        )""")
+        con.execute('CREATE TABLE IF NOT EXISTS di_user_state (\n            id INTEGER PRIMARY KEY AUTOINCREMENT,\n            username TEXT UNIQUE NOT NULL,\n            company_name TEXT NOT NULL,\n            active_di TEXT,\n            last_task TEXT,\n            last_summary TEXT,\n            last_seen TEXT,\n            created_at TEXT NOT NULL,\n            updated_at TEXT NOT NULL\n        )')
+        con.execute('CREATE TABLE IF NOT EXISTS di_intro_log (\n            id INTEGER PRIMARY KEY AUTOINCREMENT,\n            username TEXT NOT NULL,\n            email TEXT NOT NULL,\n            agent_name TEXT NOT NULL,\n            subject TEXT NOT NULL,\n            status TEXT NOT NULL,\n            created_at TEXT NOT NULL\n        )')
         con.execute("CREATE INDEX IF NOT EXISTS idx_di_user_state_company ON di_user_state(company_name)")
         con.commit()
     finally:
@@ -5333,14 +4282,7 @@ def real_di_seed_foundation():
 DI_FACE_DIR = BASE_DIR / "assets" / "di_faces"
 DI_WORKFORCE_POSTER = BASE_DIR / "assets" / "di_workforce_poster.png"
 DI_CRAFT_ROOT = BASE_DIR / "di_craft_basement"
-DI_CRAFT_VISUAL_PROMPT = """A premium corporate robotics laboratory for DACRE WORLDWIDE:
-twenty distinct humanlike AI android specialists, male and female, diverse human
-appearance, realistic faces, polished professional clothing with subtle DACRE/DI
-technology markings, blue-black glass-and-metal environment, holographic floating
-screens, transparent 3D artifacts, separate specialist rooms, clean enterprise
-engineering aesthetic, cinematic but practical, designed as a real internal AI
-engineering facility. Each DI has a persistent identity, face, name, voice profile,
-role, private memory, shared DACRE brain, and an interactive workstation."""
+DI_CRAFT_VISUAL_PROMPT = 'A premium corporate robotics laboratory for DACRE WORLDWIDE:\ntwenty distinct humanlike AI android specialists, male and female, diverse human\nappearance, realistic faces, polished professional clothing with subtle DACRE/DI\ntechnology markings, blue-black glass-and-metal environment, holographic floating\nscreens, transparent 3D artifacts, separate specialist rooms, clean enterprise\nengineering aesthetic, cinematic but practical, designed as a real internal AI\nengineering facility. Each DI has a persistent identity, face, name, voice profile,\nrole, private memory, shared DACRE brain, and an interactive workstation.'
 DI_CRAFT_COMMAND_SPEC = {
     "name": "DI Craft Basement",
     "purpose": "Secure engineering environment for identity, tools, memory, body and voice.",
@@ -5415,17 +4357,7 @@ def render_online_robot_control_center(user):
         with col:
             st.markdown(f'<div class="dacre-dark-section" style="padding:15px;border-top:3px solid {accent};"><div style="font-size:10px;letter-spacing:.12em;color:#91a7bd;font-weight:900">{title}</div><div style="font-size:18px;color:#fff;font-weight:900;margin-top:6px">{value}</div></div>', unsafe_allow_html=True)
     with st.expander("Server configuration guide", expanded=False):
-        st.code('''DACRE_RESEARCH_SERVER_URL=https://your-research-gateway.example/answer
-DACRE_RESEARCH_SERVER_TOKEN=server-side-token
-DACRE_RESEARCH_STORE_CAPACITY=5000
-GEMINI_API_KEY=your-gemini-key
-GROQ_API_KEY=your-groq-key
-DACRE_MAILJET_SMTP_HOST=in-v3.mailjet.com
-DACRE_MAILJET_SMTP_PORT=587
-DACRE_MAILJET_SMTP_USER=mailjet-api-key
-DACRE_MAILJET_SMTP_PASSWORD=mailjet-secret-key
-DACRE_MAILJET_SMTP_FROM=verified-sender@example.com
-MONGODB_URI=mongodb+srv://...''', language="bash")
+        st.code('DACRE_RESEARCH_SERVER_URL=https://your-research-gateway.example/answer\nDACRE_RESEARCH_SERVER_TOKEN=server-side-token\nDACRE_RESEARCH_STORE_CAPACITY=5000\nGEMINI_API_KEY=your-gemini-key\nGROQ_API_KEY=your-groq-key\nDACRE_MAILJET_SMTP_HOST=in-v3.mailjet.com\nDACRE_MAILJET_SMTP_PORT=587\nDACRE_MAILJET_SMTP_USER=mailjet-api-key\nDACRE_MAILJET_SMTP_PASSWORD=mailjet-secret-key\nDACRE_MAILJET_SMTP_FROM=verified-sender@example.com\nMONGODB_URI=mongodb+srv://...', language="bash")
 DI_RESEARCH_STORE_DEFAULT_CAPACITY = 5000
 DI_RESEARCH_SERVER_TIMEOUT = 30
 def _research_server_config():
@@ -5447,18 +4379,7 @@ def _research_server_config():
 def di_research_store_ensure_table():
     con = db()
     try:
-        con.execute("""CREATE TABLE IF NOT EXISTS di_research_store (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            company_name TEXT NOT NULL DEFAULT '',
-            di_id INTEGER,
-            di_name TEXT NOT NULL DEFAULT 'DI',
-            question TEXT NOT NULL,
-            answer TEXT NOT NULL,
-            source TEXT NOT NULL DEFAULT 'local',
-            server_endpoint TEXT DEFAULT '',
-            created_at TEXT NOT NULL,
-            last_accessed TEXT NOT NULL
-        )""")
+        con.execute("CREATE TABLE IF NOT EXISTS di_research_store (\n            id INTEGER PRIMARY KEY AUTOINCREMENT,\n            company_name TEXT NOT NULL DEFAULT '',\n            di_id INTEGER,\n            di_name TEXT NOT NULL DEFAULT 'DI',\n            question TEXT NOT NULL,\n            answer TEXT NOT NULL,\n            source TEXT NOT NULL DEFAULT 'local',\n            server_endpoint TEXT DEFAULT '',\n            created_at TEXT NOT NULL,\n            last_accessed TEXT NOT NULL\n        )")
         con.execute("CREATE INDEX IF NOT EXISTS idx_di_research_store_company ON di_research_store(company_name, id)")
         con.execute("CREATE INDEX IF NOT EXISTS idx_di_research_store_di ON di_research_store(di_id, id)")
         con.commit()
@@ -5485,9 +4406,7 @@ def di_research_store_find(company_name, di_id, question):
     con = db()
     try:
         row = con.execute(
-            """SELECT * FROM di_research_store
-               WHERE company_name=? AND di_id=? AND lower(trim(question))=lower(trim(?))
-               ORDER BY id DESC LIMIT 1""",
+            'SELECT * FROM di_research_store\n               WHERE company_name=? AND di_id=? AND lower(trim(question))=lower(trim(?))\n               ORDER BY id DESC LIMIT 1',
             (company_name or "", int(di_id or 0), question),
         ).fetchone()
         if row:
@@ -5528,9 +4447,7 @@ def di_research_store_archive_oldest_to_brain(company_name, di_id, di_name, crea
                 )
             else:
                 con.execute(
-                    """INSERT INTO di_private_memory
-                       (di_id,title,content,source,created_by,created_at,updated_at,active)
-                       VALUES(?,?,?,?,?,?,?,1)""",
+                    'INSERT INTO di_private_memory\n                       (di_id,title,content,source,created_by,created_at,updated_at,active)\n                       VALUES(?,?,?,?,?,?,?,1)',
                     (target_di_id, title, str(r["answer"]), "DI Research Store archive", created_by, now, now),
                 )
             con.execute("DELETE FROM di_research_store WHERE id=?", (r["id"],))
@@ -5546,9 +4463,7 @@ def di_research_store_put(company_name, di_id, di_name, question, answer, source
     con = db()
     try:
         con.execute(
-            """INSERT INTO di_research_store
-               (company_name,di_id,di_name,question,answer,source,server_endpoint,created_at,last_accessed)
-               VALUES(?,?,?,?,?,?,?,?,?)""",
+            'INSERT INTO di_research_store\n               (company_name,di_id,di_name,question,answer,source,server_endpoint,created_at,last_accessed)\n               VALUES(?,?,?,?,?,?,?,?,?)',
             (company_name or "", int(di_id or 0), di_name or "DI", str(question).strip(), str(answer).strip(), source, endpoint or "", now, now),
         )
         con.commit()
@@ -5637,8 +4552,7 @@ def render_di_research_store(user, selected_agent=None):
     con = db()
     try:
         rows = con.execute(
-            """SELECT di_name, question, source, created_at FROM di_research_store
-               WHERE company_name=? ORDER BY id DESC LIMIT 12""",
+            'SELECT di_name, question, source, created_at FROM di_research_store\n               WHERE company_name=? ORDER BY id DESC LIMIT 12',
             (str(user.get("company", "") or ""),),
         ).fetchall()
     finally:
@@ -5668,15 +4582,7 @@ DI_BASEMENT_ACTIVITY = [
 def di_basement_world_ensure_table():
     con = db()
     try:
-        con.execute("""CREATE TABLE IF NOT EXISTS di_basement_rooms (
-            di_name TEXT PRIMARY KEY,
-            room_number INTEGER NOT NULL,
-            activity TEXT NOT NULL DEFAULT 'MONITORING',
-            screen_title TEXT NOT NULL DEFAULT 'Operations Console',
-            screen_text TEXT NOT NULL DEFAULT 'Monitoring DACRE platform',
-            status TEXT NOT NULL DEFAULT 'ONLINE',
-            updated_at TEXT NOT NULL
-        )""")
+        con.execute("CREATE TABLE IF NOT EXISTS di_basement_rooms (\n            di_name TEXT PRIMARY KEY,\n            room_number INTEGER NOT NULL,\n            activity TEXT NOT NULL DEFAULT 'MONITORING',\n            screen_title TEXT NOT NULL DEFAULT 'Operations Console',\n            screen_text TEXT NOT NULL DEFAULT 'Monitoring DACRE platform',\n            status TEXT NOT NULL DEFAULT 'ONLINE',\n            updated_at TEXT NOT NULL\n        )")
         con.commit()
     finally:
         con.close()
@@ -5700,17 +4606,13 @@ def di_basement_world_sync():
                 if age > 45:
                     activity, title, screen = DI_BASEMENT_ACTIVITY[(idx + int(now.timestamp() // 45)) % len(DI_BASEMENT_ACTIVITY)]
                     con.execute(
-                        """UPDATE di_basement_rooms
-                           SET activity=?, screen_title=?, screen_text=?, status='ONLINE', updated_at=?
-                           WHERE di_name=?""",
+                        "UPDATE di_basement_rooms\n                           SET activity=?, screen_title=?, screen_text=?, status='ONLINE', updated_at=?\n                           WHERE di_name=?",
                         (activity, title, f"{screen} · DACRE ONLINE ROBOT", now_s, spec["name"])
                     )
             else:
                 activity, title, screen = DI_BASEMENT_ACTIVITY[(idx - 1) % len(DI_BASEMENT_ACTIVITY)]
                 con.execute(
-                    """INSERT INTO di_basement_rooms
-                       (di_name,room_number,activity,screen_title,screen_text,status,updated_at)
-                       VALUES(?,?,?,?,?,?,?)""",
+                    'INSERT INTO di_basement_rooms\n                       (di_name,room_number,activity,screen_title,screen_text,status,updated_at)\n                       VALUES(?,?,?,?,?,?,?)',
                     (spec["name"], idx, activity, title, f"{screen} · DACRE ONLINE ROBOT", "ONLINE", now_s)
                 )
         con.commit()
@@ -5848,24 +4750,7 @@ def render_di_craft_basement(user):
     if not di_basement_password_ok():
         return
     manifest = di_craft_manifest()
-    st.markdown("""
-    <div class="di-basement-shell">
-      <div class="di-basement-hero">
-        <div><div class="basement-kicker">DAVID CREATION · ENGINEERING LEVEL</div>
-        <h1>DI CRAFT BASEMENT</h1>
-        <p>Twenty separated DI engineering rooms · shared DACRE intelligence fabric · individual identity, body, voice and memory.</p></div>
-        <div class="basement-status">ONLINE ENGINE ONLINE</div>
-      </div>
-    </div>
-    <style>
-      .di-basement-shell{background:radial-gradient(circle at 50% 0%,#17365c,#050b14 62%);padding:22px;border-radius:24px;border:1px solid #24517b;box-shadow:0 30px 80px rgba(0,0,0,.35)}
-      .di-basement-hero{display:flex;justify-content:space-between;gap:20px;align-items:center}
-      .basement-kicker{color:#38bdf8;font-size:11px;letter-spacing:.16em;font-weight:800}
-      .di-basement-hero h1{color:#fff;margin:5px 0;font-size:34px}
-      .di-basement-hero p{color:#9fb4cc;max-width:760px}
-      .basement-status{border:1px solid #22c55e66;color:#4ade80;border-radius:999px;padding:10px 16px;font-weight:800}
-    </style>
-    """, unsafe_allow_html=True)
+    st.markdown('\n    <div class="di-basement-shell">\n      <div class="di-basement-hero">\n        <div><div class="basement-kicker">DAVID CREATION · ENGINEERING LEVEL</div>\n        <h1>DI CRAFT BASEMENT</h1>\n        <p>Twenty separated DI engineering rooms · shared DACRE intelligence fabric · individual identity, body, voice and memory.</p></div>\n        <div class="basement-status">ONLINE ENGINE ONLINE</div>\n      </div>\n    </div>\n    <style>\n      .di-basement-shell{background:radial-gradient(circle at 50% 0%,#17365c,#050b14 62%);padding:22px;border-radius:24px;border:1px solid #24517b;box-shadow:0 30px 80px rgba(0,0,0,.35)}\n      .di-basement-hero{display:flex;justify-content:space-between;gap:20px;align-items:center}\n      .basement-kicker{color:#38bdf8;font-size:11px;letter-spacing:.16em;font-weight:800}\n      .di-basement-hero h1{color:#fff;margin:5px 0;font-size:34px}\n      .di-basement-hero p{color:#9fb4cc;max-width:760px}\n      .basement-status{border:1px solid #22c55e66;color:#4ade80;border-radius:999px;padding:10px 16px;font-weight:800}\n    </style>\n    ', unsafe_allow_html=True)
     render_persistent_di_basement_world()
     render_online_robot_control_center(user)
     selected = st.selectbox("Inspect a DI workstation", list(manifest), key="craft_selected_di")
@@ -6018,9 +4903,7 @@ def real_di_save_state(user, active_di, last_task, last_summary):
     now = datetime.now().isoformat(timespec="seconds")
     con = db()
     try:
-        con.execute("""INSERT INTO di_user_state(username,company_name,active_di,last_task,last_summary,last_seen,created_at,updated_at)
-                      VALUES(?,?,?,?,?,?,?,?)
-                      ON CONFLICT(username) DO UPDATE SET company_name=excluded.company_name,active_di=excluded.active_di,last_task=excluded.last_task,last_summary=excluded.last_summary,last_seen=excluded.last_seen,updated_at=excluded.updated_at""",
+        con.execute('INSERT INTO di_user_state(username,company_name,active_di,last_task,last_summary,last_seen,created_at,updated_at)\n                      VALUES(?,?,?,?,?,?,?,?)\n                      ON CONFLICT(username) DO UPDATE SET company_name=excluded.company_name,active_di=excluded.active_di,last_task=excluded.last_task,last_summary=excluded.last_summary,last_seen=excluded.last_seen,updated_at=excluded.updated_at',
                     (user.get("username", ""), user.get("company", ""), active_di or "", str(last_task or "")[:1000], str(last_summary or "")[:1800], now, now, now))
         con.commit()
     finally:
@@ -6165,18 +5048,7 @@ def real_di_welcome_sequence(user):
         ]
     return []
 def render_microphone_permission_warmup():
-    components.html("""
-    <script>
-    (async () => {
-      try {
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          const stream = await navigator.mediaDevices.getUserMedia({audio:true});
-          stream.getTracks().forEach(track => track.stop());
-        }
-      } catch (e) {}
-    })();
-    </script>
-    """, height=1)
+    components.html('\n    <script>\n    (async () => {\n      try {\n        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {\n          const stream = await navigator.mediaDevices.getUserMedia({audio:true});\n          stream.getTracks().forEach(track => track.stop());\n        }\n      } catch (e) {}\n    })();\n    </script>\n    ', height=1)
 def real_di_render_voice_input(user, location="home"):
     st.markdown("### VOICE Talk to DI")
     st.caption("Your microphone is ready. Click the microphone control, allow browser permission, speak, and DI will place the transcript into the chat workflow.")
@@ -6686,16 +5558,7 @@ COUNTRY_OPTIONS = sorted(COUNTRY_LANGUAGE_MAP)
 def _ensure_user_preferences_table():
     con = db()
     try:
-        con.execute("""
-            CREATE TABLE IF NOT EXISTS user_preferences (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE NOT NULL,
-                country TEXT NOT NULL DEFAULT 'Nigeria',
-                language TEXT NOT NULL DEFAULT 'English',
-                language_code TEXT NOT NULL DEFAULT 'en-NG',
-                updated_at TEXT NOT NULL
-            )
-        """)
+        con.execute("\n            CREATE TABLE IF NOT EXISTS user_preferences (\n                id INTEGER PRIMARY KEY AUTOINCREMENT,\n                username TEXT UNIQUE NOT NULL,\n                country TEXT NOT NULL DEFAULT 'Nigeria',\n                language TEXT NOT NULL DEFAULT 'English',\n                language_code TEXT NOT NULL DEFAULT 'en-NG',\n                updated_at TEXT NOT NULL\n            )\n        ")
         con.commit()
     finally:
         con.close()
@@ -6716,11 +5579,7 @@ def set_user_preferences(username, country):
     con = db()
     now = datetime.now().isoformat(timespec="seconds")
     try:
-        con.execute("""
-            INSERT INTO user_preferences(username,country,language,language_code,updated_at)
-            VALUES(?,?,?,?,?)
-            ON CONFLICT(username) DO UPDATE SET country=excluded.country,language=excluded.language,language_code=excluded.language_code,updated_at=excluded.updated_at
-        """, (username, country, language, code, now))
+        con.execute('\n            INSERT INTO user_preferences(username,country,language,language_code,updated_at)\n            VALUES(?,?,?,?,?)\n            ON CONFLICT(username) DO UPDATE SET country=excluded.country,language=excluded.language,language_code=excluded.language_code,updated_at=excluded.updated_at\n        ', (username, country, language, code, now))
         con.commit()
     finally:
         con.close()
@@ -6761,12 +5620,7 @@ def render_user_navigation(user):
     current_country = st.session_state.get("di_country") or prefs["country"]
     if current_country not in COUNTRY_OPTIONS:
         current_country = "Nigeria"
-    st.sidebar.markdown("""
-    <div class="user-nav-brand">
-      <div class="user-nav-dot"></div>
-      <div><b>DACRE</b><small>WORKSPACE</small></div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.sidebar.markdown('\n    <div class="user-nav-brand">\n      <div class="user-nav-dot"></div>\n      <div><b>DACRE</b><small>WORKSPACE</small></div>\n    </div>\n    ', unsafe_allow_html=True)
     st.sidebar.caption(f"Signed in as {user.get('first_name','User')} · {user.get('company','')}")
     st.sidebar.markdown("### Your workspace")
     user_pages = [
@@ -6891,22 +5745,7 @@ def render_user_dashboard(user):
         activities = int(con.execute("SELECT COUNT(*) FROM activity WHERE username=? AND company_name=?", (user.get("username",""), user.get("company",""))).fetchone()[0])
     finally:
         con.close()
-    st.markdown("""
-    <style>
-      .user-nav-brand{display:flex;gap:10px;align-items:center;padding:8px 4px 16px}
-      .user-nav-brand b{font-size:20px;letter-spacing:.08em}
-      .user-nav-brand small{display:block;color:#7f92aa;font-size:9px;letter-spacing:.18em}
-      .user-nav-dot{width:10px;height:10px;border-radius:50%;background:#55e4af;box-shadow:0 0 16px #55e4af}
-      .user-dash{border:1px solid rgba(120,153,210,.16);border-radius:24px;padding:28px;background:linear-gradient(145deg,#0b1222,#111d31);box-shadow:0 20px 60px rgba(0,0,0,.2)}
-      .user-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:20px 0}
-      .user-kpi{padding:18px;border-radius:18px;background:rgba(255,255,255,.035);border:1px solid rgba(130,160,210,.12)}
-      .user-kpi b{font-size:28px;display:block;color:#f5f8ff}.user-kpi span{color:#91a4bd;font-size:12px}
-      .user-work-card{padding:20px;border-radius:20px;background:#0c1728;border:1px solid rgba(120,153,210,.14);height:100%}
-      .user-work-card h3{margin:0;color:#f5f8ff}.user-work-card p{color:#93a6bf;line-height:1.6}
-      .notice-card{padding:14px 16px;border-left:3px solid #5de2b0;background:#0d1b2d;border-radius:12px;margin:8px 0}
-      @media(max-width:800px){.user-kpis{grid-template-columns:1fr 1fr}.user-dash{padding:18px}}
-    </style>
-    """, unsafe_allow_html=True)
+    st.markdown('\n    <style>\n      .user-nav-brand{display:flex;gap:10px;align-items:center;padding:8px 4px 16px}\n      .user-nav-brand b{font-size:20px;letter-spacing:.08em}\n      .user-nav-brand small{display:block;color:#7f92aa;font-size:9px;letter-spacing:.18em}\n      .user-nav-dot{width:10px;height:10px;border-radius:50%;background:#55e4af;box-shadow:0 0 16px #55e4af}\n      .user-dash{border:1px solid rgba(120,153,210,.16);border-radius:24px;padding:28px;background:linear-gradient(145deg,#0b1222,#111d31);box-shadow:0 20px 60px rgba(0,0,0,.2)}\n      .user-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:20px 0}\n      .user-kpi{padding:18px;border-radius:18px;background:rgba(255,255,255,.035);border:1px solid rgba(130,160,210,.12)}\n      .user-kpi b{font-size:28px;display:block;color:#f5f8ff}.user-kpi span{color:#91a4bd;font-size:12px}\n      .user-work-card{padding:20px;border-radius:20px;background:#0c1728;border:1px solid rgba(120,153,210,.14);height:100%}\n      .user-work-card h3{margin:0;color:#f5f8ff}.user-work-card p{color:#93a6bf;line-height:1.6}\n      .notice-card{padding:14px 16px;border-left:3px solid #5de2b0;background:#0d1b2d;border-radius:12px;margin:8px 0}\n      @media(max-width:800px){.user-kpis{grid-template-columns:1fr 1fr}.user-dash{padding:18px}}\n    </style>\n    ', unsafe_allow_html=True)
     st.markdown(f"""
     <div class="user-dash">
       <div style="color:#6ee7ff;font-size:11px;font-weight:900;letter-spacing:.16em">DACRE WORLDWIDE · PRIVATE WORKSPACE</div>
@@ -6949,13 +5788,7 @@ def render_user_dashboard(user):
             mark_notifications_read(user)
             st.rerun()
 def render_research_store(user):
-    st.markdown("""
-    <div class="user-dash">
-      <div style="color:#6ee7ff;font-size:11px;font-weight:900;letter-spacing:.16em">DACRE RESEARCH STORE</div>
-      <h1 style="color:#fff;margin:8px 0">Research, sources and market intelligence.</h1>
-      <p style="color:#9eb0c8;max-width:800px">Search the public web, compare sources and save the research trail to your workspace. Paid resources should be opened through approved accounts rather than purchased automatically.</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('\n    <div class="user-dash">\n      <div style="color:#6ee7ff;font-size:11px;font-weight:900;letter-spacing:.16em">DACRE RESEARCH STORE</div>\n      <h1 style="color:#fff;margin:8px 0">Research, sources and market intelligence.</h1>\n      <p style="color:#9eb0c8;max-width:800px">Search the public web, compare sources and save the research trail to your workspace. Paid resources should be opened through approved accounts rather than purchased automatically.</p>\n    </div>\n    ', unsafe_allow_html=True)
     q = st.text_input("Research query", placeholder="e.g. Nigerian fintech market size 2026", key="research_store_query")
     if st.button("Search the web", type="primary", use_container_width=True) and q.strip():
         results = []
@@ -7311,18 +6144,11 @@ def send_custom_email(recipient_email, recipient_name, subject, body, sender_age
 def render_emiel_directory(user):
     if not user or user.get("role") != "master":
         return
-    st.markdown("""
-    <div class="user-dash">
-      <div style="color:#6ee7ff;font-size:11px;font-weight:900;letter-spacing:.16em">EMIEL · COMMUNICATIONS CONSOLE</div>
-      <h2 style="color:#fff;margin:8px 0">People, account email and secure messaging</h2>
-      <p style="color:#9eb0c8">This private founder console lets Emiel address registered DACRE users. Normal users cannot access this directory.</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('\n    <div class="user-dash">\n      <div style="color:#6ee7ff;font-size:11px;font-weight:900;letter-spacing:.16em">EMIEL · COMMUNICATIONS CONSOLE</div>\n      <h2 style="color:#fff;margin:8px 0">People, account email and secure messaging</h2>\n      <p style="color:#9eb0c8">This private founder console lets Emiel address registered DACRE users. Normal users cannot access this directory.</p>\n    </div>\n    ', unsafe_allow_html=True)
     con = db()
     try:
         people = pd.read_sql_query(
-            """SELECT id,first_name,last_name,username,company_name,email,role,login_count,created_at,last_login
-               FROM users WHERE lower(COALESCE(role,''))!='master' ORDER BY id DESC""",
+            "SELECT id,first_name,last_name,username,company_name,email,role,login_count,created_at,last_login\n               FROM users WHERE lower(COALESCE(role,''))!='master' ORDER BY id DESC",
             con
         )
     finally:
@@ -7406,18 +6232,8 @@ def _di_uptime_snapshot(agent):
     uptime = f"{days}d {hours:02d}h {minutes:02d}m {seconds:02d}s"
     try:
         con = db()
-        con.execute("""CREATE TABLE IF NOT EXISTS di_service_heartbeat (
-            di_name TEXT PRIMARY KEY,
-            last_seen TEXT NOT NULL,
-            status TEXT NOT NULL,
-            page_name TEXT
-        )""")
-        con.execute("""INSERT INTO di_service_heartbeat(di_name,last_seen,status,page_name)
-                       VALUES(?,?,?,?)
-                       ON CONFLICT(di_name) DO UPDATE SET
-                       last_seen=excluded.last_seen,
-                       status=excluded.status,
-                       page_name=excluded.page_name""",
+        con.execute('CREATE TABLE IF NOT EXISTS di_service_heartbeat (\n            di_name TEXT PRIMARY KEY,\n            last_seen TEXT NOT NULL,\n            status TEXT NOT NULL,\n            page_name TEXT\n        )')
+        con.execute('INSERT INTO di_service_heartbeat(di_name,last_seen,status,page_name)\n                       VALUES(?,?,?,?)\n                       ON CONFLICT(di_name) DO UPDATE SET\n                       last_seen=excluded.last_seen,\n                       status=excluded.status,\n                       page_name=excluded.page_name',
                     (agent.get("di_name","DI"), now.isoformat(timespec="seconds"), "ONLINE", st.session_state.get("selected_page","")))
         con.commit()
         con.close()
@@ -7531,15 +6347,7 @@ MASTER_PAGES = [
     "Formula Lab", "Charts", "File Vault", "Export Center", "Chibobec Loan Desk",
     "Organization Admin Portal", "Overall Admin DI Portal",
 ]
-st.markdown("""
-<style>
-.uniel-landing-card{display:flex;gap:22px;align-items:center;margin:8px 28px 28px;padding:22px;border:1px solid rgba(94,170,255,.18);border-radius:24px;background:linear-gradient(145deg,rgba(17,31,54,.95),rgba(6,13,27,.96));box-shadow:0 24px 70px rgba(0,0,0,.25)}
-.uniel-avatar-wrap{position:relative;flex:0 0 104px}.uniel-avatar-wrap img{width:104px;height:104px;border-radius:24px;object-fit:cover;border:1px solid rgba(105,225,255,.38);box-shadow:0 0 30px rgba(55,185,255,.18)}
-.uniel-live-dot{position:absolute;right:4px;bottom:4px;width:14px;height:14px;border-radius:50%;background:#57e5b0;box-shadow:0 0 16px #57e5b0;border:3px solid #07101f}
-.uniel-kicker{font-size:10px;letter-spacing:.16em;font-weight:900;color:#72dff9}.uniel-copy h2{margin:4px 0 8px;color:#fff;font-size:25px}.uniel-copy p{color:#9eb0c8;line-height:1.6;margin:6px 0}.uniel-grid{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.uniel-grid span{padding:7px 10px;border-radius:999px;background:rgba(85,145,255,.08);border:1px solid rgba(100,160,255,.14);color:#c5d9f4;font-size:11px}.uniel-strong{font-weight:700;color:#d9e8fb!important}
-@media(max-width:700px){.uniel-landing-card{margin:8px 0 22px;padding:16px;align-items:flex-start}.uniel-avatar-wrap{flex-basis:76px}.uniel-avatar-wrap img{width:76px;height:76px}.uniel-copy h2{font-size:20px}.hero{grid-template-columns:1fr!important;padding:34px 10px 24px!important}.grid-3,.grid-2{grid-template-columns:1fr!important}}
-</style>
-""", unsafe_allow_html=True)
+st.markdown('\n<style>\n.uniel-landing-card{display:flex;gap:22px;align-items:center;margin:8px 28px 28px;padding:22px;border:1px solid rgba(94,170,255,.18);border-radius:24px;background:linear-gradient(145deg,rgba(17,31,54,.95),rgba(6,13,27,.96));box-shadow:0 24px 70px rgba(0,0,0,.25)}\n.uniel-avatar-wrap{position:relative;flex:0 0 104px}.uniel-avatar-wrap img{width:104px;height:104px;border-radius:24px;object-fit:cover;border:1px solid rgba(105,225,255,.38);box-shadow:0 0 30px rgba(55,185,255,.18)}\n.uniel-live-dot{position:absolute;right:4px;bottom:4px;width:14px;height:14px;border-radius:50%;background:#57e5b0;box-shadow:0 0 16px #57e5b0;border:3px solid #07101f}\n.uniel-kicker{font-size:10px;letter-spacing:.16em;font-weight:900;color:#72dff9}.uniel-copy h2{margin:4px 0 8px;color:#fff;font-size:25px}.uniel-copy p{color:#9eb0c8;line-height:1.6;margin:6px 0}.uniel-grid{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.uniel-grid span{padding:7px 10px;border-radius:999px;background:rgba(85,145,255,.08);border:1px solid rgba(100,160,255,.14);color:#c5d9f4;font-size:11px}.uniel-strong{font-weight:700;color:#d9e8fb!important}\n@media(max-width:700px){.uniel-landing-card{margin:8px 0 22px;padding:16px;align-items:flex-start}.uniel-avatar-wrap{flex-basis:76px}.uniel-avatar-wrap img{width:76px;height:76px}.uniel-copy h2{font-size:20px}.hero{grid-template-columns:1fr!important;padding:34px 10px 24px!important}.grid-3,.grid-2{grid-template-columns:1fr!important}}\n</style>\n', unsafe_allow_html=True)
 def render_enterprise_sidebar(user):
     if not user:
         return
@@ -7845,17 +6653,8 @@ def _founder_now():
 def _ensure_founder_creation_tables():
     con = db()
     try:
-        con.execute("""CREATE TABLE IF NOT EXISTS di_destroyed_agents (
-            di_name TEXT PRIMARY KEY,
-            destroyed_at TEXT NOT NULL,
-            destroyed_by TEXT NOT NULL
-        )""")
-        con.execute("""CREATE TABLE IF NOT EXISTS founder_activity_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            action TEXT NOT NULL,
-            detail TEXT NOT NULL,
-            created_at TEXT NOT NULL
-        )""")
+        con.execute('CREATE TABLE IF NOT EXISTS di_destroyed_agents (\n            di_name TEXT PRIMARY KEY,\n            destroyed_at TEXT NOT NULL,\n            destroyed_by TEXT NOT NULL\n        )')
+        con.execute('CREATE TABLE IF NOT EXISTS founder_activity_log (\n            id INTEGER PRIMARY KEY AUTOINCREMENT,\n            action TEXT NOT NULL,\n            detail TEXT NOT NULL,\n            created_at TEXT NOT NULL\n        )')
         con.commit()
     finally:
         con.close()
@@ -7981,16 +6780,7 @@ def render_founder_3d_di_offices():
     for idx,spec in enumerate(specs,start=1):
         room=rooms.get(spec["name"],{})
         cards.append(_founder_office_card(spec,idx,room.get("activity","MONITORING"),room.get("screen_text","Monitoring DACRE platform")))
-    html_block='''
-    <style>
-      .founder-office-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:16px}.founder-office{overflow:hidden;border:1px solid #264862;border-radius:18px;background:#050b13;box-shadow:0 18px 45px rgba(0,0,0,.38),inset 0 0 40px rgba(68,183,255,.04)}
-      .office-ceiling{height:5px;background:linear-gradient(90deg,#58c7ff,#9ee7ff,#ff9f43)}.office-header{display:flex;justify-content:space-between;padding:10px 12px;color:#7591a8;font-size:8px;letter-spacing:.14em;font-weight:900;background:#07111c}.office-header b{color:#63e6a5;font-size:8px}
-      .office-scene{height:190px;position:relative;overflow:hidden;background:linear-gradient(180deg,#0b1b2b,#08111c 62%,#03070d);perspective:550px}.office-wall-line{position:absolute;left:0;right:0;top:38%;height:1px;background:#21425a}.office-light{position:absolute;top:8px;width:55px;height:6px;border-radius:50%;background:#a9eaff;box-shadow:0 0 18px #58c7ff;opacity:.55}.light-a{left:24%}.light-b{right:24%}.office-window{position:absolute;right:10px;top:25px;width:72px;height:42px;border:1px solid #315a75;background:linear-gradient(145deg,#0a2031,#07101a);border-radius:4px;padding:6px}.office-window span{display:block;color:#5fd4ff;font-size:5px;font-weight:900;letter-spacing:.08em}.office-window small{color:#7894a9;font-size:5px}
-      .office-person{position:absolute;left:22%;bottom:34px;width:112px;height:145px;z-index:8;animation:founderFloat 4s ease-in-out infinite;filter:drop-shadow(0 0 18px rgba(88,199,255,.26))}.di-robot-figure{position:relative;width:112px;height:145px}.di-robot-status-light{position:absolute;left:50%;top:-7px;width:7px;height:7px;transform:translateX(-50%);border-radius:50%;background:#66f0ad;box-shadow:0 0 12px #66f0ad;z-index:20}.di-robot-head{position:absolute;left:50%;top:4px;width:45px;height:43px;transform:translateX(-50%);border:2px solid #6edbff;border-radius:15px 15px 12px 12px;background:linear-gradient(145deg,#dce9f2,#6d8293 46%,#1b2d3b);box-shadow:inset 0 0 12px #ffffff33,0 0 20px #58c7ff30;z-index:10;overflow:hidden}.di-robot-face{position:absolute;inset:5px 4px 8px;width:35px;height:29px;border-radius:10px;object-fit:cover;opacity:.92;filter:saturate(.85) contrast(1.08);border:1px solid #9de9ff77}.di-robot-face-core{background:radial-gradient(circle at 50% 45%,#5de0ff 0 8%,#0b2c45 30%,#020a12 72%)}.di-robot-face-core span:before,.di-robot-face-core span:after{content:"";position:absolute;top:13px;width:7px;height:3px;border-radius:3px;background:#8ff0ff;box-shadow:0 0 7px #58c7ff}.di-robot-face-core span:before{left:8px}.di-robot-face-core span:after{right:8px}.di-robot-eye{position:absolute;top:17px;width:4px;height:4px;border-radius:50%;background:#8ff3ff;box-shadow:0 0 6px #58c7ff;z-index:4}.eye-left{left:9px}.eye-right{right:9px}.di-robot-neck{position:absolute;left:50%;top:45px;width:13px;height:9px;transform:translateX(-50%);border-left:2px solid #6f8494;border-right:2px solid #6f8494;background:#172735}.di-robot-torso{position:absolute;left:50%;top:51px;width:48px;height:55px;transform:translateX(-50%);border:2px solid #5c7588;border-radius:13px 13px 9px 9px;background:linear-gradient(160deg,#cad7df,#607789 42%,#172735);box-shadow:inset 0 0 16px #ffffff22,0 0 15px #58c7ff20;z-index:8}.di-robot-chest-glow{position:absolute;left:50%;top:10px;width:22px;height:12px;transform:translateX(-50%);border-radius:8px;background:#06263a;box-shadow:0 0 12px #58c7ff66;border:1px solid #65dfff88}.di-robot-chest-label{position:absolute;top:12px;left:50%;transform:translateX(-50%);font-size:5px;font-weight:900;color:#8deaff;letter-spacing:.08em}.di-robot-core{position:absolute;left:50%;bottom:7px;width:12px;height:12px;transform:translateX(-50%);border-radius:50%;background:#57d8ff;box-shadow:0 0 13px #57d8ff}.di-robot-arm{position:absolute;top:57px;width:13px;height:46px;border:2px solid #617a8b;border-radius:8px;background:linear-gradient(180deg,#aebdc7,#3b5060);z-index:6}.arm-left{left:24px;transform:rotate(8deg)}.arm-right{right:24px;transform:rotate(-8deg)}.di-robot-joint{position:absolute;left:2px;top:18px;width:5px;height:5px;border-radius:50%;background:#5bdcff;box-shadow:0 0 6px #5bdcff}.di-robot-arm b{position:absolute;left:2px;bottom:6px;width:5px;height:5px;border-radius:2px;background:#243746}.di-robot-hand{position:absolute;top:101px;width:11px;height:13px;border:2px solid #71899a;border-radius:5px;background:#536978;z-index:9}.hand-left{left:25px}.hand-right{right:25px}.di-robot-hips{position:absolute;left:50%;top:104px;width:37px;height:12px;transform:translateX(-50%);border:2px solid #536b7c;border-radius:7px;background:#304654;z-index:7}.di-robot-leg{position:absolute;top:113px;width:14px;height:26px;border:2px solid #526b7d;border-radius:7px;background:linear-gradient(180deg,#7f929e,#263b49);z-index:5}.leg-left{left:42px}.leg-right{right:42px}.di-robot-foot{position:absolute;top:136px;width:23px;height:8px;border:2px solid #536c7d;border-radius:5px;background:#172a38;z-index:6}.foot-left{left:35px}.foot-right{right:35px}.di-robot-state{position:absolute;left:50%;top:146px;transform:translateX(-50%);font-size:5px;letter-spacing:.12em;color:#63e6a5;font-weight:900;white-space:nowrap}.di-robot-figure.compact{transform:scale(.78);transform-origin:center bottom}
-      .office-desk{position:absolute;left:16%;right:14%;bottom:32px;height:24px;border-radius:5px;background:linear-gradient(180deg,#24384b,#111b27);border:1px solid #38536a;z-index:5;box-shadow:0 9px 0 #0a1119}.office-desk:after{content:"";position:absolute;left:8%;right:8%;bottom:-26px;height:26px;border-left:3px solid #172534;border-right:3px solid #172534}.office-monitor{position:absolute;right:13%;bottom:58px;width:86px;height:55px;border:2px solid #365a72;border-radius:5px;background:#03111b;z-index:7;box-shadow:0 0 16px #58c7ff15;padding:5px}.monitor-top{font-size:5px;color:#5fd4ff;font-weight:900}.monitor-top span{float:right;color:#64e7a7}.monitor-name{color:#fff;font-size:8px;font-weight:900;margin-top:5px}.monitor-text{color:#7993a8;font-size:5px;line-height:1.35;margin-top:3px;white-space:nowrap;overflow:hidden}.monitor-bars{display:flex;gap:3px;margin-top:6px;align-items:flex-end;height:10px}.monitor-bars i{display:block;width:7px;background:#58c7ff;border-radius:2px 2px 0 0}.monitor-bars i:nth-child(1){height:4px}.monitor-bars i:nth-child(2){height:8px}.monitor-bars i:nth-child(3){height:6px}.monitor-bars i:nth-child(4){height:10px}.office-chair{position:absolute;left:34%;bottom:19px;width:38px;height:28px;border:2px solid #314a5e;border-bottom:0;border-radius:12px 12px 4px 4px;z-index:6}.office-floor{position:absolute;left:-15%;right:-15%;bottom:-82px;height:130px;background-image:linear-gradient(#1c3c52 1px,transparent 1px),linear-gradient(90deg,#1c3c52 1px,transparent 1px);background-size:28px 18px;transform:perspective(220px) rotateX(58deg);opacity:.45}
-      .office-info{display:flex;justify-content:space-between;gap:8px;padding:10px 12px 6px;background:#07111c}.office-info strong{display:block;color:#fff;font-size:13px}.office-info small{display:block;color:#7892a7;font-size:7px;margin-top:2px}.office-info>span{color:#6ed8ff;font-size:7px;text-align:right;max-width:100px}.office-activity{display:flex;justify-content:space-between;gap:8px;padding:8px 12px 10px;border-top:1px solid #18354a;background:#050b13}.office-activity b{color:#ffb56e;font-size:7px;letter-spacing:.08em}.office-activity span{color:#6b8ca2;font-size:6px}@keyframes founderFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
-      @media(max-width:1200px){.founder-office-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:900px){.founder-office-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.founder-office-grid{grid-template-columns:1fr}}
-    </style><div class="founder-office-grid">''' + ''.join(cards) + '</div>'
+    html_block='\n    <style>\n      .founder-office-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:16px}.founder-office{overflow:hidden;border:1px solid #264862;border-radius:18px;background:#050b13;box-shadow:0 18px 45px rgba(0,0,0,.38),inset 0 0 40px rgba(68,183,255,.04)}\n      .office-ceiling{height:5px;background:linear-gradient(90deg,#58c7ff,#9ee7ff,#ff9f43)}.office-header{display:flex;justify-content:space-between;padding:10px 12px;color:#7591a8;font-size:8px;letter-spacing:.14em;font-weight:900;background:#07111c}.office-header b{color:#63e6a5;font-size:8px}\n      .office-scene{height:190px;position:relative;overflow:hidden;background:linear-gradient(180deg,#0b1b2b,#08111c 62%,#03070d);perspective:550px}.office-wall-line{position:absolute;left:0;right:0;top:38%;height:1px;background:#21425a}.office-light{position:absolute;top:8px;width:55px;height:6px;border-radius:50%;background:#a9eaff;box-shadow:0 0 18px #58c7ff;opacity:.55}.light-a{left:24%}.light-b{right:24%}.office-window{position:absolute;right:10px;top:25px;width:72px;height:42px;border:1px solid #315a75;background:linear-gradient(145deg,#0a2031,#07101a);border-radius:4px;padding:6px}.office-window span{display:block;color:#5fd4ff;font-size:5px;font-weight:900;letter-spacing:.08em}.office-window small{color:#7894a9;font-size:5px}\n      .office-person{position:absolute;left:22%;bottom:34px;width:112px;height:145px;z-index:8;animation:founderFloat 4s ease-in-out infinite;filter:drop-shadow(0 0 18px rgba(88,199,255,.26))}.di-robot-figure{position:relative;width:112px;height:145px}.di-robot-status-light{position:absolute;left:50%;top:-7px;width:7px;height:7px;transform:translateX(-50%);border-radius:50%;background:#66f0ad;box-shadow:0 0 12px #66f0ad;z-index:20}.di-robot-head{position:absolute;left:50%;top:4px;width:45px;height:43px;transform:translateX(-50%);border:2px solid #6edbff;border-radius:15px 15px 12px 12px;background:linear-gradient(145deg,#dce9f2,#6d8293 46%,#1b2d3b);box-shadow:inset 0 0 12px #ffffff33,0 0 20px #58c7ff30;z-index:10;overflow:hidden}.di-robot-face{position:absolute;inset:5px 4px 8px;width:35px;height:29px;border-radius:10px;object-fit:cover;opacity:.92;filter:saturate(.85) contrast(1.08);border:1px solid #9de9ff77}.di-robot-face-core{background:radial-gradient(circle at 50% 45%,#5de0ff 0 8%,#0b2c45 30%,#020a12 72%)}.di-robot-face-core span:before,.di-robot-face-core span:after{content:"";position:absolute;top:13px;width:7px;height:3px;border-radius:3px;background:#8ff0ff;box-shadow:0 0 7px #58c7ff}.di-robot-face-core span:before{left:8px}.di-robot-face-core span:after{right:8px}.di-robot-eye{position:absolute;top:17px;width:4px;height:4px;border-radius:50%;background:#8ff3ff;box-shadow:0 0 6px #58c7ff;z-index:4}.eye-left{left:9px}.eye-right{right:9px}.di-robot-neck{position:absolute;left:50%;top:45px;width:13px;height:9px;transform:translateX(-50%);border-left:2px solid #6f8494;border-right:2px solid #6f8494;background:#172735}.di-robot-torso{position:absolute;left:50%;top:51px;width:48px;height:55px;transform:translateX(-50%);border:2px solid #5c7588;border-radius:13px 13px 9px 9px;background:linear-gradient(160deg,#cad7df,#607789 42%,#172735);box-shadow:inset 0 0 16px #ffffff22,0 0 15px #58c7ff20;z-index:8}.di-robot-chest-glow{position:absolute;left:50%;top:10px;width:22px;height:12px;transform:translateX(-50%);border-radius:8px;background:#06263a;box-shadow:0 0 12px #58c7ff66;border:1px solid #65dfff88}.di-robot-chest-label{position:absolute;top:12px;left:50%;transform:translateX(-50%);font-size:5px;font-weight:900;color:#8deaff;letter-spacing:.08em}.di-robot-core{position:absolute;left:50%;bottom:7px;width:12px;height:12px;transform:translateX(-50%);border-radius:50%;background:#57d8ff;box-shadow:0 0 13px #57d8ff}.di-robot-arm{position:absolute;top:57px;width:13px;height:46px;border:2px solid #617a8b;border-radius:8px;background:linear-gradient(180deg,#aebdc7,#3b5060);z-index:6}.arm-left{left:24px;transform:rotate(8deg)}.arm-right{right:24px;transform:rotate(-8deg)}.di-robot-joint{position:absolute;left:2px;top:18px;width:5px;height:5px;border-radius:50%;background:#5bdcff;box-shadow:0 0 6px #5bdcff}.di-robot-arm b{position:absolute;left:2px;bottom:6px;width:5px;height:5px;border-radius:2px;background:#243746}.di-robot-hand{position:absolute;top:101px;width:11px;height:13px;border:2px solid #71899a;border-radius:5px;background:#536978;z-index:9}.hand-left{left:25px}.hand-right{right:25px}.di-robot-hips{position:absolute;left:50%;top:104px;width:37px;height:12px;transform:translateX(-50%);border:2px solid #536b7c;border-radius:7px;background:#304654;z-index:7}.di-robot-leg{position:absolute;top:113px;width:14px;height:26px;border:2px solid #526b7d;border-radius:7px;background:linear-gradient(180deg,#7f929e,#263b49);z-index:5}.leg-left{left:42px}.leg-right{right:42px}.di-robot-foot{position:absolute;top:136px;width:23px;height:8px;border:2px solid #536c7d;border-radius:5px;background:#172a38;z-index:6}.foot-left{left:35px}.foot-right{right:35px}.di-robot-state{position:absolute;left:50%;top:146px;transform:translateX(-50%);font-size:5px;letter-spacing:.12em;color:#63e6a5;font-weight:900;white-space:nowrap}.di-robot-figure.compact{transform:scale(.78);transform-origin:center bottom}\n      .office-desk{position:absolute;left:16%;right:14%;bottom:32px;height:24px;border-radius:5px;background:linear-gradient(180deg,#24384b,#111b27);border:1px solid #38536a;z-index:5;box-shadow:0 9px 0 #0a1119}.office-desk:after{content:"";position:absolute;left:8%;right:8%;bottom:-26px;height:26px;border-left:3px solid #172534;border-right:3px solid #172534}.office-monitor{position:absolute;right:13%;bottom:58px;width:86px;height:55px;border:2px solid #365a72;border-radius:5px;background:#03111b;z-index:7;box-shadow:0 0 16px #58c7ff15;padding:5px}.monitor-top{font-size:5px;color:#5fd4ff;font-weight:900}.monitor-top span{float:right;color:#64e7a7}.monitor-name{color:#fff;font-size:8px;font-weight:900;margin-top:5px}.monitor-text{color:#7993a8;font-size:5px;line-height:1.35;margin-top:3px;white-space:nowrap;overflow:hidden}.monitor-bars{display:flex;gap:3px;margin-top:6px;align-items:flex-end;height:10px}.monitor-bars i{display:block;width:7px;background:#58c7ff;border-radius:2px 2px 0 0}.monitor-bars i:nth-child(1){height:4px}.monitor-bars i:nth-child(2){height:8px}.monitor-bars i:nth-child(3){height:6px}.monitor-bars i:nth-child(4){height:10px}.office-chair{position:absolute;left:34%;bottom:19px;width:38px;height:28px;border:2px solid #314a5e;border-bottom:0;border-radius:12px 12px 4px 4px;z-index:6}.office-floor{position:absolute;left:-15%;right:-15%;bottom:-82px;height:130px;background-image:linear-gradient(#1c3c52 1px,transparent 1px),linear-gradient(90deg,#1c3c52 1px,transparent 1px);background-size:28px 18px;transform:perspective(220px) rotateX(58deg);opacity:.45}\n      .office-info{display:flex;justify-content:space-between;gap:8px;padding:10px 12px 6px;background:#07111c}.office-info strong{display:block;color:#fff;font-size:13px}.office-info small{display:block;color:#7892a7;font-size:7px;margin-top:2px}.office-info>span{color:#6ed8ff;font-size:7px;text-align:right;max-width:100px}.office-activity{display:flex;justify-content:space-between;gap:8px;padding:8px 12px 10px;border-top:1px solid #18354a;background:#050b13}.office-activity b{color:#ffb56e;font-size:7px;letter-spacing:.08em}.office-activity span{color:#6b8ca2;font-size:6px}@keyframes founderFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}\n      @media(max-width:1200px){.founder-office-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:900px){.founder-office-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.founder-office-grid{grid-template-columns:1fr}}\n    </style><div class="founder-office-grid">' + ''.join(cards) + '</div>'
     components.html(html_block,height=1450,scrolling=False)
 def render_founder_overall_admin(user):
     if user.get("role") != "master":
@@ -8234,20 +7024,7 @@ def _di_remote_headers(provider: str) -> Dict[str, str]:
 def _di_memory_board_ensure():
     con = db()
     try:
-        con.execute("""
-            CREATE TABLE IF NOT EXISTS di_memory_board (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                category TEXT NOT NULL,
-                title TEXT NOT NULL,
-                source TEXT NOT NULL,
-                reference TEXT DEFAULT '',
-                principle TEXT NOT NULL,
-                business_use TEXT NOT NULL,
-                keywords TEXT DEFAULT '',
-                created_at TEXT NOT NULL,
-                UNIQUE(category, title, source, reference)
-            )
-        """)
+        con.execute("\n            CREATE TABLE IF NOT EXISTS di_memory_board (\n                id INTEGER PRIMARY KEY AUTOINCREMENT,\n                category TEXT NOT NULL,\n                title TEXT NOT NULL,\n                source TEXT NOT NULL,\n                reference TEXT DEFAULT '',\n                principle TEXT NOT NULL,\n                business_use TEXT NOT NULL,\n                keywords TEXT DEFAULT '',\n                created_at TEXT NOT NULL,\n                UNIQUE(category, title, source, reference)\n            )\n        ")
         con.execute("CREATE INDEX IF NOT EXISTS idx_di_memory_board_category ON di_memory_board(category)")
         con.execute("CREATE INDEX IF NOT EXISTS idx_di_memory_board_keywords ON di_memory_board(keywords)")
         con.commit()
@@ -12960,18 +11737,7 @@ def render_di_intelligence_console(user):
 def _inject_intelligence_tools_into_user_navigation():
     return ["Overview", "Workspace & Data", "Business Twin", "Decision Ledger", "Opportunity Radar", "File Vault", "Export Center", "Research Store", "Faith & Business Wisdom Lab", "MB Memory Board", "DI Intelligence", "DI Creation Studio"]
 def render_dacre_border_upgrade():
-    st.markdown("""
-    <style>
-      [data-testid="stAppViewContainer"]{background:radial-gradient(circle at 20% 10%,rgba(34,132,190,.08),transparent 32%),#02060c}
-      .block-container{max-width:1500px}
-      [data-testid="stMetric"]{border:1px solid rgba(65,190,255,.32);border-radius:16px;background:linear-gradient(145deg,rgba(8,22,34,.95),rgba(3,9,16,.95));box-shadow:inset 0 0 22px rgba(65,190,255,.05)}
-      div[data-testid="stExpander"]{border:1px solid rgba(80,170,255,.32)!important;border-radius:18px!important;box-shadow:0 0 0 1px rgba(255,166,80,.05),inset 0 0 24px rgba(70,190,255,.04)}
-      div[data-testid="stForm"]{border:1px solid rgba(255,159,67,.36)!important;border-radius:20px!important;box-shadow:0 0 28px rgba(255,159,67,.06)}
-      div[data-testid="stDataFrame"]{border:1px solid rgba(91,235,177,.3);border-radius:16px;box-shadow:inset 0 0 25px rgba(91,235,177,.04)}
-      .dacre-live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#45e69c;box-shadow:0 0 14px #45e69c;animation:dacrePulse 1.3s ease-in-out infinite}
-      @keyframes dacrePulse{50%{transform:scale(1.45);opacity:.55}}
-    </style>
-    """, unsafe_allow_html=True)
+    st.markdown('\n    <style>\n      [data-testid="stAppViewContainer"]{background:radial-gradient(circle at 20% 10%,rgba(34,132,190,.08),transparent 32%),#02060c}\n      .block-container{max-width:1500px}\n      [data-testid="stMetric"]{border:1px solid rgba(65,190,255,.32);border-radius:16px;background:linear-gradient(145deg,rgba(8,22,34,.95),rgba(3,9,16,.95));box-shadow:inset 0 0 22px rgba(65,190,255,.05)}\n      div[data-testid="stExpander"]{border:1px solid rgba(80,170,255,.32)!important;border-radius:18px!important;box-shadow:0 0 0 1px rgba(255,166,80,.05),inset 0 0 24px rgba(70,190,255,.04)}\n      div[data-testid="stForm"]{border:1px solid rgba(255,159,67,.36)!important;border-radius:20px!important;box-shadow:0 0 28px rgba(255,159,67,.06)}\n      div[data-testid="stDataFrame"]{border:1px solid rgba(91,235,177,.3);border-radius:16px;box-shadow:inset 0 0 25px rgba(91,235,177,.04)}\n      .dacre-live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#45e69c;box-shadow:0 0 14px #45e69c;animation:dacrePulse 1.3s ease-in-out infinite}\n      @keyframes dacrePulse{50%{transform:scale(1.45);opacity:.55}}\n    </style>\n    ', unsafe_allow_html=True)
 try:
     _di_memory_board_seed()
 except Exception as _mb_seed_exc:
@@ -12998,3 +11764,237 @@ if __name__ == "__main__":
         landing_page()
     else:
         main_app()
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
+# DACRE v7.9.4 maintenance marker
