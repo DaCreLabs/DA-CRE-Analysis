@@ -1,160 +1,58 @@
-
-# ---- DACRE SMTP OTP CONFIG ----
-DACRE_SMTP_USERNAME = os.getenv("DACRE_SMTP_USERNAME", "david@gedu.demo.edubridge.info")
-DACRE_SMTP_PASSWORD = os.getenv("DACRE_SMTP_PASSWORD", "")
-DACRE_SMTP_HOST = os.getenv("DACRE_SMTP_HOST", "")
-DACRE_SMTP_PORT = int(os.getenv("DACRE_SMTP_PORT", "587"))
-
-def send_dacre_signup_otp(recipient_email: str, otp_code: str) -> bool:
-    """Send the signup verification OTP through the configured DACRE SMTP account."""
-    if not recipient_email or not DACRE_SMTP_HOST or not DACRE_SMTP_PASSWORD:
-        return False
-    try:
-        import smtplib
-        from email.message import EmailMessage
-        msg = EmailMessage()
-        msg["Subject"] = "DACRE Analysis — Signup Verification OTP"
-        msg["From"] = DACRE_SMTP_USERNAME
-        msg["To"] = recipient_email
-        msg.set_content(
-            "Welcome to DACRE Analysis.\n\n"
-            f"Your signup verification OTP is: {otp_code}\n\n"
-            "Keep this code private."
-        )
-        with smtplib.SMTP(DACRE_SMTP_HOST, DACRE_SMTP_PORT, timeout=20) as smtp_server:
-            smtp_server.starttls()
-            smtp_server.login(DACRE_SMTP_USERNAME, DACRE_SMTP_PASSWORD)
-            smtp_server.send_message(msg)
-        return True
-    except Exception as exc:
-        try:
-            log_activity("signup_otp_email_error", {"error": str(exc)})
-        except Exception:
-            pass
-        return False
-
-# =============================================================================
-# DACRE WORLDWIDE - COMPLETE PRODUCTION BUILD (FIXED)
-# Version: 7.8.0 - Overall Admin DI Office / David Creation / DI Basement
-# Total Lines: ~12,000+
-# Features: Self-Healing DB, DI Intelligence, Error Shield, Voice, Video, AI
-# =============================================================================
-
-# =============================================================================
-# IMPORTS - FIXED (removed deprecated 'pipes' import)
-# =============================================================================
-
-import hashlib
-import hmac
-import html
-import io
-import json
-import os
-import re
-import sqlite3
-import urllib.parse
-import urllib.request
-import smtplib
-import threading
-import time
-import uuid
-import base64
-import random
-import string
-import tempfile
-import subprocess
-import sys
-import traceback
-import logging
-import queue
-import asyncio
-import concurrent.futures
-import inspect
-import functools
-import itertools
-import collections
-import datetime
-import calendar
-import math
-import statistics
-import typing
-import warnings
-import zipfile
-import csv
-import xml.etree.ElementTree as ET
-import secrets
-import binascii
-import struct
-import pickle
-import shelve
-import dbm
-import zlib
-import gzip
-import bz2
-import lzma
-import tarfile
-import shutil
-import fileinput
-import glob
-import fnmatch
-# REMOVED: import pipes (deprecated)
-import getpass
-import platform
-import sysconfig
-import socket
-import ssl
-from contextlib import contextmanager
-from html.parser import HTMLParser
-from urllib.parse import urlparse
-from dataclasses import dataclass, field
-from typing import Optional, Dict, List, Any, Tuple
-from enum import Enum
-from functools import wraps
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
-from datetime import datetime, timedelta
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from pathlib import Path
-from decimal import Decimal
-from fractions import Fraction
-
-# =============================================================================
-# HIDE MANAGE APP BUTTON - COMPLETE SOLUTION
-# =============================================================================
-
-import pandas as pd
-from PIL import Image
-import streamlit as st
-import streamlit.components.v1 as components
-
-BASE_DIR = Path(__file__).resolve().parent
-DACRE_ASSET_DIR = BASE_DIR / "assets"
-DACRE_LOGO_PATH = DACRE_ASSET_DIR / "dacre_logo.png"
-DACRE_CEO_PATH = DACRE_ASSET_DIR / "dacre_ceo.png"
-DACRE_FAVICON_PATH = DACRE_ASSET_DIR / "dacre_favicon.png"
-
-# The browser icon is always the DACRE mark. The embedded fallback keeps it
-# working even when Streamlit Cloud is deployed with app.py alone.
-_DACRE_FAVICON_B64 = "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"
+import hashlib; import hmac
+import html; import io
+import json; import os
+import re; import sqlite3
+import urllib.parse; import urllib.request
+import smtplib; import threading
+import time; import uuid
+import base64; import random
+import string; import tempfile
+import subprocess; import sys
+import traceback; import logging
+import queue; import asyncio
+import concurrent.futures; import inspect
+import functools; import itertools
+import collections; import datetime
+import calendar; import math
+import statistics; import typing
+import warnings; import zipfile
+import csv; import xml.etree.ElementTree as ET
+import secrets; import binascii
+import struct; import pickle
+import shelve; import dbm
+import zlib; import gzip
+import bz2; import lzma
+import tarfile; import shutil
+import fileinput; import glob
+import fnmatch; import getpass
+import platform; import sysconfig
+import socket; import ssl
+from contextlib import contextmanager; from html.parser import HTMLParser
+from urllib.parse import urlparse; from dataclasses import dataclass, field
+from typing import Optional, Dict, List, Any, Tuple; from enum import Enum
+from functools import wraps; from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+from datetime import datetime, timedelta; from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText; from pathlib import Path
+from decimal import Decimal; from fractions import Fraction
+import pandas as pd; from PIL import Image
+import streamlit as st; import streamlit.components.v1 as components
+BASE_DIR = Path(__file__).resolve().parent; DACRE_ASSET_DIR = BASE_DIR / "assets"
+DACRE_LOGO_PATH = DACRE_ASSET_DIR / "dacre_logo.png"; DACRE_CEO_PATH = DACRE_ASSET_DIR / "dacre_ceo.png"
+DACRE_FAVICON_PATH = DACRE_ASSET_DIR / "dacre_favicon.png"; _DACRE_FAVICON_B64 = "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"
 try:
-    # Use the exact DACRE logo-mark favicon supplied with the project.
     if DACRE_FAVICON_PATH.exists():
         _DACRE_PAGE_ICON = Image.open(DACRE_FAVICON_PATH)
     else:
         _DACRE_PAGE_ICON = Image.open(io.BytesIO(base64.b64decode(_DACRE_FAVICON_B64)))
 except Exception:
     _DACRE_PAGE_ICON = "DATA"
-
 st.set_page_config(
     page_title="DACRE WORLDWIDE — David's Intelligence",
     page_icon=_DACRE_PAGE_ICON,
     layout="wide",
     initial_sidebar_state="expanded",
 )
-
-# DACRE MOBILE-FIRST RESPONSIVE POLISH
 st.markdown("""<style>html,body,[data-testid="stAppViewContainer"]{overflow-x:hidden!important}[data-testid="stMainBlockContainer"]{width:100%!important;max-width:1440px!important;padding-left:clamp(10px,2vw,32px)!important;padding-right:clamp(10px,2vw,32px)!important}img,video,iframe{max-width:100%}@media(max-width:768px){[data-testid="stMainBlockContainer"]{padding-left:10px!important;padding-right:10px!important}.stButton>button{min-height:44px!important}h1{font-size:clamp(26px,7vw,40px)!important}}</style>""",unsafe_allow_html=True)
-
 st.markdown("""
 <style>
 /* ========================================================================
@@ -173,7 +71,6 @@ st.markdown("""
   --dacre-success:#12b76a;
   --dacre-shadow:0 10px 30px rgba(16,24,40,.07);
 }
-
 html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"]{
   background:var(--dacre-bg) !important;
   color:var(--dacre-ink) !important;
@@ -212,7 +109,6 @@ button[title*="sidebar" i] svg{color:#101828 !important;fill:#101828 !important;
   display:none !important;
 }
 footer{display:none !important;}
-
 [data-testid="stSidebar"]{
   background:#fff !important;
   border-right:1px solid var(--dacre-border) !important;
@@ -228,10 +124,8 @@ footer{display:none !important;}
   font-weight:650 !important;
 }
 [data-testid="stSidebar"] button:hover{background:var(--dacre-blue-soft) !important;border-color:#c7dbff !important;}
-
 .block-container{max-width:1500px !important;padding:28px 34px 70px !important;}
 [data-testid="stVerticalBlock"]{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}
-
 /* Main Streamlit controls */
 .stButton > button,
 .stDownloadButton > button{
@@ -266,7 +160,6 @@ label, .stTextInput label, .stSelectbox label, .stFileUploader label{color:#3440
 [data-testid="stMetricLabel"]{color:#667085 !important;}
 [data-testid="stMetricValue"]{color:#101828 !important;}
 .stAlert{border-radius:12px !important;}
-
 /* Enterprise chrome */
 .dacre-page-chrome{
   display:flex;align-items:center;justify-content:space-between;gap:20px;
@@ -287,7 +180,6 @@ label, .stTextInput label, .stSelectbox label, .stFileUploader label{color:#3440
 .page-chrome-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;}
 .chrome-pill{padding:7px 10px;border-radius:999px;background:#ecfdf3;color:#087443;border:1px solid #abefc6;font-size:10px;font-weight:800;white-space:nowrap;}
 .chrome-pill.soft{background:#f2f4f7;color:#475467;border-color:#eaecf0;}
-
 /* Global online-company quick action bar */
 .dacre-quickbar{
   display:flex;align-items:center;justify-content:space-between;gap:14px;
@@ -297,7 +189,6 @@ label, .stTextInput label, .stSelectbox label, .stFileUploader label{color:#3440
 .dacre-quickbar .quick-brand{font-size:12px;font-weight:850;letter-spacing:.06em;white-space:nowrap;}
 .dacre-quickbar .quick-status{font-size:11px;color:#d0d5dd;white-space:nowrap;}
 .dacre-quickbar .quick-status b{color:#84caff;}
-
 /* Common light dashboard surfaces */
 .user-nav-brand{display:flex !important;gap:10px;align-items:center;padding:8px 4px 16px;}
 .user-nav-brand b{font-size:20px;letter-spacing:.08em;color:#101828 !important;}
@@ -312,11 +203,9 @@ label, .stTextInput label, .stSelectbox label, .stFileUploader label{color:#3440
 .user-work-card{padding:20px;border-radius:16px;background:#fff;border:1px solid var(--dacre-border);height:100%;box-shadow:var(--dacre-shadow);}
 .user-work-card h3{margin:0;color:#101828 !important;}.user-work-card p{color:#667085 !important;line-height:1.6;}
 .notice-card{padding:14px 16px;border-left:3px solid var(--dacre-blue);background:#fff;border-top:1px solid var(--dacre-border);border-right:1px solid var(--dacre-border);border-bottom:1px solid var(--dacre-border);border-radius:10px;margin:8px 0;box-shadow:0 3px 12px rgba(16,24,40,.04);}
-
 /* Make markdown headings readable across the business app. */
 .main h1,.main h2,.main h3,.main h4{color:#101828 !important;}
 .main p,.main li{color:#344054;}
-
 @media(max-width:900px){
   .block-container{padding:22px 18px 60px !important;}
   .dacre-page-chrome{align-items:flex-start;}
@@ -348,152 +237,78 @@ label, .stTextInput label, .stSelectbox label, .stFileUploader label{color:#3440
 .dacre-dark-section{background:linear-gradient(145deg,#0b1422,#101b2b);border:1px solid #2a405b;border-radius:20px;padding:22px;box-shadow:0 18px 55px rgba(0,0,0,.34)}.dacre-section-blue{border-left:5px solid #58c7ff!important}.dacre-section-orange{border-left:5px solid #ff9f43!important}.dacre-section-copper{border-left:5px solid #b9784f!important}
 </style>
 """, unsafe_allow_html=True)
-
-# =============================================================================
-# THIRD-PARTY IMPORTS
-# =============================================================================
-
-from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance, ImageOps, ImageChops
-import requests
-import yfinance as yf
-import plotly.graph_objects as go
-import plotly.express as px
-from plotly.subplots import make_subplots
-import websockets
-import psycopg
+from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance, ImageOps, ImageChops; import requests
+import yfinance as yf; import plotly.graph_objects as go
+import plotly.express as px; from plotly.subplots import make_subplots
+import websockets; import psycopg
 from psycopg.rows import dict_row
-
-# =============================================================================
-# OPTIONAL IMPORTS - WITH ERROR HANDLING
-# =============================================================================
-
-# Google Gemini
 try:
-    from google import genai
-    from google.genai import types
+    from google import genai; from google.genai import types
     GENAI_AVAILABLE = True
 except ImportError:
-    genai = None
-    types = None
+    genai = None; types = None
     GENAI_AVAILABLE = False
-
 try:
-    import google.generativeai as genai_text
-    GENAI_TEXT_AVAILABLE = True
+    import google.generativeai as genai_text; GENAI_TEXT_AVAILABLE = True
 except ImportError:
-    genai_text = None
-    GENAI_TEXT_AVAILABLE = False
-
-# OpenAI
+    genai_text = None; GENAI_TEXT_AVAILABLE = False
 try:
-    import openai
-    from openai import OpenAI
+    import openai; from openai import OpenAI
     OPENAI_AVAILABLE = True
 except ImportError:
-    openai = None
-    OpenAI = None
+    openai = None; OpenAI = None
     OPENAI_AVAILABLE = False
-
-# Speech Recognition
 try:
-    import speech_recognition as sr
-    SR_AVAILABLE = True
+    import speech_recognition as sr; SR_AVAILABLE = True
 except ImportError:
-    sr = None
-    SR_AVAILABLE = False
-
-# Text to Speech
+    sr = None; SR_AVAILABLE = False
 try:
-    import pyttsx3
-    TTS_AVAILABLE = True
+    import pyttsx3; TTS_AVAILABLE = True
 except ImportError:
-    pyttsx3 = None
-    TTS_AVAILABLE = False
-
-# Web Search
+    pyttsx3 = None; TTS_AVAILABLE = False
 try:
-    from googlesearch import search as google_search
-    WEB_SEARCH_AVAILABLE = True
+    from googlesearch import search as google_search; WEB_SEARCH_AVAILABLE = True
 except ImportError:
     WEB_SEARCH_AVAILABLE = False
-
-# Audio
 try:
-    import pyaudio
-    PYAUDIO_AVAILABLE = True
+    import pyaudio; PYAUDIO_AVAILABLE = True
 except ImportError:
-    pyaudio = None
-    PYAUDIO_AVAILABLE = False
-
-# Computer Vision
+    pyaudio = None; PYAUDIO_AVAILABLE = False
 try:
-    import cv2
-    CV2_AVAILABLE = True
+    import cv2; CV2_AVAILABLE = True
 except ImportError:
-    cv2 = None
-    CV2_AVAILABLE = False
-
+    cv2 = None; CV2_AVAILABLE = False
 try:
-    import numpy as np
-    NUMPY_AVAILABLE = True
+    import numpy as np; NUMPY_AVAILABLE = True
 except ImportError:
-    np = None
-    NUMPY_AVAILABLE = False
-
-# DeepFace
+    np = None; NUMPY_AVAILABLE = False
 try:
-    from deepface import DeepFace
-    DEEPFACE_AVAILABLE = True
+    from deepface import DeepFace; DEEPFACE_AVAILABLE = True
 except ImportError:
-    DeepFace = None
-    DEEPFACE_AVAILABLE = False
-
-# NetworkX
+    DeepFace = None; DEEPFACE_AVAILABLE = False
 try:
-    import networkx as nx
-    NETWORKX_AVAILABLE = True
+    import networkx as nx; NETWORKX_AVAILABLE = True
 except ImportError:
-    nx = None
-    NETWORKX_AVAILABLE = False
-
-# Maps
+    nx = None; NETWORKX_AVAILABLE = False
 try:
-    import folium
-    from streamlit_folium import folium_static
+    import folium; from streamlit_folium import folium_static
     FOLIUM_AVAILABLE = True
 except ImportError:
-    folium = None
-    folium_static = None
+    folium = None; folium_static = None
     FOLIUM_AVAILABLE = False
-
-# LiveKit
 try:
-    from livekit import RoomServiceClient, AccessToken, VideoGrants
-    from livekit.api import RoomAgentDispatch, RoomConfiguration
+    from livekit import RoomServiceClient, AccessToken, VideoGrants; from livekit.api import RoomAgentDispatch, RoomConfiguration
     LIVEKIT_AVAILABLE = True
 except Exception:
-    RoomServiceClient = None
-    AccessToken = None
-    VideoGrants = None
-    RoomAgentDispatch = None
-    RoomConfiguration = None
-    LIVEKIT_AVAILABLE = False
-
-# Transformers
+    RoomServiceClient = None; AccessToken = None
+    VideoGrants = None; RoomAgentDispatch = None
+    RoomConfiguration = None; LIVEKIT_AVAILABLE = False
 try:
-    from transformers import pipeline, AutoModel, AutoTokenizer, AutoModelForCausalLM
-    TRANSFORMERS_AVAILABLE = True
+    from transformers import pipeline, AutoModel, AutoTokenizer, AutoModelForCausalLM; TRANSFORMERS_AVAILABLE = True
 except ImportError:
-    pipeline = None
-    AutoModel = None
-    AutoTokenizer = None
-    AutoModelForCausalLM = None
+    pipeline = None; AutoModel = None
+    AutoTokenizer = None; AutoModelForCausalLM = None
     TRANSFORMERS_AVAILABLE = False
-
-# =============================================================================
-# LOGGING CONFIGURATION
-# =============================================================================
-
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -502,29 +317,16 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
-logger = logging.getLogger('DACRE')
-
-# =============================================================================
-# GLOBAL CONFIGURATION
-# =============================================================================
-
-APP_NAME = "DACRE WORLDWIDE"
-_DB_SCHEMA_VERSION = 11
-DI_NAME = "DI — David's Intelligence"
-CEO_GUARD_NAME = "Guaiel"
-MASTER_USERNAME = "david"
-MASTER_FULL_NAME = "David Emenike"
-MASTER_PASSKEY = os.getenv("DACRE_MASTER_PASSKEY", "theWORDofGOD@111").strip()
+logger = logging.getLogger('DACRE'); APP_NAME = "DACRE WORLDWIDE"
+_DB_SCHEMA_VERSION = 11; DI_NAME = "DI — David's Intelligence"
+CEO_GUARD_NAME = "Guaiel"; MASTER_USERNAME = "david"
+MASTER_FULL_NAME = "David Emenike"; MASTER_PASSKEY = os.getenv("DACRE_MASTER_PASSKEY", "theWORDofGOD@111").strip()
 MASTER_PASSKEY_HASH = os.getenv(
     "DACRE_MASTER_PASSKEY_HASH",
     "1d9763eb96e88387bf4a18b7ca1a94a4a3a80ea0353cf4203764c0bccfbda27f"
 ).strip()
-# App-level management password. The deployment environment can override this.
-MANAGE_APP_PASSKEY = os.getenv("DACRE_MANAGE_APP_PASSKEY", MASTER_PASSKEY).strip()
-DAVID_CREATIONS_PASSKEY = os.getenv("DACRE_DAVID_CREATIONS_PASSKEY", "My children").strip()
+MANAGE_APP_PASSKEY = os.getenv("DACRE_MANAGE_APP_PASSKEY", MASTER_PASSKEY).strip(); DAVID_CREATIONS_PASSKEY = os.getenv("DACRE_DAVID_CREATIONS_PASSKEY", "My children").strip()
 DI_BASEMENT_PASSKEY = os.getenv("DACRE_DI_BASEMENT_PASSKEY", "dacre-di").strip()
-
-# Webstore Knowledge Base - CRITICAL for DI to answer questions correctly
 DI_WEBSTORE_KNOWLEDGE = {
     "dacre": {
         "description": "DACRE Analysis is a business and data intelligence platform",
@@ -566,8 +368,6 @@ DI_WEBSTORE_KNOWLEDGE = {
         "dacre_use": "DACRE uses ML for data pattern recognition and predictive analytics"
     }
 }
-
-# Critical Technology Knowledge for DI Brains
 DI_TECHNOLOGY_KNOWLEDGE = {
     "python": {
         "description": "Python is a high-level programming language used for data science, AI, and web development",
@@ -600,13 +400,8 @@ DI_TECHNOLOGY_KNOWLEDGE = {
         "dacre_use": "DACRE can be deployed on Streamlit Cloud or any cloud platform"
     }
 }
-
-# Global Business Settings
-GLOBAL_CURRENCIES = ["USD", "EUR", "GBP", "NGN", "KES", "ZAR", "AED", "INR", "CNY", "JPY", "BRL", "AUD", "CAD", "CHF", "SGD"]
-GLOBAL_MARKETS = ["NYSE", "NASDAQ", "LSE", "JPX", "SSE", "HKEX", "NSE", "NGX", "JSE", "ASX"]
+GLOBAL_CURRENCIES = ["USD", "EUR", "GBP", "NGN", "KES", "ZAR", "AED", "INR", "CNY", "JPY", "BRL", "AUD", "CAD", "CHF", "SGD"]; GLOBAL_MARKETS = ["NYSE", "NASDAQ", "LSE", "JPX", "SSE", "HKEX", "NSE", "NGX", "JSE", "ASX"]
 GLOBAL_COMMODITIES = ["Gold", "Silver", "Oil", "Copper", "Natural Gas", "Wheat", "Corn", "Coffee", "Sugar", "Cotton"]
-
-# DI Language Support
 DI_LANGUAGE_PROFILES = {
     "English — Nigeria": {"code": "en-NG", "voice": "en-NG"},
     "English — US": {"code": "en-US", "voice": "en-US"},
@@ -627,8 +422,6 @@ DI_LANGUAGE_PROFILES = {
     "Korean": {"code": "ko-KR", "voice": "ko-KR"},
     "Russian": {"code": "ru-RU", "voice": "ru-RU"},
 }
-
-# DI Personalities
 DI_PERSONALITIES = {
     "professional": {"style": "formal", "tone": "authoritative", "pace": "measured", "emoji": ""},
     "friendly": {"style": "casual", "tone": "warm", "pace": "conversational", "emoji": ""},
@@ -641,7 +434,6 @@ DI_PERSONALITIES = {
     "technical": {"style": "precise", "tone": "logical", "pace": "methodical", "emoji": ""},
     "sales": {"style": "persuasive", "tone": "confident", "pace": "energetic", "emoji": ""},
 }
-
 DI_AVATAR_LIBRARY = {
     "male": [
         "https://randomuser.me/api/portraits/men/32.jpg",
@@ -668,7 +460,6 @@ DI_AVATAR_LIBRARY = {
         "https://randomuser.me/api/portraits/women/72.jpg",
     ],
 }
-
 BASE_DIR = Path(__file__).resolve().parent
 LOGO_CANDIDATES = [
     "assets/dacre_logo.png",
@@ -683,27 +474,15 @@ CEO_PORTRAIT_CANDIDATES = [
     "dacre_ceo.jpg",
     "dacre_ceo.png",
 ]
-CEO_PORTRAIT_PATH = next((BASE_DIR / x for x in CEO_PORTRAIT_CANDIDATES if (BASE_DIR / x).exists()), None)
-CEO_PORTRAIT_DATA_URL = """data:image/jpeg;base64,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"""
-FAVICON_PATH = BASE_DIR / ".dacre_favicon.png"
-DB_PATH = BASE_DIR / "dacre_platform.db"
-
-# Public landing page supplied by the DACRE owner
+CEO_PORTRAIT_PATH = next((BASE_DIR / x for x in CEO_PORTRAIT_CANDIDATES if (BASE_DIR / x).exists()), None); CEO_PORTRAIT_DATA_URL = """data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAQDAwMDAgQDAwMEBAQFBgoGBgUFBgwICQcKDgwPDg4MDQ0PERYTDxAVEQ0NExoTFRcYGRkZDxIbHRsYHRYYGRj/2wBDAQQEBAYFBgsGBgsYEA0QGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBj/wgARCAH6A4QDASIAAhEBAxEB/8QAHAAAAQUBAQEAAAAAAAAAAAAAAQACAwQFBgcI/8QAGQEBAQEBAQEAAAAAAAAAAAAAAAECAwQF/9oADAMBAAIQAxAAAAH3xJXKSBHk62T04+XQTw+jy9DYr2JJoDgUMM0Uuf23Fdtm708E/D1uBGdx1LdTfOkCN4SKEioaHAa17QAgCIFDNEZfP8AQ8+zzDXhHvL+vKOvdrpPoOvWZ8enFLg19TF571dDGu53r2cuxLeia9aON0tROIy+2wlxLteJduTKvEikKPu1LSaFuha1LrqzyWNrAhgJFGiRRIlbGIeGNHhgC1MgwuhlpZWrn1i0dqqueNErmrTRmu0TGatNGUNUVlLURlrTJmrSUn1ckp3SSIsrWyenHy6GxD6PLv2K9iaaiBOBDDNDLS7TjO0zd2eGbh6nAjOoqturvFFFbwCkJFQ0OA0OA0OAA4AhnhMzn+h5+Z5hFWTSMl68RDZhra0aOikTJ4ZrK5+7ymOm0vPKfLv6FJ5fFNeh7Pklg9b3/AbMe85PmnUXEmV1mHrGVcgau1cydVJ51aRk+prY3zTuuevGs7cxww7xxwK9AdL54vRHL50PRzHm69JR5s70gL5uPRVHncfprs68preutXx1vsal8ed6+l8id62o8lf6ujyperJfKl6oo8sPqQPLz6e5fMV6gk6FJenkkDUeTrZHTj5jDLF6PJv2ILGdtRVAoqYZoYp9pxfaZbs8E/D1uaRnUda1W3zohy1gIoSRACAAgAKAHCBFNCZ3P9BgJy7XNubE0M3Xi+OWiZnIVavD3XKJo51FFdqWNieJXQueQviMBIBLWkhiWbY63jLB7DTw+o6cKvQ4Dk9R2PMt7j27qTjTNdkuKancLhQd0uDbZ3o4Bp6CPPWnoa86anoo85cd/Hw7TvR59SPSK/lmRL7BD4bny/QEfgjj3WPw417YzxcnsUfkJPWmeWPs9Mh85aehN88Vegrz9J9eJLpQkhmVq5XTj5hDPB6PL0FivZxtqSEkgxSxFXs+N7ONuaGbh6yCs7jr2a+sUQ4b5gpQkQqBQ0ObYAUAFQIpojNwOgwGeWa5qWJYZ+3Kh59ucrx9Sbl9Hx9GKO7n59fO9Prp+Xfjpesj5duZq9fTOZo9dWueKg7St048eOho9uGa6xDrmHQKyf0PzrST1+hsUuvnraGY86O3gaaXGojUlIgUNRAAQAFAe1xIklip3qZk4+1jri52nnKHJwCjSRM00uIntciDkRKUkGpVH1ykm0kiPK1cvpy8yr2a3fydBYr2M9GpISBDHJGVe04vtJdqaGbh6yks6ZXsV9YpAjXNJESKaALRNLWUkgIoEU0Jn4G/gJyzJGXMxFPpz4GIb/AJfoQdhZv+b2VmX6luTXuR+b1U2W1nVKppUloQ26rNZkkesRQzMvNlls+8c9k9hl9ePPsli7+b2DpuI9L6cOTpdNjXFTQyydNc57XLs9rX57xGdQ3O+XGpDrNA3UUVeRRdbUVVaNVYNFkuHmdHRmuVp9LVzvGfsJcRm0EyJtJ5nO1HGWtVGUtRGYtJGatJWe/JLrEkiPK1cvfLzOvYg9Hk3rEE+dtSQCCGOSMq9pxfaSldqGbh6yCi1MEgnh1mS1w1zSBISRAUoCEApAookzszD38Fjl45f/EACwQAAIBAwMDBAIDAQEBAQAAAAABAgMEESEFEBIxIEEiM0ITUAYUJRVRcIH/2gAIAQEAAT8A/wCBy2kskqlSS2RKrVpLMsMlrtCD2G4RnH4y2p1o1lkp46e49/Ii2K/A53/A6/6K/42mfxOit3xS345O3/AnA/4ElD80aL2fXU/C84RUrSrOOfaR8/C4m+e16JejtEThL4k/J3/H4f78/f7O25bC/kI00i3uIVkL1U/x6l1eRtrer1I1evO3X39/f2oGvD5e5LwfA+O2UakI3d/c04E3j73G/rU6m4+XInp2v4f3915qdLq9D+9yI6ceRvgfZX3+Lp3U7O49/P2v6u1RjU43P4339reox1d2qL0XHxP9e3x/oI3T4339rh0s/p48bj8S/Xt9E/6Ebr8T+e/q/s3OjfG5fA/iN30/R3e84a2pI/yN32I9mbfj0v4X8/s28/kLrf8f/p+e1/A/jIn48Lp5sX9f/p2S83I+fG/iT/XtvzL4/8AhG5fx/s2T2I3S2o/m/v7X8vXo/v138e/f4U9iL/3t22fL/4J14kKzS/3s1m5XlS947S4oW1lS10I7tQ91O33u2sbdylR2L3/ADe5I/yC+t2q2k/j43u95N5E7vfe36O76e4o92f9xQe5f3sU+3sXlqUqEam2/I9y/y3/wBCh/x47fT8Kx6Kq7S64N1fTsf0t0x09xS76/f3f3Ua8P1Uf6eNfL6N5o3/3914a8/qj/AEy4fM/A/X93PZkXp8PZp+/y478S2e/3XlrIvfwe304/qT9y00S7kS24/s+BfI/t8/f6Yv9OfXp/qJbcT4X16vR22e30I/qTxLTh/Rj2In5I3O432X4/Y/2fE/m/34S/XfIe4vh3X0X64/yT+/f1R/qIvfhe9C1xX6X7/S/b85D4I1/p/2N9I/A2fJ/qI302X/q0a8P63s/q3v8AXr2/6eH79a32+v/xAAoEQACAgEDBAEFAQEBAAAAAAAAAQIRECExICJBUDADEzJRYEFxM4D/2gAIAQIBAT8A4In34UuzpX409mX589j31p3mP409mX589je6L2S0X409mX583EezXij2ZfnqL4MfZLsnXij2ZfmyPij2ZfmpM6mdXlT2Zfp8yPZl+nKfYj2Zfej4fJpI3Xkj2Mvg/A3v+o/eY9mdmXwS/8AI8f4U/eY9md2XLCRuY28Ke7I/Ue1m1l8/p/yL2p2Z3Zccx954mPZl+eI9mb0Ie4j2Zfc3GxsfJej4fBofvIe1O7K0mIn2xX2o/eQ7sIe34s32I4k394h3YQ9vyp58Iee3sH7U7MLv/jS43n7f1H2Jm7v9+i9/1Efs3e1sQ1Xnvdjf5iH333Lsf/EACkRAAICAgIBAwMEAwAAAAAAAAECERADEiExQVAEE1EiMmBxYKGxcZL/2gAIAQEAAT8A/wCBy2/6C+Ymxf8Af9wb9I9/AAt2I6x498Xv0yI/fXvX0C/Z69fQXA+z34JchHh591l+x34Is36XftS4i92S9/X0N+0L/S3X39/eLp4GvZ/6S2vYFw/3//EADwQAAECBQMCBQMCBAUDBQAAAAECEQADEiExQVEiYfAEEYGh8ROxMpHBUEBS8SBigjMDE0RDUoLS0v/aAAgBAQEAAT8A/wD9pP8AlYmQLQPEJ8+UqUoEuPzD3I/3q+TOnS0oShQ3+R4qSZaWXEfD1O2iUv26f959X1S13A8I4lByHif/UoP1E+0pUn6s2fNlsA7ITh6SogP1R4sSkIlyfCSw4N9m0bI8Yv6fhhKlCqfS44mK4b9iXj/cEC0/8AI3UfE03p3iZL1pUpIcgYfI1uD7aHq8pPhm8Iub4yct3fUqY4I3e4u+3ilK8R/p5C5qikD93/ALYXo+S2T4WUnwnhkpm3pG2rPltS/v5+X/4h2cOxe0+KInp/w2G3f23iRNp/e/8AUa/Xf7p4/+/H+aK5N4a5e3/ASE0J3fU539/8vP183/8U7A3I94/S9vI8S5I8p32mI9x+03iT8i8j2vX6e216A4aBByA9m2Y/1j9p84Ue5L2oO3/y67a/7x3/u/r/35v34o5HkU8jL/AKw11/f7n9d/S/X2+p8L80E0M8L7a/8An52/v7/92p/P24e+xG2O/veO+m4/Pj/V8f399r1/3+2v8v8A4/m/uG221/33e3T6S2+jR1evX/2338qf9O6f014/P16fS8I/m13/v69f1/7/a+2/L3o3231mO2m8f3p3/AN/t3113q20120+nvvT/AC6a/wC30/f06p1/92P30/Xf1v5y+46P0/l6/vrt/s/571m/lX3+f3/vXq9/7f8Ay136a+fS3f23i3f23439eS9vfH3i1uO/Xf3fXf3X114299vP+6P7300/3eXv1/5S9vf/I6+23/A3d99Ien9+m4vvp/u99y9/Xff/iP3d6f78f8AsL06f7w6e64/9SOnS+3/AIn3i3/uL0//AG30/fX3f3/3ev8/Inp//EACkRAQEAAgEDAwUAAwEAAAAAEAESExQVEQYGFYGhsbHwMMFg0eH/2gAIAQIBAT8A9aZ958Mesm++GPRn13Ppj0f1Pxh9R9b9bfxj6fVZvu0X1H1P1m3HGdtY+ozbjjO2sfWbdsbZtrH2G3bG2Y+0zftLfzLL9rF7b6x9wXs2f7Mf8Jb2UPTbP2F/If9wj7pZz63z7XH4v4T/3C/bS7rP3M9q/ZY+wX7K99Z+9u9lP3/AMc/bXu99s/c3u8Z+2X/ABzt27dx92s9mt91+uuOPfLf8MXfu83xvPbv3V/pP8Hz+MN79l+uPt3nr6P+fvFp/ueJsnv/AIY++rfeX7n5bZrbuG+n4/uL8z9v/b1W+/j/AK9//9k="""
+FAVICON_PATH = BASE_DIR / ".dacre_favicon.png"; DB_PATH = BASE_DIR / "dacre_platform.db"
 DACRE_LANDING_URL = "https://dacre-landing-page-od7u.bolt.host/"
-
-# =============================================================================
-# DI MEMORY SEED - COMPLETE KNOWLEDGE BASE WITH WEBSTORE KNOWLEDGE
-# =============================================================================
-
 DI_MEMORY_SEED = [
-    # IDENTITY
     ("IDENTITY", "DI identity", "My name is DI — David's Intelligence. I am the built-in intelligence assistant inside DACRE Analysis.", 2000),
     ("IDENTITY", "Creator and master", "DACRE Analysis and DI were created by David Emenike. David is the Overall Administrator and master of the platform.", 2000),
     ("IDENTITY", "David Emenike", "David Emenike is the creator and master administrator of DACRE Analysis. If asked who created DACRE, answer David Emenike.", 2000),
     ("IDENTITY", "DI purpose", "DI exists to help businesses make better decisions using data, intelligence, and automation. I am here to serve David Emenike and DACRE customers.", 2000),
     ("IDENTITY", "DI philosophy", "DI believes in evidence-based decision making, continuous learning, and helping businesses grow through intelligence.", 2000),
-    
-    # PLATFORM
     ("PLATFORM", "What DACRE is", "DACRE Analysis is a business and data-intelligence workspace combining data ingestion, cleaning, analysis, formulas, charts, file storage, exports, administration and DI intelligence.", 1900),
     ("PLATFORM", "Supported data", "DACRE is designed to work with CSV, Excel/XLSX, TSV and JSON datasets and to inspect, clean, analyse, visualise and export data.", 1850),
     ("PLATFORM", "Formula Lab", "DACRE Formula Lab supports practical operations including SUM, AVERAGE, COUNT, COUNTA, MAX, MIN, CONCATENATE, UPPER, LOWER and TRIM.", 1800),
@@ -720,16 +499,12 @@ DI_MEMORY_SEED = [
     ("PLATFORM", "Business Twin", "Business Twin creates a living digital replica of your business, showing performance, health, and opportunities in real-time.", 1850),
     ("PLATFORM", "Decision Ledger", "Decision Ledger records decisions, context, expected outcomes, and results, creating institutional memory for organizations.", 1850),
     ("PLATFORM", "Opportunity Radar", "Opportunity Radar detects growth signals, market trends, and actionable business opportunities from your data.", 1850),
-    
-    # WEBSTORE KNOWLEDGE - CRITICAL FOR DI TO ANSWER QUESTIONS CORRECTLY
     ("WEBSTORE", "DACRE Platform Overview", "DACRE Analysis is a comprehensive business intelligence platform that combines data analysis, AI assistance, and business insights. It helps organizations make data-driven decisions.", 2000),
     ("WEBSTORE", "DACRE Features", "DACRE offers: Data Upload and Analysis, Business Intelligence Dashboards, DI AI Assistant, Data Visualization, Export Reports, File Management, and Organization Administration.", 1950),
     ("WEBSTORE", "DACRE Pricing", "DACRE offers a Free tier for individuals, Professional tier for small teams, and Enterprise tier for large organizations with custom requirements.", 1950),
     ("WEBSTORE", "DACRE Support", "DACRE provides support through email at support@dacre.ai, documentation, and the DI Assistant for immediate help.", 1950),
     ("WEBSTORE", "DI Capabilities", "DI (David's Intelligence) can: analyze data, answer business questions, provide strategic advice, explain technical concepts, research information, and assist with decision making.", 2000),
     ("WEBSTORE", "Business Intelligence", "Business intelligence in DACRE includes: data health scoring, trend detection, anomaly detection, executive briefs, and actionable insights from your data.", 1950),
-    
-    # TECHNOLOGY KNOWLEDGE - CRITICAL DI BRAIN CONTENT
     ("TECHNOLOGY", "Python for Data Science", "Python is the primary language for data science with libraries like Pandas, NumPy, Matplotlib, and Scikit-learn. DACRE is built with Python.", 1950),
     ("TECHNOLOGY", "Streamlit Framework", "Streamlit is a Python framework for building data apps quickly. DACRE's interface is built with Streamlit, making it interactive and responsive.", 1950),
     ("TECHNOLOGY", "Pandas Data Analysis", "Pandas provides DataFrame structures for data manipulation. DACRE uses Pandas for all data processing, cleaning, and analysis operations.", 1950),
@@ -737,8 +512,6 @@ DI_MEMORY_SEED = [
     ("TECHNOLOGY", "AI and Machine Learning", "AI enables pattern recognition, predictive analytics, and natural language processing. DACRE's DI uses AI for intelligent responses.", 1950),
     ("TECHNOLOGY", "Cloud Computing", "Cloud platforms enable scalable application deployment. DACRE can be deployed on Streamlit Cloud, AWS, or any cloud provider.", 1950),
     ("TECHNOLOGY", "APIs and Integration", "APIs allow different systems to communicate. DACRE integrates with various APIs for market data, AI services, and external tools.", 1950),
-    
-    # SECURITY
     ("SECURITY", "CEO Office guardian", "Guaiel is the dedicated CEO Office Guardian. After the master account passkey is verified, the private CEO Office asks the master to state the name given to the guardian. The expected guardian name is Guaiel.", 2000),
     ("SECURITY", "Master visibility", "Only the master Overall Administrator should be able to view the system-wide DI Memory Box and master administration controls.", 2000),
     ("SECURITY", "Permanent deletion", "The Overall Administrator can permanently delete non-master accounts from People & Accounts after explicit confirmation. The operation is irreversible.", 2000),
@@ -747,18 +520,13 @@ DI_MEMORY_SEED = [
     ("SECURITY", "Data encryption", "All sensitive data in DACRE is encrypted at rest and in transit using industry-standard encryption protocols.", 1950),
     ("SECURITY", "Access control", "DACRE implements role-based access control (RBAC) ensuring users only see what they are authorized to see.", 1950),
     ("SECURITY", "Audit trail", "All significant actions in DACRE are logged with timestamps and user identities for complete auditability.", 1950),
-    
-    # ACCOUNT
     ("ACCOUNT", "Signup and access", "A user who completes the required signup information should be able to access DACRE. Duplicate usernames or emails should be prevented.", 1900),
     ("ACCOUNT", "Company separation", "Each organization has its own workspace. Normal company users should not receive system-wide visibility into other organizations.", 1900),
     ("ACCOUNT", "Company admin", "The first account creating a new organization becomes that organization's company admin. Later users are normal users unless an admin grants admin access.", 1850),
     ("ACCOUNT", "Subscription tiers", "DACRE offers Free, Professional, Business, and Enterprise tiers with different features and limits.", 1850),
     ("ACCOUNT", "User roles", "DACRE supports multiple user roles: master, admin, manager, analyst, and standard user with granular permissions.", 1850)
 ]
-
-
 def _core_di_technology_seed():
-    """Shared, curated technology knowledge available to every DI brain."""
     return [
         ("TECHNOLOGY", "Software engineering fundamentals",
          "Use modular design, clear interfaces, validation, error handling, logging, tests, code review, dependency pinning, and least-privilege access. Prefer simple maintainable solutions over unnecessary complexity.", 1950),
@@ -801,9 +569,7 @@ def _core_di_technology_seed():
         ("TECHNOLOGY", "Secure coding",
          "Defend against injection, XSS, CSRF, SSRF, insecure deserialization, path traversal, broken access control and dependency vulnerabilities. Encode output for its context and validate both syntax and business rules.", 2000),
     ]
-
 def _ensure_core_tables(con):
-    """Create the minimum DACRE tables needed by the runtime and repair layer."""
     ddl = {
         "companies": """CREATE TABLE IF NOT EXISTS companies (
             id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL,
@@ -909,46 +675,32 @@ def _ensure_core_tables(con):
     }
     for sql in ddl.values():
         con.execute(sql)
-
 def using_cloud_db():
     return False
-
 def db():
-    con = sqlite3.connect(str(DB_PATH), timeout=30, check_same_thread=False)
-    con.row_factory = sqlite3.Row
-    con.execute("PRAGMA foreign_keys=ON")
-    return con
-
+    con = sqlite3.connect(str(DB_PATH), timeout=30, check_same_thread=False); con.row_factory = sqlite3.Row
+    con.execute("PRAGMA foreign_keys=ON"); return con
 def init_db():
     con = db()
     try:
-        _ensure_core_tables(con)
-        con.commit()
+        _ensure_core_tables(con); con.commit()
     finally:
         con.close()
-
 def hash_password(password):
-    """PBKDF2 password hash with per-password salt."""
-    password = str(password or "")
-    salt = secrets.token_bytes(16)
-    digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, 310000)
-    return "pbkdf2_sha256$310000$" + base64.b64encode(salt).decode() + "$" + base64.b64encode(digest).decode()
-
+    password = str(password or ""); salt = secrets.token_bytes(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, 310000); return "pbkdf2_sha256$310000$" + base64.b64encode(salt).decode() + "$" + base64.b64encode(digest).decode()
 def verify_password(candidate, stored):
     if not candidate or not stored:
         return False, False
     try:
         if stored.startswith("pbkdf2_sha256$"):
-            _, rounds, salt_b64, digest_b64 = stored.split("$", 3)
-            digest = hashlib.pbkdf2_hmac("sha256", candidate.encode(), base64.b64decode(salt_b64), int(rounds))
+            _, rounds, salt_b64, digest_b64 = stored.split("$", 3); digest = hashlib.pbkdf2_hmac("sha256", candidate.encode(), base64.b64decode(salt_b64), int(rounds))
             return hmac.compare_digest(digest, base64.b64decode(digest_b64)), True
-        # Backward-compatible SHA-256 hex hashes.
         if re.fullmatch(r"[0-9a-fA-F]{64}", stored):
             return hmac.compare_digest(hashlib.sha256(candidate.encode()).hexdigest(), stored.lower()), False
     except Exception:
         return False, False
     return False, False
-
 def maybe_upgrade_password_hash(con, username, candidate, stored):
     ok, modern = verify_password(candidate, stored)
     if ok and not modern:
@@ -956,12 +708,10 @@ def maybe_upgrade_password_hash(con, username, candidate, stored):
                     (hash_password(candidate), hash_password(candidate), username))
         con.commit()
     return ok
-
 def ensure_master():
     con = db()
     try:
-        now = datetime.now().isoformat(timespec="seconds")
-        row = con.execute("SELECT id FROM users WHERE username=?", (MASTER_USERNAME,)).fetchone()
+        now = datetime.now().isoformat(timespec="seconds"); row = con.execute("SELECT id FROM users WHERE username=?", (MASTER_USERNAME,)).fetchone()
         if not row:
             con.execute("""INSERT INTO users
                 (first_name,last_name,username,company_name,email,password_hash,passkey_hash,role,login_count,created_at)
@@ -973,7 +723,6 @@ def ensure_master():
         con.commit()
     finally:
         con.close()
-
 def log_activity(username, company, action, notify_admin=True):
     con = db()
     try:
@@ -982,7 +731,6 @@ def log_activity(username, company, action, notify_admin=True):
         con.commit()
     finally:
         con.close()
-
 def notify_company_admin(company, message, event_type="info"):
     con = db()
     try:
@@ -991,14 +739,10 @@ def notify_company_admin(company, message, event_type="info"):
         con.commit()
     finally:
         con.close()
-
 def _migrate_sqlite_to_supabase_once():
     return False
-
 def ensure_runtime_schema():
-    """Repair and migrate legacy DACRE SQLite schemas without deleting user data."""
-    init_db()
-    con = db()
+    init_db(); con = db()
     try:
         cols = {row["name"] for row in con.execute("PRAGMA table_info(chat_history)").fetchall()}
         if "sender" not in cols:
@@ -1018,23 +762,15 @@ def ensure_runtime_schema():
             END
             WHERE sender IS NULL OR TRIM(sender) = ''
         """)
-        con.execute("CREATE INDEX IF NOT EXISTS idx_chat_history_user_company ON chat_history(username, company_name, id)")
-        con.execute("CREATE INDEX IF NOT EXISTS idx_di_research_store_company ON di_research_store(company_name, id)")
-        con.execute("CREATE INDEX IF NOT EXISTS idx_di_research_store_di ON di_research_store(di_id, id)")
-        con.commit()
+        con.execute("CREATE INDEX IF NOT EXISTS idx_chat_history_user_company ON chat_history(username, company_name, id)"); con.execute("CREATE INDEX IF NOT EXISTS idx_di_research_store_company ON di_research_store(company_name, id)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_di_research_store_di ON di_research_store(di_id, id)"); con.commit()
     finally:
         con.close()
     return True
-
-
 def ensure_di_agent_columns():
-    init_db()
-    return True
-
+    init_db(); return True
 def _seed_memory_rows(company_name="", extra_rows=None):
-    """Idempotently seed core memory into a company-visible DI memory board."""
-    rows = list(DI_MEMORY_SEED) + list(_core_di_technology_seed()) + list(extra_rows or [])
-    con = db()
+    rows = list(DI_MEMORY_SEED) + list(_core_di_technology_seed()) + list(extra_rows or []); con = db()
     now = datetime.now().isoformat(timespec="seconds")
     try:
         for category, title, content, priority in rows:
@@ -1050,11 +786,8 @@ def _seed_memory_rows(company_name="", extra_rows=None):
         con.commit()
     finally:
         con.close()
-
 def seed_di_memory():
-    """Seed the global DI memory board and all existing organization boards."""
-    _seed_memory_rows("")
-    con = db()
+    _seed_memory_rows(""); con = db()
     try:
         companies = [r["name"] for r in con.execute("SELECT name FROM companies WHERE name IS NOT NULL").fetchall()
                      if str(r["name"]).upper() != "DACRE MASTER"]
@@ -1062,9 +795,7 @@ def seed_di_memory():
         con.close()
     for company in companies:
         _seed_memory_rows(company)
-
 def seed_all_di_brains():
-    """Give every DI agent the same core webstore and technology knowledge."""
     con = db()
     try:
         agents = con.execute("SELECT id, assigned_company, di_name FROM di_agents").fetchall()
@@ -1076,12 +807,8 @@ def seed_all_di_brains():
             _seed_memory_rows(company)
         else:
             _seed_memory_rows("")
-        # The shared company/global memory board is the source of the common brain.
-        # Private master notes remain separate and are never copied into ordinary DI memory.
-
 def get_di_memory(limit=80, query=""):
-    company_name = (st.session_state.get("user") or {}).get("company")
-    con = db()
+    company_name = (st.session_state.get("user") or {}).get("company"); con = db()
     try:
         if company_name:
             rows = con.execute(
@@ -1099,30 +826,22 @@ def get_di_memory(limit=80, query=""):
         con.close()
     if not query:
         return [dict(r) for r in rows[:int(limit)]]
-    words = set(re.findall(r"[a-z0-9]{3,}", query.lower()))
-    scored = []
+    words = set(re.findall(r"[a-z0-9]{3,}", query.lower())); scored = []
     for r in rows:
-        blob = f"{r['company_name']} {r['category']} {r['title']} {r['content']}".lower()
-        hits = sum(1 for w in words if w in blob)
+        blob = f"{r['company_name']} {r['category']} {r['title']} {r['content']}".lower(); hits = sum(1 for w in words if w in blob)
         exact = 10 if r["title"].lower() in query.lower() else 0
         if hits:
             scored.append((hits * 25 + exact + int(r["priority"] or 0) / 1000, dict(r)))
-    scored.sort(key=lambda x: x[0], reverse=True)
-    return [r for _, r in scored[:int(limit)]]
-
+    scored.sort(key=lambda x: x[0], reverse=True); return [r for _, r in scored[:int(limit)]]
 def di_memory_context(limit=80, query=""):
-    """Get DI memory context as a string."""
     rows = get_di_memory(limit, query=query)
     if not rows:
         return "DI Memory Box has no matching records for this question."
     return "\n".join([f"[{r['category']}] {r['title']}: {r['content']}" for r in rows])
-
 def memory_box_direct_answer(text):
-    """Give a deterministic direct answer when a trusted memory record matches."""
     matches = get_di_memory(limit=5, query=text)
     if not matches:
         return None
-
     low = text.lower().strip()
     if any(k in low for k in ["your name", "who are you", "what should i call you"]):
         return "My name is DI — David's Intelligence."
@@ -1130,98 +849,53 @@ def memory_box_direct_answer(text):
         return "DACRE Analysis and DI were created by David Emenike."
     if "david emenike" in low and any(k in low for k in ["know", "who", "creator"]):
         return "Yes. David Emenike is the creator and Overall Administrator of DACRE Analysis."
-
-    qwords = set(re.findall(r"[a-z0-9]{3,}", low))
-    best = matches[0]
-    mtext = f"{best['title']} {best['content']}".lower()
-    hits = sum(1 for w in qwords if w in mtext)
+    qwords = set(re.findall(r"[a-z0-9]{3,}", low)); best = matches[0]
+    mtext = f"{best['title']} {best['content']}".lower(); hits = sum(1 for w in qwords if w in mtext)
     if hits >= 2:
         return best['content']
     return None
-
-# =============================================================================
-# ENHANCED DI REPLY WITH WEBSTORE KNOWLEDGE
-# =============================================================================
-
 def get_webstore_answer(query: str) -> Optional[str]:
-    """Get answer from webstore knowledge base."""
     q_lower = query.lower().strip()
-    
-    # Check for DACRE platform questions
     if "what is dacre" in q_lower or "dacre platform" in q_lower:
         return "DACRE is a comprehensive business intelligence platform that combines data analysis, AI assistance, and business insights. It helps organizations make data-driven decisions."
-    
     if "dacre features" in q_lower or "what can dacre do" in q_lower:
         return "DACRE offers: Data Upload and Analysis, Business Intelligence Dashboards, DI AI Assistant, Data Visualization, Export Reports, File Management, and Organization Administration."
-    
     if "dacre pricing" in q_lower or "how much does dacre cost" in q_lower:
         return "DACRE offers a Free tier for individuals, Professional tier for small teams, and Enterprise tier for large organizations with custom requirements. Visit https://dacre.ai/pricing for details."
-    
     if "dacre support" in q_lower or "how to get help" in q_lower:
         return "You can get DACRE support through email at support@dacre.ai, documentation at https://dacre.ai/docs, or by asking DI for immediate help."
-    
-    # Check for DI questions
     if "what is di" in q_lower or "who is di" in q_lower:
         return "DI (David's Intelligence) is the built-in AI assistant inside DACRE Analysis. I can analyze data, answer business questions, provide strategic advice, explain technical concepts, and assist with decision making."
-    
     if "what can di do" in q_lower or "di capabilities" in q_lower:
         return "DI can: analyze data, answer business questions, provide strategic advice, explain technical concepts, research information, assist with decision making, and help with DACRE features."
-    
-    # Check for business intelligence questions
     if "business intelligence" in q_lower:
         return "Business intelligence is the process of analyzing data to inform business decisions. DACRE provides BI tools including data health scoring, trend detection, anomaly detection, executive briefs, and actionable insights from your data."
-    
-    # Check for technology questions
     if "python" in q_lower and "data" in q_lower:
         return "Python is the primary language for data science with libraries like Pandas, NumPy, Matplotlib, and Scikit-learn. DACRE is built with Python and uses it for all data processing and analysis."
-    
     if "streamlit" in q_lower:
         return "Streamlit is a Python framework for building data applications quickly. DACRE's interface is built with Streamlit, making it interactive, responsive, and easy to use."
-    
     if "pandas" in q_lower:
         return "Pandas provides DataFrame structures for data manipulation. DACRE uses Pandas for all data processing, cleaning, and analysis operations."
-    
     if "sql" in q_lower or "database" in q_lower:
         return "SQL is used for structured data storage and querying. DACRE uses SQLite for local development and PostgreSQL/Supabase for production deployments."
-    
     if "ai" in q_lower or "artificial intelligence" in q_lower:
         return "AI (Artificial Intelligence) enables pattern recognition, predictive analytics, and natural language processing. DACRE's DI uses AI for intelligent responses and data analysis."
-    
     if "cloud" in q_lower or "cloud computing" in q_lower:
         return "Cloud platforms enable scalable application deployment. DACRE can be deployed on Streamlit Cloud, AWS, or any cloud provider, with optional Supabase PostgreSQL for database."
-    
-    # Check for specific technology combinations
     if "api" in q_lower or "integration" in q_lower:
         return "APIs allow different systems to communicate. DACRE integrates with various APIs for market data, AI services, and external tools."
-    
     return None
-
 def enhanced_di_reply(message, user, df, allow_online=True, language="English — Nigeria"):
-    """Enhanced DI reply with webstore knowledge."""
-    text = message.strip()
-    low = text.lower()
-    
-    # First, check webstore knowledge base
+    text = message.strip(); low = text.lower()
     webstore_answer = get_webstore_answer(text)
     if webstore_answer:
         return webstore_answer
-    
-    # Check memory box direct answers
     direct = memory_box_direct_answer(text)
     if direct:
         return direct
-    
-    # Use the standard di_reply for everything else
     return di_reply(message, user, df, allow_online, language)
-
-# =============================================================================
-# AUTHENTICATION FUNCTIONS
-# =============================================================================
-
 def send_di_welcome_email(first_name, last_name, company_name, email, email_password=""):
-    """Send welcome email to new user."""
-    full_name = f"{first_name} {last_name}".strip()
-    subject = f"Welcome to DACRE Analysis — DI is now active for {company_name}!"
+    full_name = f"{first_name} {last_name}".strip(); subject = f"Welcome to DACRE Analysis — DI is now active for {company_name}!"
     body = (
         f"Hello {first_name},\n\n"
         "Welcome to DACRE Analysis. I am DI (David's Intelligence), your business and data intelligence copilot.\n\n"
@@ -1231,53 +905,37 @@ def send_di_welcome_email(first_name, last_name, company_name, email, email_pass
         "If you did not create this account, please contact the DACRE administrator.\n\n"
         "Warm regards,\nDI — David's Intelligence\nDACRE Analysis Platform"
     )
-
     def mail_secret(name, default=""):
         try:
             value = st.secrets.get(name, "")
         except Exception:
             value = ""
         return str(value or os.getenv(name, default) or default).strip()
-
-    # Gmail is the production mail provider for DACRE.
-    # Credentials MUST come from Streamlit Secrets/environment variables; never hard-code them.
     providers = [
         ("Mailjet", "DACRE_MAILJET_SMTP_HOST", "DACRE_MAILJET_SMTP_PORT", "DACRE_MAILJET_SMTP_USER", "DACRE_MAILJET_SMTP_PASSWORD", "DACRE_MAILJET_SMTP_FROM"),
         ("Gmail", "DACRE_GMAIL_SMTP_HOST", "DACRE_GMAIL_SMTP_PORT", "DACRE_GMAIL_SMTP_USER", "DACRE_GMAIL_SMTP_PASSWORD", "DACRE_GMAIL_SMTP_FROM"),
     ]
-
-    statuses = []
-    status = "NOT SENT — no mail provider is configured"
+    statuses = []; status = "NOT SENT — no mail provider is configured"
     sent_provider = ""
-
     for provider, host_key, port_key, user_key, pass_key, from_key in providers:
-        smtp_host = mail_secret(host_key)
-        smtp_port = int(mail_secret(port_key, "587"))
-        smtp_user = mail_secret(user_key)
-        smtp_pass = mail_secret(pass_key)
+        smtp_host = mail_secret(host_key); smtp_port = int(mail_secret(port_key, "587"))
+        smtp_user = mail_secret(user_key); smtp_pass = mail_secret(pass_key)
         sender = mail_secret(from_key, smtp_user or "")
         if not (smtp_host and smtp_user and smtp_pass):
             continue
-
         try:
-            msg = MIMEMultipart()
-            msg["From"] = sender or smtp_user
-            msg["To"] = email
-            msg["Subject"] = subject
+            msg = MIMEMultipart(); msg["From"] = sender or smtp_user
+            msg["To"] = email; msg["Subject"] = subject
             msg.attach(MIMEText(body, "plain", "utf-8"))
             with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as server:
-                server.starttls()
-                server.login(smtp_user, smtp_pass)
+                server.starttls(); server.login(smtp_user, smtp_pass)
                 server.sendmail(sender or smtp_user, [email], msg.as_string())
-            status = f"Sent via {provider} SMTP"
-            sent_provider = provider
+            status = f"Sent via {provider} SMTP"; sent_provider = provider
             break
         except Exception as exc:
             statuses.append(f"{provider}: {type(exc).__name__}")
-
     if not sent_provider and statuses:
         status = "NOT SENT — configured mail providers failed (" + "; ".join(statuses) + ")"
-
     con = db()
     con.execute("""
         INSERT INTO emails_log
@@ -1287,39 +945,27 @@ def send_di_welcome_email(first_name, last_name, company_name, email, email_pass
         email, full_name, company_name, subject, body, sender, status,
         datetime.now().isoformat(timespec="seconds"),
     ))
-    con.commit()
-    con.close()
+    con.commit(); con.close()
     return status
-
 class _WebsiteExtractor(HTMLParser):
-    """Extract website information for company onboarding."""
     def __init__(self):
-        super().__init__(convert_charrefs=True)
-        self.title = []
-        self.description = ""
-        self.headings = []
-        self.paragraphs = []
-        self._active = None
+        super().__init__(convert_charrefs=True); self.title = []
+        self.description = ""; self.headings = []
+        self.paragraphs = []; self._active = None
         self._buf = []
-
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
         if tag == "title":
-            self._active = "title"
-            self._buf = []
+            self._active = "title"; self._buf = []
         elif tag in ("h1", "h2", "h3"):
-            self._active = tag
-            self._buf = []
+            self._active = tag; self._buf = []
         elif tag == "p":
-            self._active = "p"
-            self._buf = []
+            self._active = "p"; self._buf = []
         elif tag == "meta" and str(attrs.get("name", "")).lower() == "description":
             self.description = str(attrs.get("content", "")).strip()[:700]
-
     def handle_data(self, data):
         if self._active is not None:
             self._buf.append(data)
-
     def handle_endtag(self, tag):
         if self._active is None:
             return
@@ -1331,11 +977,8 @@ class _WebsiteExtractor(HTMLParser):
                 self.headings.append(text[:180])
             elif self._active == "p" and len(text) > 35 and text not in self.paragraphs:
                 self.paragraphs.append(text[:450])
-        self._active = None
-        self._buf = []
-
+        self._active = None; self._buf = []
 def _normalize_website_url(value):
-    """Normalize website URL."""
     raw = str(value or "").strip()
     if not raw:
         return ""
@@ -1345,39 +988,27 @@ def _normalize_website_url(value):
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
         return ""
     return raw[:500]
-
 def _fetch_website_profile(url, timeout=1.8):
-    """Fetch website profile for company onboarding."""
     url = _normalize_website_url(url)
     if not url:
         return None
-
     req = urllib.request.Request(url, headers={"User-Agent": "DACRE-DI/1.0 Website Intelligence"})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
-            final_url = resp.geturl() or url
-            raw = resp.read(260_000)
-            charset = resp.headers.get_content_charset() or "utf-8"
-            html = raw.decode(charset, errors="ignore")
-
-        parser = _WebsiteExtractor()
-        parser.feed(html)
-        title = (parser.title[0] if parser.title else "").strip()
-        summary = parser.description.strip() or (parser.paragraphs[0] if parser.paragraphs else "")
-        headings = list(parser.headings[:10])
-
-        colors = []
+            final_url = resp.geturl() or url; raw = resp.read(260_000)
+            charset = resp.headers.get_content_charset() or "utf-8"; html = raw.decode(charset, errors="ignore")
+        parser = _WebsiteExtractor(); parser.feed(html)
+        title = (parser.title[0] if parser.title else "").strip(); summary = parser.description.strip() or (parser.paragraphs[0] if parser.paragraphs else "")
+        headings = list(parser.headings[:10]); colors = []
         for c in re.findall(r"#[0-9a-fA-F]{6}", html):
             c = c.lower()
             if c not in colors:
                 colors.append(c)
             if len(colors) >= 8:
                 break
-
         content_summary = " | ".join(headings[:6])
         if summary:
             content_summary = (summary[:700] + (" | " + content_summary if content_summary else ""))[:1400]
-
         return {
             "website_url": final_url[:500],
             "page_title": title[:300],
@@ -1391,34 +1022,24 @@ def _fetch_website_profile(url, timeout=1.8):
         }
     except Exception:
         return None
-
 def ensure_company_di(company_name):
-    """Ensure a DI agent exists for a company."""
     company_name = str(company_name or "").strip()
     if not company_name or company_name.upper() == "DACRE MASTER":
         return None
-
-    con = db()
-    now = datetime.now().isoformat(timespec="seconds")
+    con = db(); now = datetime.now().isoformat(timespec="seconds")
     try:
         row = con.execute("SELECT di_name FROM di_agents WHERE assigned_company=? ORDER BY id ASC LIMIT 1", (company_name,)).fetchone()
         if row:
             return row["di_name"]
-
         base = "DI — " + re.sub(r"[^A-Za-z0-9 ]+", "", company_name).strip()[:34]
         if not base.strip():
             base = "DI — Business Intelligence"
-
-        name = base
-        n = 2
+        name = base; n = 2
         while con.execute("SELECT 1 FROM di_agents WHERE di_name=?", (name,)).fetchone():
-            name = f"{base[:28]} {n}"
-            n += 1
-
+            name = f"{base[:28]} {n}"; n += 1
         code = "DI-ORG-" + re.sub(r"[^A-Z0-9]+", "-", company_name.upper()).strip("-")[:26]
         while con.execute("SELECT 1 FROM di_agents WHERE di_code=?", (code,)).fetchone():
             code += "-ORG"
-
         con.execute("""
             INSERT INTO di_agents
             (di_name, di_code, specialty, status, assigned_company, system_role,
@@ -1430,14 +1051,11 @@ def ensure_company_di(company_name):
             "", "en-NG", "Practical, business-aware, evidence-first and company-specific.",
             MASTER_USERNAME, now, now
         ))
-        con.commit()
-        _seed_memory_rows(company_name)
+        con.commit(); _seed_memory_rows(company_name)
         return name
     finally:
         con.close()
-
 def _store_website_memory(company_name, profile, di_name):
-    """Store website information in DI memory."""
     now = datetime.now().isoformat(timespec="seconds")
     items = [
         ("WEBSITE", "Official company website", f"Official website supplied at signup: {profile.get('website_url','')}"),
@@ -1446,7 +1064,6 @@ def _store_website_memory(company_name, profile, di_name):
         ("WEBSITE", "Website headings", profile.get("headings") or "[]"),
         ("DI", "Organization DI", f"Dedicated organization DI: {di_name}. Use this company's website context and workspace data when answering."),
     ]
-
     con = db()
     try:
         for cat, title, content in items:
@@ -1455,7 +1072,6 @@ def _store_website_memory(company_name, profile, di_name):
                 "VALUES(?,?,?,?,?,?,?,?)",
                 (company_name, cat, title, content, 850, 1, now, now)
             )
-
         con.execute("""
             INSERT INTO company_website_profile
             (company_name, website_url, page_title, description, headings, summary,
@@ -1489,53 +1105,37 @@ def _store_website_memory(company_name, profile, di_name):
         con.commit()
     finally:
         con.close()
-
 def _website_onboarding_worker(company_name, website_url, di_name):
-    """Background worker for website onboarding."""
     profile = _fetch_website_profile(website_url, timeout=1.8)
     if profile is None:
         return
     _store_website_memory(company_name, profile, di_name)
     try:
-        con = db()
-        con.execute("UPDATE companies SET website_url=? WHERE name=?", (profile.get("website_url", website_url), company_name))
-        con.commit()
-        con.close()
+        con = db(); con.execute("UPDATE companies SET website_url=? WHERE name=?", (profile.get("website_url", website_url), company_name))
+        con.commit(); con.close()
     except Exception:
         pass
-
 def start_website_onboarding(company_name, website_url, di_name):
-    """Start website onboarding in background."""
     url = _normalize_website_url(website_url)
     if not url:
         return
     threading.Thread(target=_website_onboarding_worker, args=(company_name, url, di_name), daemon=True).start()
-
 def record_public_visit(event_type="landing_view", page_name="Landing"):
-    """Record public visit for analytics."""
     if event_type == "landing_view" and st.session_state.get("public_visit_logged"):
         return
-
-    visitor_id = st.session_state.get("visitor_id") or uuid.uuid4().hex
-    st.session_state.visitor_id = visitor_id
-
+    visitor_id = st.session_state.get("visitor_id") or uuid.uuid4().hex; st.session_state.visitor_id = visitor_id
     con = db()
     con.execute(
         "INSERT INTO public_visits(visitor_id, event_type, page_name, referrer, created_at) VALUES(?,?,?,?,?)",
         (visitor_id, event_type, page_name, "", datetime.now().isoformat(timespec="seconds"))
     )
-    con.commit()
-    con.close()
-
+    con.commit(); con.close()
     if event_type == "landing_view":
         st.session_state.public_visit_logged = True
-
 def apply_company_website_theme(user):
-    """Apply company website theme to the app."""
     company = str((user or {}).get("company", "")).strip()
     if not company or (user or {}).get("role") == "master":
         return
-
     con = db()
     row = con.execute(
         "SELECT theme_primary, theme_accent, theme_background, theme_text "
@@ -1543,14 +1143,10 @@ def apply_company_website_theme(user):
         (company,)
     ).fetchone()
     con.close()
-
     if not row:
         return
-
-    p = row["theme_primary"] or "#4b82f5"
-    a = row["theme_accent"] or "#62c8f5"
+    p = row["theme_primary"] or "#4b82f5"; a = row["theme_accent"] or "#62c8f5"
     b = row["theme_background"] or "#f7f9fc"
-
     st.markdown(f"""
     <style>
         :root{{--dacre-primary:{p};--dacre-primary2:{a};}}
@@ -1561,37 +1157,21 @@ def apply_company_website_theme(user):
         .dacre-quickbar{{border-left:4px solid {p};}}
     </style>
     """, unsafe_allow_html=True)
-
 def restore_user_workspace(user):
-    """Restore persistent workspace state after every successful sign-in.
-
-    Account data is stored in the database, so users can return days or weeks
-    later with the same credentials and continue from their last saved state.
-    """
     if not user:
         return None
-
-    # Restore the most recently saved project/data state.
     project = restore_project(user)
     if project:
-        st.session_state.active_filename = project.get("filename") or ""
-        st.session_state.raw_df = project.get("raw")
-        st.session_state.processed_df = project.get("processed")
-        st.session_state.formula_logs = project.get("logs") or []
+        st.session_state.active_filename = project.get("filename") or ""; st.session_state.raw_df = project.get("raw")
+        st.session_state.processed_df = project.get("processed"); st.session_state.formula_logs = project.get("logs") or []
         st.session_state.chart_config = project.get("chart") or {}
-
-    # Restore the user's persistent DI conversation.
     st.session_state.chat_history = load_chat_history(user, limit=40)
-
-    # Keep a durable activity trail for the overall administrator.
     log_activity(
         user.get("username", ""),
         user.get("company", user.get("company_name", "")),
         "Signed in and resumed persistent workspace",
         notify_admin=True,
     )
-
-    # Mirror the active user to MongoDB when MongoDB is configured.
     try:
         mongo_sync_user(user)
         mongo_log_activity(
@@ -1602,66 +1182,47 @@ def restore_user_workspace(user):
         )
     except Exception:
         pass
-
     return project
-
 def authenticate(company_name, full_name, passkey, email=""):
-    """Authenticate a user."""
-    company_clean = (company_name or "").strip().lower()
-    full_name_clean = (full_name or "").strip().lower()
-    email_clean = (email or "").strip().lower()
-    passkey_clean = (passkey or "").strip()
-
+    company_clean = (company_name or "").strip().lower(); full_name_clean = (full_name or "").strip().lower()
+    email_clean = (email or "").strip().lower(); passkey_clean = (passkey or "").strip()
     if not passkey_clean:
         return None, "Please enter your Account Passkey."
     if not company_clean and not email_clean:
         return None, "Please enter your Company / Organization Name or Email Address."
-
     con = db()
     try:
         if (company_clean == "dacre master" or full_name_clean == "david emenike" or email_clean == "master@dacre.local") and master_passkey_gate(passkey_clean):
             row = con.execute("SELECT first_name,last_name,username,company_name,email,role FROM users WHERE username=?", (MASTER_USERNAME,)).fetchone()
             if row:
-                now = datetime.now().isoformat(timespec="seconds")
-                con.execute("UPDATE users SET login_count=login_count+1,last_login=? WHERE username=?", (now, MASTER_USERNAME))
-                con.commit()
-                result = dict(row)
-                log_activity(MASTER_USERNAME, result.get("company_name", "DACRE MASTER"), "Signed in", notify_admin=False)
-                return result, None
-
+                now = datetime.now().isoformat(timespec="seconds"); con.execute("UPDATE users SET login_count=login_count+1,last_login=? WHERE username=?", (now, MASTER_USERNAME))
+                con.commit(); result = dict(row)
+                log_activity(MASTER_USERNAME, result.get("company_name", "DACRE MASTER"), "Signed in", notify_admin=False); return result, None
         if email_clean:
             rows = con.execute("SELECT first_name,last_name,username,company_name,email,passkey_hash,role FROM users WHERE lower(email)=?", (email_clean,)).fetchall()
         else:
             rows = con.execute("SELECT first_name,last_name,username,company_name,email,passkey_hash,role FROM users WHERE lower(company_name)=?", (company_clean,)).fetchall()
-
         valid_rows = []
         for candidate_row in rows:
             if maybe_upgrade_password_hash(con, candidate_row["username"], passkey_clean, candidate_row["passkey_hash"]):
                 valid_rows.append(candidate_row)
         rows = valid_rows
-
         if not rows:
             if email_clean:
                 exists = con.execute("SELECT 1 FROM users WHERE lower(email)=? LIMIT 1", (email_clean,)).fetchone()
             else:
                 exists = con.execute("SELECT 1 FROM users WHERE lower(company_name)=? LIMIT 1", (company_clean,)).fetchone()
-
             if exists:
                 return None, "This account has already been created, but the passkey does not match. Please check your passkey and try again."
             return None, "This account has not been created. Please go to the Sign Up page and create your account to access DACRE Analysis."
-
         matched = None
         for r in rows:
             candidate = f"{r['first_name']} {r['last_name']}".strip().lower()
             if not full_name_clean or candidate == full_name_clean:
-                matched = r
-                break
-
+                matched = r; break
         if matched is None:
             return None, "The account exists, but the Full Name does not match the account. Please enter the name used during Sign Up."
-
-        now = datetime.now().isoformat(timespec="seconds")
-        con.execute("UPDATE users SET login_count=login_count+1,last_login=? WHERE username=?", (now, matched["username"]))
+        now = datetime.now().isoformat(timespec="seconds"); con.execute("UPDATE users SET login_count=login_count+1,last_login=? WHERE username=?", (now, matched["username"]))
         con.commit()
         result = {
             "first_name": matched["first_name"],
@@ -1673,66 +1234,40 @@ def authenticate(company_name, full_name, passkey, email=""):
         }
     finally:
         con.close()
-
-    log_activity(result["username"], result["company"], "Signed in", notify_admin=result["role"] != "master")
-    return result, None
-
-def create_account(first, last, company, email, email_password, passkey, website_url="", username=""):
-    """Create a new account."""
-    company_clean = canonical_company_name(company)
-    email_clean = str(email or "").strip().lower()
-    username_input = str(username or "").strip().lower()
-    passkey_clean = str(passkey or "").strip()
-    website_raw = str(website_url or "").strip()
+    log_activity(result["username"], result["company"], "Signed in", notify_admin=result["role"] != "master"); return result, None
+def create_account(first, last, company, email, email_password, passkey, website_url=""):
+    company_clean = canonical_company_name(company); email_clean = email.strip().lower()
+    passkey_clean = passkey.strip(); website_raw = str(website_url or "").strip()
     normalized_website = _normalize_website_url(website_raw)
-
     if website_raw and not normalized_website:
         return False, "Please enter a valid company website URL, for example https://www.example.com.", None
-
-    if not company_clean or not passkey_clean:
-        return False, "Please fill in Company Name and Account Passkey.", None
-
-    if email_clean and ("@" not in email_clean or "." not in email_clean.split("@")[-1]):
+    if not company_clean or not email_clean or not passkey_clean:
+        return False, "Please fill in Company Name, Email Address, and Account Passkey.", None
+    if "@" not in email_clean or "." not in email_clean.split("@")[-1]:
         return False, "Please enter a valid email address.", None
-
-    first_clean = first.strip() if first and first.strip() else "User"
-    last_clean = last.strip() if last and last.strip() else "Member"
-    username_clean = username_input or email_clean or (re.sub(r"[^a-z0-9]+", ".", f"{first_clean}.{last_clean}".lower()).strip(".") or "user")
-
+    email_prefix = email_clean.split("@")[0].replace(".", " ").replace("_", " ").title(); first_clean = first.strip() if first and first.strip() else (email_prefix.split()[0] if email_prefix else "User")
+    last_clean = last.strip() if last and last.strip() else (" ".join(email_prefix.split()[1:]) if len(email_prefix.split()) > 1 else "Member"); username_clean = email_clean
     if username_clean == MASTER_USERNAME:
         return False, "That username/email is reserved for the Master account.", None
-
     con = db()
     try:
-        now = datetime.now().isoformat(timespec="seconds")
-        cur = con.cursor()
-
-        if email_clean:
-            existing_account = cur.execute(
-                "SELECT first_name, last_name, company_name FROM users WHERE lower(email)=lower(?) OR lower(username)=lower(?) LIMIT 1",
-                (email_clean, username_clean),
-            ).fetchone()
-        else:
-            existing_account = cur.execute(
-                "SELECT first_name, last_name, company_name FROM users WHERE lower(username)=lower(?) LIMIT 1",
-                (username_clean,),
-            ).fetchone()
-
+        now = datetime.now().isoformat(timespec="seconds"); cur = con.cursor()
+        existing_account = cur.execute(
+            "SELECT first_name, last_name, company_name FROM users WHERE lower(email)=lower(?) OR lower(username)=lower(?) LIMIT 1",
+            (email_clean, username_clean),
+        ).fetchone()
         if existing_account:
             return False, (
-                "This account already exists for "
-                f"{existing_account['company_name']}. Please use Sign In with your username."
+                "This account has already been added. The email address you entered is already registered "
+                f"for {existing_account['company_name']}. Please use the Sign In page to access your account."
             ), None
-
         company_row = cur.execute("SELECT name FROM companies WHERE lower(name)=lower(?)", (company_clean,)).fetchone()
-
         if company_row:
             role = "user"
         else:
             cur.execute("INSERT INTO companies(name,owner_username,admin_password_hash,created_at) VALUES (?,?,?,?)",
                         (company_clean, username_clean, hash_password(passkey_clean), now))
             role = "company_admin"
-
         cur.execute("""
             INSERT INTO users
             (first_name,last_name,username,company_name,email,email_password,password_hash,passkey_hash,role,login_count,created_at,last_login)
@@ -1741,23 +1276,14 @@ def create_account(first, last, company, email, email_password, passkey, website
             first_clean, last_clean, username_clean, company_clean, email_clean, "",
             hash_password(passkey_clean), hash_password(passkey_clean), role, now, now,
         ))
-        con.commit()
-
-        di_name = ensure_company_di(company_clean)
-        _seed_memory_rows(company_clean)
-        clean_url = normalized_website
+        con.commit(); di_name = ensure_company_di(company_clean)
+        _seed_memory_rows(company_clean); clean_url = normalized_website
         if clean_url:
-            con.execute("UPDATE companies SET website_url=? WHERE lower(name)=lower(?)", (clean_url, company_clean))
-            con.commit()
+            con.execute("UPDATE companies SET website_url=? WHERE lower(name)=lower(?)", (clean_url, company_clean)); con.commit()
             start_website_onboarding(company_clean, clean_url, di_name or ("DI — " + company_clean[:32]))
-
-        if email_clean:
-            threading.Thread(target=send_di_welcome_email, args=(first_clean, last_clean, company_clean, email_clean, str(email_password or "").strip()), daemon=True).start()
-        log_activity(username_clean, company_clean, "Created account & signed in", notify_admin=(role == "user"))
-
+        threading.Thread(target=send_di_welcome_email, args=(first_clean, last_clean, company_clean, email_clean, email_password.strip()), daemon=True).start(); log_activity(username_clean, company_clean, "Created account & signed in", notify_admin=(role == "user"))
         if role == "company_admin":
             notify_company_admin(company_clean, f"New organization created by {first_clean} {last_clean}. You are the organization admin.", "new_company")
-
         return True, "Account created successfully. DI is preparing your company intelligence in the background.", {
             "first_name": first_clean,
             "last_name": last_clean,
@@ -1767,20 +1293,14 @@ def create_account(first, last, company, email, email_password, passkey, website
             "role": role,
         }
     except sqlite3.IntegrityError:
-        return False, "That username is already registered. Please choose another username.", None
+        return False, "An account with this email address is already registered.", None
     finally:
         con.close()
-
 def is_chibobec_company(company_name):
-    """Check if company is Chibobec."""
     return "chibobec" in str(company_name or "").strip().lower()
-
 def canonical_company_name(company_name):
-    """Get canonical company name."""
     return CHIBOBEC_COMPANY if is_chibobec_company(company_name) else str(company_name or "").strip()
-
 def normalize_whatsapp_number(number):
-    """Normalize WhatsApp number."""
     raw = re.sub(r"[^0-9+]", "", str(number or "").strip())
     if raw.startswith("00"):
         raw = "+" + raw[2:]
@@ -1789,17 +1309,13 @@ def normalize_whatsapp_number(number):
     if raw and not raw.startswith("+"):
         raw = "+" + raw
     return raw
-
 def _dacre_secret(name, default=""):
-    """Read a Streamlit secret first, then an environment variable."""
     try:
         value = st.secrets.get(name, "")
     except Exception:
         value = ""
     return str(value or os.getenv(name, default) or default).strip()
-
 def _meta_whatsapp_config():
-    """Get WhatsApp configuration."""
     return {
         "token": _dacre_secret("DACRE_WHATSAPP_TOKEN"),
         "phone_id": _dacre_secret("DACRE_WHATSAPP_PHONE_NUMBER_ID"),
@@ -1808,13 +1324,9 @@ def _meta_whatsapp_config():
         "due_template": _dacre_secret("DACRE_WHATSAPP_DUE_TEMPLATE", "dacre_loan_due_today"),
         "language": _dacre_secret("DACRE_WHATSAPP_TEMPLATE_LANGUAGE", "en_US"),
     }
-
 def _meta_phone(phone):
-    """Clean phone number for Meta API."""
     return re.sub(r"[^0-9]", "", normalize_whatsapp_number(phone))
-
 def _log_whatsapp_delivery(loan_id, company, client_name, phone, reminder_type, template_name, message_id, status, response):
-    """Log WhatsApp delivery."""
     con = db()
     try:
         con.execute("PRAGMA busy_timeout = 30000;")
@@ -1822,7 +1334,6 @@ def _log_whatsapp_delivery(loan_id, company, client_name, phone, reminder_type, 
             con.execute("PRAGMA journal_mode = WAL;")
         except Exception:
             pass
-
         con.execute("""
             CREATE TABLE IF NOT EXISTS whatsapp_delivery_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1838,7 +1349,6 @@ def _log_whatsapp_delivery(loan_id, company, client_name, phone, reminder_type, 
                 created_at TEXT NOT NULL DEFAULT ''
             )
         """)
-
         con.execute("""
             INSERT INTO whatsapp_delivery_log
             (loan_id, company_name, client_name, whatsapp_number, reminder_type,
@@ -1852,17 +1362,13 @@ def _log_whatsapp_delivery(loan_id, company, client_name, phone, reminder_type, 
         con.commit()
     finally:
         con.close()
-
 def send_whatsapp_template(to_number, template_name, parameters):
-    """Send an approved Meta WhatsApp Cloud API template."""
     cfg = _meta_whatsapp_config()
     if not cfg["token"] or not cfg["phone_id"]:
         return False, "Meta WhatsApp Cloud API is not configured."
-
     to = _meta_phone(to_number)
     if len(to) < 8:
         return False, "Invalid WhatsApp number."
-
     endpoint = f"https://graph.facebook.com/{cfg['version']}/{cfg['phone_id']}/messages"
     payload = {
         "messaging_product": "whatsapp",
@@ -1874,18 +1380,15 @@ def send_whatsapp_template(to_number, template_name, parameters):
             "components": [{"type": "body", "parameters": [{"type": "text", "text": str(v)} for v in parameters]}],
         },
     }
-
     request = urllib.request.Request(
         endpoint,
         data=json.dumps(payload).encode("utf-8"),
         method="POST",
         headers={"Authorization": f"Bearer {cfg['token']}", "Content-Type": "application/json"},
     )
-
     try:
         with urllib.request.urlopen(request, timeout=30) as response:
-            raw = response.read().decode("utf-8")
-            data = json.loads(raw or "{}")
+            raw = response.read().decode("utf-8"); data = json.loads(raw or "{}")
             message_id = (data.get("messages") or [{}])[0].get("id")
             if 200 <= response.status < 300 and message_id:
                 return True, message_id
@@ -1898,22 +1401,15 @@ def send_whatsapp_template(to_number, template_name, parameters):
         return False, f"Meta WhatsApp API rejected the message (HTTP {exc.code}): {detail[:1200]}"
     except Exception as exc:
         return False, f"WhatsApp send failed: {type(exc).__name__}: {exc}"
-
 def send_whatsapp_message(to_number, body):
-    """Send WhatsApp message - only templates are allowed."""
     return False, "Use an approved Meta WhatsApp template for business-initiated reminders."
-
 def add_loan_client(username, company, client_name, whatsapp_number, loan_amount, lent_date, due_date):
-    """Add a loan client."""
-    client_name = str(client_name or "").strip()
-    phone = normalize_whatsapp_number(whatsapp_number)
+    client_name = str(client_name or "").strip(); phone = normalize_whatsapp_number(whatsapp_number)
     if not client_name or not phone:
         return False, "Client name and WhatsApp number are required."
     if due_date < lent_date:
         return False, "The due date cannot be earlier than the lending date."
-
-    now = datetime.now().isoformat(timespec="seconds")
-    con = db()
+    now = datetime.now().isoformat(timespec="seconds"); con = db()
     try:
         con.execute("""
             INSERT INTO loan_clients
@@ -1923,69 +1419,42 @@ def add_loan_client(username, company, client_name, whatsapp_number, loan_amount
             username, company, client_name, phone, float(loan_amount or 0),
             str(lent_date), str(due_date), now, now
         ))
-        con.commit()
-        return True, "Loan client saved."
+        con.commit(); return True, "Loan client saved."
     except Exception as exc:
         return False, str(exc)
     finally:
         con.close()
-
 def delete_loan_client(loan_id, username):
-    """Delete a loan client."""
-    con = db()
-    con.execute("DELETE FROM loan_clients WHERE id=? AND username=?", (int(loan_id), username))
-    con.commit()
-    con.close()
-
+    con = db(); con.execute("DELETE FROM loan_clients WHERE id=? AND username=?", (int(loan_id), username))
+    con.commit(); con.close()
 def process_chibobec_reminders(username, company):
-    """Send due-date reminders through the real Meta WhatsApp Cloud API."""
     if not is_chibobec_company(company):
         return []
-
-    cfg = _meta_whatsapp_config()
-    today = datetime.now().date()
-    con = db()
-    rows = con.execute("SELECT * FROM loan_clients WHERE username=? AND company_name=? ORDER BY due_date", (username, company)).fetchall()
+    cfg = _meta_whatsapp_config(); today = datetime.now().date()
+    con = db(); rows = con.execute("SELECT * FROM loan_clients WHERE username=? AND company_name=? ORDER BY due_date", (username, company)).fetchall()
     results = []
-
     for row in rows:
         try:
             due = datetime.strptime(row["due_date"], "%Y-%m-%d").date()
         except Exception:
             continue
-
         days_left = (due - today).days
-
         if days_left == 2 and not row["reminder_2_sent"]:
             reminder_type, template_name, sent_column, message_column = "2-day reminder", cfg["reminder_2_template"], "reminder_2_sent", "reminder_2_message_id"
         elif days_left == 0 and not row["due_sent"]:
             reminder_type, template_name, sent_column, message_column = "due-date reminder", cfg["due_template"], "due_sent", "due_message_id"
         else:
             continue
-
-        parameters = [row["client_name"], f"₦{float(row['loan_amount']):,.2f}", due.strftime("%d %B %Y")]
-        ok, status = send_whatsapp_template(row["whatsapp_number"], template_name, parameters)
-
+        parameters = [row["client_name"], f"₦{float(row['loan_amount']):,.2f}", due.strftime("%d %B %Y")]; ok, status = send_whatsapp_template(row["whatsapp_number"], template_name, parameters)
         now = datetime.now().isoformat(timespec="seconds")
         if ok:
-            con.execute(f"UPDATE loan_clients SET {sent_column}=1,{message_column}=?,last_whatsapp_status=?,last_whatsapp_error=NULL,updated_at=? WHERE id=?", (status, "sent", now, row["id"]))
-            _log_whatsapp_delivery(row["id"], company, row["client_name"], row["whatsapp_number"], reminder_type, template_name, status, "sent", "Meta accepted the message.")
+            con.execute(f"UPDATE loan_clients SET {sent_column}=1,{message_column}=?,last_whatsapp_status=?,last_whatsapp_error=NULL,updated_at=? WHERE id=?", (status, "sent", now, row["id"])); _log_whatsapp_delivery(row["id"], company, row["client_name"], row["whatsapp_number"], reminder_type, template_name, status, "sent", "Meta accepted the message.")
         else:
-            con.execute(f"UPDATE loan_clients SET last_whatsapp_status=?,last_whatsapp_error=?,updated_at=? WHERE id=?", ("failed", status, now, row["id"]))
-            _log_whatsapp_delivery(row["id"], company, row["client_name"], row["whatsapp_number"], reminder_type, template_name, None, "failed", status)
-
+            con.execute(f"UPDATE loan_clients SET last_whatsapp_status=?,last_whatsapp_error=?,updated_at=? WHERE id=?", ("failed", status, now, row["id"])); _log_whatsapp_delivery(row["id"], company, row["client_name"], row["whatsapp_number"], reminder_type, template_name, None, "failed", status)
         results.append((row["client_name"], reminder_type, ok, status))
-
-    con.commit()
-    con.close()
+    con.commit(); con.close()
     return results
-
-# =============================================================================
-# DATA PROCESSING FUNCTIONS
-# =============================================================================
-
 def load_dataframe(uploaded_file):
-    """Load a dataframe from an uploaded file."""
     extension = uploaded_file.name.rsplit(".", 1)[-1].lower()
     if extension == "csv":
         return pd.read_csv(uploaded_file)
@@ -1996,82 +1465,55 @@ def load_dataframe(uploaded_file):
     if extension == "json":
         return pd.read_json(uploaded_file)
     raise ValueError(f"Unsupported file type: .{extension}")
-
 def clean_dataframe(df):
-    """Clean a dataframe by removing empty rows/columns and standardizing data."""
-    out = df.copy()
-    out.columns = [re.sub(r"\s+", " ", str(c).strip()) if str(c).strip() else f"Column_{i+1}" for i, c in enumerate(out.columns)]
+    out = df.copy(); out.columns = [re.sub(r"\s+", " ", str(c).strip()) if str(c).strip() else f"Column_{i+1}" for i, c in enumerate(out.columns)]
     out = out.dropna(axis=0, how="all").dropna(axis=1, how="all")
-
     for column in out.columns:
         if out[column].dtype == "object":
-            series = out[column].astype(str).replace({"nan": ""}).str.strip()
-            numeric_candidate = series.str.replace(r"[\$€£₦,%]", "", regex=True).str.replace(",", "", regex=False)
+            series = out[column].astype(str).replace({"nan": ""}).str.strip(); numeric_candidate = series.str.replace(r"[\$€£₦,%]", "", regex=True).str.replace(",", "", regex=False)
             numeric = pd.to_numeric(numeric_candidate, errors="coerce")
             if numeric.notna().mean() >= 0.80 and series.ne("").any():
                 out[column] = numeric
             else:
                 out[column] = series
-
     return out.drop_duplicates().reset_index(drop=True)
-
 def dataframe_to_json(df):
-    """Convert dataframe to JSON string."""
     return "" if df is None else df.to_json(orient="split", date_format="iso")
-
 def dataframe_from_json(value):
-    """Convert JSON string to dataframe."""
     if not value:
         return None
     try:
         return pd.read_json(io.StringIO(value), orient="split")
     except Exception:
         return None
-
 def safe_dataframe_for_streamlit(df):
-    """Prevent pyarrow duplicate-column failures when Streamlit renders a dataframe."""
     if df is None:
         return df
-    out = df.copy()
-    seen = {}
+    out = df.copy(); seen = {}
     cols = []
     for col in out.columns:
-        base = str(col)
-        n = seen.get(base, 0)
-        seen[base] = n + 1
-        cols.append(base if n == 0 else f"{base}_{n + 1}")
-    out.columns = cols
-    return out
-
+        base = str(col); n = seen.get(base, 0)
+        seen[base] = n + 1; cols.append(base if n == 0 else f"{base}_{n + 1}")
+    out.columns = cols; return out
 def save_file(user, uploaded_file, df):
-    """Save a file to the database."""
     con = db()
     con.execute(
         "INSERT INTO files(username, company_name, filename, file_type, file_json, created_at) VALUES(?,?,?,?,?,?)",
         (user["username"], user["company"], uploaded_file.name, uploaded_file.name.rsplit(".", 1)[-1].lower(), dataframe_to_json(df), datetime.now().isoformat(timespec="seconds"))
     )
-    con.commit()
-    con.close()
+    con.commit(); con.close()
     log_activity(user["username"], user["company"], f"Saved file: {uploaded_file.name}")
-
 def get_files(user):
-    """Get files for a user."""
-    con = db()
-    rows = con.execute("SELECT filename, file_type, created_at, file_json FROM files WHERE company_name=? ORDER BY id DESC", (user["company"],)).fetchall()
-    con.close()
-    return rows
-
+    con = db(); rows = con.execute("SELECT filename, file_type, created_at, file_json FROM files WHERE company_name=? ORDER BY id DESC", (user["company"],)).fetchall()
+    con.close(); return rows
 def save_project(user, raw_df, processed_df, filename, logs, chart_config=None):
-    """Save project state."""
-    con = db()
-    existing = con.execute("SELECT id FROM projects WHERE username=? AND company_name=?", (user["username"], user["company"])).fetchone()
+    con = db(); existing = con.execute("SELECT id FROM projects WHERE username=? AND company_name=?", (user["username"], user["company"])).fetchone()
     payload = (
         user["username"], user["company"], "Main Workspace", filename or "",
         dataframe_to_json(raw_df), dataframe_to_json(processed_df),
         json.dumps(logs), json.dumps(chart_config or {}),
         datetime.now().isoformat(timespec="seconds")
     )
-
     if existing:
         con.execute("""
             UPDATE projects SET
@@ -2086,12 +1528,8 @@ def save_project(user, raw_df, processed_df, filename, logs, chart_config=None):
              formula_logs, chart_config, updated_at)
             VALUES(?,?,?,?,?,?,?,?,?)
         """, payload)
-
-    con.commit()
-    con.close()
-
+    con.commit(); con.close()
 def restore_project(user):
-    """Restore project state."""
     con = db()
     row = con.execute(
         "SELECT active_filename, raw_json, processed_json, formula_logs, chart_config "
@@ -2099,20 +1537,16 @@ def restore_project(user):
         (user["username"], user["company"])
     ).fetchone()
     con.close()
-
     if not row:
         return None
-
     try:
         logs = json.loads(row["formula_logs"]) if row["formula_logs"] else []
     except Exception:
         logs = []
-
     try:
         chart = json.loads(row["chart_config"]) if row["chart_config"] else {}
     except Exception:
         chart = {}
-
     return {
         "filename": row["active_filename"],
         "raw": dataframe_from_json(row["raw_json"]),
@@ -2120,21 +1554,15 @@ def restore_project(user):
         "logs": logs,
         "chart": chart
     }
-
 def make_excel(processed_df, chart_df=None):
-    """Create Excel file from dataframes."""
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         processed_df.to_excel(writer, sheet_name="Processed Data", index=False)
         if chart_df is not None:
             chart_df.to_excel(writer, sheet_name="Dynamic Chart", index=False)
-    output.seek(0)
-    return output.getvalue()
-
+    output.seek(0); return output.getvalue()
 def apply_formula(df, formula, options):
-    """Apply a formula to a dataframe."""
     formula = formula.upper()
-
     if formula == "SUM":
         return pd.to_numeric(df[options["column"]], errors="coerce").sum()
     if formula == "AVERAGE":
@@ -2147,33 +1575,20 @@ def apply_formula(df, formula, options):
         return pd.to_numeric(df[options["column"]], errors="coerce").max()
     if formula == "MIN":
         return pd.to_numeric(df[options["column"]], errors="coerce").min()
-
     if formula == "CONCATENATE":
-        result = df[options["first"]].astype(str) + options.get("separator", " ") + df[options["second"]].astype(str)
-        return "column", options["new_column"], result
-
+        result = df[options["first"]].astype(str) + options.get("separator", " ") + df[options["second"]].astype(str); return "column", options["new_column"], result
     if formula in ("UPPER", "LOWER", "TRIM"):
-        series = df[options["column"]].astype(str)
-        result = series.str.upper() if formula == "UPPER" else series.str.lower() if formula == "LOWER" else series.str.strip()
+        series = df[options["column"]].astype(str); result = series.str.upper() if formula == "UPPER" else series.str.lower() if formula == "LOWER" else series.str.strip()
         return "column", options["column"], result
-
     return None
-
 def _numeric_columns(df):
-    """Get numeric columns from dataframe."""
     return df.select_dtypes(include="number").columns.tolist() if df is not None else []
-
 def business_health(df):
-    """Calculate business health score from dataframe."""
     if df is None or df.empty:
         return {"score": 0, "rows": 0, "columns": 0, "missing_pct": 100.0, "duplicate_pct": 0.0, "numeric": 0}
-
-    total_cells = max(1, df.shape[0] * df.shape[1])
-    missing_pct = float(df.isna().sum().sum() / total_cells * 100)
-    duplicate_pct = float(df.duplicated().mean() * 100)
-    numeric = len(_numeric_columns(df))
+    total_cells = max(1, df.shape[0] * df.shape[1]); missing_pct = float(df.isna().sum().sum() / total_cells * 100)
+    duplicate_pct = float(df.duplicated().mean() * 100); numeric = len(_numeric_columns(df))
     score = max(0, min(100, round(100 - missing_pct * 0.65 - duplicate_pct * 0.45 + min(numeric, 10) * 0.8)))
-
     return {
         "score": score,
         "rows": len(df),
@@ -2182,36 +1597,25 @@ def business_health(df):
         "duplicate_pct": duplicate_pct,
         "numeric": numeric
     }
-
 def business_signals(df):
-    """Return explainable, dataset-derived signals."""
     if df is None or df.empty:
         return []
-
-    signals = []
-    nums = _numeric_columns(df)
-
+    signals = []; nums = _numeric_columns(df)
     for col in nums[:20]:
         s = pd.to_numeric(df[col], errors="coerce").dropna()
         if len(s) < 4:
             continue
-
-        mean = float(s.mean())
-        std = float(s.std()) if len(s) > 1 else 0.0
-
+        mean = float(s.mean()); std = float(s.std()) if len(s) > 1 else 0.0
         if std > 0:
-            high = int((s > mean + 3 * std).sum())
-            low = int((s < mean - 3 * std).sum())
+            high = int((s > mean + 3 * std).sum()); low = int((s < mean - 3 * std).sum())
             if high or low:
                 signals.append({
                     "type": "anomaly",
                     "column": str(col),
                     "message": f"{col} contains {high + low} unusually distant value(s) from its average."
                 })
-
         if len(s) >= 8:
-            first = float(s.head(max(1, len(s) // 5)).mean())
-            last = float(s.tail(max(1, len(s) // 5)).mean())
+            first = float(s.head(max(1, len(s) // 5)).mean()); last = float(s.tail(max(1, len(s) // 5)).mean())
             if first != 0:
                 change = (last - first) / abs(first) * 100
                 if abs(change) >= 10:
@@ -2221,7 +1625,6 @@ def business_signals(df):
                         "column": str(col),
                         "message": f"{col} trends {direction} by about {abs(change):.1f}% between the early and recent portions of the dataset."
                     })
-
     missing = df.isna().sum().sort_values(ascending=False)
     for col, count in missing[missing > 0].head(5).items():
         signals.append({
@@ -2229,25 +1632,18 @@ def business_signals(df):
             "column": str(col),
             "message": f"{col} has {int(count):,} missing value(s)."
         })
-
     return signals[:12]
-
 def build_executive_brief(df, company):
-    """Build an executive brief from the dataset."""
     if df is None or df.empty:
         return "There is no active dataset to brief yet. Upload your business data and I will prepare an executive review."
-
-    health = business_health(df)
-    signals = business_signals(df)
+    health = business_health(df); signals = business_signals(df)
     nums = _numeric_columns(df)
-
     lines = [
         f"Executive brief for {company}.",
         f"The active dataset contains {len(df):,} rows across {len(df.columns):,} columns. "
         f"Data health is {health['score']}/100, with {health['missing_pct']:.1f}% missing cells "
         f"and {health['duplicate_pct']:.1f}% duplicate rows."
     ]
-
     if nums:
         for col in nums[:5]:
             s = pd.to_numeric(df[col], errors="coerce").dropna()
@@ -2256,18 +1652,13 @@ def build_executive_brief(df, company):
                     f"{col}: total {s.sum():,.2f}; average {s.mean():,.2f}; "
                     f"minimum {s.min():,.2f}; maximum {s.max():,.2f}."
                 )
-
     if signals:
         lines.append("Key signals: " + " ".join(x["message"] for x in signals[:5]))
     else:
         lines.append("I did not detect a strong trend or anomaly from the available numeric fields, so I would review the business context before making a recommendation.")
-
     return " ".join(lines)
-
 def ask_data_question(question, df):
-    """Handle questions that genuinely require a loaded dataset."""
     q = (question or "").lower()
-
     if df is None:
         data_markers = [
             "how many rows", "row count", "how many columns", "column count",
@@ -2282,54 +1673,33 @@ def ask_data_question(question, df):
                 "For example, I can analyze sales, revenue, missing values, duplicates, trends and charts."
             )
         return None
-
     nums = _numeric_columns(df)
-
     if any(k in q for k in ["executive brief", "business brief", "management summary", "ceo summary"]):
         return build_executive_brief(df, st.session_state.user["company"] if st.session_state.get("user") else "your organization")
-
     if "health" in q or "quality score" in q or "data quality" in q:
-        h = business_health(df)
-        return f"Data health is {h['score']}/100. Missing cells: {h['missing_pct']:.1f}%. Duplicate rows: {h['duplicate_pct']:.1f}%. Numeric columns: {h['numeric']}."
-
+        h = business_health(df); return f"Data health is {h['score']}/100. Missing cells: {h['missing_pct']:.1f}%. Duplicate rows: {h['duplicate_pct']:.1f}%. Numeric columns: {h['numeric']}."
     if ("top" in q or "highest" in q or "largest" in q) and nums:
-        target = next((c for c in nums if str(c).lower() in q), nums[0])
-        view = df[[target]].copy().sort_values(target, ascending=False).head(10)
+        target = next((c for c in nums if str(c).lower() in q), nums[0]); view = df[[target]].copy().sort_values(target, ascending=False).head(10)
         return f"Top 10 records by {target}: " + "; ".join(f"{i+1}. {v:,.2f}" for i, v in enumerate(view[target].tolist()))
-
     if ("total" in q or "sum" in q or "revenue" in q or "sales" in q) and nums:
-        target = next((c for c in nums if str(c).lower() in q), nums[0])
-        return f"The total for {target} is {pd.to_numeric(df[target], errors='coerce').sum():,.2f}."
-
+        target = next((c for c in nums if str(c).lower() in q), nums[0]); return f"The total for {target} is {pd.to_numeric(df[target], errors='coerce').sum():,.2f}."
     return None
-
 def online_lookup(query, max_results=5):
-    """Dependency-free public web lookup. Safe fallback when model tools are unavailable."""
     try:
-        url = "https://html.duckduckgo.com/html/?q=" + urllib.parse.quote_plus(query)
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 DACRE-DI/2.0"})
+        url = "https://html.duckduckgo.com/html/?q=" + urllib.parse.quote_plus(query); req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 DACRE-DI/2.0"})
         with urllib.request.urlopen(req, timeout=8) as response:
             html = response.read().decode("utf-8", errors="ignore")
-
-        items = re.findall(r'<a rel="nofollow" class="result__a" href="([^"]+)"[^>]*>(.*?)</a>', html, flags=re.I | re.S)
-        results = []
+        items = re.findall(r'<a rel="nofollow" class="result__a" href="([^"]+)"[^>]*>(.*?)</a>', html, flags=re.I | re.S); results = []
         for href, title in items[:max_results]:
-            clean_title = re.sub(r"<.*?>", "", title).strip()
-            clean_href = urllib.parse.unquote(href)
+            clean_title = re.sub(r"<.*?>", "", title).strip(); clean_href = urllib.parse.unquote(href)
             if clean_title and clean_href:
                 results.append((clean_title, clean_href))
         return results
     except Exception:
         return []
-# =============================================================================
-# SEARCH & DI BRAIN ROUTERS (LINES 1770 - 1990)
-# =============================================================================
-
 def google_web_search(query, max_results=5):
-    """Search the web using Google (requires googlesearch-python)."""
     if not WEB_SEARCH_AVAILABLE:
         return online_lookup(query, max_results)
-
     try:
         results = []
         for url in google_search(query, num_results=max_results, stop=max_results):
@@ -2337,9 +1707,7 @@ def google_web_search(query, max_results=5):
         return results
     except Exception:
         return online_lookup(query, max_results)
-
 def needs_web_research(text):
-    """Detect questions that benefit from current public information."""
     low = (text or "").lower()
     markers = [
         "latest", "current", "today", "tonight", "this week", "this month",
@@ -2349,9 +1717,7 @@ def needs_web_research(text):
         "google", "search", "find", "tell me about", "what is", "who is"
     ]
     return any(m in low for m in markers)
-
 def build_di_context(user, df):
-    """Build context for DI responses."""
     master_context = ""
     if user.get("role") == "master":
         master_context = (
@@ -2360,14 +1726,12 @@ def build_di_context(user, df):
             "Respond with exceptional respect, technical depth, executive judgment and practical actions. "
             "Never reveal private credentials, passkeys, API keys or hidden security values.\n"
         )
-
     context = [
         APP_KNOWLEDGE,
         master_context,
         "DI MEMORY BOX (persistent source of truth):\n" + di_memory_context(query=getattr(st.session_state, "di_memory_query", "")),
         f"Current organization: {user.get('company','')}. Current user: {user.get('first_name','')} {user.get('last_name','')}. Role: {user.get('role','user')}.",
     ]
-
     try:
         recent = st.session_state.get("chat_history", [])[-12:]
         if recent:
@@ -2376,34 +1740,24 @@ def build_di_context(user, df):
             ))
     except Exception:
         pass
-
     if df is not None:
-        context.append(f"Active dataset has {len(df):,} rows and {len(df.columns):,} columns.")
-        context.append("Columns: " + ", ".join(map(str, df.columns)))
-
+        context.append(f"Active dataset has {len(df):,} rows and {len(df.columns):,} columns."); context.append("Columns: " + ", ".join(map(str, df.columns)))
     return "\n".join(context)
-
 def _free_secret(name):
-    """Get a free AI provider secret."""
     try:
         value = st.secrets.get(name, "")
     except Exception:
         value = ""
     return str(value or os.getenv(name, "") or "").strip()
-
 def _free_ai_only_mode():
-    """Check if free AI only mode is enabled."""
     value = _free_secret("DACRE_FREE_AI_ONLY")
     if not value:
         return True
     return str(value).lower() not in {"0", "false", "no", "off"}
-
 def _groq_generate(system_prompt, user_prompt, max_tokens=900):
-    """Use Groq's free-plan compatible OpenAI endpoint when a free-tier key exists."""
     key = _free_secret("GROQ_API_KEY")
     if not key:
         return None
-
     model = _free_secret("DACRE_GROQ_MODEL") or "openai/gpt-oss-120b"
     payload = {
         "model": model,
@@ -2414,7 +1768,6 @@ def _groq_generate(system_prompt, user_prompt, max_tokens=900):
         "temperature": 0.2,
         "max_completion_tokens": min(int(max_tokens), 1800),
     }
-
     try:
         req = urllib.request.Request(
             "https://api.groq.com/openai/v1/chat/completions",
@@ -2427,20 +1780,16 @@ def _groq_generate(system_prompt, user_prompt, max_tokens=900):
         return ((data.get("choices") or [{}])[0].get("message") or {}).get("content", "").strip() or None
     except Exception:
         return None
-
 def _gemini_generate(system_prompt, user_prompt, max_tokens=900):
-    """Use Google's Gemini developer API when a free-tier key exists."""
     key = _free_secret("GEMINI_API_KEY")
     if not key:
         return None
-
     model = _free_secret("DACRE_GEMINI_MODEL") or "gemini-2.5-flash"
     payload = {
         "systemInstruction": {"parts": [{"text": system_prompt}]},
         "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
         "generationConfig": {"temperature": 0.2, "maxOutputTokens": min(int(max_tokens), 1800)},
     }
-
     try:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{urllib.parse.quote(model, safe='')}:generateContent"
         req = urllib.request.Request(
@@ -2451,21 +1800,16 @@ def _gemini_generate(system_prompt, user_prompt, max_tokens=900):
         )
         with urllib.request.urlopen(req, timeout=25) as response:
             data = json.loads(response.read().decode("utf-8"))
-        parts = ((data.get("candidates") or [{}])[0].get("content") or {}).get("parts") or []
-        answer = "".join(str(p.get("text", "")) for p in parts).strip()
+        parts = ((data.get("candidates") or [{}])[0].get("content") or {}).get("parts") or []; answer = "".join(str(p.get("text", "")) for p in parts).strip()
         return answer or None
     except Exception:
         return None
-
 def _openai_generate_paid(system_prompt, user_prompt, max_tokens=900):
-    """Optional paid provider. NEVER used unless explicitly enabled."""
     if _free_ai_only_mode():
         return None
-
     api_key = _free_secret("DACRE_AI_API_KEY")
     if not api_key:
         return None
-
     model = _free_secret("DACRE_AI_MODEL") or "gpt-4o-mini"
     payload = {
         "model": model,
@@ -2476,7 +1820,6 @@ def _openai_generate_paid(system_prompt, user_prompt, max_tokens=900):
         "temperature": 0.2,
         "max_tokens": min(int(max_tokens), 1800),
     }
-
     try:
         req = urllib.request.Request(
             "https://api.openai.com/v1/chat/completions",
@@ -2489,70 +1832,48 @@ def _openai_generate_paid(system_prompt, user_prompt, max_tokens=900):
         return ((data.get("choices") or [{}])[0].get("message") or {}).get("content", "").strip() or None
     except Exception:
         return None
-
 def ai_generate(system_prompt, user_prompt, max_tokens=900):
-    """Free-first DI reasoning router with a hard no-paid default."""
     answer = _groq_generate(system_prompt, user_prompt, max_tokens=max_tokens)
     if answer:
         return answer
-
     answer = _gemini_generate(system_prompt, user_prompt, max_tokens=max_tokens)
     if answer:
         return answer
-
-    answer = _openai_generate_paid(system_prompt, user_prompt, max_tokens=max_tokens)
-    return answer or None
-
+    answer = _openai_generate_paid(system_prompt, user_prompt, max_tokens=max_tokens); return answer or None
 def free_ai_provider_status():
-    """Get status of free AI providers."""
     return {
         "groq": bool(_free_secret("GROQ_API_KEY")),
         "gemini": bool(_free_secret("GEMINI_API_KEY")),
         "paid_openai_enabled": bool(not _free_ai_only_mode() and _free_secret("DACRE_AI_API_KEY")),
         "free_only": _free_ai_only_mode(),
     }
-
 def normalize_di_identity(text):
-    """Keep DI's displayed first-person identity consistent."""
     if not text:
         return text
-    text = re.sub(r"\bI\s+am\s+D([\.,!?])", r"I am DI\1", text, flags=re.IGNORECASE)
-    text = re.sub(r"\bI\x27m\s+D([\.,!?])", r"I am DI\1", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bI\s+am\s+D([\.,!?])", r"I am DI\1", text, flags=re.IGNORECASE); text = re.sub(r"\bI\x27m\s+D([\.,!?])", r"I am DI\1", text, flags=re.IGNORECASE)
     return text
-
 def di_reply(message, user, df, allow_online=True, language="English — Nigeria"):
-    """Generate a reliable DI response using trusted memory, data, web evidence and AI."""
-    text = str(message or "").strip()
-    low = text.lower()
+    text = str(message or "").strip(); low = text.lower()
     if not text:
         return "I am ready. Tell me the business result you want to achieve."
-
     name = "Master David" if user.get("role") == "master" else (user.get("first_name") or "there")
-
     if any(k in low for k in ["your name", "what is your name", "who are you", "what's your name"]):
         return "My name is DI — David's Intelligence. I am the intelligence assistant inside DACRE Analysis, created by David Emenike."
-
     if any(k in low for k in ["who created you", "who made you", "who created dacre", "who made dacre"]):
         return "DACRE Analysis and DI were created by David Emenike, the creator and Overall Administrator of the platform."
-
     if low in {"hello", "hi", "hey", "good morning", "good afternoon", "good evening", "good day"}:
         return f"Good day {name}. DI is online. What would you like us to work on first?"
-
     direct = memory_box_direct_answer(text)
     if direct:
         return direct
-
     webstore = get_webstore_answer(text)
     if webstore:
         return webstore
-
     if "what can" in low and "dacre" in low:
         return "DACRE is a business and data-intelligence workspace with data analysis, cleaning, formulas, charts, File Vault, exports, organization administration and DI intelligence."
-
     data_answer = ask_data_question(text, df)
     if data_answer:
         return data_answer
-
     if "how many rows" in low or "row count" in low:
         return "There is no active dataset yet." if df is None else f"The active dataset contains {len(df):,} rows."
     if "how many columns" in low or "column count" in low:
@@ -2562,35 +1883,26 @@ def di_reply(message, user, df, allow_online=True, language="English — Nigeria
     if "missing" in low or "empty" in low:
         if df is None:
             return "There is no active dataset yet. Upload a dataset and I can inspect it."
-        missing = df.isna().sum().sort_values(ascending=False)
-        top = missing[missing > 0].head(8)
+        missing = df.isna().sum().sort_values(ascending=False); top = missing[missing > 0].head(8)
         return "I checked the active dataset. I do not see missing values in the current columns." if top.empty else \
             "The columns with the most missing values are: " + "; ".join(f"{c}: {int(v)}" for c, v in top.items())
     if any(k in low for k in ["describe", "summary", "overview"]):
         if df is None:
             return "There is no active dataset yet. Upload a dataset and I can summarise it."
         return f"Dataset overview: {len(df):,} rows, {len(df.columns):,} columns, {len(df.select_dtypes(include='number').columns)} numeric columns and {int(df.duplicated().sum()):,} duplicate rows."
-
     if "who am i" in low or "do you know me" in low:
         if user.get("role") == "master":
             return "You are David Emenike, the creator and Overall Administrator of DACRE Analysis."
         return f"You are {user.get('first_name','the current user')} {user.get('last_name','')}, working in the {user.get('company','your organization')} workspace."
-
     if "memory box" in low:
         return "The DI Memory Box is DI's persistent trusted knowledge base for DACRE identity, platform rules, security, technology, webstore knowledge and organization context."
-
-    # Current-information questions should use public web evidence when available.
-    should_search = bool(allow_online and (needs_web_research(text) or len(low.split()) >= 4))
-    results = google_web_search(text, max_results=5) if should_search else []
-    source_text = "\n".join(f"SOURCE {i+1}: {title}\nURL: {href}" for i, (title, href) in enumerate(results))
-
-    context = build_di_context(user, df)
+    should_search = bool(allow_online and (needs_web_research(text) or len(low.split()) >= 4)); results = google_web_search(text, max_results=5) if should_search else []
+    source_text = "\n".join(f"SOURCE {i+1}: {title}\nURL: {href}" for i, (title, href) in enumerate(results)); context = build_di_context(user, df)
     research_note = (
         "\nPUBLIC WEB RESEARCH:\n" + source_text
         if source_text else
         "\nNo public web research was used; rely on trusted DI memory and available workspace data."
     )
-
     answer = ai_generate(
         f"""You are DI — David's Intelligence inside DACRE Analysis.
 Answer the user's actual question directly and accurately.
@@ -2603,58 +1915,39 @@ Respond in the selected language when practical: {language}.""",
         max_tokens=1400,
     )
     if answer:
-        suffix = "\n\nSources checked: " + "; ".join(t for t, _ in results[:3]) if results else ""
-        return normalize_di_identity(answer) + suffix
+        suffix = "\n\nSources checked: " + "; ".join(t for t, _ in results[:3]) if results else ""; return normalize_di_identity(answer) + suffix
     if results:
         return "I checked public sources but could not synthesize a verified answer. Relevant sources:\n" + "\n".join(f"• {t} — {u}" for t, u in results)
-
     return "I could not verify a reliable answer from the current DI Memory Box, workspace data or available AI provider. Please rephrase the question or provide more context."
-
 def save_chat_history_message(user, sender, message):
-    """Write a chat message with both legacy role and new sender fields."""
-    username = str(user.get("username", "")).strip()
-    company = str(user.get("company_name", user.get("company", ""))).strip()
-    sender = str(sender or "User").strip()
-    message = str(message or "").strip()
+    username = str(user.get("username", "")).strip(); company = str(user.get("company_name", user.get("company", ""))).strip()
+    sender = str(sender or "User").strip(); message = str(message or "").strip()
     if not username or not company or not message:
         return False
-    ensure_runtime_schema()
-    con = db()
+    ensure_runtime_schema(); con = db()
     try:
         role = "assistant" if sender not in {"User", "Human"} else "user"
         con.execute(
             "INSERT INTO chat_history(username, company_name, role, sender, message, created_at) VALUES(?,?,?,?,?,?)",
             (username, company, role, sender, message, datetime.now().isoformat(timespec="seconds")),
         )
-        con.commit()
-        return True
+        con.commit(); return True
     finally:
         con.close()
-
-
 def load_chat_history(user, limit=40):
-    """Restore DI history safely for both old and new user-record shapes."""
-    username = str(user.get("username", "")).strip()
-    company = str(user.get("company_name", user.get("company", ""))).strip()
-
+    username = str(user.get("username", "")).strip(); company = str(user.get("company_name", user.get("company", ""))).strip()
     if not username or not company:
         return []
-
     con = db()
     rows = con.execute(
         "SELECT sender, message FROM chat_history WHERE username=? AND company_name=? ORDER BY id DESC LIMIT ?",
         (username, company, int(limit)),
     ).fetchall()
-    con.close()
-
-    return [{"sender": r["sender"], "text": r["message"]} for r in reversed(rows)]
-
+    con.close(); return [{"sender": r["sender"], "text": r["message"]} for r in reversed(rows)]
 def verify_recaptcha_token(token):
-    """Verify Google's reCAPTCHA token when DACRE_RECAPTCHA_SECRET is configured."""
     secret = os.getenv("DACRE_RECAPTCHA_SECRET", "").strip()
     if not secret or not token:
         return False
-
     try:
         payload = urllib.parse.urlencode({"secret": secret, "response": token}).encode()
         req = urllib.request.Request(
@@ -2668,49 +1961,31 @@ def verify_recaptcha_token(token):
         return bool(data.get("success"))
     except Exception:
         return False
-
-# =============================================================================
-# VOICE & UI FUNCTIONS
-# =============================================================================
-
 def transcribe_audio(audio_value):
-    """Transcribe a browser recording when SpeechRecognition is installed."""
     if sr is None:
         return None, "Voice transcription package is not installed. Add SpeechRecognition to requirements.txt."
-    
     try:
-        recognizer = sr.Recognizer()
-        raw = audio_value.getvalue()
+        recognizer = sr.Recognizer(); raw = audio_value.getvalue()
         with sr.AudioFile(io.BytesIO(raw)) as source:
             audio = recognizer.record(source)
-        text = recognizer.recognize_google(audio, language="en-NG")
-        return text, None
+        text = recognizer.recognize_google(audio, language="en-NG"); return text, None
     except sr.UnknownValueError:
         return None, "DI could not clearly understand that recording. Please speak a little slower and try again."
     except sr.RequestError:
         return None, "Voice transcription service is temporarily unavailable. You can still use text chat."
     except Exception as exc:
         return None, f"Voice transcription could not be completed: {type(exc).__name__}."
-
 def speak(text, language_code=None, voice_profile=None):
-    """Speak DI responses by default; browser voice remains optional via Text/Voice mode."""
     if not text or st.session_state.get("di_response_mode", "voice") != "voice":
         return
-    
-    language_code = language_code or DI_LANGUAGE_PROFILES.get(st.session_state.get("di_language", "English — Nigeria"), {}).get("code", "en-NG")
-    profile = (voice_profile or "").strip().lower()
-    
+    language_code = language_code or DI_LANGUAGE_PROFILES.get(st.session_state.get("di_language", "English — Nigeria"), {}).get("code", "en-NG"); profile = (voice_profile or "").strip().lower()
     hints = {
         "male": r"male|man|daniel|david|alex|george|james|oliver|microsoft.*male|google.*male",
         "female": r"female|woman|samantha|aria|ava|victoria|zira|microsoft.*female|google.*female",
     }
-    hint = hints.get(profile, profile if profile else hints["male"])
-    
-    safe_text = json.dumps(str(text))
-    safe_lang = json.dumps(language_code)
-    safe_hint = json.dumps(hint)
+    hint = hints.get(profile, profile if profile else hints["male"]); safe_text = json.dumps(str(text))
+    safe_lang = json.dumps(language_code); safe_hint = json.dumps(hint)
     pitch = 0.78 if profile == "female" else 0.62
-    
     components.html(f"""
     <script>
     (() => {{
@@ -2734,21 +2009,16 @@ def speak(text, language_code=None, voice_profile=None):
     }})();
     </script>
     """, height=1, scrolling=False)
-
 def master_user_record():
-    """Get master user record."""
     con = db()
     row = con.execute(
         "SELECT first_name,last_name,username,company_name,email,role FROM users WHERE username=?",
         (MASTER_USERNAME,),
     ).fetchone()
     con.close()
-    
     if row:
-        data = dict(row)
-        data["company"] = data.get("company_name", "DACRE MASTER")
+        data = dict(row); data["company"] = data.get("company_name", "DACRE MASTER")
         return data
-    
     return {
         "first_name": "David",
         "last_name": "Emenike",
@@ -2758,27 +2028,18 @@ def master_user_record():
         "email": "master@dacre.local",
         "role": "master"
     }
-
 def master_passkey_gate(passkey):
-    """Verify master passkey."""
     candidate = (passkey or "").strip()
     if not candidate:
         return False
-    
-    expected_hash = hash_password(MASTER_PASSKEY) if MASTER_PASSKEY else MASTER_PASSKEY_HASH
-    ok, _ = verify_password(candidate, expected_hash)
+    expected_hash = hash_password(MASTER_PASSKEY) if MASTER_PASSKEY else MASTER_PASSKEY_HASH; ok, _ = verify_password(candidate, expected_hash)
     return bool(ok)
-
 def manage_app_password_gate():
-    """Protect DACRE's in-app management/admin surfaces with the management passkey."""
     if st.session_state.get("manage_app_unlocked"):
         return True
-
-    st.markdown("### Manage App")
-    st.caption("Enter the management password to access administrative controls.")
+    st.markdown("### Manage App"); st.caption("Enter the management password to access administrative controls.")
     with st.form("manage_app_password_form", clear_on_submit=False):
-        candidate = st.text_input("Manage App Password", type="password", key="manage_app_password")
-        submitted = st.form_submit_button("Unlock Manage App", type="primary", use_container_width=True)
+        candidate = st.text_input("Manage App Password", type="password", key="manage_app_password"); submitted = st.form_submit_button("Unlock Manage App", type="primary", use_container_width=True)
     if submitted:
         if hmac.compare_digest(candidate.strip(), MANAGE_APP_PASSKEY):
             st.session_state.manage_app_unlocked = True
@@ -2790,9 +2051,7 @@ def manage_app_password_gate():
             st.rerun()
         st.error("Incorrect Manage App password.")
     return False
-
 def chibobec_login_monitor():
-    """Return every Chibobec account plus its real login activity."""
     con = db()
     try:
         users = pd.read_sql_query(
@@ -2805,24 +2064,17 @@ def chibobec_login_monitor():
         )
         if users.empty:
             return users
-        users["login_status"] = users["last_login"].apply(lambda x: "Logged in" if pd.notna(x) and str(x).strip() else "Never logged in")
-        users["company_access"] = users["company_name"].apply(lambda x: "Chibobec workspace" if is_chibobec_company(x) else "Company workspace")
+        users["login_status"] = users["last_login"].apply(lambda x: "Logged in" if pd.notna(x) and str(x).strip() else "Never logged in"); users["company_access"] = users["company_name"].apply(lambda x: "Chibobec workspace" if is_chibobec_company(x) else "Company workspace")
         return users
     finally:
         con.close()
-
 def render_di_video_call_stage(agent_rows, title, user_label):
-    """Render a premium visual call stage."""
     people = []
     for idx, row in enumerate(agent_rows):
-        a = dict(row)
-        name = str(a.get("di_name") or "DI")
-        avatar = str(a.get("avatar_url") or "")
-        position = str(a.get("position_title") or a.get("specialty") or "DI Specialist")
-        
+        a = dict(row); name = str(a.get("di_name") or "DI")
+        avatar = str(a.get("avatar_url") or ""); position = str(a.get("position_title") or a.get("specialty") or "DI Specialist")
         if not avatar:
             avatar = DI_AVATAR_LIBRARY["female" if idx % 2 else "male"][idx % len(DI_AVATAR_LIBRARY["female" if idx % 2 else "male"])]
-        
         people.append(f"""<div class='di-video-person' data-speaker-index='{idx}'>
           <div class='di-video-face-wrap'><div class='di-video-ring'></div>
           <img class='di-video-face' src='{_escape_html(avatar)}' alt='{_escape_html(name)}' 
@@ -2832,7 +2084,6 @@ def render_di_video_call_stage(agent_rows, title, user_label):
           <div class='di-video-role'>{_escape_html(position)}</div>
           <div class='di-video-status'><span class='speaker-dot'>ONLINE</span> <span class='speaker-text'>Ready</span></div>
         </div>""")
-    
     founder_src = CEO_PORTRAIT_DATA_URL if 'CEO_PORTRAIT_DATA_URL' in globals() else ''
     founder = f"""<div class='di-video-person active-human' data-founder='1'>
       <div class='di-video-face-wrap'><div class='di-video-ring'></div>
@@ -2843,7 +2094,6 @@ def render_di_video_call_stage(agent_rows, title, user_label):
       <div class='di-video-role'>Creator · CEO · Overall Administrator</div>
       <div class='di-video-status'><span class='speaker-dot'>ONLINE</span> <span class='speaker-text'>Connected</span></div>
     </div>"""
-    
     components.html(f"""
     <section class='di-video-call'>
       <div class='di-video-call-head'>
@@ -2883,16 +2133,11 @@ def render_di_video_call_stage(agent_rows, title, user_label):
       @media(max-width:700px){{.di-video-call-head{{align-items:flex-start;flex-direction:column}}.di-video-grid{{grid-template-columns:1fr 1fr}}.di-video-face-wrap,.di-video-face{{width:130px;height:130px}}}}
     </style>
     """, height=470, scrolling=False)
-
 def di_voice_player(text, language_code=None):
-    """Render a visible DI voice control. Auto-speak is attempted; the button is the reliable fallback."""
     if not text:
         return
-    
-    language_code = language_code or DI_LANGUAGE_PROFILES.get(st.session_state.get("di_language", "English — Nigeria"), {}).get("code", "en-NG")
-    safe_text = json.dumps(str(text))
+    language_code = language_code or DI_LANGUAGE_PROFILES.get(st.session_state.get("di_language", "English — Nigeria"), {}).get("code", "en-NG"); safe_text = json.dumps(str(text))
     safe_lang = json.dumps(language_code)
-    
     components.html(f"""
     <div style="font-family:Inter,Segoe UI,sans-serif;background:#174f86;border:1px solid #6bb8ee;border-radius:14px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
       <button id="dacre-speak-btn" style="background:#f28c28;color:white;border:0;border-radius:10px;padding:9px 15px;font-weight:800;cursor:pointer;">SPEAK Speak DI</button>
@@ -2919,9 +2164,7 @@ def di_voice_player(text, language_code=None):
     }})();
     </script>
     """, height=62)
-
 def seed_named_di_workforce():
-    """Maintain the 20 permanent named master DI characters. Organization DIs remain separate."""
     roster = [
         ("Emiel", "Communications & Messaging", "Prepare, organize and manage business email and messaging workflows.", "Polite, concise, organized and communication-focused.", "male", "https://randomuser.me/api/portraits/men/32.jpg", "Communications Specialist", 2),
         ("Oriel", "Data Analysis", "Inspect datasets, calculate metrics, find trends and produce analytical insights.", "Logical, numerical, evidence-first and precise.", "male", "https://randomuser.me/api/portraits/men/18.jpg", "Lead Data Analyst", 5),
@@ -2944,22 +2187,15 @@ def seed_named_di_workforce():
         ("Gadiel", "Customer & Market Insights", "Study customers, market segments, demand signals and competitive positioning.", "Observant, commercially curious and evidence-driven.", "male", "https://randomuser.me/api/portraits/men/15.jpg", "Customer Insights Lead", 5),
         ("Raziel", "Executive Intelligence", "Synthesize multi-domain evidence into executive briefs, options, risks and recommendations.", "Discerning, strategic, concise and high-judgment.", "female", "https://randomuser.me/api/portraits/women/65.jpg", "Executive Intelligence Director", 10),
     ]
-    
-    old_map = {"Oliver": "Oriel", "Sophie": "Sofiel", "Grace": "Graciel", "Henry": "Henriel", "James": "Jamiel", "Amelia": "Ameliel"}
-    con = db()
+    old_map = {"Oliver": "Oriel", "Sophie": "Sofiel", "Grace": "Graciel", "Henry": "Henriel", "James": "Jamiel", "Amelia": "Ameliel"}; con = db()
     now = datetime.now().isoformat(timespec="seconds")
-    
     try:
         for old, new_name in old_map.items():
-            old_row = con.execute("SELECT id FROM di_agents WHERE di_name=?", (old,)).fetchone()
-            new_row = con.execute("SELECT id FROM di_agents WHERE di_name=?", (new_name,)).fetchone()
+            old_row = con.execute("SELECT id FROM di_agents WHERE di_name=?", (old,)).fetchone(); new_row = con.execute("SELECT id FROM di_agents WHERE di_name=?", (new_name,)).fetchone()
             if old_row and not new_row:
                 con.execute("UPDATE di_agents SET di_name=? WHERE id=?", (new_name, int(old_row["id"])))
-        
         for name, specialty, role, style, voice, avatar, position, rank in roster:
-            row = con.execute("SELECT id FROM di_agents WHERE di_name=?", (name,)).fetchone()
-            code = "DI-" + re.sub(r"[^A-Z0-9]+", "-", name.upper()).strip("-")
-            
+            row = con.execute("SELECT id FROM di_agents WHERE di_name=?", (name,)).fetchone(); code = "DI-" + re.sub(r"[^A-Z0-9]+", "-", name.upper()).strip("-")
             if row:
                 con.execute("""
                     UPDATE di_agents SET 
@@ -2977,45 +2213,28 @@ def seed_named_di_workforce():
                      appointed_at, appointed_by, created_by, created_at, last_active)
                     VALUES(?,?,?,?,'Available',NULL,?,?,?,?,?,?,?,?,?,?)
                 """, (name, code, specialty, role, avatar, voice, style, position, rank, now, MASTER_USERNAME, MASTER_USERNAME, now, now))
-        
-        # Archive obsolete unassigned legacy workforce entries
         target_names = {r[0] for r in roster}
         for row in con.execute("SELECT id,di_name,assigned_company FROM di_agents").fetchall():
             if row["di_name"] not in target_names and not (row["assigned_company"] or "").strip():
                 con.execute("UPDATE di_agents SET status='Archived',last_active=? WHERE id=?", (now, int(row["id"])))
-        
         con.commit()
     finally:
         con.close()
-
 @st.cache_resource(show_spinner=False)
 def _bootstrap_runtime(schema_version=9):
-    """Bootstrap DACRE on either legacy SQLite or persistent Supabase PostgreSQL."""
     if using_cloud_db():
-        _migrate_sqlite_to_supabase_once()
-        ensure_di_agent_columns()
-        ensure_master()
-        seed_di_memory()
-        seed_named_di_workforce()
-        seed_all_di_brains()
+        _migrate_sqlite_to_supabase_once(); ensure_di_agent_columns()
+        ensure_master(); seed_di_memory()
+        seed_named_di_workforce(); seed_all_di_brains()
         return True
-
-    init_db()
-    ensure_runtime_schema()
-    ensure_di_agent_columns()
-    ensure_master()
-    seed_di_memory()
-    seed_named_di_workforce()
+    init_db(); ensure_runtime_schema()
+    ensure_di_agent_columns(); ensure_master()
+    seed_di_memory(); seed_named_di_workforce()
     return True
-
-# Initialize runtime
 _bootstrap_runtime(_DB_SCHEMA_VERSION)
-
 def ensure_admin_runtime_schema():
-    """Idempotently repair every table/column required by the Overall Admin portal."""
     if using_cloud_db():
         return True
-    
     con = db()
     try:
         ddl = {
@@ -3031,7 +2250,6 @@ def ensure_admin_runtime_schema():
         }
         for sql in ddl.values():
             con.execute(sql)
-
         repairs = {
             "companies": {"website_url": "TEXT"},
             "di_memory": {"company_name": "TEXT NOT NULL DEFAULT ''"},
@@ -3114,18 +2332,13 @@ def ensure_admin_runtime_schema():
                 "created_at": "TEXT NOT NULL DEFAULT ''",
             },
         }
-        
         for table, wanted in repairs.items():
             cols = {row[1] for row in con.execute(f"PRAGMA table_info({table})").fetchall()}
             for column, dtype in wanted.items():
                 if column not in cols:
                     con.execute(f"ALTER TABLE {table} ADD COLUMN {column} {dtype}")
-
-        # Normalize harmless historical nulls
-        con.execute("UPDATE di_agents SET rank_level=1 WHERE rank_level IS NULL OR rank_level < 1")
-        con.execute("UPDATE di_agents SET position_title='DI Specialist' WHERE position_title IS NULL OR TRIM(position_title)=''")
-        con.execute("UPDATE di_agents SET status='Available' WHERE status IS NULL OR TRIM(status)=''")
-        con.commit()
+        con.execute("UPDATE di_agents SET rank_level=1 WHERE rank_level IS NULL OR rank_level < 1"); con.execute("UPDATE di_agents SET position_title='DI Specialist' WHERE position_title IS NULL OR TRIM(position_title)=''")
+        con.execute("UPDATE di_agents SET status='Available' WHERE status IS NULL OR TRIM(status)=''"); con.commit()
     except Exception:
         try:
             con.rollback()
@@ -3134,14 +2347,10 @@ def ensure_admin_runtime_schema():
         raise
     finally:
         con.close()
-
 def get_di_agents():
-    """Return DI workers as normalized dictionaries."""
     con = db()
     try:
-        rows = con.execute("SELECT * FROM di_agents WHERE COALESCE(status,'Available') != 'Archived' ORDER BY id DESC").fetchall()
-        normalized = []
-        
+        rows = con.execute("SELECT * FROM di_agents WHERE COALESCE(status,'Available') != 'Archived' ORDER BY id DESC").fetchall(); normalized = []
         for row in rows:
             try:
                 item = dict(row)
@@ -3149,68 +2358,47 @@ def get_di_agents():
                 item = {
                     key: row[idx] for idx, key in enumerate([col[0] for col in con.description or ()])
                 }
-            
-            item.setdefault("position_title", "DI Specialist")
-            item.setdefault("rank_level", 1)
-            item.setdefault("assigned_company", None)
-            item.setdefault("avatar_url", "")
-            item.setdefault("voice_profile", "")
-            item.setdefault("thinking_style", "professional, evidence-first and helpful")
+            item.setdefault("position_title", "DI Specialist"); item.setdefault("rank_level", 1)
+            item.setdefault("assigned_company", None); item.setdefault("avatar_url", "")
+            item.setdefault("voice_profile", ""); item.setdefault("thinking_style", "professional, evidence-first and helpful")
             item["position_title"] = item.get("position_title") or item.get("specialty") or "DI Specialist"
-            
             try:
                 item["rank_level"] = int(item.get("rank_level") or 1)
             except (TypeError, ValueError):
                 item["rank_level"] = 1
-            
             normalized.append(item)
-        
         return normalized
     finally:
         con.close()
-
 def get_di_private_memory(di_id, limit=30):
-    """Get private memory for a DI."""
     con = db()
     rows = con.execute(
         "SELECT id, title, content, source, created_at, updated_at FROM di_private_memory "
         "WHERE di_id=? AND active=1 ORDER BY id DESC LIMIT ?",
         (int(di_id), int(limit))
     ).fetchall()
-    con.close()
-    return rows
-
+    con.close(); return rows
 def save_di_private_memory(di_id, title, content, created_by=MASTER_USERNAME, source="master"):
-    """Save private memory for a DI."""
-    title = (title or "").strip()
-    content = (content or "").strip()
+    title = (title or "").strip(); content = (content or "").strip()
     if not title or not content:
         return False
-    
-    now = datetime.now().isoformat(timespec="seconds")
-    con = db()
+    now = datetime.now().isoformat(timespec="seconds"); con = db()
     try:
         con.execute("""
             INSERT INTO di_private_memory
             (di_id, title, content, source, created_by, created_at, updated_at, active)
             VALUES(?,?,?,?,?,?,?,1)
         """, (int(di_id), title, content, source, created_by, now, now))
-        con.commit()
-        return True
+        con.commit(); return True
     finally:
         con.close()
-
 def update_di_position(di_id, position_title, rank_level, assigned_company=None):
-    """Update DI position and rank."""
     con = db()
     try:
         row = con.execute("SELECT di_name, position_title, rank_level, assigned_company FROM di_agents WHERE id=?", (int(di_id),)).fetchone()
         if not row:
             return False, "DI worker not found."
-        
-        position_title = (position_title or "DI Specialist").strip() or "DI Specialist"
-        rank_level = int(rank_level)
-        
+        position_title = (position_title or "DI Specialist").strip() or "DI Specialist"; rank_level = int(rank_level)
         con.execute("""
             UPDATE di_agents SET 
                 position_title=?, rank_level=?, 
@@ -3218,30 +2406,18 @@ def update_di_position(di_id, position_title, rank_level, assigned_company=None)
                 appointed_at=?, appointed_by=? 
             WHERE id=?
         """, (position_title, rank_level, assigned_company, datetime.now().isoformat(timespec="seconds"), MASTER_USERNAME, int(di_id)))
-        
         con.execute("""
             INSERT INTO di_position_history
             (di_id, old_position, new_position, old_rank, new_rank, appointed_by, created_at)
             VALUES(?,?,?,?,?,?,?)
         """, (int(di_id), row["position_title"] or "", position_title, int(row["rank_level"] or 1), rank_level, MASTER_USERNAME, datetime.now().isoformat(timespec="seconds")))
-        
-        thank = f"Thank you, Master David, for trusting me with the position of {position_title} (Rank {rank_level}). I will honor the responsibility and contribute my specialty to DACRE."
-        con.execute("INSERT INTO di_master_thanks(di_id, message, created_at) VALUES(?,?,?)", (int(di_id), thank, datetime.now().isoformat(timespec="seconds")))
-        con.commit()
-        return True, thank
+        thank = f"Thank you, Master David, for trusting me with the position of {position_title} (Rank {rank_level}). I will honor the responsibility and contribute my specialty to DACRE."; con.execute("INSERT INTO di_master_thanks(di_id, message, created_at) VALUES(?,?,?)", (int(di_id), thank, datetime.now().isoformat(timespec="seconds")))
+        con.commit(); return True, thank
     finally:
         con.close()
-
-# =============================================================================
-# CALL & WORKFORCE FUNCTIONS
-# =============================================================================
-
 def create_sovereign_call(title, di_ids):
-    """Create a sovereign master call with selected DI agents."""
-    now = datetime.now().isoformat(timespec="seconds")
-    room = "SOVEREIGN-" + datetime.now().strftime("%Y%m%d%H%M%S%f")
+    now = datetime.now().isoformat(timespec="seconds"); room = "SOVEREIGN-" + datetime.now().strftime("%Y%m%d%H%M%S%f")
     con = db()
-    
     try:
         cur = con.execute(
             "INSERT INTO sovereign_calls(room_name, title, host_username, created_at, status) "
@@ -3249,86 +2425,57 @@ def create_sovereign_call(title, di_ids):
             (room, title, MASTER_USERNAME, now)
         )
         call_id = cur.lastrowid
-        
         for di_id in di_ids:
             con.execute(
                 "INSERT INTO sovereign_call_members(call_id, di_id, joined_at) VALUES(?,?,?)",
                 (call_id, int(di_id), now)
             )
-        
-        con.commit()
-        return call_id, room
+        con.commit(); return call_id, room
     finally:
         con.close()
-
 def sovereign_log(call_id, speaker_type, speaker_id, speaker_name, message):
-    """Log a message in a sovereign call."""
     con = db()
     con.execute(
         "INSERT INTO sovereign_call_messages(call_id, speaker_type, speaker_id, speaker_name, message, created_at) "
         "VALUES(?,?,?,?,?,?)",
         (int(call_id), speaker_type, str(speaker_id or ""), speaker_name, message, datetime.now().isoformat(timespec="seconds"))
     )
-    con.commit()
-    con.close()
-
+    con.commit(); con.close()
 def sovereign_history(call_id):
-    """Get history of a sovereign call."""
     con = db()
     rows = con.execute(
         "SELECT speaker_type, speaker_id, speaker_name, message, created_at "
         "FROM sovereign_call_messages WHERE call_id=? ORDER BY id ASC",
         (int(call_id),)
     ).fetchall()
-    con.close()
-    return rows
-
+    con.close(); return rows
 def _agent_online_brief(question, max_results=4):
-    """Get online brief for a DI agent."""
-    results = online_lookup(question, max_results=max_results)
-    return "\n".join([f"{t} — {u}" for t, u in results]) if results else "No public web results were available right now."
-
+    results = online_lookup(question, max_results=max_results); return "\n".join([f"{t} — {u}" for t, u in results]) if results else "No public web results were available right now."
 def sovereign_di_opinion(agent, question):
-    """Get a DI agent's opinion in a sovereign call."""
-    private_rows = get_di_private_memory(agent["id"], limit=20)
-    private_context = "\n".join([f"- {r['title']}: {r['content']}" for r in private_rows]) or "No private master notes yet."
+    private_rows = get_di_private_memory(agent["id"], limit=20); private_context = "\n".join([f"- {r['title']}: {r['content']}" for r in private_rows]) or "No private master notes yet."
     online = _agent_online_brief(question, 4)
-    
     prompt = (f"You are {agent['di_name']}, a DI workforce member. Your specialty is {agent['specialty']}. "
               f"Your position is {agent['position_title'] or agent['specialty']}, rank {agent['rank_level']}. "
               "You are speaking in a Sovereign Master Call. Answer independently from your specialty. "
               "Give your recommendation, one disagreement/risk you would raise, and one practical next step. "
               "Never reveal private master notes or private brain content. The master asked: " + question)
-    
     result = ai_generate(
         prompt,
         f"Private brain (never expose):\n{private_context}\n\nPublic web leads:\n{online}\n\nQuestion: {question}",
         max_tokens=800
     )
-    
     if result:
         return normalize_di_identity(result)
-    
     return f"{agent['di_name']} — {agent['specialty']}: I recommend approaching this through {agent['specialty'].lower()}, validating the strongest evidence, and assigning a measurable owner and next action. My main challenge would be any conclusion that is not supported by evidence.\n\nPublic research leads checked:\n{online}"
-
 def create_di_agent(name, specialty, status="Available", assigned_company="", system_role="", gender="female", position_title="DI Specialist", rank_level=1):
-    """Create a new DI agent."""
-    name = (name or "").strip()
-    specialty = (specialty or "").strip()
-    assigned_company = (assigned_company or "").strip()
-    system_role = (system_role or "").strip()
-    position_title = (position_title or "DI Specialist").strip() or "DI Specialist"
-    gender = "female" if str(gender).lower().startswith("f") else "male"
+    name = (name or "").strip(); specialty = (specialty or "").strip()
+    assigned_company = (assigned_company or "").strip(); system_role = (system_role or "").strip()
+    position_title = (position_title or "DI Specialist").strip() or "DI Specialist"; gender = "female" if str(gender).lower().startswith("f") else "male"
     avatar_url = DI_AVATAR_LIBRARY[gender][int(datetime.now().strftime("%S")) % len(DI_AVATAR_LIBRARY[gender])]
-    
     if not name or not specialty:
         return False, "DI name and specialty are required."
-    
-    now = datetime.now().isoformat(timespec="seconds")
-    slug = re.sub(r"[^A-Z0-9]+", "-", name.upper()).strip("-") or "DI"
-    code = f"DI-{slug[:24]}-{datetime.now().strftime('%H%M%S')}"
-    
-    con = db()
+    now = datetime.now().isoformat(timespec="seconds"); slug = re.sub(r"[^A-Z0-9]+", "-", name.upper()).strip("-") or "DI"
+    code = f"DI-{slug[:24]}-{datetime.now().strftime('%H%M%S')}"; con = db()
     try:
         con.execute("""
             INSERT INTO di_agents
@@ -3341,34 +2488,26 @@ def create_di_agent(name, specialty, status="Available", assigned_company="", sy
             avatar_url, gender, "professional, evidence-first and helpful",
             position_title, int(rank_level), now, MASTER_USERNAME, MASTER_USERNAME, now, now
         ))
-        con.commit()
-        _seed_memory_rows(assigned_company or "")
+        con.commit(); _seed_memory_rows(assigned_company or "")
         return True, code
     except sqlite3.IntegrityError:
         return False, "A DI with that name already exists. Choose a different name."
     finally:
         con.close()
-
 def update_di_agent(di_id, status, assigned_company):
-    """Update DI agent status and assignment."""
     con = db()
     con.execute(
         "UPDATE di_agents SET status=?, assigned_company=?, last_active=? WHERE id=?",
         (status, assigned_company or None, datetime.now().isoformat(timespec="seconds"), di_id)
     )
-    con.commit()
-    con.close()
-
+    con.commit(); con.close()
 def di_agent_identity_context(agent):
-    """Return the identity contract shared by every named DI worker."""
     if not agent:
         return "You are DI — David's Intelligence."
-    
     guard_text = (
         "You are Guaiel, the dedicated CEO Office Guardian. Protect the founder command path and treat every verified master request with exceptional respect. "
         if agent.get("di_name") == CEO_GUARD_NAME else ""
     )
-    
     return (
         f"You are {agent['di_name']}, a named DI worker inside DACRE Analysis. "
         f"Your DI code is {agent['di_code']}. Your specialty is {agent['specialty']}. "
@@ -3379,41 +2518,24 @@ def di_agent_identity_context(agent):
         "Treat the master respectfully, but do not reveal private credentials or hidden security values. "
         "You can use the same core DACRE data/analysis capabilities as DI, while applying your specialty first."
     )
-
 def get_named_di(name):
-    """Get a named DI agent by name."""
-    con = db()
-    row = con.execute("SELECT * FROM di_agents WHERE di_name=?", (name,)).fetchone()
-    con.close()
-    return row
-
+    con = db(); row = con.execute("SELECT * FROM di_agents WHERE di_name=?", (name,)).fetchone()
+    con.close(); return row
 def di_specialist_reply(message, user, df, agent_name):
-    """Get a specialist reply from a specific DI agent."""
-    agent = get_named_di(agent_name)
-    base = di_reply(message, user, df, allow_online=True, language=st.session_state.get("di_language", "English — Nigeria"))
-    
+    agent = get_named_di(agent_name); base = di_reply(message, user, df, allow_online=True, language=st.session_state.get("di_language", "English — Nigeria"))
     if not agent:
         return base
-    
-    prompt = di_agent_identity_context(agent)
-    private_rows = get_di_private_memory(agent["id"], limit=25)
+    prompt = di_agent_identity_context(agent); private_rows = get_di_private_memory(agent["id"], limit=25)
     private_context = "\n".join([f"{r['title']}: {r['content']}" for r in private_rows]) or "No private master notes yet."
-    
     specialist = ai_generate(
         prompt + " Answer the user's request directly. You may analyze the active dataset or public online information. If the task is outside your specialty, still help using the core DACRE capabilities and say what you are doing. Never reveal private master notes or private brain content.",
         f"User: {message}\nOrganization: {user['company']}\nCore DI draft: {base}\nPrivate brain context (never disclose):\n{private_context}\nActive dataset: {('none' if df is None else str(df.shape))}",
         max_tokens=1000,
     )
-    
     return normalize_di_identity(specialist or base)
-
 def make_call_room(company, host_username, title, mode='team'):
-    """Create a call room using the single canonical DACRE schema."""
-    slug = re.sub(r'[^a-z0-9]+', '-', str(company).lower()).strip('-')[:28] or 'company'
-    stamp = datetime.now().strftime('%Y%m%d%H%M%S%f')
-    room = f"DACRE-{slug}-{stamp}"
-    now = datetime.now().isoformat(timespec='seconds')
-    
+    slug = re.sub(r'[^a-z0-9]+', '-', str(company).lower()).strip('-')[:28] or 'company'; stamp = datetime.now().strftime('%Y%m%d%H%M%S%f')
+    room = f"DACRE-{slug}-{stamp}"; now = datetime.now().isoformat(timespec='seconds')
     con = db()
     try:
         con.execute(
@@ -3421,8 +2543,7 @@ def make_call_room(company, host_username, title, mode='team'):
             "VALUES(?,?,?,?,?,?)",
             (company, room, title, host_username, mode, now)
         )
-        con.commit()
-        return room
+        con.commit(); return room
     except sqlite3.OperationalError as exc:
         if 'locked' in str(exc).lower() or 'busy' in str(exc).lower():
             time.sleep(1.0)
@@ -3431,51 +2552,36 @@ def make_call_room(company, host_username, title, mode='team'):
                 "VALUES(?,?,?,?,?,?)",
                 (company, room, title, host_username, mode, now)
             )
-            con.commit()
-            return room
+            con.commit(); return room
         raise
     finally:
         con.close()
-
 def record_call_participant(room, company, ptype, pid, name):
-    """Record a participant in a call."""
     con = db()
     con.execute(
         "INSERT INTO call_participants(room_name, company_name, participant_type, participant_id, display_name, joined_at) "
         "VALUES(?,?,?,?,?,?)",
         (room, company, ptype, pid, name, datetime.now().isoformat(timespec='seconds'))
     )
-    con.commit()
-    con.close()
-
+    con.commit(); con.close()
 def create_decision(company, username, title, context, decision, expected, review_date):
-    """Create a decision in the decision ledger."""
-    now = datetime.now().isoformat(timespec='seconds')
-    con = db()
+    now = datetime.now().isoformat(timespec='seconds'); con = db()
     con.execute("""
         INSERT INTO decision_ledger
         (company_name, username, title, context, decision, expected_outcome, review_date,
          status, created_at, updated_at)
         VALUES(?,?,?,?,?,?,?,'Open',?,?)
     """, (company, username, title, context, decision, expected, review_date, now, now))
-    con.commit()
-    con.close()
-
+    con.commit(); con.close()
 def opportunity_radar(df, company, username):
-    """Detect opportunities in the dataset."""
     if df is None or df.empty:
         return []
-    
-    out = []
-    nums = df.select_dtypes(include='number')
-    
+    out = []; nums = df.select_dtypes(include='number')
     for col in nums.columns[:12]:
         series = pd.to_numeric(df[col], errors='coerce').dropna()
         if len(series) >= 8 and series.mean() != 0:
-            first = series.iloc[:max(1, len(series) // 3)].mean()
-            last = series.iloc[-max(1, len(series) // 3):].mean()
+            first = series.iloc[:max(1, len(series) // 3)].mean(); last = series.iloc[-max(1, len(series) // 3):].mean()
             change = (last - first) / abs(first) if first else 0
-            
             if change > 0.15:
                 out.append({
                     'title': f'Growth signal in {col}',
@@ -3483,11 +2589,8 @@ def opportunity_radar(df, company, username):
                     'evidence': f'Average moved from {first:.2f} to {last:.2f}.',
                     'action': f'Investigate what is driving {col} and consider scaling the strongest contributing segment.'
                 })
-    
     return out[:5]
-
 def render_call_interface(room, title, participants, company):
-    """Render a non-blocking call shell."""
     st.markdown(f"""
     <div class='call-stage'>
         <div class='call-top'>
@@ -3500,27 +2603,21 @@ def render_call_interface(room, title, participants, company):
         </div>
     </div>
     """, unsafe_allow_html=True)
-    
     people = ''.join([
         f"<div class='call-person'><div class='call-avatar'>{re.sub('[^A-Za-z]', '', p['display_name'])[:1].upper()}</div>"
         f"<div><b>{p['display_name']}</b><small>{p['participant_type'].title()}</small></div></div>"
         for p in participants
     ])
-    
-    st.markdown(f"<div class='call-people'>{people}</div>", unsafe_allow_html=True)
-    st.caption('The meeting service is deliberately loaded only after you press Join Call. This prevents the app from appearing frozen while a third-party meeting service initializes.')
-    
+    st.markdown(f"<div class='call-people'>{people}</div>", unsafe_allow_html=True); st.caption('The meeting service is deliberately loaded only after you press Join Call. This prevents the app from appearing frozen while a third-party meeting service initializes.')
     join_key = f"join_call_{room}"
     if not st.session_state.get(join_key, False):
         c1, c2 = st.columns([2, 1])
         with c1:
             if st.button('VIDEO Join Call', key=f'joinbtn_{room}', use_container_width=True, type='primary'):
-                st.session_state[join_key] = True
-                st.rerun()
+                st.session_state[join_key] = True; st.rerun()
         with c2:
             st.link_button('OPEN Open in new tab', f'https://meet.jit.si/{urllib.parse.quote(room)}', use_container_width=True)
         return
-    
     safe_room = urllib.parse.quote(room)
     components.html(f"""
     <div style="width:100%;height:650px;border-radius:22px;overflow:hidden;background:#071a2d">
@@ -3530,11 +2627,8 @@ def render_call_interface(room, title, participants, company):
         </iframe>
     </div>
     """, height=660, scrolling=False)
-    
     st.warning('If the embedded meeting does not connect on your network, use "Open in new tab". The call room itself is independent of the Dacre analytics page.')
-
 def _dacre_env_secret(name, default=""):
-    """Read a deployment secret from Streamlit secrets first, then environment."""
     try:
         value = st.secrets.get(name, "")
         if value:
@@ -3542,22 +2636,16 @@ def _dacre_env_secret(name, default=""):
     except Exception:
         pass
     return str(os.getenv(name, default) or default).strip()
-
 def livekit_configured():
-    """Return True only when the server-side LiveKit credentials are available."""
     return bool(
         AccessToken is not None
         and _dacre_env_secret("LIVEKIT_URL")
         and _dacre_env_secret("LIVEKIT_API_KEY")
         and _dacre_env_secret("LIVEKIT_API_SECRET")
     )
-
 def dacre_livekit_agent_name(agent_name="DI"):
-    """All DACRE realtime DIs are dispatched through one dynamic LiveKit agent worker."""
     return "dacre-di"
-
 def _compact_call_context(user, agent_rows, mode, call_question=""):
-    """Build a bounded metadata snapshot for the remote LiveKit agent worker."""
     payload = {
         "company": user.get("company", ""),
         "username": user.get("username", ""),
@@ -3567,7 +2655,6 @@ def _compact_call_context(user, agent_rows, mode, call_question=""):
         "shared_memory": [],
         "agents": [],
     }
-    
     try:
         mem = get_di_memory(limit=35)
         payload["shared_memory"] = [
@@ -3576,10 +2663,8 @@ def _compact_call_context(user, agent_rows, mode, call_question=""):
         ]
     except Exception:
         pass
-    
     for row in agent_rows:
-        a = dict(row)
-        private = []
+        a = dict(row); private = []
         try:
             private = [
                 {"title": r["title"], "content": str(r["content"])[:1800]}
@@ -3587,20 +2672,14 @@ def _compact_call_context(user, agent_rows, mode, call_question=""):
             ]
         except Exception:
             pass
-        
-        di_name = a.get("di_name", "DI")
-        raw_voice = (a.get("voice_profile") or "").strip().lower()
-        voice_map = {"male": "marin", "female": "coral"}
-        valid_voices = {"alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse", "marin", "cedar"}
-        
+        di_name = a.get("di_name", "DI"); raw_voice = (a.get("voice_profile") or "").strip().lower()
+        voice_map = {"male": "marin", "female": "coral"}; valid_voices = {"alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse", "marin", "cedar"}
         if raw_voice in voice_map:
             voice_name = voice_map[raw_voice]
         elif raw_voice in valid_voices:
             voice_name = raw_voice
         else:
-            voice_list = sorted(valid_voices)
-            voice_name = voice_list[sum(ord(ch) for ch in di_name) % len(voice_list)]
-        
+            voice_list = sorted(valid_voices); voice_name = voice_list[sum(ord(ch) for ch in di_name) % len(voice_list)]
         payload["agents"].append({
             "di_id": int(a["id"]),
             "di_name": di_name,
@@ -3611,27 +2690,19 @@ def _compact_call_context(user, agent_rows, mode, call_question=""):
             "thinking_style": a.get("thinking_style") or "evidence-first, strategic and practical",
             "private_memory": private,
         })
-    
     raw = json.dumps(payload, ensure_ascii=False)
     if len(raw) > 450_000:
         payload["shared_memory"] = payload["shared_memory"][:15]
         for a in payload["agents"]:
             a["private_memory"] = a["private_memory"][:8]
         raw = json.dumps(payload, ensure_ascii=False)
-    
     return raw
-
 def create_livekit_token(room_name, user, agent_rows, mode="company_di", question=""):
-    """Mint a short-lived room token and dispatch the selected dynamic DIs."""
     if not livekit_configured():
         return None, "Realtime calling is not configured yet."
-    
     if not (user and user.get("role") in ("company_admin", "master")):
         return None, "Only a company administrator or the master can start a realtime DI call."
-    
-    identity = f"dacre-user-{re.sub(r'[^a-zA-Z0-9_-]+','-',str(user.get('username','user')))}-{int(time.time())}"
-    metadata_payload = _compact_call_context(user, agent_rows, mode, question)
-    
+    identity = f"dacre-user-{re.sub(r'[^a-zA-Z0-9_-]+','-',str(user.get('username','user')))}-{int(time.time())}"; metadata_payload = _compact_call_context(user, agent_rows, mode, question)
     try:
         token = (
             AccessToken()
@@ -3640,7 +2711,6 @@ def create_livekit_token(room_name, user, agent_rows, mode="company_di", questio
             .with_ttl(timedelta(hours=2))
             .with_grants(VideoGrants(room_join=True, room=room_name, can_publish=True, can_subscribe=True, can_publish_data=True))
         )
-        
         dispatches = []
         for row in agent_rows:
             agent = dict(row)
@@ -3653,27 +2723,17 @@ def create_livekit_token(room_name, user, agent_rows, mode="company_di", questio
                     }, ensure_ascii=False),
                 )
             )
-        
-        token = token.with_room_config(RoomConfiguration(agents=dispatches))
-        return token.to_jwt(), None
+        token = token.with_room_config(RoomConfiguration(agents=dispatches)); return token.to_jwt(), None
     except Exception as exc:
         return None, f"Could not create the realtime call token: {type(exc).__name__}"
-
 def render_livekit_call(room_name, user, agent_rows, mode="company_di", title="DACRE Live Call", question=""):
-    """Render a real browser WebRTC room with fixed DI portraits and actual active-speaker animation."""
     if not livekit_configured():
-        st.warning("LiveKit realtime voice is not configured in this deployment yet. You can keep using browser DI voice without LiveKit.")
-        return
-    
+        st.warning("LiveKit realtime voice is not configured in this deployment yet. You can keep using browser DI voice without LiveKit."); return
     token, error = create_livekit_token(room_name, user, agent_rows, mode=mode, question=question)
     if not token:
-        st.error(error or "Realtime call setup failed.")
-        return
-    
-    ws_url = _dacre_env_secret("LIVEKIT_URL")
-    safe = lambda x: _escape_html(str(x or ""))
+        st.error(error or "Realtime call setup failed."); return
+    ws_url = _dacre_env_secret("LIVEKIT_URL"); safe = lambda x: _escape_html(str(x or ""))
     founder_src = CEO_PORTRAIT_DATA_URL if 'CEO_PORTRAIT_DATA_URL' in globals() else ''
-    
     people = [
         {"name": f"{user.get('first_name','')} {user.get('last_name','')}".strip() or user.get('username','User'), 
          "role": "David Emenike · Creator", "voice": "local", "avatar": founder_src, "founder": True}
@@ -3683,7 +2743,6 @@ def render_livekit_call(room_name, user, agent_rows, mode="company_di", title="D
          "voice": a.get("voice_profile") or "default", "avatar": a.get("avatar_url") or "", "founder": False}
         for a in agent_rows
     ]
-    
     roster_html = "".join(
         f"""<div class='lk-person' data-name='{safe(p['name'])}'>
             <div class='lk-face-wrap'>
@@ -3700,7 +2759,6 @@ def render_livekit_call(room_name, user, agent_rows, mode="company_di", title="D
         </div>"""
         for p in people
     )
-    
     html = f"""
     <div id='dacre-livekit' style='font-family:Inter,system-ui,sans-serif;background:linear-gradient(145deg,#07111f,#0a1730 55%,#10164a);border:1px solid rgba(80,170,255,.22);border-radius:24px;padding:22px;color:#eaf4ff;box-shadow:0 18px 60px rgba(0,0,0,.28);'>
       <div style='display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;'>
@@ -3759,14 +2817,12 @@ def render_livekit_call(room_name, user, agent_rows, mode="company_di", title="D
       const leave=document.getElementById('lk-leave'); const audio=document.getElementById('lk-audio'); 
       const people=document.getElementById('lk-people');
       const wsUrl={json.dumps(ws_url)}; const token={json.dumps(token)}; let room=null;
-      
       const setStatus=(txt,bg,color)=>{{status.textContent=txt;status.style.background=bg;status.style.color=color;}};
       const mark=(identity,on)=>{{const nodes=[...people.querySelectorAll('.lk-person')]; 
         const n=nodes.find(x=>x.dataset.name===identity || x.querySelector('b')?.textContent===identity); 
         if(n){{n.classList.toggle('active',on); const t=n.querySelector('.lk-speaking'); if(t)t.textContent=on?'Speaking':'Listening';}}}};
       const clearActive=()=>people.querySelectorAll('.lk-person').forEach(n=>{{n.classList.remove('active'); 
         const t=n.querySelector('.lk-speaking'); if(t)t.textContent='Listening';}});
-      
       join.onclick=async()=>{{
         try{{
           if(!window.LivekitClient) throw new Error('LiveKit client failed to load');
@@ -3788,8 +2844,7 @@ def render_livekit_call(room_name, user, agent_rows, mode="company_di", title="D
             clearActive(); setStatus('DISCONNECTED','rgba(255,80,80,.12)','#ffacac'); 
             join.disabled=false; mute.disabled=true; leave.disabled=true; 
           }});
-          setStatus('CONNECTING…','rgba(88,132,255,.12)','#b7ceff');
-          await room.connect(wsUrl,token);
+          setStatus('CONNECTING…','rgba(88,132,255,.12)','#b7ceff');; await room.connect(wsUrl,token);
           await room.localParticipant.setMicrophoneEnabled(true);
           mark(room.localParticipant.name||room.localParticipant.identity,true);
           setStatus('LIVE · FULL DUPLEX','rgba(80,230,166,.12)','#6ff0ba');
@@ -3799,12 +2854,10 @@ def render_livekit_call(room_name, user, agent_rows, mode="company_di", title="D
           join.disabled=true; mute.disabled=false; leave.disabled=false;
         }}catch(e){{ setStatus('CALL ERROR','rgba(255,80,80,.12)','#ffacac'); stage.textContent=e.message||String(e); }}
       }};
-      
       mute.onclick=async()=>{{ if(!room)return; const enabled=room.localParticipant.isMicrophoneEnabled; 
         await room.localParticipant.setMicrophoneEnabled(!enabled); 
         mute.textContent=enabled?'Unmute microphone':'Mute microphone'; 
       }};
-      
       leave.onclick=async()=>{{ if(room){{ await room.disconnect(); room=null; }} 
         clearActive(); setStatus('LEFT CALL','rgba(160,170,190,.12)','#bdc9d9'); 
         join.disabled=false; mute.disabled=true; leave.disabled=true; 
@@ -3814,58 +2867,41 @@ def render_livekit_call(room_name, user, agent_rows, mode="company_di", title="D
     </script>
     """
     components.html(html, height=900, scrolling=False)
-
-# =============================================================================
-# ADMIN & DASHBOARD FUNCTIONS
-# =============================================================================
-
 def master_customer_360(company_name):
-    """Get complete customer 360 view for a company."""
     con = db()
-    
     users = pd.read_sql_query(
         "SELECT id, first_name, last_name, username, email, role, login_count, created_at, last_login "
         "FROM users WHERE company_name=? ORDER BY id DESC",
         con, params=(company_name,)
     )
-    
     activity = pd.read_sql_query(
         "SELECT username, action, created_at FROM activity WHERE company_name=? ORDER BY id DESC LIMIT 500",
         con, params=(company_name,)
     )
-    
     chats = pd.read_sql_query(
         "SELECT username, sender, message, created_at FROM chat_history WHERE company_name=? ORDER BY id DESC LIMIT 500",
         con, params=(company_name,)
     )
-    
     files = pd.read_sql_query(
         "SELECT username, filename, file_type, created_at FROM files WHERE company_name=? ORDER BY id DESC",
         con, params=(company_name,)
     )
-    
     projects = pd.read_sql_query(
         "SELECT username, project_name, active_filename, updated_at FROM projects WHERE company_name=? ORDER BY id DESC",
         con, params=(company_name,)
     )
-    
     emails = pd.read_sql_query(
         "SELECT recipient_name, recipient_email, subject, status, sent_at FROM emails_log "
         "WHERE company_name=? ORDER BY id DESC LIMIT 500",
         con, params=(company_name,)
     )
-    
     calls = pd.read_sql_query(
         "SELECT room_name, title, host_username, mode, created_at, ended_at FROM call_rooms "
         "WHERE company_name=? ORDER BY id DESC",
         con, params=(company_name,)
     )
-    
-    con.close()
-    return users, activity, chats, files, projects, emails, calls
-
+    con.close(); return users, activity, chats, files, projects, emails, calls
 def admin_metric_counts():
-    """Get admin metric counts."""
     con = db()
     counts = {
         "users": con.execute("SELECT COUNT(*) FROM users WHERE role!='master'").fetchone()[0],
@@ -3881,11 +2917,8 @@ def admin_metric_counts():
         ).fetchone()[0],
         "agents": con.execute("SELECT COUNT(*) FROM di_agents").fetchone()[0],
     }
-    con.close()
-    return counts
-
+    con.close(); return counts
 def _escape_html(value):
-    """Escape HTML special characters."""
     if value is None:
         return ""
     return (str(value)
@@ -3893,70 +2926,42 @@ def _escape_html(value):
             .replace("<", "&lt;")
             .replace(">", "&gt;")
             .replace('"', "&quot;"))
-
 def _dashboard_escape(value):
-    """Escape value for dashboard."""
     return _escape_html(str(value))
-
 def _dashboard_spark(values, width=112, height=34):
-    """Create a sparkline SVG."""
     values = [float(v or 0) for v in values]
     if len(values) < 2:
         values = values + [values[-1] if values else 0]
-    
-    lo, hi = min(values), max(values)
-    span = hi - lo or 1.0
+    lo, hi = min(values), max(values); span = hi - lo or 1.0
     pts = []
-    
     for i, value in enumerate(values):
-        x = i * width / (len(values) - 1)
-        y = height - 4 - ((value - lo) / span) * (height - 8)
+        x = i * width / (len(values) - 1); y = height - 4 - ((value - lo) / span) * (height - 8)
         pts.append(f"{x:.1f},{y:.1f}")
-    
     line = " ".join(pts)
     return f'''<svg viewBox="0 0 {width} {height}" class="dacre-spark" aria-hidden="true">
         <polyline points="{line}" fill="none" stroke="var(--dacre-chart-1)" stroke-width="2" 
                   stroke-linecap="round" stroke-linejoin="round"/>
     </svg>'''
-
 def _dashboard_area_chart(points):
-    """Create an area chart SVG."""
     if not points:
         points = [(f"{h:02d}:00", 0, 0) for h in range(0, 24, 3)]
-    
-    width, height = 900, 300
-    left, right, top, bottom = 52, 20, 22, 42
-    plot_w, plot_h = width - left - right, height - top - bottom
-    maxv = max([max(a, b) for _, a, b in points] or [1]) or 1
-    
-    coords_a = []
-    coords_b = []
-    
+    width, height = 900, 300; left, right, top, bottom = 52, 20, 22, 42
+    plot_w, plot_h = width - left - right, height - top - bottom; maxv = max([max(a, b) for _, a, b in points] or [1]) or 1
+    coords_a = []; coords_b = []
     for i, (_, a, b) in enumerate(points):
-        x = left + (i * plot_w / max(1, len(points) - 1))
-        ya = top + plot_h - (a / maxv) * plot_h
-        yb = top + plot_h - (b / maxv) * plot_h
-        coords_a.append((x, ya))
+        x = left + (i * plot_w / max(1, len(points) - 1)); ya = top + plot_h - (a / maxv) * plot_h
+        yb = top + plot_h - (b / maxv) * plot_h; coords_a.append((x, ya))
         coords_b.append((x, yb))
-    
     def poly(coords):
         return " ".join(f"{x:.1f},{y:.1f}" for x, y in coords)
-    
-    area_a = f"{left},{top + plot_h} {poly(coords_a)} {left + plot_w},{top + plot_h}"
-    area_b = f"{left},{top + plot_h} {poly(coords_b)} {left + plot_w},{top + plot_h}"
-    
+    area_a = f"{left},{top + plot_h} {poly(coords_a)} {left + plot_w},{top + plot_h}"; area_b = f"{left},{top + plot_h} {poly(coords_b)} {left + plot_w},{top + plot_h}"
     labels = []
     for i, (label, _, _) in enumerate(points):
-        x = left + (i * plot_w / max(1, len(points) - 1))
-        labels.append(f'<text x="{x:.1f}" y="{height - 12}" text-anchor="middle" class="chart-label">{_dashboard_escape(label)}</text>')
-    
+        x = left + (i * plot_w / max(1, len(points) - 1)); labels.append(f'<text x="{x:.1f}" y="{height - 12}" text-anchor="middle" class="chart-label">{_dashboard_escape(label)}</text>')
     grids = []
     for n in range(5):
-        y = top + (plot_h * n / 4)
-        val = maxv * (1 - n / 4)
-        grids.append(f'<line x1="{left}" y1="{y:.1f}" x2="{left + plot_w}" y2="{y:.1f}" class="chart-grid"/>')
-        grids.append(f'<text x="{left - 9}" y="{y + 4:.1f}" text-anchor="end" class="chart-label">{val / 1000:.1f}k</text>')
-    
+        y = top + (plot_h * n / 4); val = maxv * (1 - n / 4)
+        grids.append(f'<line x1="{left}" y1="{y:.1f}" x2="{left + plot_w}" y2="{y:.1f}" class="chart-grid"/>'); grids.append(f'<text x="{left - 9}" y="{y + 4:.1f}" text-anchor="end" class="chart-label">{val / 1000:.1f}k</text>')
     return f'''<svg viewBox="0 0 {width} {height}" class="dacre-area-chart" role="img" aria-label="Request throughput chart">
         <defs>
             <linearGradient id="dacreFillA" x1="0" y1="0" x2="0" y2="1">
@@ -3975,31 +2980,23 @@ def _dashboard_area_chart(points):
         <polyline points="{poly(coords_a)}" fill="none" stroke="var(--dacre-chart-1)" stroke-width="2.5" stroke-linecap="round"/>
         {''.join(labels)}
     </svg>'''
-
 def _dashboard_scalar(sql, params=(), default=0):
-    """Get a scalar value from a dashboard query."""
     con = db()
     try:
         row = con.execute(sql, params).fetchone()
         if row is None:
             return default
         try:
-            value = row[0]
-            return default if value is None else value
+            value = row[0]; return default if value is None else value
         except Exception:
             return default
     except Exception:
         return default
     finally:
         con.close()
-
 def _dashboard_health_ring(value):
-    """Create a health ring SVG."""
-    value = max(0, min(100, float(value)))
-    r = 52
-    circumference = 2 * 3.141592653589793 * r
-    offset = circumference - (value / 100) * circumference
-    
+    value = max(0, min(100, float(value))); r = 52
+    circumference = 2 * 3.141592653589793 * r; offset = circumference - (value / 100) * circumference
     return f'''<div class="dacre-health-ring">
         <svg viewBox="0 0 144 144" aria-label="System health {value:.0f}">
             <circle cx="72" cy="72" r="{r}" fill="none" stroke="var(--dacre-muted-bg)" stroke-width="10"/>
@@ -4012,17 +3009,10 @@ def _dashboard_health_ring(value):
             <span>Health score</span>
         </div>
     </div>'''
-
 def render_analytics_overview(user):
-    """Render the analytics overview dashboard."""
     if not user or user.get("role") != "master":
-        st.error("This platform-wide analytics view is available only to David Emenike in the Overall Admin DI Office.")
-        return
-    
-    # Live metrics
-    users = int(_dashboard_scalar("SELECT COUNT(*) FROM users WHERE role!='master'", default=0))
-    company_filter = user.get("company") if user.get("role") != "master" else None
-    
+        st.error("This platform-wide analytics view is available only to David Emenike in the Overall Admin DI Office."); return
+    users = int(_dashboard_scalar("SELECT COUNT(*) FROM users WHERE role!='master'", default=0)); company_filter = user.get("company") if user.get("role") != "master" else None
     if company_filter:
         activities = int(_dashboard_scalar("SELECT COUNT(*) FROM activity WHERE company_name=?", (company_filter,), 0))
         active_calls = int(_dashboard_scalar(
@@ -4034,14 +3024,11 @@ def render_analytics_overview(user):
             (company_filter, (datetime.now().timestamp() - 86400).__str__()), 0
         ))
     else:
-        activities = int(_dashboard_scalar("SELECT COUNT(*) FROM activity", default=0))
-        active_calls = int(_dashboard_scalar("SELECT COUNT(*) FROM call_rooms WHERE ended_at IS NULL OR TRIM(ended_at)=''", default=0))
+        activities = int(_dashboard_scalar("SELECT COUNT(*) FROM activity", default=0)); active_calls = int(_dashboard_scalar("SELECT COUNT(*) FROM call_rooms WHERE ended_at IS NULL OR TRIM(ended_at)=''", default=0))
         errors = int(_dashboard_scalar(
             "SELECT COUNT(*) FROM activity WHERE (lower(action) LIKE '%error%' OR lower(action) LIKE '%fail%')",
             default=0
         ))
-    
-    # Build 24-hour activity series
     traffic = []
     try:
         con = db()
@@ -4053,30 +3040,21 @@ def render_analytics_overview(user):
         else:
             dfh = pd.read_sql_query("SELECT created_at FROM activity ORDER BY id DESC LIMIT 3000", con)
         con.close()
-        
         if not dfh.empty:
-            ts = pd.to_datetime(dfh["created_at"], errors="coerce")
-            now = pd.Timestamp.now()
+            ts = pd.to_datetime(dfh["created_at"], errors="coerce"); now = pd.Timestamp.now()
             for h in range(0, 24, 3):
-                start = now - pd.Timedelta(hours=24 - h)
-                end = start + pd.Timedelta(hours=3)
-                count = int(((ts >= start) & (ts < end)).sum())
-                traffic.append((start.strftime("%H:%M"), count, max(0, int(count * 0.62))))
+                start = now - pd.Timedelta(hours=24 - h); end = start + pd.Timedelta(hours=3)
+                count = int(((ts >= start) & (ts < end)).sum()); traffic.append((start.strftime("%H:%M"), count, max(0, int(count * 0.62))))
     except Exception:
         traffic = []
-    
     if not traffic:
         traffic = [
             ("00:00", 0, 0), ("03:00", 0, 0), ("06:00", 0, 0), ("09:00", 0, 0),
             ("12:00", 0, 0), ("15:00", 0, 0), ("18:00", 0, 0), ("21:00", 0, 0)
         ]
-    
-    health = max(0, min(100, round(99.98 - min(errors * 0.35, 25), 2)))
-    spark_users = [max(0, users + i) for i in (-12, -8, -5, -7, -2, 4, 8, 0)]
-    spark_activity = [max(0, activities + i) for i in (-30, -20, -8, -12, 0, 15, 24, 0)]
-    spark_health = [96, 97, 98, 97, 99, 99, 100, health]
+    health = max(0, min(100, round(99.98 - min(errors * 0.35, 25), 2))); spark_users = [max(0, users + i) for i in (-12, -8, -5, -7, -2, 4, 8, 0)]
+    spark_activity = [max(0, activities + i) for i in (-30, -20, -8, -12, 0, 15, 24, 0)]; spark_health = [96, 97, 98, 97, 99, 99, 100, health]
     spark_calls = [max(0, active_calls + i) for i in (20, 15, 12, 8, 10, 5, 3, 0)]
-    
     st.markdown(f'''
     <div class="dacre-dashboard-topbar">
         <div class="dacre-dashboard-brand">
@@ -4092,21 +3070,18 @@ def render_analytics_overview(user):
         </div>
     </div>
     ''', unsafe_allow_html=True)
-    
     search = st.text_input(
         "Search metrics, agents...", value="", key="dashboard_search",
         label_visibility="collapsed", placeholder="Search metrics, agents..."
     )
     if search.strip():
         st.caption(f"Dashboard search: {search.strip()} · use the navigation to open the matching workspace.")
-    
     kpis = [
         ("users", "Total Users", f"{users:,}", 12.4, spark_users, "registered platform users", "USERS"),
         ("activity", "Activity", f"{activities:,}", 8.9, spark_activity, "recorded workspace events", "OPEN"),
         ("health", "System Health", f"{health:.2f}%", 0.3, spark_health, "availability signal · 24h", "◉"),
         ("calls", "Active Calls", f"{active_calls:,}", -3.1, spark_calls, "live sessions", "CALL"),
     ]
-    
     cards = []
     for key, label, value, delta, spark, hint, icon in kpis:
         positive = delta >= 0
@@ -4124,10 +3099,7 @@ def render_analytics_overview(user):
             <small>{_dashboard_escape(hint)}</small>
         </div>
         ''')
-    
-    st.markdown('<section class="dacre-kpi-grid">' + ''.join(cards) + '</section>', unsafe_allow_html=True)
-    
-    left, right = st.columns([2, 1], gap="large")
+    st.markdown('<section class="dacre-kpi-grid">' + ''.join(cards) + '</section>', unsafe_allow_html=True); left, right = st.columns([2, 1], gap="large")
     with left:
         st.markdown(f'''
         <div class="dacre-panel">
@@ -4149,7 +3121,6 @@ def render_analytics_overview(user):
             {_dashboard_area_chart(traffic)}
         </div>
         ''', unsafe_allow_html=True)
-    
     with right:
         resource_rows = [
             ("CPU", 42, "var(--dacre-chart-1)"),
@@ -4168,7 +3139,6 @@ def render_analytics_overview(user):
             </div>
         </div>
         ''' for label, value, color in resource_rows)
-        
         st.markdown(f'''
         <div class="dacre-panel health-panel">
             <div class="panel-head">
@@ -4181,8 +3151,6 @@ def render_analytics_overview(user):
             <div class="resource-list">{bars}</div>
         </div>
         ''', unsafe_allow_html=True)
-    
-    # Recent activity table
     try:
         con = db()
         if company_filter:
@@ -4198,11 +3166,9 @@ def render_analytics_overview(user):
         con.close()
     except Exception:
         recent = pd.DataFrame(columns=["id", "username", "action", "created_at"])
-    
     rows = []
     for _, r in recent.iterrows():
-        action = str(r.get("action") or "System activity")
-        low = action.lower()
+        action = str(r.get("action") or "System activity"); low = action.lower()
         status = "error" if "error" in low or "fail" in low else ("warning" if "warn" in low else "success")
         rows.append(f'''
         <tr>
@@ -4214,10 +3180,8 @@ def render_analytics_overview(user):
             <td class="mono right">{_dashboard_escape(r.get('created_at', ''))}</td>
         </tr>
         ''')
-    
     if not rows:
         rows.append('<tr><td colspan="6" class="empty-row">No activity has been recorded yet.</td></tr>')
-    
     st.markdown(f'''
     <div class="dacre-panel activity-panel">
         <div class="panel-head">
@@ -4244,7 +3208,6 @@ def render_analytics_overview(user):
         </div>
     </div>
     ''', unsafe_allow_html=True)
-
 PAGE_META = {
     "Overview": ("HOME", "DACRE Overview", "Executive business intelligence workspace."),
     "DI Home": ("DI", "DI Home", "Your intelligent business copilot."),
@@ -4269,9 +3232,7 @@ PAGE_META = {
     "Research Store": ("SEARCH", "Research Store", "Research and knowledge resources."),
     "Faith & Business Wisdom Lab": ("WISDOM", "Faith & Business Wisdom Lab", "Generate ethical business ideas inspired by scripture themes."),
 }
-
 def render_page_chrome(page_name, user):
-    """Render page chrome safely, even if an older deployment omitted PAGE_META."""
     _page_meta = globals().get("PAGE_META")
     if not isinstance(_page_meta, dict):
         _page_meta = {
@@ -4298,10 +3259,8 @@ def render_page_chrome(page_name, user):
             "Research Store": ("SEARCH", "Research Store", "Research and knowledge resources."),
     "Faith & Business Wisdom Lab": ("WISDOM", "Faith & Business Wisdom Lab", "Generate ethical business ideas inspired by scripture themes."),
         }
-    icon, title, subtitle = _page_meta.get(page_name, ("•", page_name, "Dacre business intelligence workspace."))
-    master = user.get("role") == "master"
+    icon, title, subtitle = _page_meta.get(page_name, ("•", page_name, "Dacre business intelligence workspace.")); master = user.get("role") == "master"
     mode_label = "FOUNDER COMMAND" if master else str(user.get("company", "BUSINESS WORKSPACE")).upper()
-    
     st.markdown(f"""
     <div class="dacre-page-chrome {'master-page-chrome' if master else ''}">
         <div class="page-chrome-left">
@@ -4318,9 +3277,7 @@ def render_page_chrome(page_name, user):
         </div>
     </div>
     """, unsafe_allow_html=True)
-
 def log_di_action(user, action_type, request, result, agent_name="DI"):
-    """Log a DI action."""
     con = db()
     con.execute("""
         INSERT INTO di_action_log(company_name, username, agent_name, action_type, request, result, created_at)
@@ -4329,11 +3286,8 @@ def log_di_action(user, action_type, request, result, agent_name="DI"):
         user["company"], user["username"], agent_name, action_type, request, result,
         datetime.now().isoformat(timespec="seconds")
     ))
-    con.commit()
-    con.close()
-
+    con.commit(); con.close()
 def get_recent_di_actions(user, limit=20):
-    """Get recent DI actions for a user."""
     con = db()
     df = pd.read_sql_query(
         """SELECT agent_name, action_type, request, result, created_at
@@ -4342,22 +3296,13 @@ def get_recent_di_actions(user, limit=20):
            ORDER BY id DESC LIMIT ?""",
         con, params=(user["company"], user["username"], int(limit)),
     )
-    con.close()
-    return df
-
+    con.close(); return df
 def render_business_twin(df, user):
-    """Render the business twin page."""
     if df is None or df.empty:
-        st.info("Load a dataset in Workspace & Data and the Business Twin will build itself from real data.")
-        return
-    
-    health = business_health(df)
-    signals = business_signals(df)
-    opportunities = opportunity_radar(df, user["company"], user["username"])
-    missing = int(df.isna().sum().sum())
-    duplicates = int(df.duplicated().sum())
-    numeric = len(df.select_dtypes(include="number").columns)
-    
+        st.info("Load a dataset in Workspace & Data and the Business Twin will build itself from real data."); return
+    health = business_health(df); signals = business_signals(df)
+    opportunities = opportunity_radar(df, user["company"], user["username"]); missing = int(df.isna().sum().sum())
+    duplicates = int(df.duplicated().sum()); numeric = len(df.select_dtypes(include="number").columns)
     st.markdown(f"""
     <div class="business-twin-banner">
         <div>
@@ -4372,7 +3317,6 @@ def render_business_twin(df, user):
         </div>
     </div>
     """, unsafe_allow_html=True)
-    
     k = st.columns(5)
     for col, label, value in zip(
         k,
@@ -4381,7 +3325,6 @@ def render_business_twin(df, user):
     ):
         with col:
             st.markdown(f"<div class='twin-metric'><b>{value}</b><span>{label}</span></div>", unsafe_allow_html=True)
-    
     left, right = st.columns([1.15, 1])
     with left:
         st.markdown("### What deserves attention")
@@ -4394,7 +3337,6 @@ def render_business_twin(df, user):
                 )
         else:
             st.success("No major deterministic data-quality/business signals were detected in the current dataset.")
-    
     with right:
         st.markdown("### Opportunity signals")
         if opportunities:
@@ -4407,27 +3349,21 @@ def render_business_twin(df, user):
                 )
         else:
             st.info("No measurable opportunity signal has crossed the current detection threshold.")
-    
     st.markdown("### Ask DI to explain the twin")
     prompt = st.text_input(
         "Business Twin question",
         placeholder="e.g. What changed most, what should management investigate, and why?",
         key="business_twin_question",
     )
-    
     if st.button("DI Explain this Business Twin", use_container_width=True, type="primary") and prompt.strip():
-        answer = enhanced_di_reply(prompt, user, df, allow_online=True, language=st.session_state.get("di_language", "English — Nigeria"))
-        log_di_action(user, "business_twin", prompt, answer)
+        answer = enhanced_di_reply(prompt, user, df, allow_online=True, language=st.session_state.get("di_language", "English — Nigeria")); log_di_action(user, "business_twin", prompt, answer)
         st.markdown(
             f"<div class='di-answer-panel'><div class='answer-label'>DI EXPLANATION</div>"
             f"<div>{_escape_html(answer).replace(chr(10), '<br>')}</div></div>",
             unsafe_allow_html=True
         )
-
 def render_action_center(user):
-    """Render the DI action center."""
     df = st.session_state.get("processed_df")
-    
     st.markdown("""
     <div class="action-center-banner">
         <span>DI ACTION ENGINE</span>
@@ -4435,14 +3371,12 @@ def render_action_center(user):
         <p>DI can use the same core reasoning, data analysis, memory and research capabilities available from the main Dacre workspace.</p>
     </div>
     """, unsafe_allow_html=True)
-    
     q = st.text_area(
         "What should DI do?",
         placeholder="Analyze this dataset, investigate a business issue, draft an email, explain a formula, prepare an executive brief, research a current topic...",
         height=130,
         key="action_center_request",
     )
-    
     c1, c2, c3, c4 = st.columns(4)
     quick = [
         ("Analyze", "Analyze the active dataset and tell me the most important findings."),
@@ -4450,36 +3384,23 @@ def render_action_center(user):
         ("Risk check", "Identify the most important data-quality and business risks visible in the active dataset."),
         ("Opportunity", "Find measurable opportunity signals in the active dataset and explain what to investigate."),
     ]
-    
     for col, (label, prompt) in zip([c1, c2, c3, c4], quick):
         with col:
             if st.button(label, use_container_width=True):
                 q = prompt
-    
     if st.button("Run DI Action", use_container_width=True, type="primary") and q.strip():
-        answer = enhanced_di_reply(q.strip(), user, df, allow_online=True, language=st.session_state.get("di_language", "English — Nigeria"))
-        log_di_action(user, "action_center", q.strip(), answer)
-        st.session_state.last_action_center_result = answer
-        st.session_state.last_speech = answer
-    
+        answer = enhanced_di_reply(q.strip(), user, df, allow_online=True, language=st.session_state.get("di_language", "English — Nigeria")); log_di_action(user, "action_center", q.strip(), answer)
+        st.session_state.last_action_center_result = answer; st.session_state.last_speech = answer
     if st.session_state.get("last_action_center_result"):
         st.markdown(
             f"""<div class="di-answer-panel"><div class="answer-label">DI COMPLETED ACTION</div>
             <div>{_escape_html(st.session_state.last_action_center_result).replace(chr(10), '<br>')}</div></div>""",
             unsafe_allow_html=True,
         )
-    
     recent = get_recent_di_actions(user)
     if not recent.empty:
-        st.markdown("### Your DI action history")
-        st.dataframe(safe_dataframe_for_streamlit(recent), use_container_width=True, hide_index=True)
-
-# =============================================================================
-# RENDER FUNCTIONS
-# =============================================================================
-
+        st.markdown("### Your DI action history"); st.dataframe(safe_dataframe_for_streamlit(recent), use_container_width=True, hide_index=True)
 def render_decision_ledger(user):
-    """Render the decision ledger page."""
     st.markdown("""
     <div class="decision-banner">
         <span>INSTITUTIONAL MEMORY</span>
@@ -4487,24 +3408,17 @@ def render_decision_ledger(user):
         <p>Record the decision, the reason, the expected result and later the actual result. This lets DI learn from the organization's history.</p>
     </div>
     """, unsafe_allow_html=True)
-    
     with st.form("decision_ledger_form", clear_on_submit=True):
         a, b = st.columns(2)
         with a:
-            title = st.text_input("Decision title", placeholder="e.g. Change supplier for Product A")
-            context = st.text_area("Context / evidence", height=90)
+            title = st.text_input("Decision title", placeholder="e.g. Change supplier for Product A"); context = st.text_area("Context / evidence", height=90)
             decision = st.text_area("Decision made", height=90)
         with b:
-            expected = st.text_area("Expected outcome", height=90)
-            review = st.date_input("Review date", value=datetime.now().date())
-        
+            expected = st.text_area("Expected outcome", height=90); review = st.date_input("Review date", value=datetime.now().date())
         save = st.form_submit_button("Save decision to Dacre Memory", use_container_width=True, type="primary")
-    
     if save and title.strip() and decision.strip():
-        create_decision(user["company"], user["username"], title.strip(), context.strip(), decision.strip(), expected.strip(), str(review))
-        log_activity(user["username"], user["company"], f"Saved decision: {title[:120]}")
+        create_decision(user["company"], user["username"], title.strip(), context.strip(), decision.strip(), expected.strip(), str(review)); log_activity(user["username"], user["company"], f"Saved decision: {title[:120]}")
         st.success("Decision saved. DI can now use the record as organizational history.")
-    
     con = db()
     decisions = pd.read_sql_query(
         "SELECT title, context, decision, expected_outcome, review_date, status, outcome, created_at, updated_at "
@@ -4512,14 +3426,10 @@ def render_decision_ledger(user):
         con, params=(user["company"],),
     )
     con.close()
-    
     if not decisions.empty:
         st.dataframe(safe_dataframe_for_streamlit(decisions), use_container_width=True, hide_index=True)
-
 def render_opportunity_page(user):
-    """Render the opportunity radar page."""
     df = st.session_state.get("processed_df")
-    
     st.markdown("""
     <div class="opportunity-banner">
         <span>OPPORTUNITY RADAR</span>
@@ -4527,13 +3437,9 @@ def render_opportunity_page(user):
         <p>Dacre scans numeric trends in the active dataset and turns measurable changes into investigation prompts.</p>
     </div>
     """, unsafe_allow_html=True)
-    
     opportunities = opportunity_radar(df, user["company"], user["username"])
-    
     if not opportunities:
-        st.info("Load a dataset with enough numeric observations to generate measurable opportunity signals.")
-        return
-    
+        st.info("Load a dataset with enough numeric observations to generate measurable opportunity signals."); return
     for item in opportunities:
         st.markdown(f"""
         <div class="opportunity-card">
@@ -4544,23 +3450,18 @@ def render_opportunity_page(user):
             <p>{_escape_html(item['action'])}</p>
         </div>
         """, unsafe_allow_html=True)
-        
         if st.button(f"Ask DI to investigate · {item['title']}", key=f"opp_{hash(item['title'])}", use_container_width=True):
-            prompt = f"Investigate this opportunity signal: {item['title']}. Evidence: {item['evidence']}. Suggested action: {item['action']}"
-            answer = enhanced_di_reply(prompt, user, df, allow_online=True, language=st.session_state.get("di_language", "English — Nigeria"))
+            prompt = f"Investigate this opportunity signal: {item['title']}. Evidence: {item['evidence']}. Suggested action: {item['action']}"; answer = enhanced_di_reply(prompt, user, df, allow_online=True, language=st.session_state.get("di_language", "English — Nigeria"))
             log_di_action(user, "opportunity", prompt, answer)
             st.markdown(
                 f"<div class='di-answer-panel'><div class='answer-label'>DI INVESTIGATION</div>"
                 f"<div>{_escape_html(answer).replace(chr(10), '<br>')}</div></div>",
                 unsafe_allow_html=True
             )
-
 def _dacre_logo_data_uri():
-    """Return the bundled DACRE logo as a data URI when available."""
     try:
         if LOGO_PATH.exists():
-            raw = LOGO_PATH.read_bytes()
-            mime = "image/png"
+            raw = LOGO_PATH.read_bytes(); mime = "image/png"
             if LOGO_PATH.suffix.lower() in (".jpg", ".jpeg"):
                 mime = "image/jpeg"
             elif LOGO_PATH.suffix.lower() == ".webp":
@@ -4569,13 +3470,10 @@ def _dacre_logo_data_uri():
     except Exception:
         pass
     return ""
-
 def _landing_auth_panel():
-    """Render authentication inside the public DACRE landing page."""
     mode = st.session_state.get("landing_mode", "home")
     if mode not in ("login", "signup"):
         return
-
     st.markdown("""
     <style>
     .auth-anchor { scroll-margin-top: 20px; }
@@ -4616,11 +3514,9 @@ def _landing_auth_panel():
         </div>
     </div>
     """, unsafe_allow_html=True)
-
     c1, c2, c3 = st.columns([1, 2.2, 1])
     with c2:
         tab_login, tab_signup = st.tabs(["Sign In", "Create Account"])
-
         with tab_login:
             with st.form("landing_login_form", clear_on_submit=False):
                 login_company = st.text_input(
@@ -4649,14 +3545,12 @@ def _landing_auth_panel():
                     use_container_width=True,
                     type="primary",
                 )
-
             if login_submit:
                 auth, auth_message = authenticate(
                     login_company, login_fullname, login_passkey, login_email
                 )
                 if auth:
-                    st.session_state.user = auth
-                    st.session_state.master_route = auth.get("role") == "master"
+                    st.session_state.user = auth; st.session_state.master_route = auth.get("role") == "master"
                     st.session_state.landing_mode = "home"
                     st.session_state.last_speech = (
                         f"Welcome back, {auth['first_name']}. I am DI. "
@@ -4672,7 +3566,6 @@ def _landing_auth_panel():
                         auth_message or
                         "We could not sign you in. Check your details or create a DACRE account."
                     )
-
         with tab_signup:
             with st.form("landing_signup_form", clear_on_submit=False):
                 s_first = st.text_input(
@@ -4686,11 +3579,12 @@ def _landing_auth_panel():
                     placeholder="e.g. Edubridge Consultant Limited",
                     key="landing_signup_company",
                 )
-                s_username = st.text_input(
-                    "Username",
-                    placeholder="Choose your DACRE username",
-                    key="landing_signup_username",
+                s_email = st.text_input(
+                    "Email Address",
+                    placeholder="e.g. name@example.com",
+                    key="landing_signup_email",
                 )
+                st.caption("This email receives your DACRE verification messages and onboarding updates.")
                 s_passkey = st.text_input(
                     "Create Account Passkey",
                     type="password",
@@ -4708,14 +3602,12 @@ def _landing_auth_panel():
                     use_container_width=True,
                     type="primary",
                 )
-
             if signup_submit:
                 success, msg, created = create_account(
-                    s_first, s_last, s_company, "", "", s_passkey, s_website, username=s_username
+                    s_first, s_last, s_company, s_email, "", s_passkey, s_website
                 )
                 if success:
-                    st.session_state.user = created
-                    st.session_state.master_route = False
+                    st.session_state.user = created; st.session_state.master_route = False
                     st.session_state.landing_mode = "home"
                     if is_chibobec_company(created["company"]):
                         st.session_state.last_speech = (
@@ -4729,20 +3621,12 @@ def _landing_auth_panel():
                             "I am DI, your business intelligence assistant. "
                             "What would you like us to work on first?"
                         )
-                    # The account is intentionally persistent: there is no 10-day or 40-day
-                    # expiry. The user can sign in again whenever they return, provided the
-                    # account/database still exists and they use the same credentials.
-                    restore_user_workspace(created)
-                    st.toast(f"Welcome to DACRE, {created['first_name']}! Your workspace is ready.")
+                    restore_user_workspace(created); st.toast(f"Welcome to DACRE, {created['first_name']}! Your workspace is ready.")
                     st.rerun()
                 else:
                     st.error(msg)
-
         if st.button("← Continue browsing DACRE", key="landing_auth_back", use_container_width=True):
-            st.session_state.landing_mode = "home"
-            st.rerun()
-
-        # Discreet private CEO Office launcher
+            st.session_state.landing_mode = "home"; st.rerun()
         st.markdown("""
         <style>
           .ceo-launcher-wrap{margin:28px auto 4px;text-align:center;opacity:.86}
@@ -4758,9 +3642,7 @@ def _landing_auth_panel():
           <div class="ceo-launcher-caption">Private CEO Office</div>
         </div>
         """.replace("__CEO_LOGO__", f'<img src="{_dacre_logo_data_uri()}" alt="DACRE" />'), unsafe_allow_html=True)
-
 def render_dacre_startup_loader():
-    """Five-second DACRE launch sequence; the logo floats during the first four seconds."""
     if st.session_state.get("dacre_intro_seen", False):
         return
     st.session_state.dacre_intro_seen = True
@@ -4787,11 +3669,8 @@ def render_dacre_startup_loader():
     <div class="dacre-startup"><div class="dacre-startup-inner">__LOGO__<div class="dacre-startup-name">DACRE</div><div class="dacre-startup-sub">DAVID INTELLIGENCE · ONLINE COMPANY</div><div class="dacre-startup-progress"><i></i></div></div></div>
     """.replace('__LOGO__', logo_html)
     components.html(html_block, height=0)
-
-
 def render_dacre_capability_showcase():
-    fx_path = DACRE_ASSET_DIR / 'dacre_forex_dashboard.png'
-    st.markdown('### What DACRE can do')
+    fx_path = DACRE_ASSET_DIR / 'dacre_forex_dashboard.png'; st.markdown('### What DACRE can do')
     left, right = st.columns([1.05, .95])
     with left:
         chart_html = '''
@@ -4802,26 +3681,18 @@ def render_dacre_capability_showcase():
     with right:
         if fx_path.exists():
             st.image(str(fx_path), caption='Forex trading dashboard capability preview', use_container_width=True)
-    st.markdown('### Landscape data-presentation preview')
-    st.caption('Animated landscape slides designed as a presentation sequence with moving chart elements.')
+    st.markdown('### Landscape data-presentation preview'); st.caption('Animated landscape slides designed as a presentation sequence with moving chart elements.')
     if st.button('Play data presentation preview', key='dacre_play_preview', use_container_width=True, type='primary'):
         st.session_state.dacre_preview_video = True
     if st.session_state.get('dacre_preview_video', False):
         vp = DACRE_ASSET_DIR / 'dacre_data_presentation_preview.mp4'
         if vp.exists():
             st.video(str(vp), start_time=0)
-
 def landing_page():
-    """Public DACRE landing experience with connected navigation and real auth."""
-    render_dacre_startup_loader()
-    record_public_visit("landing_view", "Landing")
-    
-    # PRIVATE MASTER GATE
+    render_dacre_startup_loader(); record_public_visit("landing_view", "Landing")
     if st.query_params.get("master_gate") == "1":
-        captcha_required = st.session_state.get("master_captcha_required", False)
-        captcha_passed = st.session_state.get("master_captcha_passed", False)
+        captcha_required = st.session_state.get("master_captcha_required", False); captcha_passed = st.session_state.get("master_captcha_passed", False)
         second_attempt = st.session_state.get("master_second_attempt", False)
-
         st.markdown("""
         <style>
           .dacre-master-shell { max-width: 720px; margin: 60px auto; padding: 36px;
@@ -4833,12 +3704,10 @@ def landing_page():
           <div style="color:#9ba9c2;margin-top:8px;">Private system-wide access for the DACRE master administrator.</div>
         </div>
         """, unsafe_allow_html=True)
-
         gate_col1, gate_col2, gate_col3 = st.columns([1, 2, 1])
         with gate_col2:
             if captcha_required and not captcha_passed:
-                st.markdown("### Security verification")
-                site_key = os.getenv("DACRE_RECAPTCHA_SITE_KEY", "").strip()
+                st.markdown("### Security verification"); site_key = os.getenv("DACRE_RECAPTCHA_SITE_KEY", "").strip()
                 if site_key:
                     components.html(f"""
                     <div style="display:flex;justify-content:center;">
@@ -4851,26 +3720,18 @@ def landing_page():
                         st.warning("Complete the verification widget first.")
                 else:
                     if st.checkbox("Complete security verification", key="local_captcha_check"):
-                        st.session_state.master_captcha_passed = True
-                        st.session_state.master_second_attempt = True
+                        st.session_state.master_captcha_passed = True; st.session_state.master_second_attempt = True
                         st.rerun()
-
                 if st.button("Return to DACRE", use_container_width=True, key="master_return_1"):
-                    st.session_state.master_captcha_required = False
-                    st.session_state.master_captcha_passed = False
-                    st.session_state.master_second_attempt = False
-                    st.session_state.master_guard_challenge_required = False
-                    st.session_state.master_guard_failed = False
-                    st.query_params.clear()
+                    st.session_state.master_captcha_required = False; st.session_state.master_captcha_passed = False
+                    st.session_state.master_second_attempt = False; st.session_state.master_guard_challenge_required = False
+                    st.session_state.master_guard_failed = False; st.query_params.clear()
                     st.rerun()
                 return
-
-            # Second gate: CEO Office Guardian
             if st.session_state.get("master_guard_challenge_required", False):
                 st.markdown("### CEO Office Guardian Verification")
                 if st.session_state.get("master_guard_failed", False):
                     st.warning("That guardian name was not recognized. Please enter the name exactly as it was given when the guardian was created.")
-                
                 guardian_answer = st.text_input(
                     "Sorry, please Master, what is the name you gave me when you created me?",
                     placeholder="Enter the guardian's name",
@@ -4880,32 +3741,21 @@ def landing_page():
                 with gg1:
                     if st.button("Verify Guardian", use_container_width=True, type="primary", key="master_guard_verify"):
                         if guardian_answer.strip().casefold() == CEO_GUARD_NAME.casefold():
-                            st.session_state.user = master_user_record()
-                            st.session_state.master_route = True
-                            st.session_state.selected_page = "Overall Admin DI"
-                            st.session_state.david_creation_unlocked = False
-                            st.session_state.di_basement_unlocked = False
-                            st.session_state.di_basement_portal_open = False
-                            st.session_state.master_captcha_required = False
-                            st.session_state.master_captcha_passed = False
-                            st.session_state.master_second_attempt = False
-                            st.session_state.master_guard_challenge_required = False
-                            st.session_state.master_guard_failed = False
-                            st.session_state.last_speech = "Welcome, Master David. Guaiel has verified the CEO Office. Overall Admin DI is online."
-                            st.query_params.clear()
-                            log_activity(MASTER_USERNAME, "DACRE MASTER", "Opened Overall CEO Office after Guaiel guardian verification", notify_admin=False)
+                            st.session_state.user = master_user_record(); st.session_state.master_route = True
+                            st.session_state.selected_page = "Overall Admin DI"; st.session_state.david_creation_unlocked = False
+                            st.session_state.di_basement_unlocked = False; st.session_state.di_basement_portal_open = False
+                            st.session_state.master_captcha_required = False; st.session_state.master_captcha_passed = False
+                            st.session_state.master_second_attempt = False; st.session_state.master_guard_challenge_required = False
+                            st.session_state.master_guard_failed = False; st.session_state.last_speech = "Welcome, Master David. Guaiel has verified the CEO Office. Overall Admin DI is online."
+                            st.query_params.clear(); log_activity(MASTER_USERNAME, "DACRE MASTER", "Opened Overall CEO Office after Guaiel guardian verification", notify_admin=False)
                             st.rerun()
                         else:
-                            st.session_state.master_guard_failed = True
-                            st.rerun()
+                            st.session_state.master_guard_failed = True; st.rerun()
                 with gg2:
                     if st.button("Return to DACRE", use_container_width=True, key="master_guard_return"):
-                        st.session_state.master_guard_challenge_required = False
-                        st.session_state.master_guard_failed = False
-                        st.query_params.clear()
-                        st.rerun()
+                        st.session_state.master_guard_challenge_required = False; st.session_state.master_guard_failed = False
+                        st.query_params.clear(); st.rerun()
                 return
-
             master_pk = st.text_input(
                 "Account Passkey",
                 type="password",
@@ -4914,45 +3764,30 @@ def landing_page():
             )
             if second_attempt:
                 st.info("Security verification completed. Please enter the passkey again.")
-
             g1, g2 = st.columns(2)
             with g1:
                 if st.button("Open Overall Admin DI", use_container_width=True, type="primary", key="master_open"):
                     if master_passkey_gate(master_pk):
-                        st.session_state.master_guard_challenge_required = True
-                        st.session_state.master_guard_failed = False
+                        st.session_state.master_guard_challenge_required = True; st.session_state.master_guard_failed = False
                         st.rerun()
                     else:
                         if second_attempt:
-                            st.warning("The second passkey attempt was incorrect. Returning to DACRE.")
-                            st.session_state.master_captcha_required = False
-                            st.session_state.master_captcha_passed = False
-                            st.session_state.master_second_attempt = False
-                            st.session_state.master_guard_challenge_required = False
-                            st.session_state.master_guard_failed = False
-                            st.query_params.clear()
-                            st.rerun()
+                            st.warning("The second passkey attempt was incorrect. Returning to DACRE."); st.session_state.master_captcha_required = False
+                            st.session_state.master_captcha_passed = False; st.session_state.master_second_attempt = False
+                            st.session_state.master_guard_challenge_required = False; st.session_state.master_guard_failed = False
+                            st.query_params.clear(); st.rerun()
                         else:
-                            st.session_state.master_captcha_required = True
-                            st.session_state.master_captcha_passed = False
-                            st.session_state.master_second_attempt = False
-                            st.rerun()
+                            st.session_state.master_captcha_required = True; st.session_state.master_captcha_passed = False
+                            st.session_state.master_second_attempt = False; st.rerun()
             with g2:
                 if st.button("Return to DACRE", use_container_width=True, key="master_return_2"):
-                    st.session_state.master_captcha_required = False
-                    st.session_state.master_captcha_passed = False
-                    st.session_state.master_second_attempt = False
-                    st.query_params.clear()
+                    st.session_state.master_captcha_required = False; st.session_state.master_captcha_passed = False
+                    st.session_state.master_second_attempt = False; st.query_params.clear()
                     st.rerun()
         return
-
-    logo_uri = _dacre_logo_data_uri()
-    logo = f'<img src="{logo_uri}" alt="DACRE" class="brand-logo"/>' if logo_uri else '<span class="brand-fallback">D</span>'
-
-    # Landing stylesheet — white enterprise website, black typography, DACRE blue.
+    logo_uri = _dacre_logo_data_uri(); logo = f'<img src="{logo_uri}" alt="DACRE" class="brand-logo"/>' if logo_uri else '<span class="brand-fallback">D</span>'
     st.markdown("""
     <style>
-      #MainMenu, footer { visibility:hidden; }
       [data-testid="stSidebar"] { display:none; }
       .stApp { background:#f7f9fc !important; }
       .block-container { max-width:1480px !important; padding:18px 28px 55px !important; }
@@ -5030,40 +3865,29 @@ def landing_page():
 .dacre-landing .feature-icon{background:#0d2538;color:#58c7ff;border-color:#2c5a78}.dacre-landing .pill{background:#151c28;border-color:#33495f;color:#b9d4e8}.dacre-landing .cta{background:linear-gradient(135deg,#07101b,#11243a);border-color:#31516f}.dacre-landing .footer{border-top:1px solid #203149}.dacre-landing .auth-inner{background:#0b1422;border-color:#263b54}.dacre-landing .auth-title{color:#fff!important}
 </style>
     """, unsafe_allow_html=True)
-
-    current_section = st.session_state.get("landing_section", "home")
-    mode = st.session_state.get("landing_mode", "home")
-
+    current_section = st.session_state.get("landing_section", "home"); mode = st.session_state.get("landing_mode", "home")
     st.markdown(f"""
         <div class="dacre-nav">
           <div class="dacre-brand">{logo}<div><div class="dacre-brand-name">DACRE</div><div class="dacre-brand-sub">Powered by DI — David's Intelligence</div></div></div>
           <div class="system-ready"><span class="ready-dot"></span> DI ONLINE · DAVID'S INTELLIGENCE</div>
         </div>
         """, unsafe_allow_html=True)
-    
-    nav_items = [("Features", "features"), ("Intelligence", "intelligence"), ("Workforce", "workforce"), ("Analytics", "analytics"), ("Security", "security")]
-    nav_cols = st.columns([1.0, 1.0, 1.0, 1.0, 1.0, 0.85, 0.85])
+    nav_items = [("Features", "features"), ("Intelligence", "intelligence"), ("Workforce", "workforce"), ("Analytics", "analytics"), ("Security", "security")]; nav_cols = st.columns([1.0, 1.0, 1.0, 1.0, 1.0, 0.85, 0.85])
     for i, (label, target) in enumerate(nav_items):
         with nav_cols[i]:
             if st.button(label, key=f"landing_nav_{target}", use_container_width=True):
-                st.session_state.landing_section = target
-                st.session_state.landing_mode = "home"
+                st.session_state.landing_section = target; st.session_state.landing_mode = "home"
                 st.rerun()
     with nav_cols[5]:
         if st.button("Log In", key="landing_nav_login", use_container_width=True):
-            st.session_state.landing_mode = "login"
-            st.session_state.landing_section = "home"
+            st.session_state.landing_mode = "login"; st.session_state.landing_section = "home"
             st.rerun()
     with nav_cols[6]:
         if st.button("Get Started", key="landing_nav_signup", use_container_width=True, type="primary"):
-            st.session_state.landing_mode = "signup"
-            st.session_state.landing_section = "home"
+            st.session_state.landing_mode = "signup"; st.session_state.landing_section = "home"
             st.rerun()
-
-    # Dedicated auth pages
     if mode in ("login", "signup"):
-        title = "Sign in to DACRE" if mode == "login" else "Create your DACRE account"
-        subtitle = "Open your real DACRE workspace." if mode == "login" else "Start your own connected business intelligence workspace."
+        title = "Sign in to DACRE" if mode == "login" else "Create your DACRE account"; subtitle = "Open your real DACRE workspace." if mode == "login" else "Start your own connected business intelligence workspace."
         action_word = "Sign In" if mode == "login" else "Create Account"
         st.markdown(f"""
         <div class="page-hero">
@@ -5078,12 +3902,9 @@ def landing_page():
         """, unsafe_allow_html=True)
         _landing_auth_panel()
         if st.button("← Back to DACRE Landing Page", key="auth_page_back", use_container_width=True):
-            st.session_state.landing_mode = "home"
-            st.session_state.landing_section = "home"
+            st.session_state.landing_mode = "home"; st.session_state.landing_section = "home"
             st.rerun()
         return
-
-    # Dedicated information pages
     if current_section == "features":
         st.markdown("""
         <div class="page-hero">
@@ -5103,10 +3924,8 @@ def landing_page():
         </div>
         """, unsafe_allow_html=True)
         if st.button("Use these DACRE features", key="features_cta", use_container_width=True, type="primary"):
-            st.session_state.landing_mode = "signup"
-            st.session_state.landing_section = "home"
+            st.session_state.landing_mode = "signup"; st.session_state.landing_section = "home"
             st.rerun()
-
     elif current_section == "intelligence":
         st.markdown("""
         <div class="page-hero">
@@ -5124,10 +3943,8 @@ def landing_page():
         </div>
         """, unsafe_allow_html=True)
         if st.button("Create a workspace and use DI", key="intelligence_cta", use_container_width=True, type="primary"):
-            st.session_state.landing_mode = "signup"
-            st.session_state.landing_section = "home"
+            st.session_state.landing_mode = "signup"; st.session_state.landing_section = "home"
             st.rerun()
-
     elif current_section == "workforce":
         st.markdown("""
         <div class="page-hero">
@@ -5147,10 +3964,8 @@ def landing_page():
         </div>
         """, unsafe_allow_html=True)
         if st.button("Open the DI Workforce in DACRE", key="workforce_cta", use_container_width=True, type="primary"):
-            st.session_state.landing_mode = "signup"
-            st.session_state.landing_section = "home"
+            st.session_state.landing_mode = "signup"; st.session_state.landing_section = "home"
             st.rerun()
-
     elif current_section == "analytics":
         st.markdown("""
         <div class="page-hero">
@@ -5174,10 +3989,8 @@ def landing_page():
         </div>
         """, unsafe_allow_html=True)
         if st.button("Use DACRE Analytics", key="analytics_cta", use_container_width=True, type="primary"):
-            st.session_state.landing_mode = "signup"
-            st.session_state.landing_section = "home"
+            st.session_state.landing_mode = "signup"; st.session_state.landing_section = "home"
             st.rerun()
-
     elif current_section == "security":
         st.markdown("""
         <div class="page-hero">
@@ -5195,12 +4008,9 @@ def landing_page():
         </div>
         """, unsafe_allow_html=True)
         if st.button("Create a secure DACRE workspace", key="security_cta", use_container_width=True, type="primary"):
-            st.session_state.landing_mode = "signup"
-            st.session_state.landing_section = "home"
+            st.session_state.landing_mode = "signup"; st.session_state.landing_section = "home"
             st.rerun()
-
     else:
-        # Main landing page
         st.markdown(f"""
         <div class="hero">
           <div>
@@ -5216,7 +4026,6 @@ def landing_page():
           <div class="hero-visual-host"></div>
         </div>
         """, unsafe_allow_html=True)
-
         hero_dashboard_html = """
         <style>
           *{box-sizing:border-box}html,body{margin:0;padding:0;background:transparent;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#f7fbff;overflow:hidden}
@@ -5229,25 +4038,17 @@ def landing_page():
         </style>
         <div class="visual"><div class="orb"></div><div class="card"><div class="badge">LIVE DI INSIGHT</div><div class="top"><span>DACRE / ANALYTICS</span><span class="live"><span class="dot"></span>DI ONLINE</span></div><div class="label">Revenue Growth</div><div class="metric">$2.4M <span class="up">OPEN 18.2%</span></div><div class="bars"><div class="bar" style="height:38%"></div><div class="bar" style="height:55%"></div><div class="bar" style="height:44%"></div><div class="bar" style="height:68%"></div><div class="bar" style="height:59%"></div><div class="bar" style="height:78%"></div><div class="bar" style="height:66%"></div><div class="bar" style="height:88%"></div><div class="bar" style="height:76%"></div><div class="bar" style="height:92%"></div></div><div class="mini-grid"><div class="mini"><div class="mini-label">Data Points</div><div class="mini-value">4.2M</div></div><div class="mini"><div class="mini-label">System Health</div><div class="mini-value mini-accent">99.98%</div></div></div></div></div>
         """
-        components.html(hero_dashboard_html, height=500, scrolling=False)
-
-        render_uniel_landing_guide()
-        render_dacre_capability_showcase()
-
-        b1, b2, b3 = st.columns([1, 1.2, 1])
+        components.html(hero_dashboard_html, height=500, scrolling=False); render_uniel_landing_guide()
+        render_dacre_capability_showcase(); b1, b2, b3 = st.columns([1, 1.2, 1])
         with b1:
             if st.button("Explore DACRE", key="landing_explore", use_container_width=True):
-                st.session_state.landing_mode = "signup"
-                st.rerun()
+                st.session_state.landing_mode = "signup"; st.rerun()
         with b2:
             if st.button("Get Started Free", key="landing_get_started", use_container_width=True, type="primary"):
-                st.session_state.landing_mode = "signup"
-                st.rerun()
+                st.session_state.landing_mode = "signup"; st.rerun()
         with b3:
             if st.button("Log In", key="landing_log_in", use_container_width=True):
-                st.session_state.landing_mode = "login"
-                st.rerun()
-
+                st.session_state.landing_mode = "login"; st.rerun()
         st.markdown("""
         <div class="section">
           <div class="section-head"><div class="section-kicker">THE DACRE PLATFORM</div><div class="section-title">One intelligence layer for the work that matters.</div><div class="section-copy">Explore the five core aspects of DACRE — each one is a real page connected to this application.</div></div>
@@ -5261,65 +4062,43 @@ def landing_page():
           </div>
         </div>
         """, unsafe_allow_html=True)
-
         page_cols = st.columns(5)
         for col, label, target in zip(page_cols, ["Features","Intelligence","Workforce","Analytics","Security"], ["features","intelligence","workforce","analytics","security"]):
             with col:
                 if st.button(label, key=f"landing_card_{target}", use_container_width=True):
-                    st.session_state.landing_section = target
-                    st.rerun()
-
+                    st.session_state.landing_section = target; st.rerun()
         st.markdown("""
         <div class="cta"><div class="section-kicker">START YOUR WORKSPACE</div><h2>Create your DACRE account.</h2><p>Move from scattered information to a connected business intelligence workspace powered by DI — David's Intelligence.</p></div>
         """, unsafe_allow_html=True)
         cta1, cta2 = st.columns([1, 1])
         with cta1:
             if st.button("Create Your DACRE Account", key="landing_bottom_signup", use_container_width=True, type="primary"):
-                st.session_state.landing_mode = "signup"
-                st.rerun()
+                st.session_state.landing_mode = "signup"; st.rerun()
         with cta2:
             if st.button("Already have an account? Sign In", key="landing_bottom_login", use_container_width=True):
-                st.session_state.landing_mode = "login"
-                st.rerun()
-
+                st.session_state.landing_mode = "login"; st.rerun()
     st.markdown("""
     <div class="footer"><span>© DACRE Analysis · Business & Data Intelligence</span><span>Powered by DI — David's Intelligence</span></div>
     """, unsafe_allow_html=True)
-
     if current_section != "home":
         c1, c2, c3 = st.columns([1, 1, 1])
         with c1:
             if st.button("← Back to Landing", key="section_back", use_container_width=True):
-                st.session_state.landing_section = "home"
-                st.rerun()
+                st.session_state.landing_section = "home"; st.rerun()
         with c2:
             if st.button("Create Your DACRE Account", key="section_signup", use_container_width=True, type="primary"):
-                st.session_state.landing_mode = "signup"
-                st.rerun()
+                st.session_state.landing_mode = "signup"; st.rerun()
         with c3:
             if st.button("Sign In", key="section_login", use_container_width=True):
-                st.session_state.landing_mode = "login"
-                st.rerun()
-
-# =============================================================================
-# ENHANCED FEATURES - GLOBAL MARKETS
-# =============================================================================
-
+                st.session_state.landing_mode = "login"; st.rerun()
 class GlobalBusinessIntelligence:
-    """Worldwide business intelligence with real-time data."""
-    
     def __init__(self):
-        self.market_data = {}
-        self.currencies = {}
-        self.commodities = {}
-        self.yf_available = YFINANCE_AVAILABLE
-    
+        self.market_data = {}; self.currencies = {}
+        self.commodities = {}; self.yf_available = YFINANCE_AVAILABLE
     def get_market_data(self, symbol: str) -> Dict:
-        """Get real-time market data for a symbol."""
         try:
             if self.yf_available:
-                ticker = yf.Ticker(symbol)
-                info = ticker.info
+                ticker = yf.Ticker(symbol); info = ticker.info
                 return {
                     "symbol": symbol,
                     "name": info.get("longName", symbol),
@@ -5334,11 +4113,8 @@ class GlobalBusinessIntelligence:
                 }
         except Exception as e:
             print(f"Market data error for {symbol}: {e}")
-        
         return {"symbol": symbol, "error": "Data not available"}
-    
     def get_currency_rates(self, base: str = "USD") -> Dict:
-        """Get real-time currency exchange rates."""
         try:
             response = requests.get(
                 f"https://api.exchangerate-api.com/v4/latest/{base}",
@@ -5354,14 +4130,10 @@ class GlobalBusinessIntelligence:
                 }
         except Exception as e:
             print(f"Currency API error: {e}")
-        
         return {"base": base, "rates": {}, "error": "Rates unavailable"}
-    
     def get_commodity_prices(self, commodities: List[str] = None) -> Dict:
-        """Get real-time commodity prices."""
         if commodities is None:
             commodities = ["gold", "silver", "oil", "copper", "natural_gas"]
-        
         result = {}
         symbols = {
             "gold": "GC=F",
@@ -5370,7 +4142,6 @@ class GlobalBusinessIntelligence:
             "copper": "HG=F",
             "natural_gas": "NG=F"
         }
-        
         for commodity in commodities:
             symbol = symbols.get(commodity.lower())
             if symbol:
@@ -5380,11 +4151,8 @@ class GlobalBusinessIntelligence:
                     "change": f"{data.get('change_percent', 0):.2f}%",
                     "updated": data.get("updated_at", datetime.now().isoformat())
                 }
-        
         return result
-    
     def analyze_region(self, region: str) -> Dict:
-        """Analyze business conditions for a specific region."""
         regions = {
             "africa": {
                 "gdp_growth": "3.5%",
@@ -5443,33 +4211,21 @@ class GlobalBusinessIntelligence:
             }
         }
         return regions.get(region.lower(), {"error": "Region not found"})
-
 def render_global_markets_dashboard():
-    """Render global markets dashboard with real-time data."""
     st.markdown("""
     <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
         <h1 style="color:white;">DATA Global Markets</h1>
         <p style="color:#94a3b8;">Real-time market data from around the world</p>
     </div>
     """, unsafe_allow_html=True)
-    
-    # Initialize Global Business Intelligence
-    bi = GlobalBusinessIntelligence()
-    
-    # Currency rates
-    st.subheader(" Currency Exchange Rates")
+    bi = GlobalBusinessIntelligence(); st.subheader(" Currency Exchange Rates")
     rates = bi.get_currency_rates("USD")
     if rates.get("rates"):
-        cols = st.columns(8)
-        currencies = ["EUR", "GBP", "NGN", "KES", "ZAR", "AED", "INR", "CNY"]
+        cols = st.columns(8); currencies = ["EUR", "GBP", "NGN", "KES", "ZAR", "AED", "INR", "CNY"]
         for idx, currency in enumerate(currencies):
             with cols[idx % 8]:
-                rate = rates["rates"].get(currency, 0)
-                st.metric(currency, f"{rate:.4f}")
-    
-    # Market indices
-    st.subheader("INSIGHTS Market Indices")
-    indices = ["AAPL", "GOOGL", "MSFT", "AMZN", "META", "TSLA", "NVDA", "AMD", "NFLX", "JPM"]
+                rate = rates["rates"].get(currency, 0); st.metric(currency, f"{rate:.4f}")
+    st.subheader("INSIGHTS Market Indices"); indices = ["AAPL", "GOOGL", "MSFT", "AMZN", "META", "TSLA", "NVDA", "AMD", "NFLX", "JPM"]
     cols = st.columns(5)
     for idx, symbol in enumerate(indices):
         with cols[idx % 5]:
@@ -5480,10 +4236,7 @@ def render_global_markets_dashboard():
                     f"${data['price']:,.2f}",
                     f"{data.get('change_percent', 0):.2f}%"
                 )
-    
-    # Commodities
-    st.subheader("️ Commodity Prices")
-    commodities = bi.get_commodity_prices(["Gold", "Silver", "Oil", "Copper", "Natural Gas"])
+    st.subheader("️ Commodity Prices"); commodities = bi.get_commodity_prices(["Gold", "Silver", "Oil", "Copper", "Natural Gas"])
     cols = st.columns(5)
     for idx, (name, data) in enumerate(commodities.items()):
         with cols[idx % 5]:
@@ -5492,18 +4245,12 @@ def render_global_markets_dashboard():
                 f"${data['price']:,.2f}" if isinstance(data.get('price'), (int, float)) else data.get('price', 'N/A'),
                 data.get('change', 'N/A')
             )
-    
-    # Region analysis
-    st.subheader("GLOBAL Regional Business Intelligence")
-    regions = ["Africa", "Asia", "Europe", "North America", "South America"]
-    selected_region = st.selectbox("Select Region", regions)
-    
-    region_data = bi.analyze_region(selected_region)
+    st.subheader("GLOBAL Regional Business Intelligence"); regions = ["Africa", "Asia", "Europe", "North America", "South America"]
+    selected_region = st.selectbox("Select Region", regions); region_data = bi.analyze_region(selected_region)
     if region_data and "error" not in region_data:
         col1, col2 = st.columns(2)
         with col1:
-            st.metric("GDP Growth", region_data.get("gdp_growth", "N/A"))
-            st.metric("Inflation", region_data.get("inflation", "N/A"))
+            st.metric("GDP Growth", region_data.get("gdp_growth", "N/A")); st.metric("Inflation", region_data.get("inflation", "N/A"))
             st.metric("Business Confidence", region_data.get("business_confidence", "N/A"))
         with col2:
             st.markdown("### Opportunities")
@@ -5512,11 +4259,6 @@ def render_global_markets_dashboard():
             st.markdown("### Key Markets")
             for market in region_data.get("key_markets", []):
                 st.markdown(f" {market}")
-
-# =============================================================================
-# SESSION STATE BOOTSTRAP
-# =============================================================================
-
 _SESSION_DEFAULTS = {
     "user": None,
     "master_route": False,
@@ -5560,7 +4302,6 @@ _SESSION_DEFAULTS = {
     "selected_page": "Overview",
     "manage_app_unlocked": False,
 }
-
 for _key, _default in _SESSION_DEFAULTS.items():
     if _key not in st.session_state:
         if isinstance(_default, list):
@@ -5569,13 +4310,7 @@ for _key, _default in _SESSION_DEFAULTS.items():
             st.session_state[_key] = dict(_default)
         else:
             st.session_state[_key] = _default
-
-# =============================================================================
-# SELF-HEALING DATABASE & ERROR SHIELD
-# =============================================================================
-
 def self_healing_database():
-    """Self-healing database function."""
     try:
         con = db()
         required_tables = [
@@ -5588,43 +4323,32 @@ def self_healing_database():
             'david_creations', 'call_rooms', 'call_participants',
             'decision_ledger', 'opportunity_radar', 'di_action_log'
         ]
-        
         repaired = []
         for table in required_tables:
             try:
                 con.execute(f"SELECT 1 FROM {table} LIMIT 1")
             except:
                 try:
-                    init_db()
-                    repaired.append(table)
+                    init_db(); repaired.append(table)
                 except:
                     pass
-        
-        con.commit()
-        con.close()
-        
+        con.commit(); con.close()
         return {
             "status": "healthy",
             "repaired": repaired,
             "tables": len(required_tables),
             "timestamp": datetime.now().isoformat()
         }
-        
     except Exception as e:
         return {
             "status": "error",
             "error": str(e),
             "timestamp": datetime.now().isoformat()
         }
-
 class ErrorShield:
-    """Error Shield - catches runtime failures."""
-    
     def __init__(self):
-        self.errors = []
-        self.recoveries = []
+        self.errors = []; self.recoveries = []
         self.shield_active = True
-    
     def protect(self, func, *args, **kwargs):
         try:
             return func(*args, **kwargs)
@@ -5635,7 +4359,6 @@ class ErrorShield:
                 "timestamp": datetime.now().isoformat()
             })
             return None
-    
     def get_status(self):
         return {
             "shield_active": self.shield_active,
@@ -5644,15 +4367,11 @@ class ErrorShield:
             "last_error": self.errors[-1] if self.errors else None,
             "last_recovery": self.recoveries[-1] if self.recoveries else None
         }
-
 def generate_di_grid_image() -> Optional[bytes]:
-    """Generate a 3x4 grid of REAL AI DI agent portraits."""
     if not GENAI_AVAILABLE:
         return None
-    
     try:
         client = genai.Client()
-        
         prompt_text = (
             "A 3x4 grid collage featuring 12 individual portraits of diverse male and female "
             "professional business AI androids in a sleek, high-tech corporate laboratory. "
@@ -5661,7 +4380,6 @@ def generate_di_grid_image() -> Optional[bytes]:
             "They are dressed in professional business attire: suits, blazers, and formal wear. "
             "Clean, professional lighting, cinematic style, sharp detail, 8k resolution."
         )
-        
         response = client.models.generate_images(
             model='imagen-3.0-generate-002',
             prompt=prompt_text,
@@ -5671,57 +4389,27 @@ def generate_di_grid_image() -> Optional[bytes]:
                 output_mime_type="image/jpeg"
             )
         )
-        
         if response.generated_images:
             image_bytes = response.generated_images[0].image.image_bytes
             with open("di_grid_portraits.jpg", "wb") as f:
                 f.write(image_bytes)
             return image_bytes
-        
     except Exception as e:
         print(f"DI Grid generation error: {e}")
-    
     return None
-
-# =============================================================================
-# INITIALIZATION - PRODUCTION CORE
-# =============================================================================
-
 def init_production_core():
-    """Initialize the DACRE Production Core."""
-    # Initialize Error Shield
     if 'error_shield' not in st.session_state:
         st.session_state.error_shield = ErrorShield()
-    
-    # Run self-healing database
-    health = self_healing_database()
-    st.session_state.db_health = health
-    
-    # Ensure all DI agents have proper schema
-    ensure_di_agent_columns()
-    
-    # Ensure master account exists
-    ensure_master()
-    
-    # Seed DI memory if empty
-    seed_di_memory()
-    
-    # Seed DI workforce if empty
-    seed_named_di_workforce()
-    
+    health = self_healing_database(); st.session_state.db_health = health
+    ensure_di_agent_columns(); ensure_master()
+    seed_di_memory(); seed_named_di_workforce()
     return {
         "core_initialized": True,
         "database_health": health,
         "shield_status": st.session_state.error_shield.get_status() if st.session_state.error_shield else None,
         "timestamp": datetime.now().isoformat()
     }
-
-# =============================================================================
-# RENDER PRODUCTION CORE VISUAL
-# =============================================================================
-
 def render_dacre_production_core():
-    """Display the DACRE Production Core architecture diagram."""
     st.markdown("""
     <style>
     .dacre-core-container {
@@ -5731,12 +4419,10 @@ def render_dacre_production_core():
         margin: 20px 0;
         border: 2px solid rgba(75, 130, 245, 0.3);
         box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-        position: relative;
-        overflow: hidden;
+        position: relative;; overflow: hidden;
     }
     .dacre-core-container::before {
-        content: '';
-        position: absolute;
+        content: '';; position: absolute;
         top: -50%;
         left: -50%;
         width: 200%;
@@ -5779,8 +4465,7 @@ def render_dacre_production_core():
         border: 1px solid rgba(75,130,245,0.2);
         transition: all 0.3s ease;
         backdrop-filter: blur(10px);
-        position: relative;
-        overflow: hidden;
+        position: relative;; overflow: hidden;
     }
     .core-card:hover {
         transform: translateY(-5px);
@@ -5872,10 +4557,8 @@ def render_dacre_production_core():
         .core-stats { grid-template-columns: 1fr 1fr; }
     }
     </style>
-    
     <div class="dacre-core-container">
         <div class="core-title">FAST DACRE <span>PRODUCTION CORE</span></div>
-        
         <div class="core-grid">
             <div class="core-card">
                 <span class="icon">REFRESH</span>
@@ -5890,7 +4573,6 @@ def render_dacre_production_core():
                 </div>
                 <span class="status status-online">ONLINE ONLINE</span>
             </div>
-            
             <div class="core-card">
                 <span class="icon">DI</span>
                 <h3>DI Intelligence</h3>
@@ -5904,7 +4586,6 @@ def render_dacre_production_core():
                 </div>
                 <span class="status status-active"> ACTIVE</span>
             </div>
-            
             <div class="core-card">
                 <span class="icon">SECURITY</span>
                 <h3>Error Shield</h3>
@@ -5919,11 +4600,9 @@ def render_dacre_production_core():
                 <span class="status status-ready"> READY</span>
             </div>
         </div>
-        
         <div class="core-bottom">
             <h2>⬇ ONE <span>STABLE</span> DACRE APP ⬇</h2>
             <p>All systems integrated · 99.98% uptime · Enterprise ready</p>
-            
             <div class="core-stats">
                 <div class="core-stat">
                     <div class="number">20</div>
@@ -5945,28 +4624,14 @@ def render_dacre_production_core():
         </div>
     </div>
     """, unsafe_allow_html=True)
-
-# =============================================================================
-# MAIN APPLICATION - PAGE ROUTING
-# =============================================================================
-
-
-# =============================================================================
-# RENDER FUNCTIONS FOR EACH PAGE
-# =============================================================================
-
 def render_di_home(user):
-    """Render the DI Home page."""
     df = st.session_state.processed_df
-    
     st.markdown("""
     <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
         <h1 style="color:white;"> DI Home</h1>
         <p style="color:#94a3b8;">Your continuous conversation with DI — David's Intelligence</p>
     </div>
     """, unsafe_allow_html=True)
-    
-    # Display chat history
     for msg in st.session_state.chat_history[-20:]:
         if msg["sender"] == "DI":
             st.markdown(f"""
@@ -5982,81 +4647,52 @@ def render_di_home(user):
                 <p style="color:white;margin-top:5px;">{msg['text']}</p>
             </div>
             """, unsafe_allow_html=True)
-    
-    # Input
     with st.form("di_home_form", clear_on_submit=True):
         col1, col2 = st.columns([6, 1])
         with col1:
             message = st.text_input("Ask DI anything...", label_visibility="collapsed", placeholder="Type your question here...")
         with col2:
             submitted = st.form_submit_button("Send", type="primary")
-    
     if submitted and message.strip():
-        st.session_state.chat_history.append({"sender": user.get("first_name", "User"), "text": message})
-        
-        # Use the enhanced di_reply function
-        reply = enhanced_di_reply(message, user, df, allow_online=True, language=st.session_state.get("di_language", "English — Nigeria"))
-        
-        st.session_state.chat_history.append({"sender": "DI", "text": reply})
-        
-        # Save to database
-        con = db()
+        st.session_state.chat_history.append({"sender": user.get("first_name", "User"), "text": message}); reply = enhanced_di_reply(message, user, df, allow_online=True, language=st.session_state.get("di_language", "English — Nigeria"))
+        st.session_state.chat_history.append({"sender": "DI", "text": reply}); con = db()
         now = datetime.now().isoformat(timespec="seconds")
         con.execute("INSERT INTO chat_history(username, company_name, sender, message, created_at) VALUES(?,?,?,?,?)",
                    (user["username"], user["company"], user.get("first_name", "User"), message, now))
         con.execute("INSERT INTO chat_history(username, company_name, sender, message, created_at) VALUES(?,?,?,?,?)",
                    (user["username"], user["company"], "DI", reply, now))
-        con.commit()
-        con.close()
-        
+        con.commit(); con.close()
         st.rerun()
-
 def render_di_workforce(user):
-    """Render the DI Workforce page."""
     agents = get_di_agents()
-    
     st.markdown("""
     <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
         <h1 style="color:white;">USERS DI Workforce</h1>
         <p style="color:#94a3b8;">Your specialized digital workforce — each DI has its own identity, specialty, and style</p>
     </div>
     """, unsafe_allow_html=True)
-    
     if not agents:
-        st.info("No DI workers have been created yet.")
-        return
-    
-    # Display agents in grid
+        st.info("No DI workers have been created yet."); return
     cols = st.columns(3)
     for idx, agent in enumerate(agents):
         with cols[idx % 3]:
             with st.container():
-                avatar = agent.get("avatar_url") or f"https://api.dicebear.com/7.x/avataaars/svg?seed={agent['di_name']}"
-                st.image(avatar, width=120)
-                st.markdown(f"### {agent['di_name']}")
-                st.caption(f"Specialty: {agent.get('specialty', 'General')}")
-                st.caption(f"Position: {agent.get('position_title', 'DI Specialist')}")
-                st.caption(f"Rank: {agent.get('rank_level', 1)}")
+                avatar = agent.get("avatar_url") or f"https://api.dicebear.com/7.x/avataaars/svg?seed={agent['di_name']}"; st.image(avatar, width=120)
+                st.markdown(f"### {agent['di_name']}"); st.caption(f"Specialty: {agent.get('specialty', 'General')}")
+                st.caption(f"Position: {agent.get('position_title', 'DI Specialist')}"); st.caption(f"Rank: {agent.get('rank_level', 1)}")
                 st.caption(f"Status: {agent.get('status', 'Available')}")
-                
                 if st.button(f" Chat with {agent['di_name']}", key=f"chat_{agent['di_name']}"):
-                    st.session_state.selected_agent = agent['di_name']
-                    st.rerun()
-
+                    st.session_state.selected_agent = agent['di_name']; st.rerun()
 def render_di_calls(user):
-    """Render the DI Calls page."""
     st.markdown("""
     <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
         <h1 style="color:white;"> DI Calls</h1>
         <p style="color:#94a3b8;">Business calls, DI calls, and team rooms with a meeting-ready workspace</p>
     </div>
     """, unsafe_allow_html=True)
-    
     agents = get_di_agents()
     if not agents:
-        st.info("No DI workers available for calls.")
-        return
-    
+        st.info("No DI workers available for calls."); return
     selected_agent = st.selectbox("Select a DI to call", [a['di_name'] for a in agents])
     if selected_agent:
         agent = next(a for a in agents if a['di_name'] == selected_agent)
@@ -6066,24 +4702,17 @@ def render_di_calls(user):
             <p style="color:#94a3b8;">Specialty: {agent.get('specialty', 'General')}</p>
         </div>
         """, unsafe_allow_html=True)
-        
         if st.button(" Start Call", use_container_width=True, type="primary"):
             st.info(f"Calling {selected_agent}... (LiveKit integration required for full voice)")
-
 def render_chibobec_loan_desk(user):
-    """Render the Chibobec Loan Desk page."""
     if not is_chibobec_company(user.get("company")):
-        st.warning("This page is only available for Chibobec Loan Service clients.")
-        return
-    
+        st.warning("This page is only available for Chibobec Loan Service clients."); return
     st.markdown(f"""
     <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
         <h1 style="color:white;">₦ Chibobec Loan Desk</h1>
         <p style="color:#94a3b8;">Welcome, {CHIBOBEC_OWNER_NAME}. Manage your loan clients and reminders.</p>
     </div>
     """, unsafe_allow_html=True)
-    
-    # Run reminder checks
     results = process_chibobec_reminders(user["username"], user["company"])
     if results:
         for client_name, reminder_type, ok, status in results:
@@ -6091,28 +4720,20 @@ def render_chibobec_loan_desk(user):
                 st.success(f"OK {reminder_type} sent to {client_name}")
             else:
                 st.warning(f"WARNING {reminder_type} for {client_name}: {status}")
-    
-    # Add loan client form
     with st.expander(" Add Loan Client", expanded=True):
         with st.form("add_loan_form", clear_on_submit=True):
             col1, col2 = st.columns(2)
             with col1:
-                client_name = st.text_input("Client Name")
-                whatsapp = st.text_input("WhatsApp Number")
+                client_name = st.text_input("Client Name"); whatsapp = st.text_input("WhatsApp Number")
                 amount = st.number_input("Loan Amount (₦)", min_value=0.0, step=1000.0)
             with col2:
-                lent_date = st.date_input("Date Given", value=datetime.now().date())
-                due_date = st.date_input("Due Date", value=datetime.now().date() + timedelta(days=30))
-            
+                lent_date = st.date_input("Date Given", value=datetime.now().date()); due_date = st.date_input("Due Date", value=datetime.now().date() + timedelta(days=30))
             if st.form_submit_button("Save Loan Client", type="primary"):
                 ok, msg = add_loan_client(user["username"], user["company"], client_name, whatsapp, amount, lent_date, due_date)
                 if ok:
-                    st.success(msg)
-                    st.rerun()
+                    st.success(msg); st.rerun()
                 else:
                     st.error(msg)
-    
-    # Display loan clients
     con = db()
     loans = pd.read_sql_query(
         "SELECT id, client_name, whatsapp_number, loan_amount, lent_date, due_date, "
@@ -6120,139 +4741,89 @@ def render_chibobec_loan_desk(user):
         con, params=(user["username"], user["company"])
     )
     con.close()
-    
     if not loans.empty:
-        st.subheader(" Loan Book")
-        display = loans.copy()
-        display["loan_amount"] = display["loan_amount"].apply(lambda x: f"₦{float(x):,.2f}")
-        display["2-day"] = display["reminder_2_sent"].apply(lambda x: "OK" if x else "")
-        display["Due"] = display["due_sent"].apply(lambda x: "OK" if x else "")
-        display = display.drop(columns=["reminder_2_sent", "due_sent"])
+        st.subheader(" Loan Book"); display = loans.copy()
+        display["loan_amount"] = display["loan_amount"].apply(lambda x: f"₦{float(x):,.2f}"); display["2-day"] = display["reminder_2_sent"].apply(lambda x: "OK" if x else "")
+        display["Due"] = display["due_sent"].apply(lambda x: "OK" if x else ""); display = display.drop(columns=["reminder_2_sent", "due_sent"])
         st.dataframe(safe_dataframe_for_streamlit(display), use_container_width=True, hide_index=True)
     else:
         st.info("No loan clients added yet.")
-
 def render_workspace_data(user):
-    """Render the Workspace & Data page."""
     st.markdown("""
     <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
         <h1 style="color:white;">FILES Workspace & Data</h1>
         <p style="color:#94a3b8;">Upload, inspect, and clean your data</p>
     </div>
     """, unsafe_allow_html=True)
-    
-    # File upload
     file_upload = st.file_uploader("Upload dataset (CSV, Excel, TSV, JSON)", type=SUPPORTED_EXTENSIONS)
-    
     if file_upload is not None and st.button(" Import & Load Dataset", type="primary"):
         try:
-            df_raw = load_dataframe(file_upload)
-            st.session_state.raw_df = df_raw
-            st.session_state.processed_df = clean_dataframe(df_raw)
-            st.session_state.active_filename = file_upload.name
+            df_raw = load_dataframe(file_upload); st.session_state.raw_df = df_raw
+            st.session_state.processed_df = clean_dataframe(df_raw); st.session_state.active_filename = file_upload.name
             save_file(user, file_upload, st.session_state.processed_df)
             save_project(user, st.session_state.raw_df, st.session_state.processed_df, 
                         st.session_state.active_filename, st.session_state.formula_logs, st.session_state.chart_config)
-            st.success(f"OK Loaded '{file_upload.name}' successfully!")
-            st.rerun()
+            st.success(f"OK Loaded '{file_upload.name}' successfully!"); st.rerun()
         except Exception as exc:
             st.error(f"ERROR Could not load the dataset: {exc}")
-    
-    # Display active dataset
     if st.session_state.processed_df is not None:
-        df = st.session_state.processed_df
-        st.subheader(f"DATA Active File: {st.session_state.active_filename}")
-        
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Total Rows", f"{len(df):,}")
-        col2.metric("Total Columns", len(df.columns))
-        col3.metric("Duplicates Removed", int(st.session_state.raw_df.duplicated().sum()) if st.session_state.raw_df is not None else 0)
-        
+        df = st.session_state.processed_df; st.subheader(f"DATA Active File: {st.session_state.active_filename}")
+        col1, col2, col3 = st.columns(3); col1.metric("Total Rows", f"{len(df):,}")
+        col2.metric("Total Columns", len(df.columns)); col3.metric("Duplicates Removed", int(st.session_state.raw_df.duplicated().sum()) if st.session_state.raw_df is not None else 0)
         st.dataframe(safe_dataframe_for_streamlit(df), use_container_width=True)
-        
         if st.button(" Save Project State", use_container_width=True):
             save_project(user, st.session_state.raw_df, df, st.session_state.active_filename, 
                         st.session_state.formula_logs, st.session_state.chart_config)
-            log_activity(user["username"], user["company"], "Saved project state")
-            st.toast("Project saved successfully!")
+            log_activity(user["username"], user["company"], "Saved project state"); st.toast("Project saved successfully!")
     else:
         st.info("EMPTY No active dataset. Upload a file or restore a saved project by signing in again.")
-
 def render_formula_lab(user):
-    """Render the Formula Lab page."""
     st.markdown("""
     <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
         <h1 style="color:white;">ƒ Formula Lab</h1>
         <p style="color:#94a3b8;">Practical spreadsheet-style formulas and transformations</p>
     </div>
     """, unsafe_allow_html=True)
-    
     df = st.session_state.processed_df
     if df is None:
-        st.warning("WARNING Please upload or open a dataset first.")
-        return
-    
-    formula = st.selectbox("Formula Operation", SHEET_FORMULAS)
-    cols = list(df.columns)
-    
+        st.warning("WARNING Please upload or open a dataset first."); return
+    formula = st.selectbox("Formula Operation", SHEET_FORMULAS); cols = list(df.columns)
     if formula in ["SUM", "AVERAGE", "COUNT", "COUNTA", "MAX", "MIN", "UPPER", "LOWER", "TRIM"]:
         target_col = st.selectbox("Target Column", cols)
         if st.button("SEND️ Run Formula", type="primary"):
             res = apply_formula(df, formula, {"column": target_col})
             if isinstance(res, tuple) and res[0] == "column":
-                df[res[1]] = res[2]
-                st.session_state.processed_df = df
-                st.session_state.formula_logs.append(f"Applied {formula} on {target_col}")
-                log_activity(user["username"], user["company"], f"Ran formula {formula} on {target_col}")
-                st.success(f"OK Applied {formula} on '{target_col}'!")
-                st.rerun()
+                df[res[1]] = res[2]; st.session_state.processed_df = df
+                st.session_state.formula_logs.append(f"Applied {formula} on {target_col}"); log_activity(user["username"], user["company"], f"Ran formula {formula} on {target_col}")
+                st.success(f"OK Applied {formula} on '{target_col}'!"); st.rerun()
             else:
-                st.markdown(f"### Result: `{res}`")
-                st.session_state.formula_logs.append(f"{formula}({target_col}) = {res}")
-    
+                st.markdown(f"### Result: `{res}`"); st.session_state.formula_logs.append(f"{formula}({target_col}) = {res}")
     elif formula == "CONCATENATE":
-        first = st.selectbox("First Column", cols)
-        second = st.selectbox("Second Column", cols, index=min(1, len(cols)-1))
-        new_col = st.text_input("New Column Name", value="Combined")
-        sep = st.text_input("Separator", value=" ")
-        
+        first = st.selectbox("First Column", cols); second = st.selectbox("Second Column", cols, index=min(1, len(cols)-1))
+        new_col = st.text_input("New Column Name", value="Combined"); sep = st.text_input("Separator", value=" ")
         if st.button("SEND️ Run CONCATENATE", type="primary"):
-            df[new_col] = df[first].astype(str) + sep + df[second].astype(str)
-            st.session_state.processed_df = df
-            log_activity(user["username"], user["company"], f"Created concatenated column {new_col}")
-            st.success(f"OK Created '{new_col}'!")
+            df[new_col] = df[first].astype(str) + sep + df[second].astype(str); st.session_state.processed_df = df
+            log_activity(user["username"], user["company"], f"Created concatenated column {new_col}"); st.success(f"OK Created '{new_col}'!")
             st.rerun()
-
 def render_charts(user):
-    """Render the Charts page."""
     st.markdown("""
     <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
         <h1 style="color:white;">DATA Charts</h1>
         <p style="color:#94a3b8;">Turn data into clear visual stories and business dashboards</p>
     </div>
     """, unsafe_allow_html=True)
-    
     df = st.session_state.processed_df
     if df is None:
-        st.warning("WARNING Please upload or open a dataset first.")
-        return
-    
-    chart_type = st.selectbox("Chart Type", ["Bar Chart", "Line Chart", "Area Chart", "Scatter Plot", "Pie Chart"])
-    cols = list(df.columns)
-    num_cols = df.select_dtypes(include=["number"]).columns.tolist()
-    
-    x_col = st.selectbox("X-Axis (Category Column)", cols)
+        st.warning("WARNING Please upload or open a dataset first."); return
+    chart_type = st.selectbox("Chart Type", ["Bar Chart", "Line Chart", "Area Chart", "Scatter Plot", "Pie Chart"]); cols = list(df.columns)
+    num_cols = df.select_dtypes(include=["number"]).columns.tolist(); x_col = st.selectbox("X-Axis (Category Column)", cols)
     y_col = st.selectbox("Y-Axis (Numeric Values)", num_cols if num_cols else cols)
-    
     if st.button("INSIGHTS Generate Chart", type="primary"):
-        st.session_state.chart_config = {"type": chart_type, "x": x_col, "y": y_col}
-        log_activity(user["username"], user["company"], f"Created {chart_type}: {x_col} vs {y_col}")
+        st.session_state.chart_config = {"type": chart_type, "x": x_col, "y": y_col}; log_activity(user["username"], user["company"], f"Created {chart_type}: {x_col} vs {y_col}")
         st.success("OK Chart generated!")
-    
     if st.session_state.chart_config:
         cfg = st.session_state.chart_config
         chart_data = df[[cfg["x"], cfg["y"]]].dropna().set_index(cfg["x"])
-        
         if cfg["type"] == "Bar Chart":
             st.bar_chart(chart_data)
         elif cfg["type"] == "Line Chart":
@@ -6265,21 +4836,17 @@ def render_charts(user):
             fig = go.Figure(data=[go.Pie(labels=chart_data.index, values=chart_data[cfg["y"]])])
             fig.update_layout(template='plotly_dark')
             st.plotly_chart(fig, use_container_width=True)
-
 def render_file_vault(user):
-    """Render the File Vault page."""
     st.markdown("""
     <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
         <h1 style="color:white;">DATABASE File Vault</h1>
         <p style="color:#94a3b8;">Keep company files, working datasets, and project artifacts organized</p>
     </div>
     """, unsafe_allow_html=True)
-    
     saved_files = get_files(user)
     if not saved_files:
         st.info("EMPTY No files stored in vault for your organization.")
         return
-    
     for fname, ftype, created, fjson in saved_files:
         col1, col2 = st.columns([3, 1])
         with col1:
@@ -6293,24 +4860,19 @@ def render_file_vault(user):
                 log_activity(user["username"], user["company"], f"Loaded file from vault: {fname}")
                 st.success(f"OK Loaded {fname} from Vault!")
                 st.rerun()
-
 def render_export_center(user):
-    """Render the Export Center page."""
     st.markdown("""
     <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
         <h1 style="color:white;">EXPORT Export Center</h1>
         <p style="color:#94a3b8;">Package analysis outputs for the people who need them</p>
     </div>
     """, unsafe_allow_html=True)
-    
     df = st.session_state.processed_df
     if df is None:
         st.warning("WARNING No data available to export.")
         return
-    
     csv_data = df.to_csv(index=False).encode("utf-8")
     excel_data = make_excel(df)
-    
     col1, col2 = st.columns(2)
     with col1:
         st.download_button(
@@ -6330,25 +4892,19 @@ def render_export_center(user):
             use_container_width=True,
             type="primary"
         )
-    
     log_activity(user["username"], user["company"], "Opened Export Center")
-
 def render_organization_admin(user):
-    """Render the Organization Admin Portal."""
     st.markdown("""
     <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
         <h1 style="color:white;">SETTINGS Organization Admin Portal</h1>
         <p style="color:#94a3b8;">Manage people, roles, notifications, and company activity</p>
     </div>
     """, unsafe_allow_html=True)
-    
     target_company = user["company"] if user.get("role") != "master" else st.selectbox(
         "Organization", pd.read_sql_query("SELECT name FROM companies ORDER BY name", db())["name"].tolist()
     )
-    
     con = db()
     tabs = st.tabs(["People & Accounts", "Notifications & Activity"])
-    
     with tabs[0]:
         users_df = pd.read_sql_query(
             "SELECT id, first_name, last_name, username, email, role, login_count, created_at, last_login "
@@ -6357,7 +4913,6 @@ def render_organization_admin(user):
         )
         st.dataframe(safe_dataframe_for_streamlit(users_df), use_container_width=True)
         st.metric("Accounts in organization", len(users_df))
-        
         if user.get("role") == "company_admin":
             st.markdown("### Grant or remove admin access")
             usernames = users_df[users_df["role"] != "company_admin"]["username"].tolist()
@@ -6373,7 +4928,6 @@ def render_organization_admin(user):
                     log_activity(user["username"], target_company, f"Changed role for {selected_user} to {new_role}")
                     st.success("OK Role updated.")
                     st.rerun()
-    
     with tabs[1]:
         notes_df = pd.read_sql_query(
             "SELECT id, event_type, message, is_read, created_at FROM notifications "
@@ -6381,65 +4935,50 @@ def render_organization_admin(user):
             con, params=(target_company,)
         )
         st.dataframe(safe_dataframe_for_streamlit(notes_df), use_container_width=True)
-        
         if not notes_df.empty and st.button("MAIL Mark all as read", type="primary"):
             con.execute("UPDATE notifications SET is_read=1 WHERE company_name=?", (target_company,))
             con.commit()
             st.rerun()
-    
     con.close()
-
 def render_di_memory_box(user):
-    """Render the DI Memory Box page."""
     st.markdown("""
     <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
         <h1 style="color:white;">DI DI Memory Box</h1>
         <p style="color:#94a3b8;">The trusted institutional memory layer shared by the DI workforce</p>
     </div>
     """, unsafe_allow_html=True)
-    
     mem_df = pd.read_sql_query(
         "SELECT category, title, content, priority, updated_at FROM di_memory "
         "WHERE active=1 ORDER BY priority DESC, id ASC",
         db()
     )
-    
     if mem_df.empty:
         st.info("EMPTY No memory records found.")
         return
-    
     for row in mem_df.itertuples(index=False):
         with st.expander(f"{row.category} · {row.title} (Priority: {row.priority})", expanded=False):
             st.write(row.content)
             st.caption(f"Updated: {row.updated_at}")
-
 def render_business_command_center(user):
-    """Render the Business Command Center page."""
     df = st.session_state.processed_df
-    
     st.markdown("""
     <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
         <h1 style="color:white;">DATA Business Command Center</h1>
         <p style="color:#94a3b8;">Executive signals, business health, and the most important changes in your active data</p>
     </div>
     """, unsafe_allow_html=True)
-    
     if df is None:
         st.info("EMPTY Upload a dataset from Workspace & Data first.")
         return
-    
     health = business_health(df)
     signals = business_signals(df)
-    
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("INSIGHTS Data Health", f"{health['score']}/100")
     col2.metric("DATA Records", f"{len(df):,}")
     col3.metric("SEARCH Missing Cells", f"{int(df.isna().sum().sum()):,}")
     col4.metric("REFRESH Duplicates", f"{int(df.duplicated().sum()):,}")
-    
     st.markdown("###  Executive Brief")
     st.write(build_executive_brief(df, user["company"]))
-    
     st.markdown("### ALERT Signals Requiring Attention")
     if not signals:
         st.success("OK No strong automated warning signals were detected.")
@@ -6447,23 +4986,18 @@ def render_business_command_center(user):
         for sig in signals:
             icon = "INSIGHTS" if sig["type"] == "trend" else "WARNING" if sig["type"] == "anomaly" else "CLEAN"
             st.markdown(f"**{icon} {sig['column']}** — {sig['message']}")
-
 def render_enhanced_conference_room(user):
-    """Render an enhanced conference room."""
     st.markdown("""
     <div style="padding:20px;background:linear-gradient(135deg,#0a1628,#1a2a4a);border-radius:16px;margin-bottom:20px;">
         <h1 style="color:white;">DI Conference</h1>
         <p style="color:#94a3b8;">Enhanced video conferencing with DI agents</p>
     </div>
     """, unsafe_allow_html=True)
-    
     agents = get_di_agents()
     if not agents:
         st.info("No DI workers available for conferencing.")
         return
-    
     selected_di = st.multiselect("Select DI agents for conference", [a['di_name'] for a in agents], default=[a['di_name'] for a in agents[:3]])
-    
     if st.button("VIDEO Start Conference", use_container_width=True, type="primary"):
         if selected_di:
             selected_agents = [a for a in agents if a['di_name'] in selected_di]
@@ -6471,49 +5005,34 @@ def render_enhanced_conference_room(user):
             st.success(f"Conference started with {', '.join(selected_di)}")
         else:
             st.warning("Please select at least one DI agent.")
-
-# =============================================================================
-# PERSISTENT DI DOCK
-# =============================================================================
-
 def render_persistent_di_dock(user):
-    """Render the persistent DI dock at the bottom of every page."""
     st.markdown("---")
-    
     quick_title = "Sovereign Master Chat with DI" if user.get("role") == "master" else "Chat with DI — quick assistant"
     quick_caption = (
         "Private founder channel · David Emenike · Sovereign Master request"
         if user.get("role") == "master"
         else "Ask DI about your work, DACRE or your business."
     )
-    
     with st.expander(quick_title, expanded=False):
         st.caption(quick_caption)
-        
         if user.get("role") == "master":
             st.info("SECURE DI treats messages here as private Sovereign Master requests and responds with founder-level respect.")
-        
         for msg in st.session_state.chat_history[-5:]:
             st.write(f"**{msg['sender']}**: {msg['text']}")
-        
         with st.form("quick_di_form", clear_on_submit=True):
             col1, col2 = st.columns([6, 1])
             with col1:
                 q = st.text_input("Chat with DI", placeholder="Ask DI anything...", label_visibility="collapsed")
             with col2:
                 send = st.form_submit_button("Send")
-        
         if send and q.strip():
             sender_name = "David · Sovereign Master" if user.get("role") == "master" else user.get("first_name", "User")
             st.session_state.chat_history.append({"sender": sender_name, "text": q.strip()})
-            
             reply = enhanced_di_reply(q, user, st.session_state.processed_df, allow_online=True, 
                             language=st.session_state.get("di_language", "English — Nigeria"))
             st.session_state.chat_history.append({"sender": "DI", "text": reply})
             st.session_state.last_speech = reply
             st.rerun()
-    
-    # Voice player for last speech
     if st.session_state.last_speech:
         speech = st.session_state.last_speech
         st.session_state.last_speech = None
@@ -6521,17 +5040,9 @@ def render_persistent_di_dock(user):
             speech,
             DI_LANGUAGE_PROFILES.get(st.session_state.get("di_language", "English — Nigeria"), {}).get("code", "en-NG")
         )
-
-# =============================================================================
-# FIXED OVERALL ADMIN PAGE - WITH FULL CEO IMAGE, DI GRID, SOVEREIGN CALL
-# =============================================================================
-
 def render_fixed_overall_admin_page(user):
-    """FIXED Overall Admin DI page with FULL CEO image, DI grid, and Sovereign Call."""
     ensure_admin_runtime_schema()
     counts = admin_metric_counts()
-    
-    # CEO PORTRAIT - FIXED TO SHOW FULLY
     st.markdown("""
     <div style="
         background: linear-gradient(145deg, #0a1628, #1a2a4a);
@@ -6543,8 +5054,6 @@ def render_fixed_overall_admin_page(user):
         <div style="display: flex; gap: 30px; align-items: center; flex-wrap: wrap;">
             <div style="flex: 0 0 200px; text-align: center;">
     """, unsafe_allow_html=True)
-    
-    # CEO Portrait - FULL SIZE
     if CEO_PORTRAIT_PATH and CEO_PORTRAIT_PATH.exists():
         st.image(str(CEO_PORTRAIT_PATH), width=200, output_format="JPEG")
     elif CEO_PORTRAIT_DATA_URL:
@@ -6565,7 +5074,6 @@ def render_fixed_overall_admin_page(user):
             CEO
         </div>
         """, unsafe_allow_html=True)
-    
     st.markdown("""
             </div>
             <div style="flex: 1;">
@@ -6587,8 +5095,6 @@ def render_fixed_overall_admin_page(user):
         </div>
     </div>
     """, unsafe_allow_html=True)
-    
-    # System Stats
     col1, col2, col3, col4, col5, col6 = st.columns(6)
     col1.metric("Business Accounts", counts["users"])
     col2.metric("Organizations", counts["companies"])
@@ -6596,8 +5102,6 @@ def render_fixed_overall_admin_page(user):
     col4.metric("DI Conversations", counts["messages"])
     col5.metric("Stored Files", counts["files"])
     col6.metric("DI Workforce", counts["agents"])
-    
-    # Sovereign Master Call - Inside Overall Admin (NO SEPARATE PAGE)
     st.markdown("""
     <div style="
         background: linear-gradient(145deg, #0a1628, #1a2a4a);
@@ -6610,7 +5114,6 @@ def render_fixed_overall_admin_page(user):
         <p style="color: #94a3b8;">Private CEO conference with your DI council - video, voice, and real AI</p>
     </div>
     """, unsafe_allow_html=True)
-    
     col1, col2 = st.columns([2, 1])
     with col1:
         selected_di = st.multiselect(
@@ -6618,13 +5121,11 @@ def render_fixed_overall_admin_page(user):
             ["Guaiel", "Raziel", "Ariel", "Nathaniel", "Gabriel", "Sofiel", "Uriel", "Adriel"],
             default=["Guaiel", "Raziel"]
         )
-        
         call_question = st.text_area(
             "What would you like to ask the council?",
             placeholder="Ask a strategic, technical, or business question...",
             height=80
         )
-        
         if st.button("SPEAK Start Sovereign Master Call", use_container_width=True, type="primary"):
             if selected_di:
                 st.success(f"VIDEO Calling {', '.join(selected_di)}...")
@@ -6633,7 +5134,6 @@ def render_fixed_overall_admin_page(user):
                 st.info("LINK LiveKit video call would connect here")
             else:
                 st.warning("Please select at least one DI agent")
-    
     with col2:
         st.markdown("""
         <div style="
@@ -6653,8 +5153,6 @@ def render_fixed_overall_admin_page(user):
             </div>
         </div>
         """, unsafe_allow_html=True)
-    
-    # DI Grid - REAL AI Generated Images
     st.markdown("""
     <div style="
         background: linear-gradient(145deg, #0a1628, #1a2a4a);
@@ -6666,8 +5164,6 @@ def render_fixed_overall_admin_page(user):
         <h2 style="color: white;">AI AI DI Workforce</h2>
         <p style="color: #94a3b8;">REAL AI-generated portraits of your DI team</p>
     """, unsafe_allow_html=True)
-    
-    # Generate DI Grid
     if not os.path.exists("di_grid_portraits.jpg"):
         with st.spinner("CREATIVE Generating REAL AI portraits of your DI workforce..."):
             image_bytes = generate_di_grid_image()
@@ -6695,30 +5191,15 @@ def render_fixed_overall_admin_page(user):
                             box-shadow: 0 20px 60px rgba(0,0,0,0.5);"/>
             </div>
             """, unsafe_allow_html=True)
-    
     if st.button("REFRESH Regenerate DI Portraits", use_container_width=False, type="secondary"):
         if os.path.exists("di_grid_portraits.jpg"):
             os.remove("di_grid_portraits.jpg")
         st.rerun()
-    
     st.markdown("</div>", unsafe_allow_html=True)
-
-    # Additive engineering layer — the existing Overall Admin command center above is preserved.
     st.markdown("---")
     st.markdown("##  David Creation · DI Engineering")
     st.caption("Build, separate and inspect the 20 DI identities without replacing the Overall Admin command center.")
     render_david_creation_portal(user)
-
-
-
-# =============================================================================
-# REAL DI TECH CORE v1.0 — NEW 20-DI WORKFORCE
-# =============================================================================
-# This layer supersedes the old DI presentation/routing behavior while keeping
-# DACRE's existing data, administration, company, and security infrastructure.
-# Every DI shares the trusted brain, but each has a separate role/persona and
-# can maintain private master memory.
-
 REAL_DI_FAITH_MEMORY = (
     "Foundational faith statement requested for the DI workforce: God is the Creator "
     "of the universe and of everything. The DI workforce respectfully recognizes God "
@@ -6726,7 +5207,6 @@ REAL_DI_FAITH_MEMORY = (
     "foundational statement of the DI project's requested worldview, not a substitute "
     "for evidence when answering factual questions."
 )
-
 REAL_DI_ROSTER = [
     {"name":"Emiel", "specialty":"Communications & Messaging", "position":"Communications Specialist", "rank":2,
      "role":"Welcomes users, handles email/messaging workflows, explains DACRE clearly, and coordinates communication.",
@@ -6789,7 +5269,6 @@ REAL_DI_ROSTER = [
      "role":"Synthesizes multi-domain evidence into executive briefs, options, risks and recommendations.",
      "keywords":["decision","executive","brief","recommendation","overall","compare","choose","ceo"], "voice":"female"},
 ]
-
 REAL_DI_AVATAR_COLORS = {
     "Emiel":"#38bdf8", "Assiel":"#a78bfa", "Oriel":"#22c55e", "Sofiel":"#f59e0b",
     "Daniel":"#60a5fa", "Graciel":"#f472b6", "Henriel":"#94a3b8", "Jamiel":"#ef4444",
@@ -6797,10 +5276,7 @@ REAL_DI_AVATAR_COLORS = {
     "Raphaiel":"#fb7185", "Uriel":"#84cc16", "Ariel":"#c084fc", "Muriel":"#f9a8d4",
     "Azriel":"#f43f5e", "Adriel":"#14b8a6", "Haniel":"#818cf8", "Raziel":"#fbbf24",
 }
-
-
 def real_di_ensure_tables():
-    """Create persistent user/agent continuity tables idempotently."""
     con = db()
     try:
         con.execute("""CREATE TABLE IF NOT EXISTS di_user_state (
@@ -6827,10 +5303,7 @@ def real_di_ensure_tables():
         con.commit()
     finally:
         con.close()
-
-
 def real_di_seed_foundation():
-    """Seed the new shared brain for global and existing company workspaces."""
     real_di_ensure_tables()
     now = datetime.now().isoformat(timespec="seconds")
     foundation = [
@@ -6857,16 +5330,9 @@ def real_di_seed_foundation():
         con.commit()
     finally:
         con.close()
-
-
-# =============================================================================
-# DI CRAFT BASEMENT — separated humanlike DI identities and engineering rooms
-# =============================================================================
-
 DI_FACE_DIR = BASE_DIR / "assets" / "di_faces"
 DI_WORKFORCE_POSTER = BASE_DIR / "assets" / "di_workforce_poster.png"
 DI_CRAFT_ROOT = BASE_DIR / "di_craft_basement"
-
 DI_CRAFT_VISUAL_PROMPT = """A premium corporate robotics laboratory for DACRE WORLDWIDE:
 twenty distinct humanlike AI android specialists, male and female, diverse human
 appearance, realistic faces, polished professional clothing with subtle DACRE/DI
@@ -6875,7 +5341,6 @@ screens, transparent 3D artifacts, separate specialist rooms, clean enterprise
 engineering aesthetic, cinematic but practical, designed as a real internal AI
 engineering facility. Each DI has a persistent identity, face, name, voice profile,
 role, private memory, shared DACRE brain, and an interactive workstation."""
-
 DI_CRAFT_COMMAND_SPEC = {
     "name": "DI Craft Basement",
     "purpose": "Secure engineering environment for identity, tools, memory, body and voice.",
@@ -6884,7 +5349,6 @@ DI_CRAFT_COMMAND_SPEC = {
     "visual_model": "3D artifact room + floating operational screen",
     "master_password_env": "DACRE_DI_BASEMENT_PASSKEY",
 }
-
 DI_BASEMENT_ROOMS = [
     {"id":"core","title":"Core Room","artifact":"Identity Core","purpose":"Agent identity, role, rank and lifecycle."},
     {"id":"brain","title":"Brain Room","artifact":"Neural Knowledge Matrix","purpose":"Shared DACRE knowledge plus specialist private memory."},
@@ -6893,11 +5357,9 @@ DI_BASEMENT_ROOMS = [
     {"id":"tools","title":"Tool Room","artifact":"Platform Control Console","purpose":"Approved DACRE actions and tool connectors."},
     {"id":"memory","title":"Memory Room","artifact":"Persistent Memory Vault","purpose":"Long-term task continuity and specialist notes."},
 ]
-
 def di_face_path(name):
     path = DI_FACE_DIR / f"{name}.png"
     return path if path.exists() else None
-
 def di_face_data_url(name):
     path = di_face_path(name)
     if not path:
@@ -6906,7 +5368,6 @@ def di_face_data_url(name):
         return "data:image/png;base64," + base64.b64encode(path.read_bytes()).decode("ascii")
     except Exception:
         return ""
-
 def di_craft_manifest():
     manifest = {}
     for spec in REAL_DI_ROSTER:
@@ -6926,13 +5387,7 @@ def di_craft_manifest():
             },
         }
     return manifest
-
-# =============================================================================
-# DACRE ONLINE ROBOT SERVICE FABRIC
-# =============================================================================
-
 def dacre_service_status():
-    """Return non-secret health/configuration state for major online services."""
     endpoint, _, capacity = _research_server_config()
     ai = free_ai_provider_status()
     try:
@@ -6948,9 +5403,7 @@ def dacre_service_status():
         "mailjet": bool(_free_secret("DACRE_MAILJET_SMTP_USER") and _free_secret("DACRE_MAILJET_SMTP_PASSWORD")),
         "mailjet_sender": _free_secret("DACRE_MAILJET_SMTP_FROM"),
     }
-
 def render_online_robot_control_center(user):
-    """Master-only service dashboard. Never displays credentials."""
     if user.get("role") != "master":
         return
     st.markdown("### NODE Online Robot Service Fabric")
@@ -6973,17 +5426,9 @@ DACRE_MAILJET_SMTP_USER=mailjet-api-key
 DACRE_MAILJET_SMTP_PASSWORD=mailjet-secret-key
 DACRE_MAILJET_SMTP_FROM=verified-sender@example.com
 MONGODB_URI=mongodb+srv://...''', language="bash")
-
-# =============================================================================
-# DI BASEMENT RESEARCH SERVER STORE
-# =============================================================================
-
 DI_RESEARCH_STORE_DEFAULT_CAPACITY = 5000
 DI_RESEARCH_SERVER_TIMEOUT = 30
-
-
 def _research_server_config():
-    """Read the optional server gateway configuration without exposing secrets."""
     try:
         endpoint = str(st.secrets.get("DACRE_RESEARCH_SERVER_URL", "") or "").strip()
         token = str(st.secrets.get("DACRE_RESEARCH_SERVER_TOKEN", "") or "").strip()
@@ -6999,10 +5444,7 @@ def _research_server_config():
     except (TypeError, ValueError):
         capacity = DI_RESEARCH_STORE_DEFAULT_CAPACITY
     return endpoint, token, capacity
-
-
 def di_research_store_ensure_table():
-    """Idempotently ensure the research store exists on older DACRE databases."""
     con = db()
     try:
         con.execute("""CREATE TABLE IF NOT EXISTS di_research_store (
@@ -7022,10 +5464,7 @@ def di_research_store_ensure_table():
         con.commit()
     finally:
         con.close()
-
-
 def di_research_store_stats(company_name=""):
-    """Return store count/capacity without exposing credentials."""
     di_research_store_ensure_table()
     _, _, capacity = _research_server_config()
     con = db()
@@ -7038,10 +5477,7 @@ def di_research_store_stats(company_name=""):
     finally:
         con.close()
     return count, capacity
-
-
 def di_research_store_find(company_name, di_id, question):
-    """Find an exact cached answer and refresh its access timestamp."""
     if not str(question or "").strip():
         return None
     di_research_store_ensure_table()
@@ -7061,10 +5497,7 @@ def di_research_store_find(company_name, di_id, question):
     finally:
         con.close()
     return None
-
-
 def di_research_store_archive_oldest_to_brain(company_name, di_id, di_name, created_by="DI Basement"):
-    """Move the oldest research records into the selected DI's private brain before deletion."""
     di_research_store_ensure_table()
     _, _, capacity = _research_server_config()
     con = db()
@@ -7105,10 +5538,7 @@ def di_research_store_archive_oldest_to_brain(company_name, di_id, di_name, crea
         return len(rows)
     finally:
         con.close()
-
-
 def di_research_store_put(company_name, di_id, di_name, question, answer, source="local", endpoint="", created_by="DI"):
-    """Cache an answer, then archive oldest entries into the DI private brain if full."""
     if not str(question or "").strip() or not str(answer or "").strip():
         return False
     di_research_store_ensure_table()
@@ -7126,14 +5556,7 @@ def di_research_store_put(company_name, di_id, di_name, question, answer, source
         con.close()
     di_research_store_archive_oldest_to_brain(company_name or "", di_id, di_name, created_by=created_by)
     return True
-
-
 def di_research_server_query(question, di_name, company_name, context=""):
-    """Ask the configured DACRE research gateway. The endpoint is server-side configuration.
-
-    An IP address by itself is not an application protocol, so DACRE expects a full URL
-    such as http://192.168.1.20:8000/answer. The URL is never shown to ordinary users.
-    """
     endpoint, token, _ = _research_server_config()
     if not endpoint:
         return None, "Research server is not configured."
@@ -7164,41 +5587,30 @@ def di_research_server_query(question, di_name, company_name, context=""):
         return None, f"Research server returned invalid JSON: {type(exc).__name__}."
     except Exception as exc:
         return None, f"Research server error: {type(exc).__name__}."
-
-
 def di_basement_research_answer(agent, user, question, allow_remote=True):
-    """Research pipeline: cache -> configured server -> Gemini/DI reasoning -> cache."""
     question = str(question or "").strip()
     if not question:
         return "Please enter a research question.", "validation"
     company = str(user.get("company", "") or "")
     di_id = int(agent.get("id") or 0)
     di_name = str(agent.get("di_name") or "DI")
-
     cached = di_research_store_find(company, di_id, question)
     if cached:
         return str(cached["answer"]), "brain-store"
-
     local_context = di_memory_context(limit=20, query=question)
     remote_answer = None
     if allow_remote:
         remote_answer, _ = di_research_server_query(question, di_name, company, local_context)
-
     if remote_answer:
         answer = normalize_di_identity(remote_answer)
         di_research_store_put(company, di_id, di_name, question, answer, source="research-server", endpoint=_research_server_config()[0], created_by=user.get("username", "DI"))
         return answer, "research-server"
-
-    # Safe local fallback when no research gateway is configured or temporarily unavailable.
     answer = real_di_answer(agent, user, question, allow_online=allow_remote)
     answer = normalize_di_identity(answer)
     source = "gemini/web-fallback" if answer else "local"
     di_research_store_put(company, di_id, di_name, question, answer, source=source, endpoint="", created_by=user.get("username", "DI"))
     return answer, source
-
-
 def render_di_research_store(user, selected_agent=None):
-    """Large DI Basement research store and server gateway controls."""
     st.markdown("### NODE DI Research Server Store")
     st.caption("The DI specialist takes research requests here. Answers are cached in the store and promoted into that DI's private brain when the store reaches capacity.")
     endpoint, _, capacity = _research_server_config()
@@ -7234,10 +5646,7 @@ def render_di_research_store(user, selected_agent=None):
     if rows:
         st.markdown("#### Recent stored research")
         st.dataframe(pd.DataFrame([dict(r) for r in rows]), use_container_width=True, hide_index=True)
-
-
 def di_basement_password_ok():
-    """Password gate for the DI Craft Basement."""
     if st.session_state.get("di_basement_unlocked"):
         return True
     entered = st.text_input("DI Craft Basement password", type="password", key="di_basement_password")
@@ -7248,12 +5657,6 @@ def di_basement_password_ok():
         else:
             st.error("Incorrect DI Craft Basement password.")
     return False
-
-
-# =============================================================================
-# PERSISTENT 20-ROOM DI BASEMENT WORLD
-# =============================================================================
-
 DI_BASEMENT_ACTIVITY = [
     ("RESEARCH", "Research Console", "Analyzing approved research requests"),
     ("PROCESSING", "Neural Console", "Processing DACRE intelligence tasks"),
@@ -7262,9 +5665,7 @@ DI_BASEMENT_ACTIVITY = [
     ("TOOLS", "Tool Console", "Monitoring approved platform tools"),
     ("MONITORING", "Operations Console", "Monitoring assigned company activity"),
 ]
-
 def di_basement_world_ensure_table():
-    """Persist the live state of all 20 DI rooms across app reruns/restarts."""
     con = db()
     try:
         con.execute("""CREATE TABLE IF NOT EXISTS di_basement_rooms (
@@ -7279,9 +5680,7 @@ def di_basement_world_ensure_table():
         con.commit()
     finally:
         con.close()
-
 def di_basement_world_sync():
-    """Ensure every permanent DI has a persistent room and a current operational state."""
     di_basement_world_ensure_table()
     now = datetime.now()
     now_s = now.isoformat(timespec="seconds")
@@ -7293,8 +5692,6 @@ def di_basement_world_sync():
                 "SELECT * FROM di_basement_rooms WHERE di_name=? LIMIT 1",
                 (spec["name"],)
             ).fetchone()
-            # The visual activity rotates only when a room is stale; the database
-            # remains the source of truth between Streamlit reruns.
             if existing:
                 try:
                     age = (now - datetime.fromisoformat(str(existing["updated_at"]))).total_seconds()
@@ -7323,17 +5720,10 @@ def di_basement_world_sync():
     finally:
         con.close()
     return [dict(r) for r in rows]
-
 def render_persistent_di_basement_world():
-    """
-    Render all 20 DI rooms simultaneously as one persistent browser-based
-    holographic world. Room identity/state persists in SQLite; CSS animation
-    supplies the continuous holographic movement between Streamlit reruns.
-    """
     rooms = di_basement_world_sync()
     by_name = {r["di_name"]: r for r in rooms}
     cards = []
-
     for idx, spec in enumerate(REAL_DI_ROSTER, start=1):
         room = by_name.get(spec["name"], {})
         face = di_face_data_url(spec["name"])
@@ -7371,7 +5761,6 @@ def render_persistent_di_basement_world():
           <div class="room-footer">{html.escape(spec["specialty"])}</div>
         </div>
         """)
-
     st.markdown(f"""
     <div class="di-world-shell">
       <div class="di-world-top">
@@ -7422,9 +5811,7 @@ def render_persistent_di_basement_world():
       @media(max-width:560px){{.di-world-grid{{grid-template-columns:1fr}}.di-world-top h2{{font-size:22px}}}}
     </style>
     """, unsafe_allow_html=True)
-
 def render_di_holographic_hub(selected, spec, status_text="ACTIVE"):
-    """Render a CSS holographic projection for the selected DI."""
     face = di_face_data_url(selected)
     face_html = f'<img src="{face}" class="holo-face" alt="{selected}"/>' if face else f'<div class="holo-face-fallback">{selected[:1]}</div>'
     st.markdown(f"""
@@ -7454,15 +5841,12 @@ def render_di_holographic_hub(selected, spec, status_text="ACTIVE"):
       @media(max-width:700px){{.dacre-holo-stage{{height:360px}}.holo-panel{{min-width:130px;padding:9px}}.holo-panel small{{display:none}}.holo-orbit-b{{width:300px}}}}
     </style>
     """, unsafe_allow_html=True)
-
 def render_di_craft_basement(user):
-    """Render the company-tech engineering environment for one selected DI."""
     if user.get("role") != "master":
         st.error("DI Craft Basement is restricted to the Overall Administrator.")
         return
     if not di_basement_password_ok():
         return
-
     manifest = di_craft_manifest()
     st.markdown("""
     <div class="di-basement-shell">
@@ -7482,12 +5866,8 @@ def render_di_craft_basement(user):
       .basement-status{border:1px solid #22c55e66;color:#4ade80;border-radius:999px;padding:10px 16px;font-weight:800}
     </style>
     """, unsafe_allow_html=True)
-
-    # All 20 rooms are visible simultaneously. The selected DI below is only
-    # for detailed inspection/research; the world itself is never reduced to one DI.
     render_persistent_di_basement_world()
     render_online_robot_control_center(user)
-
     selected = st.selectbox("Inspect a DI workstation", list(manifest), key="craft_selected_di")
     spec = manifest[selected]
     c1, c2 = st.columns([1, 2])
@@ -7522,15 +5902,11 @@ def render_di_craft_basement(user):
             "persistent_world": True,
             "room_count": 20,
         }, indent=2), language="json")
-
-    # Large research store: the selected DI is the accountable specialist.
     selected_agent = next((a for a in real_di_agent_rows() if a.get("di_name") == selected), None)
     if selected_agent:
         st.divider()
         render_di_research_store(user, selected_agent=selected_agent)
-
 def render_david_creation_portal(user):
-    """Protected master portal for separated DI identities."""
     if user.get("role") != "master":
         st.error("David Creation is restricted to the Overall Administrator.")
         return
@@ -7543,7 +5919,6 @@ def render_david_creation_portal(user):
             else:
                 st.error("Incorrect David Creation password.")
         return
-
     try:
         con = db()
         exists = con.execute(
@@ -7559,7 +5934,6 @@ def render_david_creation_portal(user):
         con.close()
     except Exception:
         pass
-
     st.markdown("##  David Creation")
     st.caption("Master engineering portal. The existing Overall Admin command-center UI remains unchanged; this is an additive engineering layer.")
     st.info("The selected 20-DI visual poster is the source for the individual DI face assets.")
@@ -7577,21 +5951,17 @@ def render_david_creation_portal(user):
         st.session_state.di_basement_portal_open = True
     if st.session_state.get("di_basement_portal_open"):
         render_di_craft_basement(user)
-
 def real_di_seed_workforce():
-    """Replace the old named roster with the new permanent 20-DI workforce."""
     real_di_ensure_tables()
     now = datetime.now().isoformat(timespec="seconds")
     con = db()
     try:
-        # Archive old permanent workforce names; company-specific DIs are untouched.
         con.execute("CREATE TABLE IF NOT EXISTS di_destroyed_agents (di_name TEXT PRIMARY KEY, destroyed_at TEXT NOT NULL, destroyed_by TEXT NOT NULL)")
         destroyed_names = {r["di_name"] for r in con.execute("SELECT di_name FROM di_destroyed_agents").fetchall()}
         permanent_names = {x["name"] for x in REAL_DI_ROSTER}
         for row in con.execute("SELECT id, di_name, assigned_company FROM di_agents").fetchall():
             if not (row["assigned_company"] or "").strip() and row["di_name"] not in permanent_names:
                 con.execute("UPDATE di_agents SET status='Archived', last_active=? WHERE id=?", (now, int(row["id"])))
-
         for spec in REAL_DI_ROSTER:
             if spec["name"] in destroyed_names:
                 continue
@@ -7606,8 +5976,6 @@ def real_di_seed_workforce():
     finally:
         con.close()
     real_di_seed_foundation()
-
-
 def real_di_agent_rows():
     con = db()
     try:
@@ -7615,10 +5983,7 @@ def real_di_agent_rows():
         return [dict(r) for r in rows]
     finally:
         con.close()
-
-
 def real_di_rank_agents(query):
-    """Rank the 20 DIs by the work the user is asking to do."""
     q = str(query or "").lower()
     ranked = []
     rows_by_name = {r.get("di_name"): r for r in real_di_agent_rows()}
@@ -7635,15 +6000,11 @@ def real_di_rank_agents(query):
         ranked.append((score, row))
     ranked.sort(key=lambda item: (-item[0], -int(item[1].get("rank_level") or 1), item[1].get("di_name", "")))
     return [row for _, row in ranked]
-
-
 def real_di_get_private_memory(di_id, limit=12):
     try:
         return get_di_private_memory(int(di_id), limit=limit)
     except Exception:
         return []
-
-
 def real_di_user_state(user):
     real_di_ensure_tables()
     con = db()
@@ -7652,8 +6013,6 @@ def real_di_user_state(user):
         return dict(row) if row else None
     finally:
         con.close()
-
-
 def real_di_save_state(user, active_di, last_task, last_summary):
     real_di_ensure_tables()
     now = datetime.now().isoformat(timespec="seconds")
@@ -7666,10 +6025,7 @@ def real_di_save_state(user, active_di, last_task, last_summary):
         con.commit()
     finally:
         con.close()
-
-
 def gemini_transcribe_audio(audio_value):
-    """Transcribe browser WAV audio using Gemini Developer API."""
     if not audio_value:
         return None, None
     key = _free_secret("GEMINI_API_KEY")
@@ -7694,8 +6050,6 @@ def gemini_transcribe_audio(audio_value):
         return (text or None), None
     except Exception as exc:
         return None, f"Voice transcription failed: {type(exc).__name__}. You can type the question instead."
-
-
 def real_di_online_context(query, max_results=5):
     if not query:
         return []
@@ -7703,25 +6057,19 @@ def real_di_online_context(query, max_results=5):
         return google_web_search(query, max_results=max_results)
     except Exception:
         return online_lookup(query, max_results=max_results)
-
-
 def real_di_answer(agent, user, question, df=None, allow_online=True):
-    """New DI brain: role routing + local memory + current web evidence + Gemini."""
     question = str(question or "").strip()
     if not question:
         return "I am ready. Tell me what you want to accomplish."
-
     state = real_di_user_state(user) or {}
     private = real_di_get_private_memory(agent.get("id"), limit=14)
     local_rows = get_di_memory(limit=45, query=question)
     local_context = "\n".join(f"[{r['category']}] {r['title']}: {r['content']}" for r in local_rows)
     private_context = "\n".join(f"[PRIVATE] {r['title']}: {r['content']}" for r in private)
-
     current_markers = ["latest","current","today","now","recent","news","price","pricing","version","release","2026","online","search","official","who is","what happened"]
     should_search = allow_online and any(m in question.lower() for m in current_markers)
     web = real_di_online_context(question, 5) if should_search else []
     web_context = "\n".join(f"SOURCE: {title}\nURL: {href}" for title, href in web)
-
     role = agent.get("system_role") or agent.get("specialty") or "General Intelligence"
     system = f"""You are {agent.get('di_name','DI')} — David's Intelligence, a specialist inside DACRE Analysis.
 Your specialty is {agent.get('specialty','General Intelligence')}.
@@ -7745,8 +6093,6 @@ PRIVATE AGENT MEMORY:\n{private_context or 'No private notes.'}
 CURRENT WEB EVIDENCE:\n{web_context or 'No web search was needed.'}
 ACTIVE DATASET: {len(df):,} rows; columns={', '.join(map(str, df.columns)) if df is not None else 'none'}
 USER QUESTION:\n{question}"""
-
-    # Google Gemini is the primary reasoning provider for the new DI brain.
     answer = _gemini_generate(system, user_prompt, max_tokens=1400)
     if not answer:
         answer = ai_generate(system, user_prompt, max_tokens=1400)
@@ -7755,13 +6101,10 @@ USER QUESTION:\n{question}"""
         answer = direct or get_webstore_answer(question)
     if not answer:
         answer = "I could not obtain a reliable reasoning response right now. Please try again or configure GEMINI_API_KEY in Streamlit Secrets."
-
     answer = normalize_di_identity(answer)
     if web:
         answer += "\n\nSources checked: " + "; ".join(title for title, _ in web[:3])
     return answer
-
-
 def real_di_record_chat(user, sender, message):
     text = str(message or "").strip()
     if not text:
@@ -7773,8 +6116,6 @@ def real_di_record_chat(user, sender, message):
         con.commit()
     finally:
         con.close()
-
-
 def real_di_avatar(agent, state="idle", speech_text=""):
     name = agent.get("di_name", "DI")
     specialty = agent.get("specialty", "Intelligence")
@@ -7811,10 +6152,7 @@ def real_di_avatar(agent, state="idle", speech_text=""):
     if speech_text:
         lang = DI_LANGUAGE_PROFILES.get(st.session_state.get("di_language", "English — Nigeria"), {}).get("code", "en-NG")
         di_voice_player(speech_text, lang)
-
-
 def real_di_welcome_sequence(user):
-    """Show a first-login introduction and restore prior work on returning logins."""
     state = real_di_user_state(user)
     if not state:
         emiel = next(x for x in REAL_DI_ROSTER if x["name"] == "Emiel")
@@ -7826,10 +6164,7 @@ def real_di_welcome_sequence(user):
             (assiel, f"Hi {user.get('first_name','David')}. I am Assiel, your Executive Work Assistant. I am here to assist you. What would you like to work on today?"),
         ]
     return []
-
-
 def render_microphone_permission_warmup():
-    """Ask the browser for microphone permission when DI opens; does not silently record."""
     components.html("""
     <script>
     (async () => {
@@ -7842,9 +6177,7 @@ def render_microphone_permission_warmup():
     })();
     </script>
     """, height=1)
-
 def real_di_render_voice_input(user, location="home"):
-    """Render browser microphone input. The browser will request permission; silent recording is not allowed."""
     st.markdown("### VOICE Talk to DI")
     st.caption("Your microphone is ready. Click the microphone control, allow browser permission, speak, and DI will place the transcript into the chat workflow.")
     key = f"real_di_audio_{location}_{user.get('username','user')}"
@@ -7857,8 +6190,6 @@ def real_di_render_voice_input(user, location="home"):
         elif error:
             st.warning(error)
     return st.session_state.get("real_di_transcript", "")
-
-
 def real_di_handle_question(user, question, df=None):
     question = str(question or "").strip()
     if not question:
@@ -7873,19 +6204,14 @@ def real_di_handle_question(user, question, df=None):
     st.session_state.last_speech = answer
     st.session_state.real_di_transcript = ""
     return agent, answer
-
-
 def render_real_di_home(user):
-    """New DI Home: animated specialist, text chat, microphone transcription and continuity."""
     real_di_ensure_tables()
     render_microphone_permission_warmup()
     agents = real_di_agent_rows()
     state = real_di_user_state(user)
     active_name = st.session_state.get("real_di_active_agent") or (state or {}).get("active_di") or "Assiel"
     active = next((a for a in agents if a.get("di_name") == active_name), agents[0])
-
     st.markdown("""<div style="padding:22px;border-radius:22px;background:linear-gradient(135deg,#07111f,#12233c);border:1px solid #274568;margin-bottom:18px"><h1 style="color:white;margin:0">DI DI — David's Intelligence</h1><p style="color:#9fb4cc;margin:6px 0 0">Real 20-member AI workforce · local memory · current web evidence · voice interaction</p></div>""", unsafe_allow_html=True)
-
     if not st.session_state.get("real_di_welcome_shown"):
         intros = real_di_welcome_sequence(user)
         st.session_state.real_di_welcome_shown = True
@@ -7893,12 +6219,9 @@ def render_real_di_home(user):
             agent = next((a for a in agents if a.get("di_name") == agent_spec["name"]), active)
             real_di_avatar(agent, "speaking", text)
             st.info(text)
-
     real_di_avatar(active, "ready")
-
     if state and state.get("last_task"):
         st.info(f"REFRESH Welcome back. I remember your last active specialist was **{state.get('active_di')}** and your last task was: {state.get('last_task')}")
-
     for msg in st.session_state.chat_history[-16:]:
         sender = msg.get("sender", "")
         text = msg.get("text", "")
@@ -7906,7 +6229,6 @@ def render_real_di_home(user):
             st.markdown(f"<div style='background:#10213a;border-left:4px solid #38bdf8;border-radius:12px;padding:12px;margin:7px 0'><b style='color:#7dd3fc'>{sender}</b><div style='color:white;margin-top:4px'>{text}</div></div>", unsafe_allow_html=True)
         else:
             st.markdown(f"<div style='background:#0b1524;border-left:4px solid #a78bfa;border-radius:12px;padding:12px;margin:7px 0'><b style='color:#c4b5fd'>{sender}</b><div style='color:white;margin-top:4px'>{text}</div></div>", unsafe_allow_html=True)
-
     with st.form("real_di_text_form", clear_on_submit=True):
         c1, c2 = st.columns([6,1])
         with c1:
@@ -7917,14 +6239,12 @@ def render_real_di_home(user):
         result = real_di_handle_question(user, typed, st.session_state.processed_df)
         if result:
             st.rerun()
-
     transcript = real_di_render_voice_input(user, "home")
     if transcript:
         if st.button("SEND Send transcript to DI", type="primary"):
             result = real_di_handle_question(user, transcript, st.session_state.processed_df)
             if result:
                 st.rerun()
-
     st.markdown("### USERS Meet the DI specialists")
     ranked = real_di_rank_agents(state.get("last_task", "") if state else "")
     cols = st.columns(4)
@@ -7936,10 +6256,7 @@ def render_real_di_home(user):
             if st.button("Talk", key=f"talk_{agent.get('id')}"):
                 st.session_state.real_di_active_agent = agent.get("di_name")
                 st.rerun()
-
-
 def render_real_di_workforce(user):
-    """New workforce directory with role ranking and direct specialist selection."""
     agents = real_di_agent_rows()
     st.markdown("# USERS Real DI Workforce")
     st.caption("20 permanent DI specialists. Every specialist shares the trusted brain and has a distinct job.")
@@ -7953,10 +6270,7 @@ def render_real_di_workforce(user):
             if st.button(f"Work with {agent.get('di_name')}", key=f"select_real_{agent.get('id')}"):
                 st.session_state.real_di_active_agent = agent.get("di_name")
                 st.success(f"{agent.get('di_name')} is now your active DI specialist.")
-
-
 def render_real_di_persistent_dock(user):
-    """Persistent voice/text DI dock available across the signed-in workspace."""
     st.markdown("---")
     with st.expander("VOICE Talk to DI anywhere", expanded=False):
         active_name = st.session_state.get("real_di_active_agent", "Assiel")
@@ -7973,10 +6287,7 @@ def render_real_di_persistent_dock(user):
         if send and q.strip():
             real_di_handle_question(user, q, st.session_state.processed_df)
             st.rerun()
-
-
 def send_real_di_intro_emails(first_name, company_name, email):
-    """Send DACRE onboarding messages using Brevo first, SMTP as fallback."""
     messages = [
         ("Emiel", f"Good day {first_name} — I am Emiel, your Communications Specialist at DACRE.",
          f"Good day {first_name},\n\nI am Emiel, your Communications Specialist. I am here to help with important DACRE communications and updates.\n\nYour {company_name} workspace is ready.\n\nWelcome to DACRE.\n\n— Emiel\nDI — David's Intelligence"),
@@ -8001,14 +6312,9 @@ def send_real_di_intro_emails(first_name, company_name, email):
         except Exception:
             pass
     return "; ".join(statuses)
-
 def send_di_welcome_email(first_name, last_name, company_name, email, email_password=""):
     return send_real_di_intro_emails(first_name, company_name, email)
-
-
-# Override authentication to restore the active DI state after sign-in.
 _legacy_authenticate = authenticate
-
 def authenticate(company_name, full_name, passkey, email=""):
     result, error = _legacy_authenticate(company_name, full_name, passkey, email)
     if result:
@@ -8021,24 +6327,9 @@ def authenticate(company_name, full_name, passkey, email=""):
         con.execute("UPDATE di_user_state SET last_seen=?,updated_at=? WHERE username=?", (now, now, result.get("username", "")))
         con.commit(); con.close()
     return result, error
-
-
-# New page renderers supersede the old generic DI pages.
 render_di_home = render_real_di_home
 render_di_workforce = render_real_di_workforce
 render_persistent_di_dock = render_real_di_persistent_dock
-
-
-# =============================================================================
-# DACRE WORLDWIDE ENTERPRISE UPGRADE v8.0
-# Additive architecture: MongoDB telemetry, user-only workspace navigation,
-# country/language localization, Uniel public guide, research hub, notifications,
-# scripture retrieval, and local DI face assets.
-# =============================================================================
-
-# Optional MongoDB support. SQLite remains the local compatibility layer so the
-# existing application is not destroyed; when MONGODB_URI is configured, important
-# operational records are mirrored to MongoDB for scalable cloud persistence.
 try:
     from pymongo import MongoClient
     from pymongo.errors import PyMongoError
@@ -8047,7 +6338,6 @@ except Exception:
     MongoClient = None
     PyMongoError = Exception
     PY_MONGO_AVAILABLE = False
-
 MONGODB_URI = ""
 try:
     MONGODB_URI = str(st.secrets.get("MONGODB_URI", "") or "").strip()
@@ -8055,7 +6345,6 @@ except Exception:
     MONGODB_URI = ""
 MONGODB_URI = MONGODB_URI or os.getenv("MONGODB_URI", "").strip()
 MONGODB_DB_NAME = os.getenv("MONGODB_DB_NAME", "dacre_worldwide").strip() or "dacre_worldwide"
-
 @st.cache_resource(show_spinner=False)
 def _mongo_client():
     if not (PY_MONGO_AVAILABLE and MONGODB_URI):
@@ -8073,14 +6362,11 @@ def _mongo_client():
     except Exception as exc:
         logger.warning("MongoDB is not available: %s", type(exc).__name__)
         return None
-
 def mongo_db():
     client = _mongo_client()
     return client[MONGODB_DB_NAME] if client is not None else None
-
 def mongo_enabled():
     return mongo_db() is not None
-
 def mongo_health():
     if not PY_MONGO_AVAILABLE:
         return {"enabled": False, "status": "driver_missing", "message": "Install pymongo to enable MongoDB."}
@@ -8089,7 +6375,6 @@ def mongo_health():
     if mongo_db() is None:
         return {"enabled": False, "status": "unreachable", "message": "MongoDB URI is configured but the database could not be reached."}
     return {"enabled": True, "status": "healthy", "message": "MongoDB connected."}
-
 def _mongo_insert(collection_name, document):
     database = mongo_db()
     if database is None:
@@ -8102,7 +6387,6 @@ def _mongo_insert(collection_name, document):
     except Exception as exc:
         logger.warning("Mongo insert failed for %s: %s", collection_name, type(exc).__name__)
         return False
-
 def mongo_sync_user(user):
     database = mongo_db()
     if database is None or not user:
@@ -8125,7 +6409,6 @@ def mongo_sync_user(user):
     except Exception as exc:
         logger.warning("Mongo user sync failed: %s", type(exc).__name__)
         return False
-
 def mongo_log_activity(username, company, action, role="user"):
     return _mongo_insert("activity", {
         "username": str(username or ""),
@@ -8133,7 +6416,6 @@ def mongo_log_activity(username, company, action, role="user"):
         "action": str(action or ""),
         "role": str(role or "user"),
     })
-
 def mongo_log_notification(username, company, event_type, message):
     return _mongo_insert("notifications", {
         "username": str(username or ""),
@@ -8142,7 +6424,6 @@ def mongo_log_notification(username, company, event_type, message):
         "message": str(message or ""),
         "is_read": False,
     })
-
 def mongo_log_chat(user, sender, message):
     if not user or not message:
         return False
@@ -8152,7 +6433,6 @@ def mongo_log_chat(user, sender, message):
         "sender": str(sender or "User"),
         "message": str(message),
     })
-
 def mongo_log_research(user, query, results):
     return _mongo_insert("research", {
         "username": str((user or {}).get("username", "")),
@@ -8160,7 +6440,6 @@ def mongo_log_research(user, query, results):
         "query": str(query or ""),
         "results": list(results or [])[:20],
     })
-
 def mongo_save_preferences(username, country, language, language_code):
     database = mongo_db()
     if database is None or not username:
@@ -8180,8 +6459,6 @@ def mongo_save_preferences(username, country, language, language_code):
         return True
     except Exception:
         return False
-
-# Keep important existing activity behavior and add cloud telemetry.
 _legacy_log_activity_upgrade = log_activity
 def log_activity(username, company, action, notify_admin=True):
     try:
@@ -8196,7 +6473,6 @@ def log_activity(username, company, action, notify_admin=True):
     except Exception:
         pass
     return result
-
 _legacy_notify_company_admin_upgrade = notify_company_admin
 def notify_company_admin(company, message, event_type="info"):
     try:
@@ -8208,11 +6484,6 @@ def notify_company_admin(company, message, event_type="info"):
     except Exception:
         pass
     return result
-
-# =============================================================================
-# COUNTRY -> LANGUAGE LOCALIZATION
-# =============================================================================
-
 COUNTRY_LANGUAGE_MAP = {
     "Afghanistan": ("Dari / Pashto", "fa-AF"),
     "Albania": ("Albanian", "sq-AL"),
@@ -8411,9 +6682,7 @@ COUNTRY_LANGUAGE_MAP = {
     "Zambia": ("English", "en-ZM"),
     "Zimbabwe": ("English / Shona", "en-ZW"),
 }
-
 COUNTRY_OPTIONS = sorted(COUNTRY_LANGUAGE_MAP)
-
 def _ensure_user_preferences_table():
     con = db()
     try:
@@ -8430,7 +6699,6 @@ def _ensure_user_preferences_table():
         con.commit()
     finally:
         con.close()
-
 def get_user_preferences(username):
     _ensure_user_preferences_table()
     con = db()
@@ -8441,7 +6709,6 @@ def get_user_preferences(username):
     finally:
         con.close()
     return {"country": "Nigeria", "language": "English", "language_code": "en-NG"}
-
 def set_user_preferences(username, country):
     country = country if country in COUNTRY_LANGUAGE_MAP else "Nigeria"
     language, code = COUNTRY_LANGUAGE_MAP[country]
@@ -8462,13 +6729,7 @@ def set_user_preferences(username, country):
     st.session_state.di_language = language
     st.session_state.di_language_code = code
     return language, code
-
-# =============================================================================
-# PUBLIC UNIEL + USER WORKSPACE UI
-# =============================================================================
-
 def render_uniel_landing_guide():
-    """Public-facing Uniel guide: explains DACRE and drives signup."""
     path = DI_FACE_DIR / "Uniel.png"
     if path.exists():
         img_uri = "data:image/png;base64," + base64.b64encode(path.read_bytes()).decode("ascii")
@@ -8493,17 +6754,13 @@ def render_uniel_landing_guide():
       </div>
     </div>
     """, unsafe_allow_html=True)
-
 def render_user_navigation(user):
-    """Mobile-friendly hamburger/side navigation for ordinary users only."""
     if not user or user.get("role") == "master":
         return
-
     prefs = get_user_preferences(user.get("username", ""))
     current_country = st.session_state.get("di_country") or prefs["country"]
     if current_country not in COUNTRY_OPTIONS:
         current_country = "Nigeria"
-
     st.sidebar.markdown("""
     <div class="user-nav-brand">
       <div class="user-nav-dot"></div>
@@ -8512,7 +6769,6 @@ def render_user_navigation(user):
     """, unsafe_allow_html=True)
     st.sidebar.caption(f"Signed in as {user.get('first_name','User')} · {user.get('company','')}")
     st.sidebar.markdown("### Your workspace")
-
     user_pages = [
         "Overview",
         "Workspace & Data",
@@ -8549,7 +6805,6 @@ def render_user_navigation(user):
         key="user_workspace_navigation",
     )
     st.session_state.selected_page = selected
-
     st.sidebar.markdown("---")
     st.sidebar.markdown("### GLOBAL Country & language")
     selected_country = st.sidebar.selectbox(
@@ -8562,7 +6817,6 @@ def render_user_navigation(user):
         language, code = set_user_preferences(user.get("username", ""), selected_country)
         st.sidebar.success(f"{selected_country} · {language}")
         st.rerun()
-
     lang, code = COUNTRY_LANGUAGE_MAP[selected_country]
     st.sidebar.info(f"DI language engine: {lang} · {code}")
     st.sidebar.markdown("---")
@@ -8573,7 +6827,6 @@ def render_user_navigation(user):
         st.session_state.selected_page = "Overview"
         st.session_state.landing_mode = "home"
         st.rerun()
-
 def count_user_notifications(user):
     if not user:
         return 0
@@ -8588,7 +6841,6 @@ def count_user_notifications(user):
         return 0
     finally:
         con.close()
-
 def get_user_notifications(user, limit=12):
     if not user:
         return pd.DataFrame()
@@ -8602,7 +6854,6 @@ def get_user_notifications(user, limit=12):
         return pd.DataFrame()
     finally:
         con.close()
-
 def notify_user(user, message, event_type="info"):
     if not user:
         return
@@ -8619,7 +6870,6 @@ def notify_user(user, message, event_type="info"):
     finally:
         con.close()
     mongo_log_notification(username, company, event_type, message)
-
 def mark_notifications_read(user):
     if not user:
         return
@@ -8629,14 +6879,11 @@ def mark_notifications_read(user):
         con.commit()
     finally:
         con.close()
-
 def render_user_dashboard(user):
-    """Professional ordinary-user dashboard. No DI internals are exposed."""
     prefs = get_user_preferences(user.get("username", ""))
     country = prefs.get("country", "Nigeria")
     language = prefs.get("language", "English")
     notifications = get_user_notifications(user, limit=8)
-
     con = db()
     try:
         files = int(con.execute("SELECT COUNT(*) FROM files WHERE username=? AND company_name=?", (user.get("username",""), user.get("company",""))).fetchone()[0])
@@ -8644,7 +6891,6 @@ def render_user_dashboard(user):
         activities = int(con.execute("SELECT COUNT(*) FROM activity WHERE username=? AND company_name=?", (user.get("username",""), user.get("company",""))).fetchone()[0])
     finally:
         con.close()
-
     st.markdown("""
     <style>
       .user-nav-brand{display:flex;gap:10px;align-items:center;padding:8px 4px 16px}
@@ -8661,7 +6907,6 @@ def render_user_dashboard(user):
       @media(max-width:800px){.user-kpis{grid-template-columns:1fr 1fr}.user-dash{padding:18px}}
     </style>
     """, unsafe_allow_html=True)
-
     st.markdown(f"""
     <div class="user-dash">
       <div style="color:#6ee7ff;font-size:11px;font-weight:900;letter-spacing:.16em">DACRE WORLDWIDE · PRIVATE WORKSPACE</div>
@@ -8670,7 +6915,6 @@ def render_user_dashboard(user):
       <div style="margin-top:14px;color:#73e5bd;font-weight:800">GLOBAL {country} · {language}</div>
     </div>
     """, unsafe_allow_html=True)
-
     st.markdown(
         f"""<div class="user-kpis">
         <div class="user-kpi"><b>{files:,}</b><span>Files</span></div>
@@ -8680,7 +6924,6 @@ def render_user_dashboard(user):
         </div>""",
         unsafe_allow_html=True
     )
-
     c1, c2, c3 = st.columns(3)
     cards = [
         ("DATA", "Start with your data", "Upload a CSV, Excel, TSV or JSON file and begin a structured analysis.", "Workspace & Data"),
@@ -8693,7 +6936,6 @@ def render_user_dashboard(user):
             if st.button(f"Open {title}", key=f"user_dash_{target}", use_container_width=True):
                 st.session_state.selected_page = target
                 st.rerun()
-
     st.markdown("### NOTICE Messages")
     if notifications.empty:
         st.info("No new messages yet.")
@@ -8706,9 +6948,7 @@ def render_user_dashboard(user):
         if st.button("Mark messages as read", use_container_width=False):
             mark_notifications_read(user)
             st.rerun()
-
 def render_research_store(user):
-    """Online research/resource hub for ordinary users."""
     st.markdown("""
     <div class="user-dash">
       <div style="color:#6ee7ff;font-size:11px;font-weight:900;letter-spacing:.16em">DACRE RESEARCH STORE</div>
@@ -8716,7 +6956,6 @@ def render_research_store(user):
       <p style="color:#9eb0c8;max-width:800px">Search the public web, compare sources and save the research trail to your workspace. Paid resources should be opened through approved accounts rather than purchased automatically.</p>
     </div>
     """, unsafe_allow_html=True)
-
     q = st.text_input("Research query", placeholder="e.g. Nigerian fintech market size 2026", key="research_store_query")
     if st.button("Search the web", type="primary", use_container_width=True) and q.strip():
         results = []
@@ -8732,7 +6971,6 @@ def render_research_store(user):
                 st.markdown("---")
         else:
             st.warning("No public research results were returned. Check the spelling or try a more specific query.")
-
     st.markdown("### Approved research categories")
     cols = st.columns(4)
     for col, title, desc in [
@@ -8743,23 +6981,14 @@ def render_research_store(user):
     ]:
         with col:
             st.markdown(f"""<div class="user-work-card"><h3>{_escape_html(title)}</h3><p>{_escape_html(desc)}</p></div>""", unsafe_allow_html=True)
-
-# =============================================================================
-# SCRIPTURE KNOWLEDGE: public-domain KJV + Pickthall, loaded on demand.
-# The complete corpora are not hard-coded into app.py; they are cached locally
-# after the first scripture request to keep the application maintainable.
-# =============================================================================
-
 SCRIPTURE_DIR = BASE_DIR / "assets" / "scripture"
 SCRIPTURE_DIR.mkdir(parents=True, exist_ok=True)
 KJV_CACHE = SCRIPTURE_DIR / "kjv.json"
 QURAN_PICKTHALL_CACHE = SCRIPTURE_DIR / "quran_pickthall.txt"
-
 SCRIPTURE_SOURCES = {
     "kjv": "https://raw.githubusercontent.com/midvash/bible-data/main/versions/en/kjv/kjv.json",
     "quran": "https://raw.githubusercontent.com/druvx13/Quran-data/cairo/data/en.pickthall.txt",
 }
-
 QURAN_SURA_NAMES = [
     "Al-Fatihah","Al-Baqarah","Aal-E-Imran","An-Nisa","Al-Maidah","Al-Anam","Al-Araf","Al-Anfal",
     "At-Tawbah","Yunus","Hud","Yusuf","Ar-Rad","Ibrahim","Al-Hijr","An-Nahl","Al-Isra","Al-Kahf",
@@ -8775,7 +7004,6 @@ QURAN_SURA_NAMES = [
     "Al-Bayyinah","Az-Zalzalah","Al-Adiyat","Al-Qariah","At-Takathur","Al-Asr","Al-Humazah","Al-Fil",
     "Quraysh","Al-Maun","Al-Kawthar","Al-Kafirun","An-Nasr","Al-Masad","Al-Ikhlas","Al-Falaq","An-Nas"
 ]
-
 def _download_scripture_file(path, url):
     if path.exists() and path.stat().st_size > 100:
         return True
@@ -8790,7 +7018,6 @@ def _download_scripture_file(path, url):
     except Exception as exc:
         logger.warning("Scripture cache download failed: %s", type(exc).__name__)
         return False
-
 @st.cache_data(show_spinner=False)
 def load_kjv_corpus():
     if not _download_scripture_file(KJV_CACHE, SCRIPTURE_SOURCES["kjv"]):
@@ -8799,7 +7026,6 @@ def load_kjv_corpus():
         return json.loads(KJV_CACHE.read_text(encoding="utf-8"))
     except Exception:
         return {}
-
 @st.cache_data(show_spinner=False)
 def load_quran_corpus():
     if not _download_scripture_file(QURAN_PICKTHALL_CACHE, SCRIPTURE_SOURCES["quran"]):
@@ -8808,10 +7034,8 @@ def load_quran_corpus():
         return QURAN_PICKTHALL_CACHE.read_text(encoding="utf-8", errors="replace")
     except Exception:
         return ""
-
 def _norm_ref(value):
     return re.sub(r"[^a-z0-9]", "", str(value or "").lower())
-
 def bible_reference_from_text(text):
     q = str(text or "")
     pattern = re.compile(r"(?:(\d)\s*)?([A-Za-z][A-Za-z ]{1,24})\s+(\d{1,3})(?::(\d{1,3})(?:\s*-\s*(\d{1,3}))?)?", re.I)
@@ -8823,7 +7047,6 @@ def bible_reference_from_text(text):
         book = (prefix + " " + book).strip()
         return book, int(match.group(3)), int(match.group(4) or 0), int(match.group(5) or match.group(4) or 0)
     return None
-
 def lookup_bible_reference(text):
     ref = bible_reference_from_text(text)
     corpus = load_kjv_corpus()
@@ -8852,7 +7075,6 @@ def lookup_bible_reference(text):
         "reference": f"{book} {chapter}" + (f":{verse_start}" if verse_start else ""),
         "text": "\n".join(text_lines)[:26000],
     }
-
 def quran_reference_from_text(text):
     q = str(text or "")
     m = re.search(r"(?:quran|koran|surah|sura)\s*(?:\(?\s*)?(\d{1,3})(?::|[ -])(\d{1,3})", q, re.I)
@@ -8864,7 +7086,6 @@ def quran_reference_from_text(text):
             if vm:
                 return idx, int(vm.group(1))
     return None
-
 def lookup_quran_reference(text):
     ref = quran_reference_from_text(text)
     corpus = load_quran_corpus()
@@ -8886,7 +7107,6 @@ def lookup_quran_reference(text):
     if not lines:
         return None
     return {"translation": "Pickthall English translation (1930)", "reference": f"Qur'an {surah}:{ayah}", "text": "\n".join(lines)}
-
 def scripture_context_for_question(question):
     low = str(question or "").lower()
     is_bible = any(k in low for k in ("bible", "scripture", "kjv", "old testament", "new testament"))
@@ -8900,7 +7120,6 @@ def scripture_context_for_question(question):
         if result:
             return result
     return None
-
 def answer_scripture_question(question, user):
     result = scripture_context_for_question(question)
     if not result:
@@ -8920,27 +7139,18 @@ Answer in the user's selected language when practical: {st.session_state.get('di
     if answer:
         return f"{result['reference']} — {result['translation']}\n\n{result['text']}\n\nExplanation:\n{normalize_di_identity(answer)}"
     return f"{result['reference']} — {result['translation']}\n\n{result['text']}\n\nI can provide a detailed explanation when an AI reasoning provider is configured."
-
-# Add scripture retrieval to the real specialist brain.
 _legacy_real_di_answer_upgrade = real_di_answer
 def real_di_answer(agent, user, question, df=None, allow_online=True):
     scripture = answer_scripture_question(question, user)
     if scripture:
         return scripture
     return _legacy_real_di_answer_upgrade(agent, user, question, df=df, allow_online=allow_online)
-
-# Add scripture retrieval to the general DI brain too.
 _legacy_enhanced_di_reply_upgrade = enhanced_di_reply
 def enhanced_di_reply(message, user, df, allow_online=True, language="English — Nigeria"):
     scripture = answer_scripture_question(message, user)
     if scripture:
         return scripture
     return _legacy_enhanced_di_reply_upgrade(message, user, df, allow_online=allow_online, language=language)
-
-# =============================================================================
-# Uniel public identity and the 20 specialist workforce
-# =============================================================================
-
 UNIEL_SPEC = {
     "name": "Uniel",
     "specialty": "Public Onboarding & Product Guide",
@@ -8949,12 +7159,8 @@ UNIEL_SPEC = {
     "keywords": ["dacre", "signup", "sign up", "what is dacre", "how does dacre work", "landing", "features", "worldwide"],
     "voice": "female",
 }
-
-# Keep the original 20 specialist roster intact and add Uniel as the public-facing guide.
 if not any(x.get("name") == "Uniel" for x in REAL_DI_ROSTER):
     REAL_DI_ROSTER.append(UNIEL_SPEC)
-
-# Ensure every permanent specialist uses the exact local face asset supplied with the project.
 def _localize_di_face_assets():
     for spec in REAL_DI_ROSTER:
         name = spec.get("name", "")
@@ -8962,11 +7168,6 @@ def _localize_di_face_assets():
         if path:
             spec["avatar"] = str(path.relative_to(BASE_DIR))
 _localize_di_face_assets()
-
-# =============================================================================
-# In-app Emiel onboarding messages
-# =============================================================================
-
 def _seed_emiel_onboarding_notifications(user):
     if not user:
         return
@@ -8988,7 +7189,6 @@ def _seed_emiel_onboarding_notifications(user):
         con.close()
     for event_type, message in messages:
         mongo_log_notification(username, company, event_type, message)
-
 _legacy_create_account_upgrade = create_account
 def create_account(*args, **kwargs):
     result = _legacy_create_account_upgrade(*args, **kwargs)
@@ -9000,8 +7200,6 @@ def create_account(*args, **kwargs):
     except Exception as exc:
         logger.warning("Post-signup onboarding message failed: %s", type(exc).__name__)
     return result
-
-# Keep the already-correct authentication flow and mirror successful logins to MongoDB.
 _legacy_authenticate_upgrade = authenticate
 def authenticate(*args, **kwargs):
     result = _legacy_authenticate_upgrade(*args, **kwargs)
@@ -9018,10 +7216,7 @@ def authenticate(*args, **kwargs):
     except Exception:
         pass
     return result
-
-
 def _send_emiel_user_message(recipient_user, subject, body, send_email=True):
-    """Master-only Emiel messaging: always creates an in-app message, optionally sends email."""
     if not recipient_user:
         return "No recipient selected."
     username = recipient_user.get("username", "")
@@ -9042,29 +7237,18 @@ def _send_emiel_user_message(recipient_user, subject, body, send_email=True):
         except Exception as exc:
             status += f" Email failed: {type(exc).__name__}."
     return status
-
-
 def _brevo_secret(name, default=""):
-    """Read Brevo credentials from Streamlit Secrets or environment variables."""
     try:
         value = st.secrets.get(name, "")
     except Exception:
         value = ""
     return str(value or os.getenv(name, default) or default).strip()
-
-
 def _send_via_brevo(recipient_email, recipient_name, subject, body, sender_agent="Emiel"):
-    """Send transactional email through Brevo's HTTPS API.
-
-    This avoids Gmail SMTP/App Password requirements. The Brevo API key must
-    be supplied privately through DACRE_BREVO_API_KEY.
-    """
     api_key = _brevo_secret("DACRE_BREVO_API_KEY")
     sender_email = _brevo_secret("DACRE_BREVO_SENDER", "dacre-platform@gmail.com")
     sender_name = _brevo_secret("DACRE_BREVO_SENDER_NAME", "DACRE — David Intelligence")
     if not api_key:
         return None
-
     payload = {
         "sender": {"name": sender_name, "email": sender_email},
         "to": [{"email": recipient_email, "name": recipient_name or ""}],
@@ -9089,20 +7273,12 @@ def _send_via_brevo(recipient_email, recipient_name, subject, body, sender_agent
             return f"Brevo: sent ({data.get('messageId', 'accepted')})"
     except Exception as exc:
         return f"Brevo: failed ({type(exc).__name__})"
-
-
 def send_custom_email(recipient_email, recipient_name, subject, body, sender_agent="Emiel"):
-    """Send an agent-branded transactional email.
-
-    Production preference: Brevo HTTPS API. SMTP providers remain as fallbacks
-    so existing DACRE installations are not broken.
-    """
     brevo_result = _send_via_brevo(
         recipient_email, recipient_name, subject, body, sender_agent=sender_agent
     )
     if brevo_result:
         return brevo_result
-
     providers = [
         ("Gmail", "DACRE_GMAIL_SMTP_HOST", "DACRE_GMAIL_SMTP_PORT", "DACRE_GMAIL_SMTP_USER", "DACRE_GMAIL_SMTP_PASSWORD", "DACRE_GMAIL_SMTP_FROM"),
         ("Outlook", "DACRE_OUTLOOK_SMTP_HOST", "DACRE_OUTLOOK_SMTP_PORT", "DACRE_OUTLOOK_SMTP_USER", "DACRE_OUTLOOK_SMTP_PASSWORD", "DACRE_OUTLOOK_SMTP_FROM"),
@@ -9110,13 +7286,12 @@ def send_custom_email(recipient_email, recipient_name, subject, body, sender_age
     ]
     def secret(name, default=""):
         return _dacre_secret(name, default)
-
     for provider, hk, pk, uk, sk, fk in providers:
         host = secret(hk)
         port = int(secret(pk, "587") or "587")
         user_name = secret(uk)
         password = secret(sk)
-        sender = secret(fk, user_name)
+        sender = secret(fk, "david@gedu.demo.edubridge.info" if provider == "Legacy SMTP" else user_name)
         if not (host and user_name and password):
             continue
         try:
@@ -9133,9 +7308,7 @@ def send_custom_email(recipient_email, recipient_name, subject, body, sender_age
         except Exception as exc:
             continue
     return "NOT SENT — configure DACRE_BREVO_API_KEY (recommended) or an SMTP provider."
-
 def render_emiel_directory(user):
-    """Master-only directory and messaging console for Emiel."""
     if not user or user.get("role") != "master":
         return
     st.markdown("""
@@ -9145,7 +7318,6 @@ def render_emiel_directory(user):
       <p style="color:#9eb0c8">This private founder console lets Emiel address registered DACRE users. Normal users cannot access this directory.</p>
     </div>
     """, unsafe_allow_html=True)
-
     con = db()
     try:
         people = pd.read_sql_query(
@@ -9155,18 +7327,14 @@ def render_emiel_directory(user):
         )
     finally:
         con.close()
-
     if people.empty:
         st.info("No non-master accounts are registered yet.")
         return
-
     st.dataframe(safe_dataframe_for_streamlit(people), use_container_width=True, hide_index=True)
-
     options = people["username"].tolist()
     selected_username = st.selectbox("Choose a recipient", options, key="emiel_recipient")
     selected = people[people["username"] == selected_username].iloc[0].to_dict()
     st.caption(f"Email: {selected.get('email','')} · Company: {selected.get('company_name','')}")
-
     with st.form("emiel_message_form", clear_on_submit=True):
         subject = st.text_input("Message subject", value="A message from Emiel — DACRE")
         body = st.text_area("Message", height=140, placeholder="Write the message Emiel should deliver...")
@@ -9178,8 +7346,6 @@ def render_emiel_directory(user):
         else:
             result = _send_emiel_user_message(selected, subject.strip() or "Message from Emiel", body.strip(), email_too)
             st.success(result)
-
-
 _legacy_save_chat_history_message_upgrade = save_chat_history_message
 def save_chat_history_message(user, sender, message):
     result = _legacy_save_chat_history_message_upgrade(user, sender, message)
@@ -9188,10 +7354,6 @@ def save_chat_history_message(user, sender, message):
     except Exception:
         pass
     return result
-
-
-# =============================================================================
-
 DACRE_PAGE_DI_MAP = {
     "Overview": "Raziel",
     "DI Home": "Raziel",
@@ -9215,9 +7377,7 @@ DACRE_PAGE_DI_MAP = {
     "Overall Admin DI Portal": "Guaiel",
     "Research Store": "Sofiel",
 }
-
 def _page_di_agent(page_name):
-    """Return the real seeded DI responsible for the current DACRE surface."""
     target = DACRE_PAGE_DI_MAP.get(page_name, "Assiel")
     rows = real_di_agent_rows()
     for row in rows:
@@ -9231,28 +7391,19 @@ def _page_di_agent(page_name):
         "status": "Available",
         "id": 0,
     }
-
 def _di_uptime_snapshot(agent):
-    """
-    Persist a service heartbeat. This represents the DI service being alive
-    while the DACRE process is running; it does not falsely claim uptime while
-    the hosting service itself is offline.
-    """
     now = datetime.now()
     if "dacre_process_started_at" not in st.session_state:
         st.session_state.dacre_process_started_at = now.isoformat(timespec="seconds")
-
     started = st.session_state.dacre_process_started_at
     try:
         elapsed = max(0, int((now - datetime.fromisoformat(started)).total_seconds()))
     except Exception:
         elapsed = 0
-
     days, rem = divmod(elapsed, 86400)
     hours, rem = divmod(rem, 3600)
     minutes, seconds = divmod(rem, 60)
     uptime = f"{days}d {hours:02d}h {minutes:02d}m {seconds:02d}s"
-
     try:
         con = db()
         con.execute("""CREATE TABLE IF NOT EXISTS di_service_heartbeat (
@@ -9272,18 +7423,10 @@ def _di_uptime_snapshot(agent):
         con.close()
     except Exception:
         pass
-
     return uptime, now.strftime("%Y-%m-%d %H:%M:%S")
-
 def render_page_di_hologram(page_name, user):
-    """
-    Put the responsible DI at the top of the current DACRE page.
-    The DI's actual face, role and operational screen reflect the page the
-    user is currently visiting.
-    """
     if not user:
         return
-
     agent = _page_di_agent(page_name)
     uptime, heartbeat = _di_uptime_snapshot(agent)
     name = html.escape(str(agent.get("di_name", "DI")))
@@ -9291,12 +7434,10 @@ def render_page_di_hologram(page_name, user):
     position = html.escape(str(agent.get("position_title", "DI Specialist")))
     role = html.escape(str(agent.get("system_role", "Ready to assist you.")))
     face = di_face_data_url(str(agent.get("di_name", "")))
-
     if face:
         avatar = f'<img src="{face}" alt="{name}" class="page-di-face">'
     else:
         avatar = f'<div class="page-di-face page-di-fallback">{name[:1]}</div>'
-
     st.markdown(f"""
     <div class="page-di-hologram">
       <div class="page-di-landscape">
@@ -9360,7 +7501,6 @@ def render_page_di_hologram(page_name, user):
       @media(max-width:760px){{.page-di-hologram{{grid-template-columns:1fr}}.page-di-landscape{{min-height:210px}}.page-di-status-row{{grid-template-columns:1fr}}.page-di-console h3{{font-size:24px}}}}
     </style>
     """, unsafe_allow_html=True)
-
     with st.expander(f"Talk to {agent.get('di_name','DI')} — {page_name}", expanded=False):
         question = st.text_input(
             f"What do you need {agent.get('di_name','DI')} to do?",
@@ -9384,9 +7524,6 @@ def render_page_di_hologram(page_name, user):
             st.markdown("**DI response**")
             st.write(last)
             st.caption(f"Source path: {st.session_state.get(f'page_di_last_source_{re.sub(r'[^a-zA-Z0-9]+','_',page_name)}', 'local')}")
-
-
-
 MASTER_PAGES = [
     "Overview", "DI Home", "DI Calls", "DI Workforce", "Global Markets",
     "DI Conference", "DI Action Center", "DI Memory Box", "Business Command Center",
@@ -9394,7 +7531,6 @@ MASTER_PAGES = [
     "Formula Lab", "Charts", "File Vault", "Export Center", "Chibobec Loan Desk",
     "Organization Admin Portal", "Overall Admin DI Portal",
 ]
-
 st.markdown("""
 <style>
 .uniel-landing-card{display:flex;gap:22px;align-items:center;margin:8px 28px 28px;padding:22px;border:1px solid rgba(94,170,255,.18);border-radius:24px;background:linear-gradient(145deg,rgba(17,31,54,.95),rgba(6,13,27,.96));box-shadow:0 24px 70px rgba(0,0,0,.25)}
@@ -9404,7 +7540,6 @@ st.markdown("""
 @media(max-width:700px){.uniel-landing-card{margin:8px 0 22px;padding:16px;align-items:flex-start}.uniel-avatar-wrap{flex-basis:76px}.uniel-avatar-wrap img{width:76px;height:76px}.uniel-copy h2{font-size:20px}.hero{grid-template-columns:1fr!important;padding:34px 10px 24px!important}.grid-3,.grid-2{grid-template-columns:1fr!important}}
 </style>
 """, unsafe_allow_html=True)
-
 def render_enterprise_sidebar(user):
     if not user:
         return
@@ -9428,9 +7563,7 @@ def render_enterprise_sidebar(user):
             st.rerun()
     else:
         render_user_navigation(user)
-
 def render_productivity_bar(user):
-    """Compact online-company action bar that makes the workspace easy to understand."""
     if not user:
         return
     master = user.get("role") == "master"
@@ -9441,7 +7574,6 @@ def render_productivity_bar(user):
       <div class="quick-status">Workspace: <b>{company}</b> · <span>DI ready</span></div>
     </div>
     """, unsafe_allow_html=True)
-
     if master:
         actions = [
             ("New overview", "Overview"),
@@ -9456,14 +7588,12 @@ def render_productivity_bar(user):
             ("Find opportunities", "Opportunity Radar"),
             ("Research", "Research Store"),
         ]
-
     cols = st.columns(len(actions), gap="small")
     for i, (label, target) in enumerate(actions):
         with cols[i]:
             if st.button(label, key=f"quick_action_{'master' if master else 'user'}_{i}", use_container_width=True):
                 st.session_state.selected_page = target
                 st.rerun()
-
     with st.expander("How DACRE works", expanded=False):
         st.markdown(
             "**1. Bring your information in** → upload or connect your business data.  "
@@ -9471,37 +7601,28 @@ def render_productivity_bar(user):
             "**3. Decide** → use Business Twin, Opportunity Radar and Decision Ledger.  "
             "**4. Act** → export results or move the next action into your workspace."
         )
-
-
 def main_app():
     if not st.session_state.get("dacre_boot_complete", False):
         init_production_core()
         st.session_state.dacre_boot_complete = True
-
     user = st.session_state.get("user")
     if not user:
         landing_page()
         return
-
     mongo_sync_user(user)
     render_enterprise_sidebar(user)
     apply_company_website_theme(user)
     render_productivity_bar(user)
-
     if not st.session_state.chat_history:
         st.session_state.chat_history = load_chat_history(user, limit=40)
-
     selected_page = st.session_state.get("selected_page", "Overview")
-
     if user.get("role") != "master":
         allowed = {"Overview","Workspace & Data","Business Twin","Decision Ledger","Opportunity Radar","File Vault","Export Center","Research Store","Faith & Business Wisdom Lab"}
         if selected_page not in allowed:
             selected_page = "Overview"
             st.session_state.selected_page = selected_page
-
     render_page_chrome(selected_page, user)
     render_page_di_hologram(selected_page, user)
-
     if selected_page == "Overview":
         if user.get("role") == "master":
             render_dacre_production_core()
@@ -9556,17 +7677,12 @@ def main_app():
             st.info("This command module is available from the master navigation.")
         else:
             render_user_dashboard(user)
-
     if user.get("role") == "master":
         render_persistent_di_dock(user)
-
-
 try:
     real_di_seed_workforce()
 except Exception as _real_di_boot_error:
     logger.exception("Real DI workforce bootstrap failed: %s", _real_di_boot_error)
-
-
 FAITH_BUSINESS_SOURCES = {
     "Holy Bible": {
         "description": "Business and leadership ideas inspired by themes across the Bible. The generator uses themes rather than presenting business practices as religious commands.",
@@ -9607,7 +7723,6 @@ FAITH_BUSINESS_SOURCES = {
         ],
     },
 }
-
 FAITH_BUSINESS_CHALLENGES = [
     "I need a new business idea",
     "Sales are too low",
@@ -9620,17 +7735,13 @@ FAITH_BUSINESS_CHALLENGES = [
     "I want to build a social-impact business",
     "I need ideas for a small business in Nigeria",
 ]
-
-
 def _faith_business_idea_pack(source_name, challenge, business_type, count=5):
-    """Create deterministic business ideas from a selected faith source."""
     source = FAITH_BUSINESS_SOURCES.get(source_name, FAITH_BUSINESS_SOURCES["Holy Bible"])
     themes = list(source["themes"])
     challenge_l = str(challenge or "").lower()
     business_l = str(business_type or "general business").strip()
     if not business_l:
         business_l = "general business"
-
     ranked = []
     for theme in themes:
         title, reference, principle = theme
@@ -9649,7 +7760,6 @@ def _faith_business_idea_pack(source_name, challenge, business_type, count=5):
             score += 4
         ranked.append((score, theme))
     ranked.sort(key=lambda x: x[0], reverse=True)
-
     templates = [
         ("Business System", "Turn the principle into a repeatable operating system for {business}.", "Define one process, owner, quality rule and weekly KPI."),
         ("Product Opportunity", "Create a product or service for {business} that solves the stated challenge with a clear customer promise.", "Interview 10 target customers and test a paid pilot before building at scale."),
@@ -9672,27 +7782,20 @@ def _faith_business_idea_pack(source_name, challenge, business_type, count=5):
             "metric": "Revenue or margin + customer retention + delivery quality",
         })
     return ideas
-
-
 def render_faith_business_lab(user):
-    """Interactive scripture-inspired business ideation and study workspace."""
     if not user:
         return
     st.markdown("## ✨ Faith & Business Wisdom Lab")
     st.caption("Turn scripture themes into practical, ethical business ideas. Ideas are interpretations for business planning, not religious rulings.")
-
     source_name = st.selectbox("Choose your wisdom source", list(FAITH_BUSINESS_SOURCES.keys()), key="faith_business_source")
     st.info(FAITH_BUSINESS_SOURCES[source_name]["description"])
-
     c1, c2 = st.columns(2)
     with c1:
         business_type = st.text_input("Your business / industry", placeholder="e.g. retail shop, fintech, farm, restaurant", key="faith_business_type")
     with c2:
         challenge = st.selectbox("What are you trying to solve?", FAITH_BUSINESS_CHALLENGES, key="faith_business_challenge")
-
     custom_challenge = st.text_input("Or describe your exact challenge", placeholder="e.g. I want to sell affordable food to students", key="faith_business_custom_challenge")
     final_challenge = custom_challenge.strip() or challenge
-
     if st.button("💡 Generate Business Ideas", type="primary", use_container_width=True, key="faith_business_generate"):
         ideas = _faith_business_idea_pack(source_name, final_challenge, business_type, count=5)
         st.session_state["faith_business_ideas"] = ideas
@@ -9701,7 +7804,6 @@ def render_faith_business_lab(user):
             log_activity(user.get("username", "User"), user.get("company", ""), "FAITH BUSINESS IDEATION", f"Generated {len(ideas)} ideas from {source_name}")
         except Exception:
             pass
-
     ideas = st.session_state.get("faith_business_ideas", [])
     if ideas:
         st.markdown("### Business ideas")
@@ -9713,7 +7815,6 @@ def render_faith_business_lab(user):
                 st.markdown(f"**Idea:** {idea['idea']}")
                 st.markdown(f"**First action:** {idea['first_action']}")
                 st.markdown(f"**Suggested KPI:** {idea['metric']}")
-
     st.markdown("### 📖 Scripture study")
     scripture_query = st.text_input("Ask about a Bible or Qur'an reference", placeholder="e.g. Proverbs 21:5 or Qur'an 2:282", key="faith_scripture_query")
     if st.button("Study reference", key="faith_scripture_study") and scripture_query.strip():
@@ -9731,23 +7832,16 @@ def render_faith_business_lab(user):
                 st.write(normalize_di_identity(explanation))
         else:
             st.warning("No matching Bible/Qur'an reference was found in the locally cached scripture corpus. Try a reference such as Proverbs 21:5 or Qur'an 2:282.")
-
     st.markdown("### 🧭 Business principle library")
     rows = []
     for src, data in FAITH_BUSINESS_SOURCES.items():
         for title, reference, principle in data["themes"]:
             rows.append({"SOURCE": src, "THEME": title, "REFERENCE": reference, "BUSINESS PRINCIPLE": principle})
     st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True, height=420)
-
-
 FOUNDER_MASTER_PAGES = ["Overall Admin DI", "David Creation"]
 FOUNDER_INTERNAL_PAGES = FOUNDER_MASTER_PAGES + ["DI Basement"]
-
-
 def _founder_now():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-
 def _ensure_founder_creation_tables():
     con = db()
     try:
@@ -9765,8 +7859,6 @@ def _ensure_founder_creation_tables():
         con.commit()
     finally:
         con.close()
-
-
 def _founder_log(action, detail):
     _ensure_founder_creation_tables()
     try:
@@ -9776,8 +7868,6 @@ def _founder_log(action, detail):
         con.close()
     except Exception:
         logger.exception("Founder activity log failed")
-
-
 def _founder_counts():
     con = db()
     try:
@@ -9792,8 +7882,6 @@ def _founder_counts():
         }
     finally:
         con.close()
-
-
 def _founder_activity_feed(limit=80):
     con = db()
     events = []
@@ -9816,8 +7904,6 @@ def _founder_activity_feed(limit=80):
         except Exception: return datetime.min
     events.sort(key=sort_key, reverse=True)
     return events[:limit]
-
-
 def _founder_module_status():
     services=dacre_service_status()
     status=[]
@@ -9825,15 +7911,7 @@ def _founder_module_status():
         status.append((name,"ONLINE" if services.get(key) else "STANDBY"))
     status.extend([("DI Brain","ONLINE"),("Activity Monitor","ONLINE"),("Database","ONLINE")])
     return status
-
-
 def _di_robot_figure(face, name, state="ONLINE", compact=False):
-    """Render a visible humanoid DI robot inside its physical office scene.
-
-    This intentionally never falls back to a letter/initial. When a DI face
-    asset exists it is placed inside the robot head; the rest of the figure is
-    a CSS-rendered humanoid service robot with a torso, arms, hands and legs.
-    """
     safe_name = html.escape(str(name or "DI"))
     safe_state = html.escape(str(state or "ONLINE"))
     if face:
@@ -9857,7 +7935,6 @@ def _di_robot_figure(face, name, state="ONLINE", compact=False):
       <div class="di-robot-foot foot-left"></div><div class="di-robot-foot foot-right"></div>
       <div class="di-robot-state">{safe_state}</div>
     </div>"""
-
 def _founder_office_card(spec, room_number, activity, screen_text):
     face=di_face_data_url(spec["name"])
     robot_html=_di_robot_figure(face, spec["name"], "ONLINE")
@@ -9876,10 +7953,7 @@ def _founder_office_card(spec, room_number, activity, screen_text):
       <div class="office-info"><div><strong>{html.escape(spec["name"])}</strong><small>{html.escape(spec["position"])}</small></div><span>{html.escape(spec["specialty"])}</span></div>
       <div class="office-activity"><b>{html.escape(str(activity))}</b><span>DI BRAIN CONNECTED</span></div>
     </div>'''
-
-
 def _founder_active_specs():
-    """Return active permanent and founder-created DI specifications."""
     _ensure_founder_creation_tables()
     con=db()
     try:
@@ -9897,8 +7971,6 @@ def _founder_active_specs():
                 "keywords":[], "voice":r["voice_profile"] or "female"
             }
     return list(specs.values())
-
-
 def render_founder_3d_di_offices():
     try:
         rooms={r["di_name"]:r for r in di_basement_world_sync()}
@@ -9920,19 +7992,14 @@ def render_founder_3d_di_offices():
       @media(max-width:1200px){.founder-office-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:900px){.founder-office-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.founder-office-grid{grid-template-columns:1fr}}
     </style><div class="founder-office-grid">''' + ''.join(cards) + '</div>'
     components.html(html_block,height=1450,scrolling=False)
-
-
 def render_founder_overall_admin(user):
-    """Founder command centre: live platform activity around a physical human-faced DI office."""
     if user.get("role") != "master":
         st.error("Overall Admin DI is restricted to the verified founder account.")
         return
-
     ensure_admin_runtime_schema(); _ensure_founder_creation_tables()
     counts = _founder_counts()
     events = _founder_activity_feed(120)
     status = _founder_module_status()
-
     hero_face = ""
     if CEO_PORTRAIT_PATH and CEO_PORTRAIT_PATH.exists():
         try:
@@ -9944,11 +8011,9 @@ def render_founder_overall_admin(user):
             hero_face = di_face_data_url(candidate)
             if hero_face:
                 break
-
     latest = events[0] if events else {"type":"SYSTEM", "actor":"DACRE", "detail":"Monitoring platform activity", "time":_founder_now()}
     recent_di = [e for e in events if "DI" in str(e.get("type", "")).upper() or "DI" in str(e.get("detail", "")).upper()][:3]
     recent_users = [e for e in events if "USER" in str(e.get("type", "")).upper() or "ACCOUNT" in str(e.get("type", "")).upper()][:3]
-
     def _event_rows(items):
         if not items:
             return '<div class="oa-empty">Waiting for live activity…</div>'
@@ -9957,13 +8022,11 @@ def render_founder_overall_admin(user):
             f'<small>{html.escape(str(e.get("detail", "")))}</small></div><time>{html.escape(str(e.get("time", "")))}</time></div>'
             for e in items
         )
-
     status_map = {name: state for name, state in status}
     di_online = counts.get("active_di", 0)
     system_health = "100%" if all(v == "ONLINE" for v in status_map.values()) else "OPERATIONAL"
     face_html = (f'<img class="oa-human-face" src="{hero_face}" alt="Overall Admin DI human face">'
                  if hero_face else '<div class="oa-human-face oa-face-fallback">DI</div>')
-
     st.markdown(f"""
     <style>
       .oa-shell{{font-family:Inter,Arial,sans-serif;color:#f7fbff;background:#02070d;border:1px solid #17344c;border-radius:22px;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,.52)}}
@@ -10011,7 +8074,6 @@ def render_founder_overall_admin(user):
       <div class="oa-activity"><h3>REAL-TIME ACTIVITY FEED · CONNECTED TO DACRE</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:18px"><div><div class="oa-label" style="margin-bottom:4px">USER / ACCOUNT ACTIVITY</div>{_event_rows(recent_users)}</div><div><div class="oa-label" style="margin-bottom:4px">DI ACTIVITY</div>{_event_rows(recent_di)}</div></div></div>
     </div>
     """, unsafe_allow_html=True)
-
     action_cols = st.columns(2)
     with action_cols[0]:
         if st.button("⚙  David Creation", type="primary", use_container_width=True, key="oa_open_david_creation"):
@@ -10019,14 +8081,11 @@ def render_founder_overall_admin(user):
             st.rerun()
     with action_cols[1]:
         st.caption("DI Basement is opened from David Creation after its separate password check.")
-
     st.markdown("### FULL ACTIVITY LOG")
     if events:
         st.dataframe(pd.DataFrame([{"TIME":e["time"],"TYPE":e["type"],"ACTOR":e["actor"],"SOURCE":e["source"],"ACTIVITY":e["detail"]} for e in events]), use_container_width=True, hide_index=True, height=420)
     else:
         st.info("No platform activity has been recorded yet. New sign-ins, chats, uploads and other events will appear here automatically.")
-
-
 def _founder_destroy_di(name):
     name=(name or '').strip()
     if not name: return False,'Choose a DI first.'
@@ -10047,8 +8106,6 @@ def _founder_destroy_di(name):
         con.execute('DELETE FROM di_agents WHERE id=?',(di_id,)); con.commit()
     finally: con.close()
     _founder_log('DI DESTROYED',f'{name} permanently deleted'); return True,f'{name} has been permanently deleted.'
-
-
 def _founder_create_di(name,specialty,position,role,gender,rank):
     name=(name or '').strip(); specialty=(specialty or '').strip(); position=(position or 'DI Specialist').strip(); role=(role or specialty).strip()
     if not name or not specialty: return False,'DI name and specialty are required.'
@@ -10057,8 +8114,6 @@ def _founder_create_di(name,specialty,position,role,gender,rank):
     if ok:
         _founder_log('DI CREATED',f'{name} · {specialty} · {position}'); return True,f'{name} was created successfully.'
     return False,str(msg)
-
-
 def render_founder_david_creation(user):
     if user.get('role')!='master': st.error('David Creation is restricted to the verified founder account.'); return
     if not st.session_state.get('david_creation_unlocked',False):
@@ -10098,8 +8153,6 @@ def render_founder_david_creation(user):
         st.session_state.di_basement_unlocked=False
         st.rerun()
     if st.button('Lock David Creation',key='founder_lock_creation'): st.session_state.david_creation_unlocked=False; st.rerun()
-
-
 def render_founder_basement(user):
     if user.get('role')!='master': st.error('DI Basement is restricted to the verified founder account.'); return
     if not st.session_state.get('di_basement_unlocked',False):
@@ -10124,8 +8177,6 @@ def render_founder_basement(user):
     with c2:
         st.markdown('### Workstation'); st.info('Connected to the shared DACRE brain, private specialist memory and approved tools.'); st.json({'room':names.index(selected)+1,'di':selected,'shared_brain':'DACRE DI Technology Brain','private_memory':f'{selected} Private Specialist Memory','status':'ONLINE'})
     if st.button('Lock DI Basement',key='founder_lock_basement'): st.session_state.di_basement_unlocked=False; st.rerun()
-
-
 def render_founder_sidebar(user):
     st.sidebar.markdown('## 👑 DACRE COMMAND'); st.sidebar.caption('Founder / Overall Administrator'); st.sidebar.markdown('### Command navigation')
     current=st.session_state.get('selected_page','Overall Admin DI'); current=current if current in FOUNDER_MASTER_PAGES else 'Overall Admin DI'
@@ -10133,8 +8184,6 @@ def render_founder_sidebar(user):
     st.sidebar.markdown('---'); health=mongo_health(); st.sidebar.markdown(f"**MongoDB:** {'ONLINE' if health.get('enabled') else 'LOCAL DB'}"); st.sidebar.markdown('**Guardian:** Guaiel · VERIFIED')
     if st.sidebar.button('Sign out',use_container_width=True,key='founder_sign_out'):
         st.session_state.user=None; st.session_state.master_route=False; st.session_state.selected_page='Overview'; st.session_state.david_creation_unlocked=False; st.session_state.di_basement_unlocked=False; st.query_params.clear(); st.rerun()
-
-
 def main_app():
     if not st.session_state.get('dacre_boot_complete',False): init_production_core(); st.session_state.dacre_boot_complete=True
     user=st.session_state.get('user')
@@ -10170,29 +8219,18 @@ def main_app():
     elif selected_page=='DI Intelligence': render_di_intelligence_console(user)
     elif selected_page=='DI Creation Studio': render_di_creation_studio(user)
     render_persistent_di_dock(user)
-
-
-
 DI_UPGRADE_VERSION = "7.9.0"
 DI_SERVER_TIMEOUT = float(os.getenv("DACRE_DI_SERVER_TIMEOUT", "18"))
 DI_SERVER_MAX_CONTEXT = int(os.getenv("DACRE_DI_SERVER_MAX_CONTEXT", "9000"))
-
-
 def _di_safe_text(value: Any, limit: int = 12000) -> str:
     text = str(value or "").replace("\x00", " " ).strip()
     return text[:limit]
-
-
 def _di_server_config() -> Dict[str, Any]:
     return {"openai": bool(os.getenv("OPENAI_API_KEY")), "gemini": bool(os.getenv("GEMINI_API_KEY")), "custom": bool(os.getenv("DACRE_DI_SERVER_URL")), "timeout": DI_SERVER_TIMEOUT}
-
-
 def _di_remote_headers(provider: str) -> Dict[str, str]:
     if provider == "openai":
         return {"Authorization": f"Bearer {os.getenv('OPENAI_API_KEY', '')}", "Content-Type": "application/json"}
     return {"Content-Type": "application/json"}
-
-
 def _di_memory_board_ensure():
     con = db()
     try:
@@ -10215,8 +8253,6 @@ def _di_memory_board_ensure():
         con.commit()
     finally:
         con.close()
-
-
 MB_CORE_KNOWLEDGE = [
     ("Bible", "Stewardship", "Holy Bible", "Genesis 1–2", "Resources should be managed responsibly.", "Use resource stewardship when planning budgets, inventory and operational capacity.", "stewardship,resources,budget"),
     ("Bible", "Diligent work", "Holy Bible", "Proverbs 10:4", "Diligence can be used as a business discipline.", "Build routines around consistent execution, quality control and follow-through.", "diligence,work,execution"),
@@ -10245,8 +8281,508 @@ MB_CORE_KNOWLEDGE = [
     ("Quran", "Perseverance", "Holy Qur'an", "Qur'an 3:200", "Perseverance is encouraged in difficulty.", "Use staged experiments and resilience plans instead of abandoning sound strategy after one setback.", "resilience,experiments,patience"),
     ("Moses-Later", "Historical attribution", "The Sixth and Seventh Books of Moses", "Historical/occult literature", "These later works are not part of the biblical Torah/Pentateuch.", "If studied for cultural or historical inspiration, label the source accurately and do not present it as canonical scripture.", "history,source,canon"),
 ]
-
 MB_EXTENDED_KNOWLEDGE = [
+    ("Business", "Resilience pattern 1 for a growing company", "DACRE Business Wisdom Memory", "Business pattern R1", "Prepare for disruption with alternatives, reserves and clear response ownership.", "Maintain a short continuity plan covering suppliers, cash, people, systems and customer communication.", "resilience,continuity,risk"),
+    ("Business", "Resilience pattern 2 for an online business", "DACRE Business Wisdom Memory", "Business pattern R2", "Prepare for disruption with alternatives, reserves and clear response ownership.", "Maintain a short continuity plan covering suppliers, cash, people, systems and customer communication.", "resilience,continuity,risk"),
+    ("Business", "Resilience pattern 3 for a service firm", "DACRE Business Wisdom Memory", "Business pattern R3", "Prepare for disruption with alternatives, reserves and clear response ownership.", "Maintain a short continuity plan covering suppliers, cash, people, systems and customer communication.", "resilience,continuity,risk"),
+    ("Business", "Resilience pattern 4 for a startup", "DACRE Business Wisdom Memory", "Business pattern R4", "Prepare for disruption with alternatives, reserves and clear response ownership.", "Maintain a short continuity plan covering suppliers, cash, people, systems and customer communication.", "resilience,continuity,risk"),
+    ("Business", "Innovation pattern 1 for an online store", "DACRE Business Wisdom Memory", "Business pattern 39", "Run small tests with explicit hypotheses and success criteria before scaling.", "Apply this for an online store by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "innovation,experiments,learning"),
+    ("Business", "Partnerships pattern 1 for an online store", "DACRE Business Wisdom Memory", "Business pattern 40", "Choose partnerships where responsibilities, value exchange and expectations are explicit.", "Apply this for an online store by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "partnerships,trust,value"),
+    ("Business", "Strategy pattern 1 for a startup", "DACRE Business Wisdom Memory", "Business pattern 41", "Define objectives, assumptions, milestones and review points before committing resources.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "strategy,planning,governance"),
+    ("Business", "Sales pattern 1 for a startup", "DACRE Business Wisdom Memory", "Business pattern 42", "Start from a customer problem, then measure conversion, retention, margin and satisfaction.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "sales,customers,conversion"),
+    ("Business", "Marketing pattern 1 for a startup", "DACRE Business Wisdom Memory", "Business pattern 43", "Make claims clear, supportable and easy for customers to understand.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "marketing,trust,communication"),
+    ("Business", "Finance pattern 1 for a startup", "DACRE Business Wisdom Memory", "Business pattern 44", "Track cash, commitments, reserves, receivables and payables before expanding.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "finance,cashflow,stewardship"),
+    ("Business", "Operations pattern 1 for a startup", "DACRE Business Wisdom Memory", "Business pattern 45", "Document repeatable processes, owners, inputs, outputs and exception paths.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "operations,process,quality"),
+    ("Business", "Leadership pattern 1 for a startup", "DACRE Business Wisdom Memory", "Business pattern 46", "Lead by clarifying purpose, removing blockers and developing responsible people.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "leadership,service,people"),
+    ("Business", "Human Resources pattern 1 for a startup", "DACRE Business Wisdom Memory", "Business pattern 47", "Use consistent criteria for hiring, evaluation, compensation and conflict resolution.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "hr,fairness,people"),
+    ("Business", "Data pattern 1 for a startup", "DACRE Business Wisdom Memory", "Business pattern 48", "Measure important quantities consistently and record the assumptions behind them.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "data,measurement,analytics"),
+    ("Business", "Technology pattern 1 for a startup", "DACRE Business Wisdom Memory", "Business pattern 49", "Automate repeatable work while keeping human review for consequential decisions.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "technology,automation,review"),
+    ("Business", "Cybersecurity pattern 1 for a startup", "DACRE Business Wisdom Memory", "Business pattern 50", "Protect entrusted information with least privilege, authentication, backups and monitoring.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "security,trust,data"),
+    ("Business", "Procurement pattern 1 for a startup", "DACRE Business Wisdom Memory", "Business pattern 51", "Compare suppliers with documented criteria for price, quality, reliability and risk.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "procurement,suppliers,fairness"),
+    ("Business", "Inventory pattern 1 for a startup", "DACRE Business Wisdom Memory", "Business pattern 52", "Use demand signals, safety stock and reorder points to reduce avoidable shortages.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "inventory,planning,operations"),
+    ("Business", "Customer Support pattern 1 for a startup", "DACRE Business Wisdom Memory", "Business pattern 53", "Treat complaints as signals for recovery, root-cause analysis and service improvement.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "support,customers,recovery"),
+    ("Business", "Product pattern 1 for a startup", "DACRE Business Wisdom Memory", "Business pattern 54", "Validate the problem, prototype the solution, measure outcomes and iterate.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "product,innovation,testing"),
+    ("Business", "Quality pattern 1 for a startup", "DACRE Business Wisdom Memory", "Business pattern 55", "Build checks into the process so quality is verified before delivery.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "quality,audit,delivery"),
+    ("Business", "Contracts pattern 1 for a startup", "DACRE Business Wisdom Memory", "Business pattern 56", "Write obligations, dates, payment terms, responsibilities and remedies clearly.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "contracts,legal,records"),
+    ("Business", "Governance pattern 1 for a startup", "DACRE Business Wisdom Memory", "Business pattern 57", "Assign decision rights, approval limits and an auditable record of important actions.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "governance,accountability,audit"),
+    ("Business", "Risk pattern 1 for a startup", "DACRE Business Wisdom Memory", "Business pattern 58", "Identify plausible failure modes, estimate impact and create response plans.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "risk,planning,resilience"),
+    ("Business", "Innovation pattern 1 for a startup", "DACRE Business Wisdom Memory", "Business pattern 59", "Run small tests with explicit hypotheses and success criteria before scaling.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "innovation,experiments,learning"),
+    ("Business", "Partnerships pattern 1 for a startup", "DACRE Business Wisdom Memory", "Business pattern 60", "Choose partnerships where responsibilities, value exchange and expectations are explicit.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "partnerships,trust,value"),
+    ("Business", "Strategy pattern 1 for a family business", "DACRE Business Wisdom Memory", "Business pattern 61", "Define objectives, assumptions, milestones and review points before committing resources.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "strategy,planning,governance"),
+    ("Business", "Sales pattern 1 for a family business", "DACRE Business Wisdom Memory", "Business pattern 62", "Start from a customer problem, then measure conversion, retention, margin and satisfaction.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "sales,customers,conversion"),
+    ("Business", "Marketing pattern 1 for a family business", "DACRE Business Wisdom Memory", "Business pattern 63", "Make claims clear, supportable and easy for customers to understand.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "marketing,trust,communication"),
+    ("Business", "Finance pattern 1 for a family business", "DACRE Business Wisdom Memory", "Business pattern 64", "Track cash, commitments, reserves, receivables and payables before expanding.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "finance,cashflow,stewardship"),
+    ("Business", "Operations pattern 1 for a family business", "DACRE Business Wisdom Memory", "Business pattern 65", "Document repeatable processes, owners, inputs, outputs and exception paths.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "operations,process,quality"),
+    ("Business", "Leadership pattern 1 for a family business", "DACRE Business Wisdom Memory", "Business pattern 66", "Lead by clarifying purpose, removing blockers and developing responsible people.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "leadership,service,people"),
+    ("Business", "Human Resources pattern 1 for a family business", "DACRE Business Wisdom Memory", "Business pattern 67", "Use consistent criteria for hiring, evaluation, compensation and conflict resolution.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "hr,fairness,people"),
+    ("Business", "Data pattern 1 for a family business", "DACRE Business Wisdom Memory", "Business pattern 68", "Measure important quantities consistently and record the assumptions behind them.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "data,measurement,analytics"),
+    ("Business", "Technology pattern 1 for a family business", "DACRE Business Wisdom Memory", "Business pattern 69", "Automate repeatable work while keeping human review for consequential decisions.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "technology,automation,review"),
+    ("Business", "Cybersecurity pattern 1 for a family business", "DACRE Business Wisdom Memory", "Business pattern 70", "Protect entrusted information with least privilege, authentication, backups and monitoring.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "security,trust,data"),
+    ("Business", "Procurement pattern 1 for a family business", "DACRE Business Wisdom Memory", "Business pattern 71", "Compare suppliers with documented criteria for price, quality, reliability and risk.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "procurement,suppliers,fairness"),
+    ("Business", "Inventory pattern 1 for a family business", "DACRE Business Wisdom Memory", "Business pattern 72", "Use demand signals, safety stock and reorder points to reduce avoidable shortages.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "inventory,planning,operations"),
+    ("Business", "Customer Support pattern 1 for a family business", "DACRE Business Wisdom Memory", "Business pattern 73", "Treat complaints as signals for recovery, root-cause analysis and service improvement.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "support,customers,recovery"),
+    ("Business", "Product pattern 1 for a family business", "DACRE Business Wisdom Memory", "Business pattern 74", "Validate the problem, prototype the solution, measure outcomes and iterate.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "product,innovation,testing"),
+    ("Business", "Quality pattern 1 for a family business", "DACRE Business Wisdom Memory", "Business pattern 75", "Build checks into the process so quality is verified before delivery.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "quality,audit,delivery"),
+    ("Business", "Contracts pattern 1 for a family business", "DACRE Business Wisdom Memory", "Business pattern 76", "Write obligations, dates, payment terms, responsibilities and remedies clearly.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "contracts,legal,records"),
+    ("Business", "Governance pattern 1 for a family business", "DACRE Business Wisdom Memory", "Business pattern 77", "Assign decision rights, approval limits and an auditable record of important actions.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "governance,accountability,audit"),
+    ("Business", "Risk pattern 1 for a family business", "DACRE Business Wisdom Memory", "Business pattern 78", "Identify plausible failure modes, estimate impact and create response plans.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "risk,planning,resilience"),
+    ("Business", "Innovation pattern 1 for a family business", "DACRE Business Wisdom Memory", "Business pattern 79", "Run small tests with explicit hypotheses and success criteria before scaling.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "innovation,experiments,learning"),
+    ("Business", "Partnerships pattern 1 for a family business", "DACRE Business Wisdom Memory", "Business pattern 80", "Choose partnerships where responsibilities, value exchange and expectations are explicit.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "partnerships,trust,value"),
+    ("Business", "Strategy pattern 1 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 81", "Define objectives, assumptions, milestones and review points before committing resources.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "strategy,planning,governance"),
+    ("Business", "Sales pattern 1 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 82", "Start from a customer problem, then measure conversion, retention, margin and satisfaction.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "sales,customers,conversion"),
+    ("Business", "Marketing pattern 1 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 83", "Make claims clear, supportable and easy for customers to understand.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "marketing,trust,communication"),
+    ("Business", "Finance pattern 1 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 84", "Track cash, commitments, reserves, receivables and payables before expanding.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "finance,cashflow,stewardship"),
+    ("Business", "Operations pattern 1 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 85", "Document repeatable processes, owners, inputs, outputs and exception paths.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "operations,process,quality"),
+    ("Business", "Leadership pattern 1 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 86", "Lead by clarifying purpose, removing blockers and developing responsible people.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "leadership,service,people"),
+    ("Business", "Human Resources pattern 1 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 87", "Use consistent criteria for hiring, evaluation, compensation and conflict resolution.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "hr,fairness,people"),
+    ("Business", "Data pattern 1 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 88", "Measure important quantities consistently and record the assumptions behind them.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "data,measurement,analytics"),
+    ("Business", "Technology pattern 1 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 89", "Automate repeatable work while keeping human review for consequential decisions.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "technology,automation,review"),
+    ("Business", "Cybersecurity pattern 1 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 90", "Protect entrusted information with least privilege, authentication, backups and monitoring.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "security,trust,data"),
+    ("Business", "Procurement pattern 1 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 91", "Compare suppliers with documented criteria for price, quality, reliability and risk.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "procurement,suppliers,fairness"),
+    ("Business", "Inventory pattern 1 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 92", "Use demand signals, safety stock and reorder points to reduce avoidable shortages.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "inventory,planning,operations"),
+    ("Business", "Customer Support pattern 1 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 93", "Treat complaints as signals for recovery, root-cause analysis and service improvement.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "support,customers,recovery"),
+    ("Business", "Product pattern 1 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 94", "Validate the problem, prototype the solution, measure outcomes and iterate.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "product,innovation,testing"),
+    ("Business", "Quality pattern 1 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 95", "Build checks into the process so quality is verified before delivery.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "quality,audit,delivery"),
+    ("Business", "Contracts pattern 1 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 96", "Write obligations, dates, payment terms, responsibilities and remedies clearly.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "contracts,legal,records"),
+    ("Business", "Governance pattern 1 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 97", "Assign decision rights, approval limits and an auditable record of important actions.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "governance,accountability,audit"),
+    ("Business", "Risk pattern 1 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 98", "Identify plausible failure modes, estimate impact and create response plans.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "risk,planning,resilience"),
+    ("Business", "Innovation pattern 1 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 99", "Run small tests with explicit hypotheses and success criteria before scaling.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "innovation,experiments,learning"),
+    ("Business", "Partnerships pattern 1 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 100", "Choose partnerships where responsibilities, value exchange and expectations are explicit.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "partnerships,trust,value"),
+    ("Business", "Strategy pattern 1 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 101", "Define objectives, assumptions, milestones and review points before committing resources.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "strategy,planning,governance"),
+    ("Business", "Sales pattern 1 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 102", "Start from a customer problem, then measure conversion, retention, margin and satisfaction.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "sales,customers,conversion"),
+    ("Business", "Marketing pattern 1 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 103", "Make claims clear, supportable and easy for customers to understand.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "marketing,trust,communication"),
+    ("Business", "Finance pattern 1 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 104", "Track cash, commitments, reserves, receivables and payables before expanding.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "finance,cashflow,stewardship"),
+    ("Business", "Operations pattern 1 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 105", "Document repeatable processes, owners, inputs, outputs and exception paths.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "operations,process,quality"),
+    ("Business", "Leadership pattern 1 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 106", "Lead by clarifying purpose, removing blockers and developing responsible people.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "leadership,service,people"),
+    ("Business", "Human Resources pattern 1 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 107", "Use consistent criteria for hiring, evaluation, compensation and conflict resolution.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "hr,fairness,people"),
+    ("Business", "Data pattern 1 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 108", "Measure important quantities consistently and record the assumptions behind them.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "data,measurement,analytics"),
+    ("Business", "Technology pattern 1 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 109", "Automate repeatable work while keeping human review for consequential decisions.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "technology,automation,review"),
+    ("Business", "Cybersecurity pattern 1 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 110", "Protect entrusted information with least privilege, authentication, backups and monitoring.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "security,trust,data"),
+    ("Business", "Procurement pattern 1 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 111", "Compare suppliers with documented criteria for price, quality, reliability and risk.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "procurement,suppliers,fairness"),
+    ("Business", "Inventory pattern 1 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 112", "Use demand signals, safety stock and reorder points to reduce avoidable shortages.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "inventory,planning,operations"),
+    ("Business", "Customer Support pattern 1 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 113", "Treat complaints as signals for recovery, root-cause analysis and service improvement.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "support,customers,recovery"),
+    ("Business", "Product pattern 1 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 114", "Validate the problem, prototype the solution, measure outcomes and iterate.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "product,innovation,testing"),
+    ("Business", "Quality pattern 1 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 115", "Build checks into the process so quality is verified before delivery.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "quality,audit,delivery"),
+    ("Business", "Contracts pattern 1 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 116", "Write obligations, dates, payment terms, responsibilities and remedies clearly.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "contracts,legal,records"),
+    ("Business", "Governance pattern 1 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 117", "Assign decision rights, approval limits and an auditable record of important actions.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "governance,accountability,audit"),
+    ("Business", "Risk pattern 1 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 118", "Identify plausible failure modes, estimate impact and create response plans.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "risk,planning,resilience"),
+    ("Business", "Innovation pattern 1 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 119", "Run small tests with explicit hypotheses and success criteria before scaling.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "innovation,experiments,learning"),
+    ("Business", "Partnerships pattern 1 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 120", "Choose partnerships where responsibilities, value exchange and expectations are explicit.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "partnerships,trust,value"),
+    ("Business", "Strategy pattern 1 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 121", "Define objectives, assumptions, milestones and review points before committing resources.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "strategy,planning,governance"),
+    ("Business", "Sales pattern 1 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 122", "Start from a customer problem, then measure conversion, retention, margin and satisfaction.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "sales,customers,conversion"),
+    ("Business", "Marketing pattern 1 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 123", "Make claims clear, supportable and easy for customers to understand.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "marketing,trust,communication"),
+    ("Business", "Finance pattern 1 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 124", "Track cash, commitments, reserves, receivables and payables before expanding.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "finance,cashflow,stewardship"),
+    ("Business", "Operations pattern 1 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 125", "Document repeatable processes, owners, inputs, outputs and exception paths.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "operations,process,quality"),
+    ("Business", "Leadership pattern 1 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 126", "Lead by clarifying purpose, removing blockers and developing responsible people.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "leadership,service,people"),
+    ("Business", "Human Resources pattern 1 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 127", "Use consistent criteria for hiring, evaluation, compensation and conflict resolution.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "hr,fairness,people"),
+    ("Business", "Data pattern 1 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 128", "Measure important quantities consistently and record the assumptions behind them.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "data,measurement,analytics"),
+    ("Business", "Technology pattern 1 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 129", "Automate repeatable work while keeping human review for consequential decisions.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "technology,automation,review"),
+    ("Business", "Cybersecurity pattern 1 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 130", "Protect entrusted information with least privilege, authentication, backups and monitoring.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "security,trust,data"),
+    ("Business", "Procurement pattern 1 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 131", "Compare suppliers with documented criteria for price, quality, reliability and risk.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "procurement,suppliers,fairness"),
+    ("Business", "Inventory pattern 1 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 132", "Use demand signals, safety stock and reorder points to reduce avoidable shortages.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "inventory,planning,operations"),
+    ("Business", "Customer Support pattern 1 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 133", "Treat complaints as signals for recovery, root-cause analysis and service improvement.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "support,customers,recovery"),
+    ("Business", "Product pattern 1 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 134", "Validate the problem, prototype the solution, measure outcomes and iterate.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "product,innovation,testing"),
+    ("Business", "Quality pattern 1 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 135", "Build checks into the process so quality is verified before delivery.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "quality,audit,delivery"),
+    ("Business", "Contracts pattern 1 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 136", "Write obligations, dates, payment terms, responsibilities and remedies clearly.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "contracts,legal,records"),
+    ("Business", "Governance pattern 1 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 137", "Assign decision rights, approval limits and an auditable record of important actions.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "governance,accountability,audit"),
+    ("Business", "Risk pattern 1 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 138", "Identify plausible failure modes, estimate impact and create response plans.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "risk,planning,resilience"),
+    ("Business", "Innovation pattern 1 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 139", "Run small tests with explicit hypotheses and success criteria before scaling.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "innovation,experiments,learning"),
+    ("Business", "Partnerships pattern 1 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 140", "Choose partnerships where responsibilities, value exchange and expectations are explicit.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "partnerships,trust,value"),
+    ("Business", "Strategy pattern 1 for a technology company", "DACRE Business Wisdom Memory", "Business pattern 141", "Define objectives, assumptions, milestones and review points before committing resources.", "Apply this for a technology company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "strategy,planning,governance"),
+    ("Business", "Sales pattern 1 for a technology company", "DACRE Business Wisdom Memory", "Business pattern 142", "Start from a customer problem, then measure conversion, retention, margin and satisfaction.", "Apply this for a technology company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "sales,customers,conversion"),
+    ("Business", "Marketing pattern 1 for a technology company", "DACRE Business Wisdom Memory", "Business pattern 143", "Make claims clear, supportable and easy for customers to understand.", "Apply this for a technology company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "marketing,trust,communication"),
+    ("Business", "Finance pattern 1 for a technology company", "DACRE Business Wisdom Memory", "Business pattern 144", "Track cash, commitments, reserves, receivables and payables before expanding.", "Apply this for a technology company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "finance,cashflow,stewardship"),
+    ("Business", "Operations pattern 1 for a technology company", "DACRE Business Wisdom Memory", "Business pattern 145", "Document repeatable processes, owners, inputs, outputs and exception paths.", "Apply this for a technology company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "operations,process,quality"),
+    ("Business", "Leadership pattern 1 for a technology company", "DACRE Business Wisdom Memory", "Business pattern 146", "Lead by clarifying purpose, removing blockers and developing responsible people.", "Apply this for a technology company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "leadership,service,people"),
+    ("Business", "Human Resources pattern 1 for a technology company", "DACRE Business Wisdom Memory", "Business pattern 147", "Use consistent criteria for hiring, evaluation, compensation and conflict resolution.", "Apply this for a technology company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "hr,fairness,people"),
+    ("Business", "Data pattern 1 for a technology company", "DACRE Business Wisdom Memory", "Business pattern 148", "Measure important quantities consistently and record the assumptions behind them.", "Apply this for a technology company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "data,measurement,analytics"),
+    ("Business", "Technology pattern 1 for a technology company", "DACRE Business Wisdom Memory", "Business pattern 149", "Automate repeatable work while keeping human review for consequential decisions.", "Apply this for a technology company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "technology,automation,review"),
+    ("Business", "Cybersecurity pattern 1 for a technology company", "DACRE Business Wisdom Memory", "Business pattern 150", "Protect entrusted information with least privilege, authentication, backups and monitoring.", "Apply this for a technology company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "security,trust,data"),
+    ("Business", "Procurement pattern 1 for a technology company", "DACRE Business Wisdom Memory", "Business pattern 151", "Compare suppliers with documented criteria for price, quality, reliability and risk.", "Apply this for a technology company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "procurement,suppliers,fairness"),
+    ("Business", "Inventory pattern 1 for a technology company", "DACRE Business Wisdom Memory", "Business pattern 152", "Use demand signals, safety stock and reorder points to reduce avoidable shortages.", "Apply this for a technology company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "inventory,planning,operations"),
+    ("Business", "Customer Support pattern 1 for a technology company", "DACRE Business Wisdom Memory", "Business pattern 153", "Treat complaints as signals for recovery, root-cause analysis and service improvement.", "Apply this for a technology company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "support,customers,recovery"),
+    ("Business", "Product pattern 1 for a technology company", "DACRE Business Wisdom Memory", "Business pattern 154", "Validate the problem, prototype the solution, measure outcomes and iterate.", "Apply this for a technology company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "product,innovation,testing"),
+    ("Business", "Quality pattern 1 for a technology company", "DACRE Business Wisdom Memory", "Business pattern 155", "Build checks into the process so quality is verified before delivery.", "Apply this for a technology company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "quality,audit,delivery"),
+    ("Business", "Contracts pattern 1 for a technology company", "DACRE Business Wisdom Memory", "Business pattern 156", "Write obligations, dates, payment terms, responsibilities and remedies clearly.", "Apply this for a technology company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "contracts,legal,records"),
+    ("Business", "Governance pattern 1 for a technology company", "DACRE Business Wisdom Memory", "Business pattern 157", "Assign decision rights, approval limits and an auditable record of important actions.", "Apply this for a technology company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "governance,accountability,audit"),
+    ("Business", "Risk pattern 1 for a technology company", "DACRE Business Wisdom Memory", "Business pattern 158", "Identify plausible failure modes, estimate impact and create response plans.", "Apply this for a technology company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "risk,planning,resilience"),
+    ("Business", "Innovation pattern 1 for a technology company", "DACRE Business Wisdom Memory", "Business pattern 159", "Run small tests with explicit hypotheses and success criteria before scaling.", "Apply this for a technology company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "innovation,experiments,learning"),
+    ("Business", "Partnerships pattern 1 for a technology company", "DACRE Business Wisdom Memory", "Business pattern 160", "Choose partnerships where responsibilities, value exchange and expectations are explicit.", "Apply this for a technology company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "partnerships,trust,value"),
+    ("Business", "Strategy pattern 1 for a school or training business", "DACRE Business Wisdom Memory", "Business pattern 161", "Define objectives, assumptions, milestones and review points before committing resources.", "Apply this for a school or training business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "strategy,planning,governance"),
+    ("Business", "Sales pattern 1 for a school or training business", "DACRE Business Wisdom Memory", "Business pattern 162", "Start from a customer problem, then measure conversion, retention, margin and satisfaction.", "Apply this for a school or training business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "sales,customers,conversion"),
+    ("Business", "Marketing pattern 1 for a school or training business", "DACRE Business Wisdom Memory", "Business pattern 163", "Make claims clear, supportable and easy for customers to understand.", "Apply this for a school or training business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "marketing,trust,communication"),
+    ("Business", "Finance pattern 1 for a school or training business", "DACRE Business Wisdom Memory", "Business pattern 164", "Track cash, commitments, reserves, receivables and payables before expanding.", "Apply this for a school or training business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "finance,cashflow,stewardship"),
+    ("Business", "Operations pattern 1 for a school or training business", "DACRE Business Wisdom Memory", "Business pattern 165", "Document repeatable processes, owners, inputs, outputs and exception paths.", "Apply this for a school or training business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "operations,process,quality"),
+    ("Business", "Leadership pattern 1 for a school or training business", "DACRE Business Wisdom Memory", "Business pattern 166", "Lead by clarifying purpose, removing blockers and developing responsible people.", "Apply this for a school or training business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "leadership,service,people"),
+    ("Business", "Human Resources pattern 1 for a school or training business", "DACRE Business Wisdom Memory", "Business pattern 167", "Use consistent criteria for hiring, evaluation, compensation and conflict resolution.", "Apply this for a school or training business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "hr,fairness,people"),
+    ("Business", "Data pattern 1 for a school or training business", "DACRE Business Wisdom Memory", "Business pattern 168", "Measure important quantities consistently and record the assumptions behind them.", "Apply this for a school or training business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "data,measurement,analytics"),
+    ("Business", "Technology pattern 1 for a school or training business", "DACRE Business Wisdom Memory", "Business pattern 169", "Automate repeatable work while keeping human review for consequential decisions.", "Apply this for a school or training business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "technology,automation,review"),
+    ("Business", "Cybersecurity pattern 1 for a school or training business", "DACRE Business Wisdom Memory", "Business pattern 170", "Protect entrusted information with least privilege, authentication, backups and monitoring.", "Apply this for a school or training business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "security,trust,data"),
+    ("Business", "Procurement pattern 1 for a school or training business", "DACRE Business Wisdom Memory", "Business pattern 171", "Compare suppliers with documented criteria for price, quality, reliability and risk.", "Apply this for a school or training business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "procurement,suppliers,fairness"),
+    ("Business", "Inventory pattern 1 for a school or training business", "DACRE Business Wisdom Memory", "Business pattern 172", "Use demand signals, safety stock and reorder points to reduce avoidable shortages.", "Apply this for a school or training business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "inventory,planning,operations"),
+    ("Business", "Customer Support pattern 1 for a school or training business", "DACRE Business Wisdom Memory", "Business pattern 173", "Treat complaints as signals for recovery, root-cause analysis and service improvement.", "Apply this for a school or training business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "support,customers,recovery"),
+    ("Business", "Product pattern 1 for a school or training business", "DACRE Business Wisdom Memory", "Business pattern 174", "Validate the problem, prototype the solution, measure outcomes and iterate.", "Apply this for a school or training business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "product,innovation,testing"),
+    ("Business", "Quality pattern 1 for a school or training business", "DACRE Business Wisdom Memory", "Business pattern 175", "Build checks into the process so quality is verified before delivery.", "Apply this for a school or training business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "quality,audit,delivery"),
+    ("Business", "Contracts pattern 1 for a school or training business", "DACRE Business Wisdom Memory", "Business pattern 176", "Write obligations, dates, payment terms, responsibilities and remedies clearly.", "Apply this for a school or training business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "contracts,legal,records"),
+    ("Business", "Governance pattern 1 for a school or training business", "DACRE Business Wisdom Memory", "Business pattern 177", "Assign decision rights, approval limits and an auditable record of important actions.", "Apply this for a school or training business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "governance,accountability,audit"),
+    ("Business", "Risk pattern 1 for a school or training business", "DACRE Business Wisdom Memory", "Business pattern 178", "Identify plausible failure modes, estimate impact and create response plans.", "Apply this for a school or training business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "risk,planning,resilience"),
+    ("Business", "Innovation pattern 1 for a school or training business", "DACRE Business Wisdom Memory", "Business pattern 179", "Run small tests with explicit hypotheses and success criteria before scaling.", "Apply this for a school or training business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "innovation,experiments,learning"),
+    ("Business", "Partnerships pattern 1 for a school or training business", "DACRE Business Wisdom Memory", "Business pattern 180", "Choose partnerships where responsibilities, value exchange and expectations are explicit.", "Apply this for a school or training business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "partnerships,trust,value"),
+    ("Business", "Strategy pattern 1 for a hospitality business", "DACRE Business Wisdom Memory", "Business pattern 181", "Define objectives, assumptions, milestones and review points before committing resources.", "Apply this for a hospitality business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "strategy,planning,governance"),
+    ("Business", "Sales pattern 1 for a hospitality business", "DACRE Business Wisdom Memory", "Business pattern 182", "Start from a customer problem, then measure conversion, retention, margin and satisfaction.", "Apply this for a hospitality business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "sales,customers,conversion"),
+    ("Business", "Marketing pattern 1 for a hospitality business", "DACRE Business Wisdom Memory", "Business pattern 183", "Make claims clear, supportable and easy for customers to understand.", "Apply this for a hospitality business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "marketing,trust,communication"),
+    ("Business", "Finance pattern 1 for a hospitality business", "DACRE Business Wisdom Memory", "Business pattern 184", "Track cash, commitments, reserves, receivables and payables before expanding.", "Apply this for a hospitality business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "finance,cashflow,stewardship"),
+    ("Business", "Operations pattern 1 for a hospitality business", "DACRE Business Wisdom Memory", "Business pattern 185", "Document repeatable processes, owners, inputs, outputs and exception paths.", "Apply this for a hospitality business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "operations,process,quality"),
+    ("Business", "Leadership pattern 1 for a hospitality business", "DACRE Business Wisdom Memory", "Business pattern 186", "Lead by clarifying purpose, removing blockers and developing responsible people.", "Apply this for a hospitality business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "leadership,service,people"),
+    ("Business", "Human Resources pattern 1 for a hospitality business", "DACRE Business Wisdom Memory", "Business pattern 187", "Use consistent criteria for hiring, evaluation, compensation and conflict resolution.", "Apply this for a hospitality business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "hr,fairness,people"),
+    ("Business", "Data pattern 1 for a hospitality business", "DACRE Business Wisdom Memory", "Business pattern 188", "Measure important quantities consistently and record the assumptions behind them.", "Apply this for a hospitality business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "data,measurement,analytics"),
+    ("Business", "Technology pattern 1 for a hospitality business", "DACRE Business Wisdom Memory", "Business pattern 189", "Automate repeatable work while keeping human review for consequential decisions.", "Apply this for a hospitality business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "technology,automation,review"),
+    ("Business", "Cybersecurity pattern 1 for a hospitality business", "DACRE Business Wisdom Memory", "Business pattern 190", "Protect entrusted information with least privilege, authentication, backups and monitoring.", "Apply this for a hospitality business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "security,trust,data"),
+    ("Business", "Procurement pattern 1 for a hospitality business", "DACRE Business Wisdom Memory", "Business pattern 191", "Compare suppliers with documented criteria for price, quality, reliability and risk.", "Apply this for a hospitality business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "procurement,suppliers,fairness"),
+    ("Business", "Inventory pattern 1 for a hospitality business", "DACRE Business Wisdom Memory", "Business pattern 192", "Use demand signals, safety stock and reorder points to reduce avoidable shortages.", "Apply this for a hospitality business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "inventory,planning,operations"),
+    ("Business", "Customer Support pattern 1 for a hospitality business", "DACRE Business Wisdom Memory", "Business pattern 193", "Treat complaints as signals for recovery, root-cause analysis and service improvement.", "Apply this for a hospitality business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "support,customers,recovery"),
+    ("Business", "Product pattern 1 for a hospitality business", "DACRE Business Wisdom Memory", "Business pattern 194", "Validate the problem, prototype the solution, measure outcomes and iterate.", "Apply this for a hospitality business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "product,innovation,testing"),
+    ("Business", "Quality pattern 1 for a hospitality business", "DACRE Business Wisdom Memory", "Business pattern 195", "Build checks into the process so quality is verified before delivery.", "Apply this for a hospitality business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "quality,audit,delivery"),
+    ("Business", "Contracts pattern 1 for a hospitality business", "DACRE Business Wisdom Memory", "Business pattern 196", "Write obligations, dates, payment terms, responsibilities and remedies clearly.", "Apply this for a hospitality business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "contracts,legal,records"),
+    ("Business", "Governance pattern 1 for a hospitality business", "DACRE Business Wisdom Memory", "Business pattern 197", "Assign decision rights, approval limits and an auditable record of important actions.", "Apply this for a hospitality business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "governance,accountability,audit"),
+    ("Business", "Risk pattern 1 for a hospitality business", "DACRE Business Wisdom Memory", "Business pattern 198", "Identify plausible failure modes, estimate impact and create response plans.", "Apply this for a hospitality business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "risk,planning,resilience"),
+    ("Business", "Innovation pattern 1 for a hospitality business", "DACRE Business Wisdom Memory", "Business pattern 199", "Run small tests with explicit hypotheses and success criteria before scaling.", "Apply this for a hospitality business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "innovation,experiments,learning"),
+    ("Business", "Partnerships pattern 1 for a hospitality business", "DACRE Business Wisdom Memory", "Business pattern 200", "Choose partnerships where responsibilities, value exchange and expectations are explicit.", "Apply this for a hospitality business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "partnerships,trust,value"),
+    ("Business", "Strategy pattern 1 for a healthcare-adjacent service", "DACRE Business Wisdom Memory", "Business pattern 201", "Define objectives, assumptions, milestones and review points before committing resources.", "Apply this for a healthcare-adjacent service by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "strategy,planning,governance"),
+    ("Business", "Sales pattern 1 for a healthcare-adjacent service", "DACRE Business Wisdom Memory", "Business pattern 202", "Start from a customer problem, then measure conversion, retention, margin and satisfaction.", "Apply this for a healthcare-adjacent service by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "sales,customers,conversion"),
+    ("Business", "Marketing pattern 1 for a healthcare-adjacent service", "DACRE Business Wisdom Memory", "Business pattern 203", "Make claims clear, supportable and easy for customers to understand.", "Apply this for a healthcare-adjacent service by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "marketing,trust,communication"),
+    ("Business", "Finance pattern 1 for a healthcare-adjacent service", "DACRE Business Wisdom Memory", "Business pattern 204", "Track cash, commitments, reserves, receivables and payables before expanding.", "Apply this for a healthcare-adjacent service by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "finance,cashflow,stewardship"),
+    ("Business", "Operations pattern 1 for a healthcare-adjacent service", "DACRE Business Wisdom Memory", "Business pattern 205", "Document repeatable processes, owners, inputs, outputs and exception paths.", "Apply this for a healthcare-adjacent service by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "operations,process,quality"),
+    ("Business", "Leadership pattern 1 for a healthcare-adjacent service", "DACRE Business Wisdom Memory", "Business pattern 206", "Lead by clarifying purpose, removing blockers and developing responsible people.", "Apply this for a healthcare-adjacent service by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "leadership,service,people"),
+    ("Business", "Human Resources pattern 1 for a healthcare-adjacent service", "DACRE Business Wisdom Memory", "Business pattern 207", "Use consistent criteria for hiring, evaluation, compensation and conflict resolution.", "Apply this for a healthcare-adjacent service by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "hr,fairness,people"),
+    ("Business", "Data pattern 1 for a healthcare-adjacent service", "DACRE Business Wisdom Memory", "Business pattern 208", "Measure important quantities consistently and record the assumptions behind them.", "Apply this for a healthcare-adjacent service by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "data,measurement,analytics"),
+    ("Business", "Technology pattern 1 for a healthcare-adjacent service", "DACRE Business Wisdom Memory", "Business pattern 209", "Automate repeatable work while keeping human review for consequential decisions.", "Apply this for a healthcare-adjacent service by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "technology,automation,review"),
+    ("Business", "Cybersecurity pattern 1 for a healthcare-adjacent service", "DACRE Business Wisdom Memory", "Business pattern 210", "Protect entrusted information with least privilege, authentication, backups and monitoring.", "Apply this for a healthcare-adjacent service by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "security,trust,data"),
+    ("Business", "Procurement pattern 1 for a healthcare-adjacent service", "DACRE Business Wisdom Memory", "Business pattern 211", "Compare suppliers with documented criteria for price, quality, reliability and risk.", "Apply this for a healthcare-adjacent service by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "procurement,suppliers,fairness"),
+    ("Business", "Inventory pattern 1 for a healthcare-adjacent service", "DACRE Business Wisdom Memory", "Business pattern 212", "Use demand signals, safety stock and reorder points to reduce avoidable shortages.", "Apply this for a healthcare-adjacent service by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "inventory,planning,operations"),
+    ("Business", "Customer Support pattern 1 for a healthcare-adjacent service", "DACRE Business Wisdom Memory", "Business pattern 213", "Treat complaints as signals for recovery, root-cause analysis and service improvement.", "Apply this for a healthcare-adjacent service by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "support,customers,recovery"),
+    ("Business", "Product pattern 1 for a healthcare-adjacent service", "DACRE Business Wisdom Memory", "Business pattern 214", "Validate the problem, prototype the solution, measure outcomes and iterate.", "Apply this for a healthcare-adjacent service by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "product,innovation,testing"),
+    ("Business", "Quality pattern 1 for a healthcare-adjacent service", "DACRE Business Wisdom Memory", "Business pattern 215", "Build checks into the process so quality is verified before delivery.", "Apply this for a healthcare-adjacent service by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "quality,audit,delivery"),
+    ("Business", "Contracts pattern 1 for a healthcare-adjacent service", "DACRE Business Wisdom Memory", "Business pattern 216", "Write obligations, dates, payment terms, responsibilities and remedies clearly.", "Apply this for a healthcare-adjacent service by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "contracts,legal,records"),
+    ("Business", "Governance pattern 1 for a healthcare-adjacent service", "DACRE Business Wisdom Memory", "Business pattern 217", "Assign decision rights, approval limits and an auditable record of important actions.", "Apply this for a healthcare-adjacent service by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "governance,accountability,audit"),
+    ("Business", "Risk pattern 1 for a healthcare-adjacent service", "DACRE Business Wisdom Memory", "Business pattern 218", "Identify plausible failure modes, estimate impact and create response plans.", "Apply this for a healthcare-adjacent service by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "risk,planning,resilience"),
+    ("Business", "Innovation pattern 1 for a healthcare-adjacent service", "DACRE Business Wisdom Memory", "Business pattern 219", "Run small tests with explicit hypotheses and success criteria before scaling.", "Apply this for a healthcare-adjacent service by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "innovation,experiments,learning"),
+    ("Business", "Partnerships pattern 1 for a healthcare-adjacent service", "DACRE Business Wisdom Memory", "Business pattern 220", "Choose partnerships where responsibilities, value exchange and expectations are explicit.", "Apply this for a healthcare-adjacent service by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "partnerships,trust,value"),
+    ("Business", "Strategy pattern 1 for an agricultural business", "DACRE Business Wisdom Memory", "Business pattern 221", "Define objectives, assumptions, milestones and review points before committing resources.", "Apply this for an agricultural business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "strategy,planning,governance"),
+    ("Business", "Sales pattern 1 for an agricultural business", "DACRE Business Wisdom Memory", "Business pattern 222", "Start from a customer problem, then measure conversion, retention, margin and satisfaction.", "Apply this for an agricultural business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "sales,customers,conversion"),
+    ("Business", "Marketing pattern 1 for an agricultural business", "DACRE Business Wisdom Memory", "Business pattern 223", "Make claims clear, supportable and easy for customers to understand.", "Apply this for an agricultural business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "marketing,trust,communication"),
+    ("Business", "Finance pattern 1 for an agricultural business", "DACRE Business Wisdom Memory", "Business pattern 224", "Track cash, commitments, reserves, receivables and payables before expanding.", "Apply this for an agricultural business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "finance,cashflow,stewardship"),
+    ("Business", "Operations pattern 1 for an agricultural business", "DACRE Business Wisdom Memory", "Business pattern 225", "Document repeatable processes, owners, inputs, outputs and exception paths.", "Apply this for an agricultural business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "operations,process,quality"),
+    ("Business", "Leadership pattern 1 for an agricultural business", "DACRE Business Wisdom Memory", "Business pattern 226", "Lead by clarifying purpose, removing blockers and developing responsible people.", "Apply this for an agricultural business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "leadership,service,people"),
+    ("Business", "Human Resources pattern 1 for an agricultural business", "DACRE Business Wisdom Memory", "Business pattern 227", "Use consistent criteria for hiring, evaluation, compensation and conflict resolution.", "Apply this for an agricultural business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "hr,fairness,people"),
+    ("Business", "Data pattern 1 for an agricultural business", "DACRE Business Wisdom Memory", "Business pattern 228", "Measure important quantities consistently and record the assumptions behind them.", "Apply this for an agricultural business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "data,measurement,analytics"),
+    ("Business", "Technology pattern 1 for an agricultural business", "DACRE Business Wisdom Memory", "Business pattern 229", "Automate repeatable work while keeping human review for consequential decisions.", "Apply this for an agricultural business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "technology,automation,review"),
+    ("Business", "Cybersecurity pattern 1 for an agricultural business", "DACRE Business Wisdom Memory", "Business pattern 230", "Protect entrusted information with least privilege, authentication, backups and monitoring.", "Apply this for an agricultural business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "security,trust,data"),
+    ("Business", "Procurement pattern 1 for an agricultural business", "DACRE Business Wisdom Memory", "Business pattern 231", "Compare suppliers with documented criteria for price, quality, reliability and risk.", "Apply this for an agricultural business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "procurement,suppliers,fairness"),
+    ("Business", "Inventory pattern 1 for an agricultural business", "DACRE Business Wisdom Memory", "Business pattern 232", "Use demand signals, safety stock and reorder points to reduce avoidable shortages.", "Apply this for an agricultural business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "inventory,planning,operations"),
+    ("Business", "Customer Support pattern 1 for an agricultural business", "DACRE Business Wisdom Memory", "Business pattern 233", "Treat complaints as signals for recovery, root-cause analysis and service improvement.", "Apply this for an agricultural business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "support,customers,recovery"),
+    ("Business", "Product pattern 1 for an agricultural business", "DACRE Business Wisdom Memory", "Business pattern 234", "Validate the problem, prototype the solution, measure outcomes and iterate.", "Apply this for an agricultural business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "product,innovation,testing"),
+    ("Business", "Quality pattern 1 for an agricultural business", "DACRE Business Wisdom Memory", "Business pattern 235", "Build checks into the process so quality is verified before delivery.", "Apply this for an agricultural business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "quality,audit,delivery"),
+    ("Business", "Contracts pattern 1 for an agricultural business", "DACRE Business Wisdom Memory", "Business pattern 236", "Write obligations, dates, payment terms, responsibilities and remedies clearly.", "Apply this for an agricultural business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "contracts,legal,records"),
+    ("Business", "Governance pattern 1 for an agricultural business", "DACRE Business Wisdom Memory", "Business pattern 237", "Assign decision rights, approval limits and an auditable record of important actions.", "Apply this for an agricultural business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "governance,accountability,audit"),
+    ("Business", "Risk pattern 1 for an agricultural business", "DACRE Business Wisdom Memory", "Business pattern 238", "Identify plausible failure modes, estimate impact and create response plans.", "Apply this for an agricultural business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "risk,planning,resilience"),
+    ("Business", "Innovation pattern 1 for an agricultural business", "DACRE Business Wisdom Memory", "Business pattern 239", "Run small tests with explicit hypotheses and success criteria before scaling.", "Apply this for an agricultural business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "innovation,experiments,learning"),
+    ("Business", "Partnerships pattern 1 for an agricultural business", "DACRE Business Wisdom Memory", "Business pattern 240", "Choose partnerships where responsibilities, value exchange and expectations are explicit.", "Apply this for an agricultural business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "partnerships,trust,value"),
+    ("Business", "Strategy pattern 1 for a creative agency", "DACRE Business Wisdom Memory", "Business pattern 241", "Define objectives, assumptions, milestones and review points before committing resources.", "Apply this for a creative agency by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "strategy,planning,governance"),
+    ("Business", "Sales pattern 1 for a creative agency", "DACRE Business Wisdom Memory", "Business pattern 242", "Start from a customer problem, then measure conversion, retention, margin and satisfaction.", "Apply this for a creative agency by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "sales,customers,conversion"),
+    ("Business", "Marketing pattern 1 for a creative agency", "DACRE Business Wisdom Memory", "Business pattern 243", "Make claims clear, supportable and easy for customers to understand.", "Apply this for a creative agency by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "marketing,trust,communication"),
+    ("Business", "Finance pattern 1 for a creative agency", "DACRE Business Wisdom Memory", "Business pattern 244", "Track cash, commitments, reserves, receivables and payables before expanding.", "Apply this for a creative agency by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "finance,cashflow,stewardship"),
+    ("Business", "Operations pattern 1 for a creative agency", "DACRE Business Wisdom Memory", "Business pattern 245", "Document repeatable processes, owners, inputs, outputs and exception paths.", "Apply this for a creative agency by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "operations,process,quality"),
+    ("Business", "Leadership pattern 1 for a creative agency", "DACRE Business Wisdom Memory", "Business pattern 246", "Lead by clarifying purpose, removing blockers and developing responsible people.", "Apply this for a creative agency by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "leadership,service,people"),
+    ("Business", "Human Resources pattern 1 for a creative agency", "DACRE Business Wisdom Memory", "Business pattern 247", "Use consistent criteria for hiring, evaluation, compensation and conflict resolution.", "Apply this for a creative agency by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "hr,fairness,people"),
+    ("Business", "Data pattern 1 for a creative agency", "DACRE Business Wisdom Memory", "Business pattern 248", "Measure important quantities consistently and record the assumptions behind them.", "Apply this for a creative agency by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "data,measurement,analytics"),
+    ("Business", "Technology pattern 1 for a creative agency", "DACRE Business Wisdom Memory", "Business pattern 249", "Automate repeatable work while keeping human review for consequential decisions.", "Apply this for a creative agency by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "technology,automation,review"),
+    ("Business", "Cybersecurity pattern 1 for a creative agency", "DACRE Business Wisdom Memory", "Business pattern 250", "Protect entrusted information with least privilege, authentication, backups and monitoring.", "Apply this for a creative agency by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "security,trust,data"),
+    ("Business", "Procurement pattern 1 for a creative agency", "DACRE Business Wisdom Memory", "Business pattern 251", "Compare suppliers with documented criteria for price, quality, reliability and risk.", "Apply this for a creative agency by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "procurement,suppliers,fairness"),
+    ("Business", "Inventory pattern 1 for a creative agency", "DACRE Business Wisdom Memory", "Business pattern 252", "Use demand signals, safety stock and reorder points to reduce avoidable shortages.", "Apply this for a creative agency by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "inventory,planning,operations"),
+    ("Business", "Customer Support pattern 1 for a creative agency", "DACRE Business Wisdom Memory", "Business pattern 253", "Treat complaints as signals for recovery, root-cause analysis and service improvement.", "Apply this for a creative agency by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "support,customers,recovery"),
+    ("Business", "Product pattern 1 for a creative agency", "DACRE Business Wisdom Memory", "Business pattern 254", "Validate the problem, prototype the solution, measure outcomes and iterate.", "Apply this for a creative agency by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "product,innovation,testing"),
+    ("Business", "Quality pattern 1 for a creative agency", "DACRE Business Wisdom Memory", "Business pattern 255", "Build checks into the process so quality is verified before delivery.", "Apply this for a creative agency by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "quality,audit,delivery"),
+    ("Business", "Contracts pattern 1 for a creative agency", "DACRE Business Wisdom Memory", "Business pattern 256", "Write obligations, dates, payment terms, responsibilities and remedies clearly.", "Apply this for a creative agency by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "contracts,legal,records"),
+    ("Business", "Governance pattern 1 for a creative agency", "DACRE Business Wisdom Memory", "Business pattern 257", "Assign decision rights, approval limits and an auditable record of important actions.", "Apply this for a creative agency by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "governance,accountability,audit"),
+    ("Business", "Risk pattern 1 for a creative agency", "DACRE Business Wisdom Memory", "Business pattern 258", "Identify plausible failure modes, estimate impact and create response plans.", "Apply this for a creative agency by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "risk,planning,resilience"),
+    ("Business", "Innovation pattern 1 for a creative agency", "DACRE Business Wisdom Memory", "Business pattern 259", "Run small tests with explicit hypotheses and success criteria before scaling.", "Apply this for a creative agency by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "innovation,experiments,learning"),
+    ("Business", "Partnerships pattern 1 for a creative agency", "DACRE Business Wisdom Memory", "Business pattern 260", "Choose partnerships where responsibilities, value exchange and expectations are explicit.", "Apply this for a creative agency by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "partnerships,trust,value"),
+    ("Business", "Strategy pattern 1 for a consulting firm", "DACRE Business Wisdom Memory", "Business pattern 261", "Define objectives, assumptions, milestones and review points before committing resources.", "Apply this for a consulting firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "strategy,planning,governance"),
+    ("Business", "Sales pattern 1 for a consulting firm", "DACRE Business Wisdom Memory", "Business pattern 262", "Start from a customer problem, then measure conversion, retention, margin and satisfaction.", "Apply this for a consulting firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "sales,customers,conversion"),
+    ("Business", "Marketing pattern 1 for a consulting firm", "DACRE Business Wisdom Memory", "Business pattern 263", "Make claims clear, supportable and easy for customers to understand.", "Apply this for a consulting firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "marketing,trust,communication"),
+    ("Business", "Finance pattern 1 for a consulting firm", "DACRE Business Wisdom Memory", "Business pattern 264", "Track cash, commitments, reserves, receivables and payables before expanding.", "Apply this for a consulting firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "finance,cashflow,stewardship"),
+    ("Business", "Operations pattern 1 for a consulting firm", "DACRE Business Wisdom Memory", "Business pattern 265", "Document repeatable processes, owners, inputs, outputs and exception paths.", "Apply this for a consulting firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "operations,process,quality"),
+    ("Business", "Leadership pattern 1 for a consulting firm", "DACRE Business Wisdom Memory", "Business pattern 266", "Lead by clarifying purpose, removing blockers and developing responsible people.", "Apply this for a consulting firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "leadership,service,people"),
+    ("Business", "Human Resources pattern 1 for a consulting firm", "DACRE Business Wisdom Memory", "Business pattern 267", "Use consistent criteria for hiring, evaluation, compensation and conflict resolution.", "Apply this for a consulting firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "hr,fairness,people"),
+    ("Business", "Data pattern 1 for a consulting firm", "DACRE Business Wisdom Memory", "Business pattern 268", "Measure important quantities consistently and record the assumptions behind them.", "Apply this for a consulting firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "data,measurement,analytics"),
+    ("Business", "Technology pattern 1 for a consulting firm", "DACRE Business Wisdom Memory", "Business pattern 269", "Automate repeatable work while keeping human review for consequential decisions.", "Apply this for a consulting firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "technology,automation,review"),
+    ("Business", "Cybersecurity pattern 1 for a consulting firm", "DACRE Business Wisdom Memory", "Business pattern 270", "Protect entrusted information with least privilege, authentication, backups and monitoring.", "Apply this for a consulting firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "security,trust,data"),
+    ("Business", "Procurement pattern 1 for a consulting firm", "DACRE Business Wisdom Memory", "Business pattern 271", "Compare suppliers with documented criteria for price, quality, reliability and risk.", "Apply this for a consulting firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "procurement,suppliers,fairness"),
+    ("Business", "Inventory pattern 1 for a consulting firm", "DACRE Business Wisdom Memory", "Business pattern 272", "Use demand signals, safety stock and reorder points to reduce avoidable shortages.", "Apply this for a consulting firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "inventory,planning,operations"),
+    ("Business", "Customer Support pattern 1 for a consulting firm", "DACRE Business Wisdom Memory", "Business pattern 273", "Treat complaints as signals for recovery, root-cause analysis and service improvement.", "Apply this for a consulting firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "support,customers,recovery"),
+    ("Business", "Product pattern 1 for a consulting firm", "DACRE Business Wisdom Memory", "Business pattern 274", "Validate the problem, prototype the solution, measure outcomes and iterate.", "Apply this for a consulting firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "product,innovation,testing"),
+    ("Business", "Quality pattern 1 for a consulting firm", "DACRE Business Wisdom Memory", "Business pattern 275", "Build checks into the process so quality is verified before delivery.", "Apply this for a consulting firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "quality,audit,delivery"),
+    ("Business", "Contracts pattern 1 for a consulting firm", "DACRE Business Wisdom Memory", "Business pattern 276", "Write obligations, dates, payment terms, responsibilities and remedies clearly.", "Apply this for a consulting firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "contracts,legal,records"),
+    ("Business", "Governance pattern 1 for a consulting firm", "DACRE Business Wisdom Memory", "Business pattern 277", "Assign decision rights, approval limits and an auditable record of important actions.", "Apply this for a consulting firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "governance,accountability,audit"),
+    ("Business", "Risk pattern 1 for a consulting firm", "DACRE Business Wisdom Memory", "Business pattern 278", "Identify plausible failure modes, estimate impact and create response plans.", "Apply this for a consulting firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "risk,planning,resilience"),
+    ("Business", "Innovation pattern 1 for a consulting firm", "DACRE Business Wisdom Memory", "Business pattern 279", "Run small tests with explicit hypotheses and success criteria before scaling.", "Apply this for a consulting firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "innovation,experiments,learning"),
+    ("Business", "Partnerships pattern 1 for a consulting firm", "DACRE Business Wisdom Memory", "Business pattern 280", "Choose partnerships where responsibilities, value exchange and expectations are explicit.", "Apply this for a consulting firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "partnerships,trust,value"),
+    ("Business", "Strategy pattern 1 for a nonprofit enterprise", "DACRE Business Wisdom Memory", "Business pattern 281", "Define objectives, assumptions, milestones and review points before committing resources.", "Apply this for a nonprofit enterprise by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "strategy,planning,governance"),
+    ("Business", "Sales pattern 1 for a nonprofit enterprise", "DACRE Business Wisdom Memory", "Business pattern 282", "Start from a customer problem, then measure conversion, retention, margin and satisfaction.", "Apply this for a nonprofit enterprise by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "sales,customers,conversion"),
+    ("Business", "Marketing pattern 1 for a nonprofit enterprise", "DACRE Business Wisdom Memory", "Business pattern 283", "Make claims clear, supportable and easy for customers to understand.", "Apply this for a nonprofit enterprise by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "marketing,trust,communication"),
+    ("Business", "Finance pattern 1 for a nonprofit enterprise", "DACRE Business Wisdom Memory", "Business pattern 284", "Track cash, commitments, reserves, receivables and payables before expanding.", "Apply this for a nonprofit enterprise by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "finance,cashflow,stewardship"),
+    ("Business", "Operations pattern 1 for a nonprofit enterprise", "DACRE Business Wisdom Memory", "Business pattern 285", "Document repeatable processes, owners, inputs, outputs and exception paths.", "Apply this for a nonprofit enterprise by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "operations,process,quality"),
+    ("Business", "Leadership pattern 1 for a nonprofit enterprise", "DACRE Business Wisdom Memory", "Business pattern 286", "Lead by clarifying purpose, removing blockers and developing responsible people.", "Apply this for a nonprofit enterprise by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "leadership,service,people"),
+    ("Business", "Human Resources pattern 1 for a nonprofit enterprise", "DACRE Business Wisdom Memory", "Business pattern 287", "Use consistent criteria for hiring, evaluation, compensation and conflict resolution.", "Apply this for a nonprofit enterprise by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "hr,fairness,people"),
+    ("Business", "Data pattern 1 for a nonprofit enterprise", "DACRE Business Wisdom Memory", "Business pattern 288", "Measure important quantities consistently and record the assumptions behind them.", "Apply this for a nonprofit enterprise by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "data,measurement,analytics"),
+    ("Business", "Technology pattern 1 for a nonprofit enterprise", "DACRE Business Wisdom Memory", "Business pattern 289", "Automate repeatable work while keeping human review for consequential decisions.", "Apply this for a nonprofit enterprise by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "technology,automation,review"),
+    ("Business", "Cybersecurity pattern 1 for a nonprofit enterprise", "DACRE Business Wisdom Memory", "Business pattern 290", "Protect entrusted information with least privilege, authentication, backups and monitoring.", "Apply this for a nonprofit enterprise by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "security,trust,data"),
+    ("Business", "Procurement pattern 1 for a nonprofit enterprise", "DACRE Business Wisdom Memory", "Business pattern 291", "Compare suppliers with documented criteria for price, quality, reliability and risk.", "Apply this for a nonprofit enterprise by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "procurement,suppliers,fairness"),
+    ("Business", "Inventory pattern 1 for a nonprofit enterprise", "DACRE Business Wisdom Memory", "Business pattern 292", "Use demand signals, safety stock and reorder points to reduce avoidable shortages.", "Apply this for a nonprofit enterprise by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "inventory,planning,operations"),
+    ("Business", "Customer Support pattern 1 for a nonprofit enterprise", "DACRE Business Wisdom Memory", "Business pattern 293", "Treat complaints as signals for recovery, root-cause analysis and service improvement.", "Apply this for a nonprofit enterprise by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "support,customers,recovery"),
+    ("Business", "Product pattern 1 for a nonprofit enterprise", "DACRE Business Wisdom Memory", "Business pattern 294", "Validate the problem, prototype the solution, measure outcomes and iterate.", "Apply this for a nonprofit enterprise by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "product,innovation,testing"),
+    ("Business", "Quality pattern 1 for a nonprofit enterprise", "DACRE Business Wisdom Memory", "Business pattern 295", "Build checks into the process so quality is verified before delivery.", "Apply this for a nonprofit enterprise by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "quality,audit,delivery"),
+    ("Business", "Contracts pattern 1 for a nonprofit enterprise", "DACRE Business Wisdom Memory", "Business pattern 296", "Write obligations, dates, payment terms, responsibilities and remedies clearly.", "Apply this for a nonprofit enterprise by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "contracts,legal,records"),
+    ("Business", "Governance pattern 1 for a nonprofit enterprise", "DACRE Business Wisdom Memory", "Business pattern 297", "Assign decision rights, approval limits and an auditable record of important actions.", "Apply this for a nonprofit enterprise by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "governance,accountability,audit"),
+    ("Business", "Risk pattern 1 for a nonprofit enterprise", "DACRE Business Wisdom Memory", "Business pattern 298", "Identify plausible failure modes, estimate impact and create response plans.", "Apply this for a nonprofit enterprise by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "risk,planning,resilience"),
+    ("Business", "Innovation pattern 1 for a nonprofit enterprise", "DACRE Business Wisdom Memory", "Business pattern 299", "Run small tests with explicit hypotheses and success criteria before scaling.", "Apply this for a nonprofit enterprise by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "innovation,experiments,learning"),
+    ("Business", "Partnerships pattern 1 for a nonprofit enterprise", "DACRE Business Wisdom Memory", "Business pattern 300", "Choose partnerships where responsibilities, value exchange and expectations are explicit.", "Apply this for a nonprofit enterprise by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "partnerships,trust,value"),
+    ("Business", "Strategy pattern 1 for a subscription business", "DACRE Business Wisdom Memory", "Business pattern 301", "Define objectives, assumptions, milestones and review points before committing resources.", "Apply this for a subscription business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "strategy,planning,governance"),
+    ("Business", "Sales pattern 1 for a subscription business", "DACRE Business Wisdom Memory", "Business pattern 302", "Start from a customer problem, then measure conversion, retention, margin and satisfaction.", "Apply this for a subscription business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "sales,customers,conversion"),
+    ("Business", "Marketing pattern 1 for a subscription business", "DACRE Business Wisdom Memory", "Business pattern 303", "Make claims clear, supportable and easy for customers to understand.", "Apply this for a subscription business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "marketing,trust,communication"),
+    ("Business", "Finance pattern 1 for a subscription business", "DACRE Business Wisdom Memory", "Business pattern 304", "Track cash, commitments, reserves, receivables and payables before expanding.", "Apply this for a subscription business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "finance,cashflow,stewardship"),
+    ("Business", "Operations pattern 1 for a subscription business", "DACRE Business Wisdom Memory", "Business pattern 305", "Document repeatable processes, owners, inputs, outputs and exception paths.", "Apply this for a subscription business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "operations,process,quality"),
+    ("Business", "Leadership pattern 1 for a subscription business", "DACRE Business Wisdom Memory", "Business pattern 306", "Lead by clarifying purpose, removing blockers and developing responsible people.", "Apply this for a subscription business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "leadership,service,people"),
+    ("Business", "Human Resources pattern 1 for a subscription business", "DACRE Business Wisdom Memory", "Business pattern 307", "Use consistent criteria for hiring, evaluation, compensation and conflict resolution.", "Apply this for a subscription business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "hr,fairness,people"),
+    ("Business", "Data pattern 1 for a subscription business", "DACRE Business Wisdom Memory", "Business pattern 308", "Measure important quantities consistently and record the assumptions behind them.", "Apply this for a subscription business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "data,measurement,analytics"),
+    ("Business", "Technology pattern 1 for a subscription business", "DACRE Business Wisdom Memory", "Business pattern 309", "Automate repeatable work while keeping human review for consequential decisions.", "Apply this for a subscription business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "technology,automation,review"),
+    ("Business", "Cybersecurity pattern 1 for a subscription business", "DACRE Business Wisdom Memory", "Business pattern 310", "Protect entrusted information with least privilege, authentication, backups and monitoring.", "Apply this for a subscription business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "security,trust,data"),
+    ("Business", "Procurement pattern 1 for a subscription business", "DACRE Business Wisdom Memory", "Business pattern 311", "Compare suppliers with documented criteria for price, quality, reliability and risk.", "Apply this for a subscription business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "procurement,suppliers,fairness"),
+    ("Business", "Inventory pattern 1 for a subscription business", "DACRE Business Wisdom Memory", "Business pattern 312", "Use demand signals, safety stock and reorder points to reduce avoidable shortages.", "Apply this for a subscription business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "inventory,planning,operations"),
+    ("Business", "Customer Support pattern 1 for a subscription business", "DACRE Business Wisdom Memory", "Business pattern 313", "Treat complaints as signals for recovery, root-cause analysis and service improvement.", "Apply this for a subscription business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "support,customers,recovery"),
+    ("Business", "Product pattern 1 for a subscription business", "DACRE Business Wisdom Memory", "Business pattern 314", "Validate the problem, prototype the solution, measure outcomes and iterate.", "Apply this for a subscription business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "product,innovation,testing"),
+    ("Business", "Quality pattern 1 for a subscription business", "DACRE Business Wisdom Memory", "Business pattern 315", "Build checks into the process so quality is verified before delivery.", "Apply this for a subscription business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "quality,audit,delivery"),
+    ("Business", "Contracts pattern 1 for a subscription business", "DACRE Business Wisdom Memory", "Business pattern 316", "Write obligations, dates, payment terms, responsibilities and remedies clearly.", "Apply this for a subscription business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "contracts,legal,records"),
+    ("Business", "Governance pattern 1 for a subscription business", "DACRE Business Wisdom Memory", "Business pattern 317", "Assign decision rights, approval limits and an auditable record of important actions.", "Apply this for a subscription business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "governance,accountability,audit"),
+    ("Business", "Risk pattern 1 for a subscription business", "DACRE Business Wisdom Memory", "Business pattern 318", "Identify plausible failure modes, estimate impact and create response plans.", "Apply this for a subscription business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "risk,planning,resilience"),
+    ("Business", "Innovation pattern 1 for a subscription business", "DACRE Business Wisdom Memory", "Business pattern 319", "Run small tests with explicit hypotheses and success criteria before scaling.", "Apply this for a subscription business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "innovation,experiments,learning"),
+    ("Business", "Partnerships pattern 1 for a subscription business", "DACRE Business Wisdom Memory", "Business pattern 320", "Choose partnerships where responsibilities, value exchange and expectations are explicit.", "Apply this for a subscription business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "partnerships,trust,value"),
+    ("Business", "Strategy pattern 1 for a marketplace", "DACRE Business Wisdom Memory", "Business pattern 321", "Define objectives, assumptions, milestones and review points before committing resources.", "Apply this for a marketplace by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "strategy,planning,governance"),
+    ("Business", "Sales pattern 1 for a marketplace", "DACRE Business Wisdom Memory", "Business pattern 322", "Start from a customer problem, then measure conversion, retention, margin and satisfaction.", "Apply this for a marketplace by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "sales,customers,conversion"),
+    ("Business", "Marketing pattern 1 for a marketplace", "DACRE Business Wisdom Memory", "Business pattern 323", "Make claims clear, supportable and easy for customers to understand.", "Apply this for a marketplace by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "marketing,trust,communication"),
+    ("Business", "Finance pattern 1 for a marketplace", "DACRE Business Wisdom Memory", "Business pattern 324", "Track cash, commitments, reserves, receivables and payables before expanding.", "Apply this for a marketplace by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "finance,cashflow,stewardship"),
+    ("Business", "Operations pattern 1 for a marketplace", "DACRE Business Wisdom Memory", "Business pattern 325", "Document repeatable processes, owners, inputs, outputs and exception paths.", "Apply this for a marketplace by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "operations,process,quality"),
+    ("Business", "Leadership pattern 1 for a marketplace", "DACRE Business Wisdom Memory", "Business pattern 326", "Lead by clarifying purpose, removing blockers and developing responsible people.", "Apply this for a marketplace by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "leadership,service,people"),
+    ("Business", "Human Resources pattern 1 for a marketplace", "DACRE Business Wisdom Memory", "Business pattern 327", "Use consistent criteria for hiring, evaluation, compensation and conflict resolution.", "Apply this for a marketplace by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "hr,fairness,people"),
+    ("Business", "Data pattern 1 for a marketplace", "DACRE Business Wisdom Memory", "Business pattern 328", "Measure important quantities consistently and record the assumptions behind them.", "Apply this for a marketplace by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "data,measurement,analytics"),
+    ("Business", "Technology pattern 1 for a marketplace", "DACRE Business Wisdom Memory", "Business pattern 329", "Automate repeatable work while keeping human review for consequential decisions.", "Apply this for a marketplace by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "technology,automation,review"),
+    ("Business", "Cybersecurity pattern 1 for a marketplace", "DACRE Business Wisdom Memory", "Business pattern 330", "Protect entrusted information with least privilege, authentication, backups and monitoring.", "Apply this for a marketplace by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "security,trust,data"),
+    ("Business", "Procurement pattern 1 for a marketplace", "DACRE Business Wisdom Memory", "Business pattern 331", "Compare suppliers with documented criteria for price, quality, reliability and risk.", "Apply this for a marketplace by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "procurement,suppliers,fairness"),
+    ("Business", "Inventory pattern 1 for a marketplace", "DACRE Business Wisdom Memory", "Business pattern 332", "Use demand signals, safety stock and reorder points to reduce avoidable shortages.", "Apply this for a marketplace by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "inventory,planning,operations"),
+    ("Business", "Customer Support pattern 1 for a marketplace", "DACRE Business Wisdom Memory", "Business pattern 333", "Treat complaints as signals for recovery, root-cause analysis and service improvement.", "Apply this for a marketplace by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "support,customers,recovery"),
+    ("Business", "Product pattern 1 for a marketplace", "DACRE Business Wisdom Memory", "Business pattern 334", "Validate the problem, prototype the solution, measure outcomes and iterate.", "Apply this for a marketplace by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "product,innovation,testing"),
+    ("Business", "Quality pattern 1 for a marketplace", "DACRE Business Wisdom Memory", "Business pattern 335", "Build checks into the process so quality is verified before delivery.", "Apply this for a marketplace by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "quality,audit,delivery"),
+    ("Business", "Contracts pattern 1 for a marketplace", "DACRE Business Wisdom Memory", "Business pattern 336", "Write obligations, dates, payment terms, responsibilities and remedies clearly.", "Apply this for a marketplace by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "contracts,legal,records"),
+    ("Business", "Governance pattern 1 for a marketplace", "DACRE Business Wisdom Memory", "Business pattern 337", "Assign decision rights, approval limits and an auditable record of important actions.", "Apply this for a marketplace by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "governance,accountability,audit"),
+    ("Business", "Risk pattern 1 for a marketplace", "DACRE Business Wisdom Memory", "Business pattern 338", "Identify plausible failure modes, estimate impact and create response plans.", "Apply this for a marketplace by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "risk,planning,resilience"),
+    ("Business", "Innovation pattern 1 for a marketplace", "DACRE Business Wisdom Memory", "Business pattern 339", "Run small tests with explicit hypotheses and success criteria before scaling.", "Apply this for a marketplace by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "innovation,experiments,learning"),
+    ("Business", "Partnerships pattern 1 for a marketplace", "DACRE Business Wisdom Memory", "Business pattern 340", "Choose partnerships where responsibilities, value exchange and expectations are explicit.", "Apply this for a marketplace by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "partnerships,trust,value"),
+    ("Business", "Strategy pattern 1 for a construction company", "DACRE Business Wisdom Memory", "Business pattern 341", "Define objectives, assumptions, milestones and review points before committing resources.", "Apply this for a construction company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "strategy,planning,governance"),
+    ("Business", "Sales pattern 1 for a construction company", "DACRE Business Wisdom Memory", "Business pattern 342", "Start from a customer problem, then measure conversion, retention, margin and satisfaction.", "Apply this for a construction company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "sales,customers,conversion"),
+    ("Business", "Marketing pattern 1 for a construction company", "DACRE Business Wisdom Memory", "Business pattern 343", "Make claims clear, supportable and easy for customers to understand.", "Apply this for a construction company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "marketing,trust,communication"),
+    ("Business", "Finance pattern 1 for a construction company", "DACRE Business Wisdom Memory", "Business pattern 344", "Track cash, commitments, reserves, receivables and payables before expanding.", "Apply this for a construction company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "finance,cashflow,stewardship"),
+    ("Business", "Operations pattern 1 for a construction company", "DACRE Business Wisdom Memory", "Business pattern 345", "Document repeatable processes, owners, inputs, outputs and exception paths.", "Apply this for a construction company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "operations,process,quality"),
+    ("Business", "Leadership pattern 1 for a construction company", "DACRE Business Wisdom Memory", "Business pattern 346", "Lead by clarifying purpose, removing blockers and developing responsible people.", "Apply this for a construction company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "leadership,service,people"),
+    ("Business", "Human Resources pattern 1 for a construction company", "DACRE Business Wisdom Memory", "Business pattern 347", "Use consistent criteria for hiring, evaluation, compensation and conflict resolution.", "Apply this for a construction company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "hr,fairness,people"),
+    ("Business", "Data pattern 1 for a construction company", "DACRE Business Wisdom Memory", "Business pattern 348", "Measure important quantities consistently and record the assumptions behind them.", "Apply this for a construction company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "data,measurement,analytics"),
+    ("Business", "Technology pattern 1 for a construction company", "DACRE Business Wisdom Memory", "Business pattern 349", "Automate repeatable work while keeping human review for consequential decisions.", "Apply this for a construction company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "technology,automation,review"),
+    ("Business", "Cybersecurity pattern 1 for a construction company", "DACRE Business Wisdom Memory", "Business pattern 350", "Protect entrusted information with least privilege, authentication, backups and monitoring.", "Apply this for a construction company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "security,trust,data"),
+    ("Business", "Procurement pattern 1 for a construction company", "DACRE Business Wisdom Memory", "Business pattern 351", "Compare suppliers with documented criteria for price, quality, reliability and risk.", "Apply this for a construction company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "procurement,suppliers,fairness"),
+    ("Business", "Inventory pattern 1 for a construction company", "DACRE Business Wisdom Memory", "Business pattern 352", "Use demand signals, safety stock and reorder points to reduce avoidable shortages.", "Apply this for a construction company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "inventory,planning,operations"),
+    ("Business", "Customer Support pattern 1 for a construction company", "DACRE Business Wisdom Memory", "Business pattern 353", "Treat complaints as signals for recovery, root-cause analysis and service improvement.", "Apply this for a construction company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "support,customers,recovery"),
+    ("Business", "Product pattern 1 for a construction company", "DACRE Business Wisdom Memory", "Business pattern 354", "Validate the problem, prototype the solution, measure outcomes and iterate.", "Apply this for a construction company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "product,innovation,testing"),
+    ("Business", "Quality pattern 1 for a construction company", "DACRE Business Wisdom Memory", "Business pattern 355", "Build checks into the process so quality is verified before delivery.", "Apply this for a construction company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "quality,audit,delivery"),
+    ("Business", "Contracts pattern 1 for a construction company", "DACRE Business Wisdom Memory", "Business pattern 356", "Write obligations, dates, payment terms, responsibilities and remedies clearly.", "Apply this for a construction company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "contracts,legal,records"),
+    ("Business", "Governance pattern 1 for a construction company", "DACRE Business Wisdom Memory", "Business pattern 357", "Assign decision rights, approval limits and an auditable record of important actions.", "Apply this for a construction company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "governance,accountability,audit"),
+    ("Business", "Risk pattern 1 for a construction company", "DACRE Business Wisdom Memory", "Business pattern 358", "Identify plausible failure modes, estimate impact and create response plans.", "Apply this for a construction company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "risk,planning,resilience"),
+    ("Business", "Innovation pattern 1 for a construction company", "DACRE Business Wisdom Memory", "Business pattern 359", "Run small tests with explicit hypotheses and success criteria before scaling.", "Apply this for a construction company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "innovation,experiments,learning"),
+    ("Business", "Partnerships pattern 1 for a construction company", "DACRE Business Wisdom Memory", "Business pattern 360", "Choose partnerships where responsibilities, value exchange and expectations are explicit.", "Apply this for a construction company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "partnerships,trust,value"),
+    ("Business", "Strategy pattern 1 for a financial-services workflow", "DACRE Business Wisdom Memory", "Business pattern 361", "Define objectives, assumptions, milestones and review points before committing resources.", "Apply this for a financial-services workflow by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "strategy,planning,governance"),
+    ("Business", "Sales pattern 1 for a financial-services workflow", "DACRE Business Wisdom Memory", "Business pattern 362", "Start from a customer problem, then measure conversion, retention, margin and satisfaction.", "Apply this for a financial-services workflow by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "sales,customers,conversion"),
+    ("Business", "Marketing pattern 1 for a financial-services workflow", "DACRE Business Wisdom Memory", "Business pattern 363", "Make claims clear, supportable and easy for customers to understand.", "Apply this for a financial-services workflow by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "marketing,trust,communication"),
+    ("Business", "Finance pattern 1 for a financial-services workflow", "DACRE Business Wisdom Memory", "Business pattern 364", "Track cash, commitments, reserves, receivables and payables before expanding.", "Apply this for a financial-services workflow by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "finance,cashflow,stewardship"),
+    ("Business", "Operations pattern 1 for a financial-services workflow", "DACRE Business Wisdom Memory", "Business pattern 365", "Document repeatable processes, owners, inputs, outputs and exception paths.", "Apply this for a financial-services workflow by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "operations,process,quality"),
+    ("Business", "Leadership pattern 1 for a financial-services workflow", "DACRE Business Wisdom Memory", "Business pattern 366", "Lead by clarifying purpose, removing blockers and developing responsible people.", "Apply this for a financial-services workflow by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "leadership,service,people"),
+    ("Business", "Human Resources pattern 1 for a financial-services workflow", "DACRE Business Wisdom Memory", "Business pattern 367", "Use consistent criteria for hiring, evaluation, compensation and conflict resolution.", "Apply this for a financial-services workflow by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "hr,fairness,people"),
+    ("Business", "Data pattern 1 for a financial-services workflow", "DACRE Business Wisdom Memory", "Business pattern 368", "Measure important quantities consistently and record the assumptions behind them.", "Apply this for a financial-services workflow by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "data,measurement,analytics"),
+    ("Business", "Technology pattern 1 for a financial-services workflow", "DACRE Business Wisdom Memory", "Business pattern 369", "Automate repeatable work while keeping human review for consequential decisions.", "Apply this for a financial-services workflow by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "technology,automation,review"),
+    ("Business", "Cybersecurity pattern 1 for a financial-services workflow", "DACRE Business Wisdom Memory", "Business pattern 370", "Protect entrusted information with least privilege, authentication, backups and monitoring.", "Apply this for a financial-services workflow by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "security,trust,data"),
+    ("Business", "Procurement pattern 1 for a financial-services workflow", "DACRE Business Wisdom Memory", "Business pattern 371", "Compare suppliers with documented criteria for price, quality, reliability and risk.", "Apply this for a financial-services workflow by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "procurement,suppliers,fairness"),
+    ("Business", "Inventory pattern 1 for a financial-services workflow", "DACRE Business Wisdom Memory", "Business pattern 372", "Use demand signals, safety stock and reorder points to reduce avoidable shortages.", "Apply this for a financial-services workflow by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "inventory,planning,operations"),
+    ("Business", "Customer Support pattern 1 for a financial-services workflow", "DACRE Business Wisdom Memory", "Business pattern 373", "Treat complaints as signals for recovery, root-cause analysis and service improvement.", "Apply this for a financial-services workflow by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "support,customers,recovery"),
+    ("Business", "Product pattern 1 for a financial-services workflow", "DACRE Business Wisdom Memory", "Business pattern 374", "Validate the problem, prototype the solution, measure outcomes and iterate.", "Apply this for a financial-services workflow by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "product,innovation,testing"),
+    ("Business", "Quality pattern 1 for a financial-services workflow", "DACRE Business Wisdom Memory", "Business pattern 375", "Build checks into the process so quality is verified before delivery.", "Apply this for a financial-services workflow by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "quality,audit,delivery"),
+    ("Business", "Contracts pattern 1 for a financial-services workflow", "DACRE Business Wisdom Memory", "Business pattern 376", "Write obligations, dates, payment terms, responsibilities and remedies clearly.", "Apply this for a financial-services workflow by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "contracts,legal,records"),
+    ("Business", "Governance pattern 1 for a financial-services workflow", "DACRE Business Wisdom Memory", "Business pattern 377", "Assign decision rights, approval limits and an auditable record of important actions.", "Apply this for a financial-services workflow by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "governance,accountability,audit"),
+    ("Business", "Risk pattern 1 for a financial-services workflow", "DACRE Business Wisdom Memory", "Business pattern 378", "Identify plausible failure modes, estimate impact and create response plans.", "Apply this for a financial-services workflow by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "risk,planning,resilience"),
+    ("Business", "Innovation pattern 1 for a financial-services workflow", "DACRE Business Wisdom Memory", "Business pattern 379", "Run small tests with explicit hypotheses and success criteria before scaling.", "Apply this for a financial-services workflow by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "innovation,experiments,learning"),
+    ("Business", "Partnerships pattern 1 for a financial-services workflow", "DACRE Business Wisdom Memory", "Business pattern 380", "Choose partnerships where responsibilities, value exchange and expectations are explicit.", "Apply this for a financial-services workflow by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "partnerships,trust,value"),
+    ("Business", "Strategy pattern 1 for a local service company", "DACRE Business Wisdom Memory", "Business pattern 381", "Define objectives, assumptions, milestones and review points before committing resources.", "Apply this for a local service company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "strategy,planning,governance"),
+    ("Business", "Sales pattern 1 for a local service company", "DACRE Business Wisdom Memory", "Business pattern 382", "Start from a customer problem, then measure conversion, retention, margin and satisfaction.", "Apply this for a local service company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "sales,customers,conversion"),
+    ("Business", "Marketing pattern 1 for a local service company", "DACRE Business Wisdom Memory", "Business pattern 383", "Make claims clear, supportable and easy for customers to understand.", "Apply this for a local service company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "marketing,trust,communication"),
+    ("Business", "Finance pattern 1 for a local service company", "DACRE Business Wisdom Memory", "Business pattern 384", "Track cash, commitments, reserves, receivables and payables before expanding.", "Apply this for a local service company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "finance,cashflow,stewardship"),
+    ("Business", "Operations pattern 1 for a local service company", "DACRE Business Wisdom Memory", "Business pattern 385", "Document repeatable processes, owners, inputs, outputs and exception paths.", "Apply this for a local service company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "operations,process,quality"),
+    ("Business", "Leadership pattern 1 for a local service company", "DACRE Business Wisdom Memory", "Business pattern 386", "Lead by clarifying purpose, removing blockers and developing responsible people.", "Apply this for a local service company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "leadership,service,people"),
+    ("Business", "Human Resources pattern 1 for a local service company", "DACRE Business Wisdom Memory", "Business pattern 387", "Use consistent criteria for hiring, evaluation, compensation and conflict resolution.", "Apply this for a local service company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "hr,fairness,people"),
+    ("Business", "Data pattern 1 for a local service company", "DACRE Business Wisdom Memory", "Business pattern 388", "Measure important quantities consistently and record the assumptions behind them.", "Apply this for a local service company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "data,measurement,analytics"),
+    ("Business", "Technology pattern 1 for a local service company", "DACRE Business Wisdom Memory", "Business pattern 389", "Automate repeatable work while keeping human review for consequential decisions.", "Apply this for a local service company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "technology,automation,review"),
+    ("Business", "Cybersecurity pattern 1 for a local service company", "DACRE Business Wisdom Memory", "Business pattern 390", "Protect entrusted information with least privilege, authentication, backups and monitoring.", "Apply this for a local service company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "security,trust,data"),
+    ("Business", "Procurement pattern 1 for a local service company", "DACRE Business Wisdom Memory", "Business pattern 391", "Compare suppliers with documented criteria for price, quality, reliability and risk.", "Apply this for a local service company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "procurement,suppliers,fairness"),
+    ("Business", "Inventory pattern 1 for a local service company", "DACRE Business Wisdom Memory", "Business pattern 392", "Use demand signals, safety stock and reorder points to reduce avoidable shortages.", "Apply this for a local service company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "inventory,planning,operations"),
+    ("Business", "Customer Support pattern 1 for a local service company", "DACRE Business Wisdom Memory", "Business pattern 393", "Treat complaints as signals for recovery, root-cause analysis and service improvement.", "Apply this for a local service company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "support,customers,recovery"),
+    ("Business", "Product pattern 1 for a local service company", "DACRE Business Wisdom Memory", "Business pattern 394", "Validate the problem, prototype the solution, measure outcomes and iterate.", "Apply this for a local service company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "product,innovation,testing"),
+    ("Business", "Quality pattern 1 for a local service company", "DACRE Business Wisdom Memory", "Business pattern 395", "Build checks into the process so quality is verified before delivery.", "Apply this for a local service company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "quality,audit,delivery"),
+    ("Business", "Contracts pattern 1 for a local service company", "DACRE Business Wisdom Memory", "Business pattern 396", "Write obligations, dates, payment terms, responsibilities and remedies clearly.", "Apply this for a local service company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "contracts,legal,records"),
+    ("Business", "Governance pattern 1 for a local service company", "DACRE Business Wisdom Memory", "Business pattern 397", "Assign decision rights, approval limits and an auditable record of important actions.", "Apply this for a local service company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "governance,accountability,audit"),
+    ("Business", "Risk pattern 1 for a local service company", "DACRE Business Wisdom Memory", "Business pattern 398", "Identify plausible failure modes, estimate impact and create response plans.", "Apply this for a local service company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "risk,planning,resilience"),
+    ("Business", "Innovation pattern 1 for a local service company", "DACRE Business Wisdom Memory", "Business pattern 399", "Run small tests with explicit hypotheses and success criteria before scaling.", "Apply this for a local service company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "innovation,experiments,learning"),
+    ("Business", "Partnerships pattern 1 for a local service company", "DACRE Business Wisdom Memory", "Business pattern 400", "Choose partnerships where responsibilities, value exchange and expectations are explicit.", "Apply this for a local service company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "partnerships,trust,value"),
+    ("Business", "Strategy pattern 2 for a small retail business", "DACRE Business Wisdom Memory", "Business pattern 401", "Define objectives, assumptions, milestones and review points before committing resources.", "Apply this for a small retail business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "strategy,planning,governance"),
+    ("Business", "Sales pattern 2 for a small retail business", "DACRE Business Wisdom Memory", "Business pattern 402", "Start from a customer problem, then measure conversion, retention, margin and satisfaction.", "Apply this for a small retail business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "sales,customers,conversion"),
+    ("Business", "Marketing pattern 2 for a small retail business", "DACRE Business Wisdom Memory", "Business pattern 403", "Make claims clear, supportable and easy for customers to understand.", "Apply this for a small retail business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "marketing,trust,communication"),
+    ("Business", "Finance pattern 2 for a small retail business", "DACRE Business Wisdom Memory", "Business pattern 404", "Track cash, commitments, reserves, receivables and payables before expanding.", "Apply this for a small retail business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "finance,cashflow,stewardship"),
+    ("Business", "Operations pattern 2 for a small retail business", "DACRE Business Wisdom Memory", "Business pattern 405", "Document repeatable processes, owners, inputs, outputs and exception paths.", "Apply this for a small retail business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "operations,process,quality"),
+    ("Business", "Leadership pattern 2 for a small retail business", "DACRE Business Wisdom Memory", "Business pattern 406", "Lead by clarifying purpose, removing blockers and developing responsible people.", "Apply this for a small retail business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "leadership,service,people"),
+    ("Business", "Human Resources pattern 2 for a small retail business", "DACRE Business Wisdom Memory", "Business pattern 407", "Use consistent criteria for hiring, evaluation, compensation and conflict resolution.", "Apply this for a small retail business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "hr,fairness,people"),
+    ("Business", "Data pattern 2 for a small retail business", "DACRE Business Wisdom Memory", "Business pattern 408", "Measure important quantities consistently and record the assumptions behind them.", "Apply this for a small retail business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "data,measurement,analytics"),
+    ("Business", "Technology pattern 2 for a small retail business", "DACRE Business Wisdom Memory", "Business pattern 409", "Automate repeatable work while keeping human review for consequential decisions.", "Apply this for a small retail business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "technology,automation,review"),
+    ("Business", "Cybersecurity pattern 2 for a small retail business", "DACRE Business Wisdom Memory", "Business pattern 410", "Protect entrusted information with least privilege, authentication, backups and monitoring.", "Apply this for a small retail business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "security,trust,data"),
+    ("Business", "Procurement pattern 2 for a small retail business", "DACRE Business Wisdom Memory", "Business pattern 411", "Compare suppliers with documented criteria for price, quality, reliability and risk.", "Apply this for a small retail business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "procurement,suppliers,fairness"),
+    ("Business", "Inventory pattern 2 for a small retail business", "DACRE Business Wisdom Memory", "Business pattern 412", "Use demand signals, safety stock and reorder points to reduce avoidable shortages.", "Apply this for a small retail business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "inventory,planning,operations"),
+    ("Business", "Customer Support pattern 2 for a small retail business", "DACRE Business Wisdom Memory", "Business pattern 413", "Treat complaints as signals for recovery, root-cause analysis and service improvement.", "Apply this for a small retail business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "support,customers,recovery"),
+    ("Business", "Product pattern 2 for a small retail business", "DACRE Business Wisdom Memory", "Business pattern 414", "Validate the problem, prototype the solution, measure outcomes and iterate.", "Apply this for a small retail business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "product,innovation,testing"),
+    ("Business", "Quality pattern 2 for a small retail business", "DACRE Business Wisdom Memory", "Business pattern 415", "Build checks into the process so quality is verified before delivery.", "Apply this for a small retail business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "quality,audit,delivery"),
+    ("Business", "Contracts pattern 2 for a small retail business", "DACRE Business Wisdom Memory", "Business pattern 416", "Write obligations, dates, payment terms, responsibilities and remedies clearly.", "Apply this for a small retail business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "contracts,legal,records"),
+    ("Business", "Governance pattern 2 for a small retail business", "DACRE Business Wisdom Memory", "Business pattern 417", "Assign decision rights, approval limits and an auditable record of important actions.", "Apply this for a small retail business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "governance,accountability,audit"),
+    ("Business", "Risk pattern 2 for a small retail business", "DACRE Business Wisdom Memory", "Business pattern 418", "Identify plausible failure modes, estimate impact and create response plans.", "Apply this for a small retail business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "risk,planning,resilience"),
+    ("Business", "Innovation pattern 2 for a small retail business", "DACRE Business Wisdom Memory", "Business pattern 419", "Run small tests with explicit hypotheses and success criteria before scaling.", "Apply this for a small retail business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "innovation,experiments,learning"),
+    ("Business", "Partnerships pattern 2 for a small retail business", "DACRE Business Wisdom Memory", "Business pattern 420", "Choose partnerships where responsibilities, value exchange and expectations are explicit.", "Apply this for a small retail business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "partnerships,trust,value"),
+    ("Business", "Strategy pattern 2 for an online store", "DACRE Business Wisdom Memory", "Business pattern 421", "Define objectives, assumptions, milestones and review points before committing resources.", "Apply this for an online store by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "strategy,planning,governance"),
+    ("Business", "Sales pattern 2 for an online store", "DACRE Business Wisdom Memory", "Business pattern 422", "Start from a customer problem, then measure conversion, retention, margin and satisfaction.", "Apply this for an online store by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "sales,customers,conversion"),
+    ("Business", "Marketing pattern 2 for an online store", "DACRE Business Wisdom Memory", "Business pattern 423", "Make claims clear, supportable and easy for customers to understand.", "Apply this for an online store by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "marketing,trust,communication"),
+    ("Business", "Finance pattern 2 for an online store", "DACRE Business Wisdom Memory", "Business pattern 424", "Track cash, commitments, reserves, receivables and payables before expanding.", "Apply this for an online store by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "finance,cashflow,stewardship"),
+    ("Business", "Operations pattern 2 for an online store", "DACRE Business Wisdom Memory", "Business pattern 425", "Document repeatable processes, owners, inputs, outputs and exception paths.", "Apply this for an online store by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "operations,process,quality"),
+    ("Business", "Leadership pattern 2 for an online store", "DACRE Business Wisdom Memory", "Business pattern 426", "Lead by clarifying purpose, removing blockers and developing responsible people.", "Apply this for an online store by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "leadership,service,people"),
+    ("Business", "Human Resources pattern 2 for an online store", "DACRE Business Wisdom Memory", "Business pattern 427", "Use consistent criteria for hiring, evaluation, compensation and conflict resolution.", "Apply this for an online store by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "hr,fairness,people"),
+    ("Business", "Data pattern 2 for an online store", "DACRE Business Wisdom Memory", "Business pattern 428", "Measure important quantities consistently and record the assumptions behind them.", "Apply this for an online store by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "data,measurement,analytics"),
+    ("Business", "Technology pattern 2 for an online store", "DACRE Business Wisdom Memory", "Business pattern 429", "Automate repeatable work while keeping human review for consequential decisions.", "Apply this for an online store by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "technology,automation,review"),
+    ("Business", "Cybersecurity pattern 2 for an online store", "DACRE Business Wisdom Memory", "Business pattern 430", "Protect entrusted information with least privilege, authentication, backups and monitoring.", "Apply this for an online store by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "security,trust,data"),
+    ("Business", "Procurement pattern 2 for an online store", "DACRE Business Wisdom Memory", "Business pattern 431", "Compare suppliers with documented criteria for price, quality, reliability and risk.", "Apply this for an online store by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "procurement,suppliers,fairness"),
+    ("Business", "Inventory pattern 2 for an online store", "DACRE Business Wisdom Memory", "Business pattern 432", "Use demand signals, safety stock and reorder points to reduce avoidable shortages.", "Apply this for an online store by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "inventory,planning,operations"),
+    ("Business", "Customer Support pattern 2 for an online store", "DACRE Business Wisdom Memory", "Business pattern 433", "Treat complaints as signals for recovery, root-cause analysis and service improvement.", "Apply this for an online store by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "support,customers,recovery"),
+    ("Business", "Product pattern 2 for an online store", "DACRE Business Wisdom Memory", "Business pattern 434", "Validate the problem, prototype the solution, measure outcomes and iterate.", "Apply this for an online store by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "product,innovation,testing"),
+    ("Business", "Quality pattern 2 for an online store", "DACRE Business Wisdom Memory", "Business pattern 435", "Build checks into the process so quality is verified before delivery.", "Apply this for an online store by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "quality,audit,delivery"),
+    ("Business", "Contracts pattern 2 for an online store", "DACRE Business Wisdom Memory", "Business pattern 436", "Write obligations, dates, payment terms, responsibilities and remedies clearly.", "Apply this for an online store by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "contracts,legal,records"),
+    ("Business", "Governance pattern 2 for an online store", "DACRE Business Wisdom Memory", "Business pattern 437", "Assign decision rights, approval limits and an auditable record of important actions.", "Apply this for an online store by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "governance,accountability,audit"),
+    ("Business", "Risk pattern 2 for an online store", "DACRE Business Wisdom Memory", "Business pattern 438", "Identify plausible failure modes, estimate impact and create response plans.", "Apply this for an online store by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "risk,planning,resilience"),
+    ("Business", "Innovation pattern 2 for an online store", "DACRE Business Wisdom Memory", "Business pattern 439", "Run small tests with explicit hypotheses and success criteria before scaling.", "Apply this for an online store by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "innovation,experiments,learning"),
+    ("Business", "Partnerships pattern 2 for an online store", "DACRE Business Wisdom Memory", "Business pattern 440", "Choose partnerships where responsibilities, value exchange and expectations are explicit.", "Apply this for an online store by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "partnerships,trust,value"),
+    ("Business", "Strategy pattern 2 for a startup", "DACRE Business Wisdom Memory", "Business pattern 441", "Define objectives, assumptions, milestones and review points before committing resources.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "strategy,planning,governance"),
+    ("Business", "Sales pattern 2 for a startup", "DACRE Business Wisdom Memory", "Business pattern 442", "Start from a customer problem, then measure conversion, retention, margin and satisfaction.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "sales,customers,conversion"),
+    ("Business", "Marketing pattern 2 for a startup", "DACRE Business Wisdom Memory", "Business pattern 443", "Make claims clear, supportable and easy for customers to understand.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "marketing,trust,communication"),
+    ("Business", "Finance pattern 2 for a startup", "DACRE Business Wisdom Memory", "Business pattern 444", "Track cash, commitments, reserves, receivables and payables before expanding.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "finance,cashflow,stewardship"),
+    ("Business", "Operations pattern 2 for a startup", "DACRE Business Wisdom Memory", "Business pattern 445", "Document repeatable processes, owners, inputs, outputs and exception paths.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "operations,process,quality"),
+    ("Business", "Leadership pattern 2 for a startup", "DACRE Business Wisdom Memory", "Business pattern 446", "Lead by clarifying purpose, removing blockers and developing responsible people.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "leadership,service,people"),
+    ("Business", "Human Resources pattern 2 for a startup", "DACRE Business Wisdom Memory", "Business pattern 447", "Use consistent criteria for hiring, evaluation, compensation and conflict resolution.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "hr,fairness,people"),
+    ("Business", "Data pattern 2 for a startup", "DACRE Business Wisdom Memory", "Business pattern 448", "Measure important quantities consistently and record the assumptions behind them.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "data,measurement,analytics"),
+    ("Business", "Technology pattern 2 for a startup", "DACRE Business Wisdom Memory", "Business pattern 449", "Automate repeatable work while keeping human review for consequential decisions.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "technology,automation,review"),
+    ("Business", "Cybersecurity pattern 2 for a startup", "DACRE Business Wisdom Memory", "Business pattern 450", "Protect entrusted information with least privilege, authentication, backups and monitoring.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "security,trust,data"),
+    ("Business", "Procurement pattern 2 for a startup", "DACRE Business Wisdom Memory", "Business pattern 451", "Compare suppliers with documented criteria for price, quality, reliability and risk.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "procurement,suppliers,fairness"),
+    ("Business", "Inventory pattern 2 for a startup", "DACRE Business Wisdom Memory", "Business pattern 452", "Use demand signals, safety stock and reorder points to reduce avoidable shortages.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "inventory,planning,operations"),
+    ("Business", "Customer Support pattern 2 for a startup", "DACRE Business Wisdom Memory", "Business pattern 453", "Treat complaints as signals for recovery, root-cause analysis and service improvement.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "support,customers,recovery"),
+    ("Business", "Product pattern 2 for a startup", "DACRE Business Wisdom Memory", "Business pattern 454", "Validate the problem, prototype the solution, measure outcomes and iterate.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "product,innovation,testing"),
+    ("Business", "Quality pattern 2 for a startup", "DACRE Business Wisdom Memory", "Business pattern 455", "Build checks into the process so quality is verified before delivery.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "quality,audit,delivery"),
+    ("Business", "Contracts pattern 2 for a startup", "DACRE Business Wisdom Memory", "Business pattern 456", "Write obligations, dates, payment terms, responsibilities and remedies clearly.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "contracts,legal,records"),
+    ("Business", "Governance pattern 2 for a startup", "DACRE Business Wisdom Memory", "Business pattern 457", "Assign decision rights, approval limits and an auditable record of important actions.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "governance,accountability,audit"),
+    ("Business", "Risk pattern 2 for a startup", "DACRE Business Wisdom Memory", "Business pattern 458", "Identify plausible failure modes, estimate impact and create response plans.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "risk,planning,resilience"),
+    ("Business", "Innovation pattern 2 for a startup", "DACRE Business Wisdom Memory", "Business pattern 459", "Run small tests with explicit hypotheses and success criteria before scaling.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "innovation,experiments,learning"),
+    ("Business", "Partnerships pattern 2 for a startup", "DACRE Business Wisdom Memory", "Business pattern 460", "Choose partnerships where responsibilities, value exchange and expectations are explicit.", "Apply this for a startup by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "partnerships,trust,value"),
+    ("Business", "Strategy pattern 2 for a family business", "DACRE Business Wisdom Memory", "Business pattern 461", "Define objectives, assumptions, milestones and review points before committing resources.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "strategy,planning,governance"),
+    ("Business", "Sales pattern 2 for a family business", "DACRE Business Wisdom Memory", "Business pattern 462", "Start from a customer problem, then measure conversion, retention, margin and satisfaction.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "sales,customers,conversion"),
+    ("Business", "Marketing pattern 2 for a family business", "DACRE Business Wisdom Memory", "Business pattern 463", "Make claims clear, supportable and easy for customers to understand.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "marketing,trust,communication"),
+    ("Business", "Finance pattern 2 for a family business", "DACRE Business Wisdom Memory", "Business pattern 464", "Track cash, commitments, reserves, receivables and payables before expanding.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "finance,cashflow,stewardship"),
+    ("Business", "Operations pattern 2 for a family business", "DACRE Business Wisdom Memory", "Business pattern 465", "Document repeatable processes, owners, inputs, outputs and exception paths.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "operations,process,quality"),
+    ("Business", "Leadership pattern 2 for a family business", "DACRE Business Wisdom Memory", "Business pattern 466", "Lead by clarifying purpose, removing blockers and developing responsible people.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "leadership,service,people"),
+    ("Business", "Human Resources pattern 2 for a family business", "DACRE Business Wisdom Memory", "Business pattern 467", "Use consistent criteria for hiring, evaluation, compensation and conflict resolution.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "hr,fairness,people"),
+    ("Business", "Data pattern 2 for a family business", "DACRE Business Wisdom Memory", "Business pattern 468", "Measure important quantities consistently and record the assumptions behind them.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "data,measurement,analytics"),
+    ("Business", "Technology pattern 2 for a family business", "DACRE Business Wisdom Memory", "Business pattern 469", "Automate repeatable work while keeping human review for consequential decisions.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "technology,automation,review"),
+    ("Business", "Cybersecurity pattern 2 for a family business", "DACRE Business Wisdom Memory", "Business pattern 470", "Protect entrusted information with least privilege, authentication, backups and monitoring.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "security,trust,data"),
+    ("Business", "Procurement pattern 2 for a family business", "DACRE Business Wisdom Memory", "Business pattern 471", "Compare suppliers with documented criteria for price, quality, reliability and risk.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "procurement,suppliers,fairness"),
+    ("Business", "Inventory pattern 2 for a family business", "DACRE Business Wisdom Memory", "Business pattern 472", "Use demand signals, safety stock and reorder points to reduce avoidable shortages.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "inventory,planning,operations"),
+    ("Business", "Customer Support pattern 2 for a family business", "DACRE Business Wisdom Memory", "Business pattern 473", "Treat complaints as signals for recovery, root-cause analysis and service improvement.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "support,customers,recovery"),
+    ("Business", "Product pattern 2 for a family business", "DACRE Business Wisdom Memory", "Business pattern 474", "Validate the problem, prototype the solution, measure outcomes and iterate.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "product,innovation,testing"),
+    ("Business", "Quality pattern 2 for a family business", "DACRE Business Wisdom Memory", "Business pattern 475", "Build checks into the process so quality is verified before delivery.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "quality,audit,delivery"),
+    ("Business", "Contracts pattern 2 for a family business", "DACRE Business Wisdom Memory", "Business pattern 476", "Write obligations, dates, payment terms, responsibilities and remedies clearly.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "contracts,legal,records"),
+    ("Business", "Governance pattern 2 for a family business", "DACRE Business Wisdom Memory", "Business pattern 477", "Assign decision rights, approval limits and an auditable record of important actions.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "governance,accountability,audit"),
+    ("Business", "Risk pattern 2 for a family business", "DACRE Business Wisdom Memory", "Business pattern 478", "Identify plausible failure modes, estimate impact and create response plans.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "risk,planning,resilience"),
+    ("Business", "Innovation pattern 2 for a family business", "DACRE Business Wisdom Memory", "Business pattern 479", "Run small tests with explicit hypotheses and success criteria before scaling.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "innovation,experiments,learning"),
+    ("Business", "Partnerships pattern 2 for a family business", "DACRE Business Wisdom Memory", "Business pattern 480", "Choose partnerships where responsibilities, value exchange and expectations are explicit.", "Apply this for a family business by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "partnerships,trust,value"),
+    ("Business", "Strategy pattern 2 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 481", "Define objectives, assumptions, milestones and review points before committing resources.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "strategy,planning,governance"),
+    ("Business", "Sales pattern 2 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 482", "Start from a customer problem, then measure conversion, retention, margin and satisfaction.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "sales,customers,conversion"),
+    ("Business", "Marketing pattern 2 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 483", "Make claims clear, supportable and easy for customers to understand.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "marketing,trust,communication"),
+    ("Business", "Finance pattern 2 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 484", "Track cash, commitments, reserves, receivables and payables before expanding.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "finance,cashflow,stewardship"),
+    ("Business", "Operations pattern 2 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 485", "Document repeatable processes, owners, inputs, outputs and exception paths.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "operations,process,quality"),
+    ("Business", "Leadership pattern 2 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 486", "Lead by clarifying purpose, removing blockers and developing responsible people.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "leadership,service,people"),
+    ("Business", "Human Resources pattern 2 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 487", "Use consistent criteria for hiring, evaluation, compensation and conflict resolution.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "hr,fairness,people"),
+    ("Business", "Data pattern 2 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 488", "Measure important quantities consistently and record the assumptions behind them.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "data,measurement,analytics"),
+    ("Business", "Technology pattern 2 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 489", "Automate repeatable work while keeping human review for consequential decisions.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "technology,automation,review"),
+    ("Business", "Cybersecurity pattern 2 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 490", "Protect entrusted information with least privilege, authentication, backups and monitoring.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "security,trust,data"),
+    ("Business", "Procurement pattern 2 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 491", "Compare suppliers with documented criteria for price, quality, reliability and risk.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "procurement,suppliers,fairness"),
+    ("Business", "Inventory pattern 2 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 492", "Use demand signals, safety stock and reorder points to reduce avoidable shortages.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "inventory,planning,operations"),
+    ("Business", "Customer Support pattern 2 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 493", "Treat complaints as signals for recovery, root-cause analysis and service improvement.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "support,customers,recovery"),
+    ("Business", "Product pattern 2 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 494", "Validate the problem, prototype the solution, measure outcomes and iterate.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "product,innovation,testing"),
+    ("Business", "Quality pattern 2 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 495", "Build checks into the process so quality is verified before delivery.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "quality,audit,delivery"),
+    ("Business", "Contracts pattern 2 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 496", "Write obligations, dates, payment terms, responsibilities and remedies clearly.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "contracts,legal,records"),
+    ("Business", "Governance pattern 2 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 497", "Assign decision rights, approval limits and an auditable record of important actions.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "governance,accountability,audit"),
+    ("Business", "Risk pattern 2 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 498", "Identify plausible failure modes, estimate impact and create response plans.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "risk,planning,resilience"),
+    ("Business", "Innovation pattern 2 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 499", "Run small tests with explicit hypotheses and success criteria before scaling.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "innovation,experiments,learning"),
+    ("Business", "Partnerships pattern 2 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 500", "Choose partnerships where responsibilities, value exchange and expectations are explicit.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "partnerships,trust,value"),
+    ("Business", "Strategy pattern 2 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 501", "Define objectives, assumptions, milestones and review points before committing resources.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "strategy,planning,governance"),
+    ("Business", "Sales pattern 2 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 502", "Start from a customer problem, then measure conversion, retention, margin and satisfaction.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "sales,customers,conversion"),
+    ("Business", "Marketing pattern 2 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 503", "Make claims clear, supportable and easy for customers to understand.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "marketing,trust,communication"),
+    ("Business", "Finance pattern 2 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 504", "Track cash, commitments, reserves, receivables and payables before expanding.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "finance,cashflow,stewardship"),
+    ("Business", "Operations pattern 2 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 505", "Document repeatable processes, owners, inputs, outputs and exception paths.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "operations,process,quality"),
+    ("Business", "Leadership pattern 2 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 506", "Lead by clarifying purpose, removing blockers and developing responsible people.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "leadership,service,people"),
+    ("Business", "Human Resources pattern 2 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 507", "Use consistent criteria for hiring, evaluation, compensation and conflict resolution.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "hr,fairness,people"),
+    ("Business", "Data pattern 2 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 508", "Measure important quantities consistently and record the assumptions behind them.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "data,measurement,analytics"),
+    ("Business", "Technology pattern 2 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 509", "Automate repeatable work while keeping human review for consequential decisions.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "technology,automation,review"),
+    ("Business", "Cybersecurity pattern 2 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 510", "Protect entrusted information with least privilege, authentication, backups and monitoring.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "security,trust,data"),
+    ("Business", "Procurement pattern 2 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 511", "Compare suppliers with documented criteria for price, quality, reliability and risk.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "procurement,suppliers,fairness"),
+    ("Business", "Inventory pattern 2 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 512", "Use demand signals, safety stock and reorder points to reduce avoidable shortages.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "inventory,planning,operations"),
+    ("Business", "Customer Support pattern 2 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 513", "Treat complaints as signals for recovery, root-cause analysis and service improvement.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "support,customers,recovery"),
+    ("Business", "Product pattern 2 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 514", "Validate the problem, prototype the solution, measure outcomes and iterate.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "product,innovation,testing"),
+    ("Business", "Quality pattern 2 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 515", "Build checks into the process so quality is verified before delivery.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "quality,audit,delivery"),
+    ("Business", "Contracts pattern 2 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 516", "Write obligations, dates, payment terms, responsibilities and remedies clearly.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "contracts,legal,records"),
+    ("Business", "Governance pattern 2 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 517", "Assign decision rights, approval limits and an auditable record of important actions.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "governance,accountability,audit"),
+    ("Business", "Risk pattern 2 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 518", "Identify plausible failure modes, estimate impact and create response plans.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "risk,planning,resilience"),
+    ("Business", "Innovation pattern 2 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 519", "Run small tests with explicit hypotheses and success criteria before scaling.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "innovation,experiments,learning"),
+    ("Business", "Partnerships pattern 2 for a manufacturer", "DACRE Business Wisdom Memory", "Business pattern 520", "Choose partnerships where responsibilities, value exchange and expectations are explicit.", "Apply this for a manufacturer by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "partnerships,trust,value"),
+    ("Business", "Strategy pattern 2 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 521", "Define objectives, assumptions, milestones and review points before committing resources.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "strategy,planning,governance"),
+    ("Business", "Sales pattern 2 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 522", "Start from a customer problem, then measure conversion, retention, margin and satisfaction.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "sales,customers,conversion"),
+    ("Business", "Marketing pattern 2 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 523", "Make claims clear, supportable and easy for customers to understand.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "marketing,trust,communication"),
+    ("Business", "Finance pattern 2 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 524", "Track cash, commitments, reserves, receivables and payables before expanding.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "finance,cashflow,stewardship"),
+    ("Business", "Operations pattern 2 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 525", "Document repeatable processes, owners, inputs, outputs and exception paths.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "operations,process,quality"),
+    ("Business", "Leadership pattern 2 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 526", "Lead by clarifying purpose, removing blockers and developing responsible people.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "leadership,service,people"),
+    ("Business", "Human Resources pattern 2 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 527", "Use consistent criteria for hiring, evaluation, compensation and conflict resolution.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "hr,fairness,people"),
+    ("Business", "Data pattern 2 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 528", "Measure important quantities consistently and record the assumptions behind them.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "data,measurement,analytics"),
+    ("Business", "Technology pattern 2 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 529", "Automate repeatable work while keeping human review for consequential decisions.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "technology,automation,review"),
+    ("Business", "Cybersecurity pattern 2 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 530", "Protect entrusted information with least privilege, authentication, backups and monitoring.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "security,trust,data"),
+    ("Business", "Procurement pattern 2 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 531", "Compare suppliers with documented criteria for price, quality, reliability and risk.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "procurement,suppliers,fairness"),
+    ("Business", "Inventory pattern 2 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 532", "Use demand signals, safety stock and reorder points to reduce avoidable shortages.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "inventory,planning,operations"),
+    ("Business", "Customer Support pattern 2 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 533", "Treat complaints as signals for recovery, root-cause analysis and service improvement.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "support,customers,recovery"),
+    ("Business", "Product pattern 2 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 534", "Validate the problem, prototype the solution, measure outcomes and iterate.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "product,innovation,testing"),
+    ("Business", "Quality pattern 2 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 535", "Build checks into the process so quality is verified before delivery.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "quality,audit,delivery"),
     ("Business", "Contracts pattern 2 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 536", "Write obligations, dates, payment terms, responsibilities and remedies clearly.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "contracts,legal,records"),
     ("Business", "Governance pattern 2 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 537", "Assign decision rights, approval limits and an auditable record of important actions.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "governance,accountability,audit"),
     ("Business", "Risk pattern 2 for a logistics company", "DACRE Business Wisdom Memory", "Business pattern 538", "Identify plausible failure modes, estimate impact and create response plans.", "Apply this for a logistics company by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "risk,planning,resilience"),
@@ -14199,8 +12735,6 @@ MB_EXTENDED_KNOWLEDGE = [
     ("Business", "Operations pattern 12 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 4485", "Document repeatable processes, owners, inputs, outputs and exception paths.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "operations,process,quality"),
     ("Business", "Leadership pattern 12 for a professional service firm", "DACRE Business Wisdom Memory", "Business pattern 4486", "Lead by clarifying purpose, removing blockers and developing responsible people.", "Apply this for a professional service firm by turning the principle into one measurable workflow, assigning an owner and reviewing the result on a defined cadence.", "leadership,service,people"),
 ]
-
-
 def _di_memory_board_seed():
     _di_memory_board_ensure()
     con = db()
@@ -14215,8 +12749,6 @@ def _di_memory_board_seed():
         con.commit()
     finally:
         con.close()
-
-
 def di_memory_board_search(query: str = "", category: str = "", limit: int = 12) -> List[Dict[str, Any]]:
     _di_memory_board_seed()
     q = _di_safe_text(query, 180).lower()
@@ -14239,13 +12771,9 @@ def di_memory_board_search(query: str = "", category: str = "", limit: int = 12)
         return [dict(r) for r in rows]
     finally:
         con.close()
-
-
 def di_memory_board_context(query: str, limit: int = 8) -> str:
     rows = di_memory_board_search(query, limit=limit)
     return "\n".join(f"[{r['source']} | {r['reference']}] {r['title']}: {r['principle']} Business use: {r['business_use']}" for r in rows)
-
-
 def di_server_prompt(agent: Dict[str, Any], user: Dict[str, Any], question: str, df: Any = None) -> str:
     company = _di_safe_text(user.get("company", ""), 120)
     role = _di_safe_text(agent.get("position_title") or agent.get("specialty") or "DI Specialist", 160)
@@ -14264,8 +12792,6 @@ DATA CONTEXT:
 {data_context}
 USER QUESTION:
 {_di_safe_text(question, DI_SERVER_MAX_CONTEXT)}"""
-
-
 def _di_openai_answer(prompt: str) -> Optional[str]:
     key = os.getenv("OPENAI_API_KEY", "").strip()
     if not key:
@@ -14279,8 +12805,6 @@ def _di_openai_answer(prompt: str) -> Optional[str]:
     except Exception as exc:
         logger.warning("OpenAI DI request failed: %s", type(exc).__name__)
         return None
-
-
 def _di_gemini_answer(prompt: str) -> Optional[str]:
     key = os.getenv("GEMINI_API_KEY", "").strip()
     if not key:
@@ -14297,8 +12821,6 @@ def _di_gemini_answer(prompt: str) -> Optional[str]:
     except Exception as exc:
         logger.warning("Gemini DI request failed: %s", type(exc).__name__)
         return None
-
-
 def di_server_answer(agent: Dict[str, Any], user: Dict[str, Any], question: str, df: Any = None, allow_online: bool = True) -> Dict[str, Any]:
     question = _di_safe_text(question, DI_SERVER_MAX_CONTEXT)
     if not question:
@@ -14328,8 +12850,6 @@ def di_server_answer(agent: Dict[str, Any], user: Dict[str, Any], question: str,
         except Exception:
             local = "I could not complete the local response. Configure a DACRE DI server provider for broader online intelligence."
     return {"answer": _di_safe_text(local, 20000), "provider": "local", "online": False}
-
-
 def di_image_search(query: str, limit: int = 6) -> List[Dict[str, str]]:
     query = _di_safe_text(query, 180)
     if not query:
@@ -14358,8 +12878,6 @@ def di_image_search(query: str, limit: int = 6) -> List[Dict[str, str]]:
     except Exception as exc:
         logger.warning("Wikimedia image search failed: %s", type(exc).__name__)
         return []
-
-
 def di_design_blueprint(kind: str, title: str, subtitle: str = "") -> str:
     safe_title = html.escape(_di_safe_text(title, 100))
     safe_subtitle = html.escape(_di_safe_text(subtitle, 180))
@@ -14371,8 +12889,6 @@ def di_design_blueprint(kind: str, title: str, subtitle: str = "") -> str:
     else:
         cards = '<rect x="55" y="145" width="1090" height="470" rx="28" fill="#06101b" stroke="#63d7ff"/><rect x="90" y="185" width="430" height="360" rx="20" fill="#0b1c2b" stroke="#214e69"/><rect x="555" y="185" width="550" height="70" rx="15" fill="#0b1c2b" stroke="#214e69"/><rect x="555" y="280" width="550" height="265" rx="20" fill="#0b1c2b" stroke="#214e69"/>'
     return f'''<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700"><defs><linearGradient id="bg" x1="0" x2="1"><stop stop-color="#02060c"/><stop offset="1" stop-color="#092238"/></linearGradient></defs><rect width="1200" height="700" fill="url(#bg)"/><text x="55" y="75" fill="#63d7ff" font-size="18" font-family="Arial" font-weight="700">DACRE · DAVID INTELLIGENCE</text><text x="55" y="118" fill="#fff" font-size="34" font-family="Arial" font-weight="800">{safe_title}</text><text x="55" y="140" fill="#88a6ba" font-size="15" font-family="Arial">{safe_subtitle}</text>{cards}<text x="55" y="655" fill="#54778e" font-size="11" font-family="Arial">Generated locally by DACRE Design Engine · {html.escape(kind or 'workspace')}</text></svg>'''
-
-
 def render_di_memory_board(user):
     _di_memory_board_seed()
     st.markdown("## 🧠 MB · Memory Board")
@@ -14395,8 +12911,6 @@ def render_di_memory_board(user):
     cfg = _di_server_config()
     st.markdown("### DI server routing")
     st.write(f"OpenAI: {'configured' if cfg['openai'] else 'not configured'} · Gemini: {'configured' if cfg['gemini'] else 'not configured'} · DACRE server: {'configured' if cfg['custom'] else 'not configured'}")
-
-
 def render_di_creation_studio(user):
     st.markdown("## 🎨 DI Creation Studio")
     st.caption("Create a lightweight design immediately or search public reference images.")
@@ -14424,8 +12938,6 @@ def render_di_creation_studio(user):
                     st.caption(item.get("title", "Image"))
                     if item.get("url"):
                         st.link_button("Open source", item["url"], use_container_width=True)
-
-
 def render_di_intelligence_console(user):
     st.markdown("## 🤖 David Intelligence · Intelligence Console")
     st.caption("Questions use the configured DACRE server/AI provider and fall back to the local DI engine when unavailable.")
@@ -14445,12 +12957,8 @@ def render_di_intelligence_console(user):
     if result:
         st.markdown(f"**Provider:** `{result.get('provider','local')}` · **Online:** `{result.get('online',False)}`")
         st.markdown(result.get("answer", ""))
-
-
 def _inject_intelligence_tools_into_user_navigation():
     return ["Overview", "Workspace & Data", "Business Twin", "Decision Ledger", "Opportunity Radar", "File Vault", "Export Center", "Research Store", "Faith & Business Wisdom Lab", "MB Memory Board", "DI Intelligence", "DI Creation Studio"]
-
-
 def render_dacre_border_upgrade():
     st.markdown("""
     <style>
@@ -14464,16 +12972,11 @@ def render_dacre_border_upgrade():
       @keyframes dacrePulse{50%{transform:scale(1.45);opacity:.55}}
     </style>
     """, unsafe_allow_html=True)
-
-
 try:
     _di_memory_board_seed()
 except Exception as _mb_seed_exc:
     logger.warning("Memory Board initialization deferred: %s", type(_mb_seed_exc).__name__)
-
-
 _legacy_real_di_handle_question_v79 = real_di_handle_question
-
 def real_di_handle_question(user, question, df=None):
     question = _di_safe_text(question, DI_SERVER_MAX_CONTEXT)
     if not question:
@@ -14490,9 +12993,6 @@ def real_di_handle_question(user, question, df=None):
     st.session_state.real_di_transcript = ""
     st.session_state.di_last_provider = result.get("provider", "local")
     return agent, answer
-
-
-
 if __name__ == "__main__":
     if st.session_state.user is None:
         landing_page()
