@@ -1,5 +1,4 @@
 import os
-import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -11,18 +10,9 @@ import streamlit as st
 
 LOGO_PATH = "assets/dacre_logo.png"
 
-# ------------------------------------------------------------
-# PAGE CONFIG
-# ------------------------------------------------------------
-# The DACRE logo is the page icon.
-# Keep the actual logo at:
-# assets/dacre_logo.png
-# ------------------------------------------------------------
-
-if os.path.isfile(LOGO_PATH):
-    PAGE_ICON = LOGO_PATH
-else:
-    PAGE_ICON = "📊"
+# Use the real DACRE logo as the browser/page icon.
+# If the logo is temporarily missing, the app will still start.
+PAGE_ICON = LOGO_PATH if os.path.isfile(LOGO_PATH) else "📊"
 
 st.set_page_config(
     page_title="DACREglobal limited | DACRE Analysis",
@@ -33,7 +23,7 @@ st.set_page_config(
 
 
 # ============================================================
-# CUSTOM CSS
+# PREMIUM DACRE DESIGN
 # ============================================================
 
 st.markdown(
@@ -45,57 +35,54 @@ st.markdown(
 );
 
 :root {
-    --black: #050608;
-    --black2: #0b0e14;
-    --blue: #1769ff;
-    --blue2: #48a8ff;
-    --gold: #e9b949;
-    --gold2: #ffd96a;
-    --green: #42df88;
-    --purple: #a778ff;
+    --black: #030508;
+    --black2: #080c12;
+    --blue: #1677ff;
+    --blue-light: #55b8ff;
+    --gold: #e7b84b;
+    --gold-light: #ffdc73;
+    --green: #49e58a;
+    --purple: #a875ff;
     --white: #ffffff;
-    --muted: #9ba5b8;
+    --muted: #9aa5b8;
 }
 
 html {
     scroll-behavior: smooth;
 }
 
-body {
-    font-family: 'Inter', sans-serif;
-}
-
 .stApp {
     background:
         radial-gradient(
-            circle at 8% 5%,
-            rgba(23, 105, 255, 0.15),
+            circle at 10% 0%,
+            rgba(22,119,255,0.16),
             transparent 25%
         ),
         radial-gradient(
-            circle at 88% 8%,
-            rgba(233, 185, 73, 0.12),
+            circle at 90% 5%,
+            rgba(231,184,75,0.13),
             transparent 23%
         ),
         radial-gradient(
             circle at 50% 65%,
-            rgba(66, 223, 136, 0.05),
-            transparent 28%
+            rgba(73,229,138,0.05),
+            transparent 30%
         ),
         linear-gradient(
             135deg,
-            #030405 0%,
-            #080b11 42%,
-            #05070b 72%,
-            #0b0906 100%
+            #020304 0%,
+            #070b12 45%,
+            #05070a 75%,
+            #0b0905 100%
         );
 
-    color: #ffffff;
+    color: white;
+    font-family: 'Inter', sans-serif;
 }
 
 .main .block-container {
     max-width: 1450px;
-    padding-top: 0.6rem;
+    padding-top: 0.7rem;
     padding-bottom: 4rem;
 }
 
@@ -118,34 +105,33 @@ header {
 
 .dacre-nav {
     border-bottom: 1px solid rgba(255,255,255,0.08);
-    padding: 10px 0 16px 0;
-    margin-bottom: 10px;
+    padding: 8px 0 17px 0;
+    margin-bottom: 15px;
 }
 
 .brand {
-    font-size: 1.18rem;
-    font-weight: 900;
-    letter-spacing: -0.035em;
     color: #ffffff;
+    font-size: 1.12rem;
+    font-weight: 900;
+    letter-spacing: -0.04em;
 }
 
 .brand span {
     color: var(--gold);
 }
 
-.brand-small {
-    font-size: 0.61rem;
-    letter-spacing: 0.22em;
-    color: #758096;
-    text-transform: uppercase;
+.brand-sub {
+    color: #718096;
+    font-size: 0.58rem;
+    letter-spacing: 0.24em;
     margin-top: 3px;
 }
 
-.nav-text {
-    color: #aeb8c9;
-    font-size: 0.82rem;
+.nav-item {
+    color: #aeb8c8;
+    font-size: 0.8rem;
     font-weight: 600;
-    padding-top: 11px;
+    padding-top: 10px;
 }
 
 
@@ -155,18 +141,18 @@ header {
 
 .stButton > button {
     min-height: 44px;
-    border-radius: 11px !important;
-    font-weight: 750 !important;
-    border: 1px solid rgba(255,255,255,0.12) !important;
-    background: rgba(255,255,255,0.045) !important;
+    border-radius: 12px !important;
+    font-weight: 800 !important;
     color: #ffffff !important;
+    background: rgba(255,255,255,0.045) !important;
+    border: 1px solid rgba(255,255,255,0.13) !important;
     transition: all 0.2s ease;
 }
 
 .stButton > button:hover {
     transform: translateY(-2px);
-    border-color: rgba(233,185,73,0.55) !important;
-    box-shadow: 0 12px 35px rgba(0,0,0,0.35);
+    border-color: rgba(231,184,75,0.55) !important;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.35);
 }
 
 
@@ -176,42 +162,44 @@ header {
 
 .hero {
     text-align: center;
-    padding: 82px 15px 35px;
+    padding: 75px 15px 25px;
 }
 
-.hero-kicker {
+.hero-badge {
     display: inline-block;
-    padding: 8px 17px;
+    padding: 9px 18px;
     border-radius: 50px;
-    border: 1px solid rgba(233,185,73,0.3);
+
+    border: 1px solid rgba(231,184,75,0.35);
+
     background:
         linear-gradient(
             90deg,
-            rgba(233,185,73,0.09),
-            rgba(23,105,255,0.08)
+            rgba(231,184,75,0.10),
+            rgba(22,119,255,0.08)
         );
-    color: var(--gold2);
-    font-size: 0.69rem;
+
+    color: var(--gold-light);
+    font-size: 0.68rem;
     font-weight: 800;
     letter-spacing: 0.2em;
-    text-transform: uppercase;
 }
 
 .hero-title {
-    margin: 25px 0 0;
+    margin-top: 25px;
     font-size: clamp(3.4rem, 8vw, 7rem);
     line-height: 0.92;
     font-weight: 900;
-    letter-spacing: -0.065em;
+    letter-spacing: -0.07em;
 
     background:
         linear-gradient(
             100deg,
             #ffffff 0%,
-            #ffffff 27%,
-            #56aaff 47%,
-            #367cff 62%,
-            #f4ca61 82%,
+            #ffffff 25%,
+            #55b8ff 45%,
+            #1677ff 62%,
+            #ffdc73 82%,
             #ffffff 100%
         );
 
@@ -220,19 +208,19 @@ header {
     background-clip: text;
 }
 
-.hero-subtitle {
-    margin-top: 28px;
-    font-size: clamp(1.25rem, 2.5vw, 2rem);
+.hero-tagline {
+    margin-top: 25px;
+    color: white;
+    font-size: clamp(1.25rem, 2.6vw, 2rem);
     font-weight: 750;
-    color: #ffffff;
 }
 
 .hero-description {
-    max-width: 790px;
+    max-width: 800px;
     margin: 20px auto 0;
     color: var(--muted);
-    line-height: 1.8;
-    font-size: 1rem;
+    line-height: 1.85;
+    font-size: 0.98rem;
 }
 
 
@@ -242,90 +230,87 @@ header {
 
 .dashboard {
     margin-top: 60px;
-    padding: 18px;
+    padding: 20px;
     border-radius: 25px;
 
-    border: 1px solid rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.10);
 
     background:
         linear-gradient(
             135deg,
-            rgba(20,27,42,0.94),
-            rgba(8,10,15,0.97)
+            rgba(17,24,38,0.96),
+            rgba(6,9,14,0.98)
         );
 
     box-shadow:
         0 35px 100px rgba(0,0,0,0.55),
-        0 0 80px rgba(23,105,255,0.06);
+        0 0 80px rgba(22,119,255,0.06);
 }
 
 .dashboard-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 5px 8px 16px;
+    padding: 3px 5px 17px;
 }
 
-.dashboard-name {
-    font-weight: 800;
+.dashboard-title {
+    color: white;
     font-size: 0.9rem;
-    color: #ffffff;
+    font-weight: 800;
 }
 
-.dashboard-sub {
-    color: #77839a;
-    font-size: 0.69rem;
+.dashboard-subtitle {
+    color: #758198;
+    font-size: 0.68rem;
     margin-top: 3px;
 }
 
-.live {
+.system-ready {
     color: var(--green);
-    font-size: 0.68rem;
+    font-size: 0.67rem;
     font-weight: 800;
     letter-spacing: 0.08em;
 }
 
 .metric {
-    min-height: 125px;
-    border-radius: 17px;
-    border: 1px solid rgba(255,255,255,0.07);
+    min-height: 120px;
     padding: 19px;
+    border-radius: 17px;
     background: rgba(255,255,255,0.035);
+    border: 1px solid rgba(255,255,255,0.075);
 }
 
 .metric-label {
-    color: #7f8ba0;
-    font-size: 0.67rem;
+    color: #7d899e;
+    font-size: 0.64rem;
+    font-weight: 800;
     letter-spacing: 0.13em;
-    font-weight: 700;
 }
 
-.metric-value {
+.metric-number {
+    color: white;
     font-size: 1.75rem;
     font-weight: 900;
-    margin-top: 9px;
-    color: #ffffff;
+    margin-top: 8px;
 }
 
-.metric-green {
+.metric-up {
     color: var(--green);
     font-size: 0.7rem;
     font-weight: 700;
-    margin-top: 4px;
 }
 
 .metric-gold {
-    color: var(--gold2);
+    color: var(--gold-light);
     font-size: 0.7rem;
     font-weight: 700;
-    margin-top: 4px;
 }
 
 .metric-blue {
-    color: var(--blue2);
+    color: var(--blue-light);
     font-size: 0.7rem;
     font-weight: 700;
-    margin-top: 4px;
 }
 
 
@@ -337,9 +322,9 @@ header {
     padding-top: 105px;
 }
 
-.eyebrow {
+.section-label {
     color: var(--gold);
-    font-size: 0.68rem;
+    font-size: 0.67rem;
     font-weight: 850;
     letter-spacing: 0.2em;
     text-transform: uppercase;
@@ -347,16 +332,15 @@ header {
 }
 
 .section-title {
-    color: #ffffff;
+    color: white;
     font-size: clamp(2rem, 4vw, 3.6rem);
     line-height: 1.05;
-    letter-spacing: -0.045em;
+    letter-spacing: -0.05em;
     font-weight: 900;
-    margin: 0;
 }
 
 .section-description {
-    color: #919caf;
+    color: #919daf;
     max-width: 760px;
     line-height: 1.8;
     margin-top: 18px;
@@ -367,12 +351,11 @@ header {
    FEATURES
    ============================================================ */
 
-.feature {
-    height: 100%;
+.feature-card {
     min-height: 255px;
+    height: 100%;
     padding: 28px;
     border-radius: 21px;
-    border: 1px solid rgba(255,255,255,0.08);
 
     background:
         linear-gradient(
@@ -381,19 +364,18 @@ header {
             rgba(255,255,255,0.018)
         );
 
+    border: 1px solid rgba(255,255,255,0.08);
+
     transition: 0.25s ease;
 }
 
-.feature:hover {
+.feature-card:hover {
     transform: translateY(-6px);
-    border-color: rgba(233,185,73,0.35);
+    border-color: rgba(231,184,75,0.35);
     box-shadow: 0 22px 60px rgba(0,0,0,0.3);
 }
 
-.icon-blue,
-.icon-gold,
-.icon-green,
-.icon-purple {
+.feature-icon {
     width: 52px;
     height: 52px;
     border-radius: 15px;
@@ -402,39 +384,39 @@ header {
     align-items: center;
     justify-content: center;
 
-    font-size: 1.3rem;
-    margin-bottom: 21px;
+    font-size: 1.25rem;
+    margin-bottom: 20px;
 }
 
-.icon-blue {
-    background: rgba(23,105,255,0.13);
-    border: 1px solid rgba(55,164,255,0.23);
+.blue-icon {
+    background: rgba(22,119,255,0.13);
+    border: 1px solid rgba(85,184,255,0.23);
 }
 
-.icon-gold {
-    background: rgba(233,185,73,0.12);
-    border: 1px solid rgba(233,185,73,0.24);
+.gold-icon {
+    background: rgba(231,184,75,0.12);
+    border: 1px solid rgba(231,184,75,0.24);
 }
 
-.icon-green {
-    background: rgba(69,229,138,0.1);
-    border: 1px solid rgba(69,229,138,0.2);
+.green-icon {
+    background: rgba(73,229,138,0.10);
+    border: 1px solid rgba(73,229,138,0.21);
 }
 
-.icon-purple {
-    background: rgba(146,92,255,0.11);
-    border: 1px solid rgba(146,92,255,0.23);
+.purple-icon {
+    background: rgba(168,117,255,0.11);
+    border: 1px solid rgba(168,117,255,0.23);
 }
 
 .feature-title {
-    font-size: 1.05rem;
+    color: white;
+    font-size: 1.04rem;
     font-weight: 800;
-    color: #ffffff;
 }
 
 .feature-text {
-    color: #8995aa;
-    font-size: 0.85rem;
+    color: #8995a9;
+    font-size: 0.84rem;
     line-height: 1.75;
     margin-top: 10px;
 }
@@ -445,18 +427,18 @@ header {
    ============================================================ */
 
 .demo-panel {
-    border-radius: 23px;
     padding: 23px;
-    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 22px;
     background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.08);
 }
 
-.demo-heading {
-    font-size: 0.72rem;
-    color: #7f8ca2;
+.demo-label {
+    color: #7e8ba1;
+    font-size: 0.68rem;
     letter-spacing: 0.13em;
     font-weight: 800;
-    margin-bottom: 12px;
+    margin-bottom: 15px;
 }
 
 
@@ -464,50 +446,52 @@ header {
    DI
    ============================================================ */
 
-.di {
+.di-panel {
     margin-top: 105px;
     padding: 55px;
+
     border-radius: 28px;
-    border: 1px solid rgba(233,185,73,0.2);
+
+    border: 1px solid rgba(231,184,75,0.22);
 
     background:
         radial-gradient(
-            circle at 80% 20%,
-            rgba(23,105,255,0.17),
-            transparent 28%
+            circle at 82% 18%,
+            rgba(22,119,255,0.18),
+            transparent 29%
         ),
         radial-gradient(
-            circle at 15% 80%,
-            rgba(233,185,73,0.11),
-            transparent 28%
+            circle at 15% 85%,
+            rgba(231,184,75,0.12),
+            transparent 30%
         ),
         linear-gradient(
             135deg,
-            rgba(16,20,29,0.96),
-            rgba(6,8,12,0.97)
+            rgba(16,21,31,0.97),
+            rgba(5,8,12,0.98)
         );
 
     box-shadow: 0 30px 90px rgba(0,0,0,0.35);
 }
 
 .di-title {
-    font-size: clamp(2.4rem, 5vw, 4.4rem);
+    color: white;
+    font-size: clamp(2.5rem, 5vw, 4.5rem);
     font-weight: 900;
-    letter-spacing: -0.055em;
-    color: #ffffff;
+    letter-spacing: -0.06em;
 }
 
-.di-name {
-    color: var(--gold2);
+.di-highlight {
+    color: var(--gold-light);
 }
 
 .di-flow {
     margin-top: 30px;
+    color: white;
     font-weight: 750;
-    color: #ffffff;
 }
 
-.di-flow span {
+.di-arrow {
     color: var(--gold);
     padding: 0 8px;
 }
@@ -519,14 +503,17 @@ header {
 
 .trust {
     margin-top: 70px;
-    padding: 24px;
+    padding: 25px;
+
+    text-align: center;
+
     border-top: 1px solid rgba(255,255,255,0.07);
     border-bottom: 1px solid rgba(255,255,255,0.07);
-    text-align: center;
-    color: #78859a;
-    font-size: 0.72rem;
+
+    color: #778399;
+    font-size: 0.69rem;
+    font-weight: 700;
     letter-spacing: 0.1em;
-    text-transform: uppercase;
 }
 
 
@@ -534,22 +521,24 @@ header {
    SECURITY
    ============================================================ */
 
-.security {
+.security-card {
     height: 100%;
-    padding: 29px;
+    padding: 30px;
     border-radius: 20px;
     background: rgba(255,255,255,0.025);
     border: 1px solid rgba(255,255,255,0.07);
 }
 
-.security h3 {
-    color: #ffffff !important;
+.security-title {
+    color: white;
     font-size: 1rem;
+    font-weight: 800;
 }
 
-.security p {
-    color: #8995aa;
+.security-text {
+    color: #8995a9;
     line-height: 1.7;
+    margin-top: 10px;
 }
 
 
@@ -561,24 +550,23 @@ header {
     height: 100%;
     padding: 31px;
     border-radius: 23px;
-    border: 1px solid rgba(255,255,255,0.08);
+
     background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.08);
 }
 
 .price-card.featured {
-    border-color: rgba(233,185,73,0.38);
+    border-color: rgba(231,184,75,0.38);
 
     background:
         linear-gradient(
             145deg,
-            rgba(233,185,73,0.07),
-            rgba(23,105,255,0.05)
+            rgba(231,184,75,0.07),
+            rgba(22,119,255,0.05)
         );
-
-    box-shadow: 0 25px 70px rgba(0,0,0,0.28);
 }
 
-.price-label {
+.price-name {
     color: var(--gold);
     font-size: 0.67rem;
     letter-spacing: 0.16em;
@@ -586,15 +574,20 @@ header {
 }
 
 .price {
-    font-size: 2.35rem;
+    color: white;
+    font-size: 2.3rem;
     font-weight: 900;
-    margin: 14px 0;
-    color: #ffffff;
+    margin: 13px 0;
 }
 
-.check {
-    color: #c3cbd9;
+.price-text {
+    color: #8995a9;
+}
+
+.price-list {
+    color: #c5cedb;
     line-height: 2;
+    margin-top: 15px;
 }
 
 
@@ -605,28 +598,31 @@ header {
 .cta {
     margin-top: 110px;
     padding: 80px 25px;
+
     text-align: center;
+
     border-radius: 30px;
-    border: 1px solid rgba(233,185,73,0.23);
+    border: 1px solid rgba(231,184,75,0.23);
 
     background:
         radial-gradient(
             circle at center,
-            rgba(23,105,255,0.15),
+            rgba(22,119,255,0.15),
             transparent 48%
         ),
         radial-gradient(
             circle at 75% 100%,
-            rgba(233,185,73,0.11),
+            rgba(231,184,75,0.12),
             transparent 35%
         ),
         #07090d;
 }
 
 .cta-title {
+    color: white;
     font-size: clamp(2.3rem, 5vw, 4.5rem);
     font-weight: 900;
-    letter-spacing: -0.055em;
+    letter-spacing: -0.06em;
 }
 
 
@@ -637,14 +633,17 @@ header {
 .footer {
     margin-top: 100px;
     padding: 42px 0 20px;
+
     border-top: 1px solid rgba(255,255,255,0.07);
-    color: #69758a;
-    font-size: 0.77rem;
+
     text-align: center;
+
+    color: #69758a;
+    font-size: 0.76rem;
 }
 
 .footer strong {
-    color: #ffffff;
+    color: white;
 }
 
 
@@ -655,19 +654,15 @@ header {
 @media (max-width: 768px) {
 
     .hero {
-        padding-top: 55px;
+        padding-top: 50px;
     }
 
     .hero-title {
         font-size: 3.3rem;
     }
 
-    .di {
+    .di-panel {
         padding: 30px;
-    }
-
-    .dashboard {
-        margin-top: 40px;
     }
 
 }
@@ -682,52 +677,55 @@ header {
 # NAVIGATION
 # ============================================================
 
+st.markdown('<div class="dacre-nav">', unsafe_allow_html=True)
+
 nav1, nav2, nav3, nav4, nav5, nav6 = st.columns(
-    [2.7, 1, 1, 1, 1, 1.45]
+    [2.8, 1, 1, 1, 1, 1.45]
 )
 
 with nav1:
 
-    if os.path.isfile(LOGO_PATH):
-        st.image(
-            LOGO_PATH,
-            width=48,
+    logo_col, brand_col = st.columns([0.45, 2.8])
+
+    with logo_col:
+        if os.path.isfile(LOGO_PATH):
+            st.image(LOGO_PATH, width=45)
+
+    with brand_col:
+        st.markdown(
+            """
+            <div class="brand">
+                DACRE<span>global</span> limited
+            </div>
+
+            <div class="brand-sub">
+                DACRE ANALYSIS
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
-
-    st.markdown(
-        """
-        <div class="brand">
-            DACRE<span>global</span> limited
-        </div>
-
-        <div class="brand-small">
-            DACRE Analysis
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
 
 with nav2:
     st.markdown(
-        '<div class="nav-text">Product</div>',
+        '<div class="nav-item">Product</div>',
         unsafe_allow_html=True,
     )
 
 with nav3:
     st.markdown(
-        '<div class="nav-text">Solutions</div>',
+        '<div class="nav-item">Solutions</div>',
         unsafe_allow_html=True,
     )
 
 with nav4:
     st.markdown(
-        '<div class="nav-text">Resources</div>',
+        '<div class="nav-item">Resources</div>',
         unsafe_allow_html=True,
     )
 
 with nav5:
     st.markdown(
-        '<div class="nav-text">Company</div>',
+        '<div class="nav-item">Company</div>',
         unsafe_allow_html=True,
     )
 
@@ -736,6 +734,8 @@ with nav6:
         "Get Started",
         use_container_width=True,
     )
+
+st.markdown('</div>', unsafe_allow_html=True)
 
 
 # ============================================================
@@ -746,7 +746,7 @@ st.markdown(
     """
 <div class="hero">
 
-    <div class="hero-kicker">
+    <div class="hero-badge">
         DACREGLOBAL LIMITED
     </div>
 
@@ -754,15 +754,16 @@ st.markdown(
         DACRE ANALYSIS
     </div>
 
-    <div class="hero-subtitle">
+    <div class="hero-tagline">
         Turn your data into decisions.
     </div>
 
     <div class="hero-description">
-        A modern data analysis platform for businesses,
-        analysts and organizations. Transform raw information
-        into clear insights, powerful visualizations and
-        decisions that move your work forward.
+        Powerful data analysis, visualization and
+        David Intelligence designed for businesses,
+        analysts and organizations.
+        Bring your data together, understand what it means,
+        and make better decisions from it.
     </div>
 
 </div>
@@ -771,22 +772,18 @@ st.markdown(
 )
 
 
-# ============================================================
-# HERO BUTTONS
-# ============================================================
-
-_, hero_btn1, hero_btn2, _ = st.columns(
-    [1.3, 1, 1, 1.3]
+hero1, hero2, hero3, hero4 = st.columns(
+    [1.5, 1, 1, 1.5]
 )
 
-with hero_btn1:
+with hero2:
     st.button(
         "Start Analyzing",
         use_container_width=True,
         type="primary",
     )
 
-with hero_btn2:
+with hero3:
     st.button(
         "See How It Works",
         use_container_width=True,
@@ -804,16 +801,18 @@ st.markdown(
     <div class="dashboard-header">
 
         <div>
-            <div class="dashboard-name">
+
+            <div class="dashboard-title">
                 REAL DACRE DASHBOARD
             </div>
 
-            <div class="dashboard-sub">
+            <div class="dashboard-subtitle">
                 Live analytical environment preview
             </div>
+
         </div>
 
-        <div class="live">
+        <div class="system-ready">
             ● SYSTEM READY
         </div>
 
@@ -825,9 +824,9 @@ st.markdown(
 )
 
 
-metric1, metric2, metric3, metric4 = st.columns(4)
+m1, m2, m3, m4 = st.columns(4)
 
-with metric1:
+with m1:
     st.markdown(
         """
 <div class="metric">
@@ -836,12 +835,12 @@ with metric1:
         TOTAL RECORDS
     </div>
 
-    <div class="metric-value">
+    <div class="metric-number">
         128,420
     </div>
 
-    <div class="metric-green">
-        ↑ 12.8% this period
+    <div class="metric-up">
+        ↑ 12.8%
     </div>
 
 </div>
@@ -849,21 +848,21 @@ with metric1:
         unsafe_allow_html=True,
     )
 
-with metric2:
+with m2:
     st.markdown(
         """
 <div class="metric">
 
     <div class="metric-label">
-        DATA QUALITY
+        CLEAN DATA
     </div>
 
-    <div class="metric-value">
+    <div class="metric-number">
         96.4%
     </div>
 
     <div class="metric-gold">
-        ↑ 4.2% improvement
+        ↑ 4.2%
     </div>
 
 </div>
@@ -871,7 +870,7 @@ with metric2:
         unsafe_allow_html=True,
     )
 
-with metric3:
+with m3:
     st.markdown(
         """
 <div class="metric">
@@ -880,12 +879,12 @@ with metric3:
         INSIGHTS
     </div>
 
-    <div class="metric-value">
+    <div class="metric-number">
         2,481
     </div>
 
     <div class="metric-blue">
-        ↑ 18.1% discovered
+        ↑ 18.1%
     </div>
 
 </div>
@@ -893,21 +892,21 @@ with metric3:
         unsafe_allow_html=True,
     )
 
-with metric4:
+with m4:
     st.markdown(
         """
 <div class="metric">
 
     <div class="metric-label">
-        ANALYSIS ACCURACY
+        ACCURACY
     </div>
 
-    <div class="metric-value">
+    <div class="metric-number">
         98.7%
     </div>
 
-    <div class="metric-green">
-        ↑ 2.6% improvement
+    <div class="metric-up">
+        ↑ 2.6%
     </div>
 
 </div>
@@ -917,7 +916,7 @@ with metric4:
 
 
 # ============================================================
-# DASHBOARD DATA
+# DASHBOARD CHARTS
 # ============================================================
 
 months = [
@@ -935,33 +934,33 @@ months = [
     "Dec",
 ]
 
-performance_data = pd.DataFrame(
+performance = pd.DataFrame(
     {
         "Performance": [
-            470,
-            530,
-            510,
-            620,
-            680,
+            430,
+            480,
+            520,
+            570,
+            610,
             650,
-            720,
-            790,
+            700,
             760,
+            800,
             850,
             910,
-            970,
+            980,
         ]
     },
     index=months,
 )
 
-business_data = pd.DataFrame(
+business = pd.DataFrame(
     {
         "Score": [
-            92,
-            76,
-            84,
-            88,
+            91,
+            78,
+            86,
+            95,
         ]
     },
     index=[
@@ -973,15 +972,15 @@ business_data = pd.DataFrame(
 )
 
 
-chart1, chart2 = st.columns([1.6, 1])
+chart_left, chart_right = st.columns([1.6, 1])
 
-with chart1:
+with chart_left:
 
     st.markdown(
         """
 <div class="demo-panel">
 
-    <div class="demo-heading">
+    <div class="demo-label">
         PERFORMANCE OVERVIEW
     </div>
 
@@ -991,19 +990,19 @@ with chart1:
     )
 
     st.line_chart(
-        performance_data,
+        performance,
         height=270,
     )
 
 
-with chart2:
+with chart_right:
 
     st.markdown(
         """
 <div class="demo-panel">
 
-    <div class="demo-heading">
-        BUSINESS PERFORMANCE
+    <div class="demo-label">
+        BUSINESS AREAS
     </div>
 
 </div>
@@ -1012,20 +1011,20 @@ with chart2:
     )
 
     st.bar_chart(
-        business_data,
+        business,
         height=270,
     )
 
 
 # ============================================================
-# TRUST STRIP
+# TRUST
 # ============================================================
 
 st.markdown(
     """
 <div class="trust">
 
-    MODERN DATA TEAMS
+    BUILT FOR MODERN DATA TEAMS
     &nbsp; • &nbsp;
     ANALYSTS
     &nbsp; • &nbsp;
@@ -1047,7 +1046,7 @@ st.markdown(
     """
 <div class="section">
 
-    <div class="eyebrow">
+    <div class="section-label">
         THE DACRE PLATFORM
     </div>
 
@@ -1058,9 +1057,8 @@ st.markdown(
 
     <div class="section-description">
         DACRE brings data preparation, analysis,
-        visualization, intelligence and reporting
-        together in one professional analytical
-        environment.
+        visualization, David Intelligence and reporting
+        into one professional analytical environment.
     </div>
 
 </div>
@@ -1075,43 +1073,43 @@ st.markdown(
 
 features = [
     (
-        "icon-blue",
-        "◈",
+        "blue-icon",
+        "✦",
         "Data Cleaning",
-        "Detect duplicates, missing information, inconsistent "
+        "Detect missing values, duplicates, inconsistent "
         "records and common data-quality problems before "
         "analysis begins.",
     ),
     (
-        "icon-gold",
-        "◇",
+        "gold-icon",
+        "▥",
         "Advanced Analysis",
         "Transform raw datasets into meaningful statistics, "
-        "trends, relationships and business information.",
+        "trends, patterns and business information.",
     ),
     (
-        "icon-green",
-        "◎",
+        "green-icon",
+        "◉",
         "Visualization",
-        "Turn complex information into interactive charts, "
-        "dashboards and visual reports.",
+        "Convert complex information into clear dashboards, "
+        "charts and visual reports.",
     ),
     (
-        "icon-purple",
+        "purple-icon",
         "⚡",
         "Fast Processing",
-        "Build efficient analytical workflows for processing "
-        "and exploring datasets.",
+        "Process analytical workloads efficiently through "
+        "a streamlined analytical workflow.",
     ),
     (
-        "icon-blue",
-        "✦",
+        "blue-icon",
+        "◆",
         "David Intelligence",
-        "DI helps users interact with their information, "
-        "ask questions and obtain analytical assistance.",
+        "David Intelligence helps users interact with data, "
+        "ask questions and obtain useful analytical assistance.",
     ),
     (
-        "icon-gold",
+        "gold-icon",
         "⇩",
         "Export & Reporting",
         "Prepare analytical results for reporting, presentation "
@@ -1120,23 +1118,23 @@ features = [
 ]
 
 
-for row_start in range(0, len(features), 3):
+for start in range(0, len(features), 3):
 
-    row = features[row_start:row_start + 3]
+    current = features[start:start + 3]
 
-    columns = st.columns(3)
+    cols = st.columns(3)
 
-    for index, feature in enumerate(row):
+    for i, feature in enumerate(current):
 
         icon_class, icon, title, description = feature
 
-        with columns[index]:
+        with cols[i]:
 
             st.markdown(
                 f"""
-<div class="feature">
+<div class="feature-card">
 
-    <div class="{icon_class}">
+    <div class="feature-icon {icon_class}">
         {icon}
     </div>
 
@@ -1164,7 +1162,7 @@ st.markdown(
     """
 <div class="section">
 
-    <div class="eyebrow">
+    <div class="section-label">
         LIVE EXPERIENCE
     </div>
 
@@ -1173,9 +1171,9 @@ st.markdown(
     </div>
 
     <div class="section-description">
-        Raw data becomes information.
-        Information becomes insight.
-        Insight supports decisions.
+        A professional analytical workspace where raw data
+        becomes information, information becomes insight,
+        and insight supports decisions.
     </div>
 
 </div>
@@ -1184,45 +1182,45 @@ st.markdown(
 )
 
 
+demo_data = pd.DataFrame(
+    {
+        "Revenue": [
+            82000,
+            97000,
+            103000,
+            118000,
+            132000,
+            148000,
+        ],
+        "Customers": [
+            420,
+            510,
+            570,
+            640,
+            730,
+            820,
+        ],
+        "Orders": [
+            280,
+            340,
+            410,
+            470,
+            550,
+            630,
+        ],
+    }
+)
+
+
 demo_left, demo_right = st.columns([1.35, 1])
 
-
 with demo_left:
-
-    demo = pd.DataFrame(
-        {
-            "Revenue": [
-                82000,
-                97000,
-                103000,
-                118000,
-                132000,
-                148000,
-            ],
-            "Customers": [
-                420,
-                510,
-                570,
-                640,
-                730,
-                820,
-            ],
-            "Orders": [
-                280,
-                340,
-                410,
-                470,
-                550,
-                630,
-            ],
-        }
-    )
 
     st.markdown(
         """
 <div class="demo-panel">
 
-    <div class="demo-heading">
+    <div class="demo-label">
         ANALYTICAL DATA
     </div>
 
@@ -1232,7 +1230,7 @@ with demo_left:
     )
 
     st.dataframe(
-        demo,
+        demo_data,
         use_container_width=True,
         hide_index=True,
     )
@@ -1244,47 +1242,39 @@ with demo_right:
         """
 <div class="demo-panel">
 
-    <div class="demo-heading">
+    <div class="demo-label">
         AUTOMATED OBSERVATIONS
     </div>
 
     <br>
 
     <b>Revenue trend</b>
-
     <br>
-
-    <span style="color:#45e58a;">
+    <span style="color:#49e58a;">
         ● Positive
     </span>
 
     <br><br>
 
     <b>Customer activity</b>
-
     <br>
-
-    <span style="color:#37a4ff;">
+    <span style="color:#55b8ff;">
         ● Increasing
     </span>
 
     <br><br>
 
     <b>Data quality</b>
-
     <br>
-
-    <span style="color:#ffd86a;">
+    <span style="color:#ffdc73;">
         ● High
     </span>
 
     <br><br>
 
     <b>Operational signal</b>
-
     <br>
-
-    <span style="color:#c99cff;">
+    <span style="color:#a875ff;">
         ● Stable
     </span>
 
@@ -1300,19 +1290,19 @@ with demo_right:
 
 st.markdown(
     """
-<div class="di">
+<div class="di-panel">
 
-    <div class="eyebrow">
+    <div class="section-label">
         DAVID INTELLIGENCE
     </div>
 
     <div class="di-title">
-        Meet <span class="di-name">DI.</span>
+        Meet <span class="di-highlight">DI.</span>
     </div>
 
     <div class="section-description">
         David Intelligence is the intelligence layer of DACRE.
-        It is designed to help users ask questions about their
+        DI is designed to help users ask questions about their
         information, explore patterns, understand analytical
         results and move from analysis toward informed decisions.
     </div>
@@ -1320,11 +1310,17 @@ st.markdown(
     <div class="di-flow">
 
         Ask questions
-        <span>→</span>
+
+        <span class="di-arrow">→</span>
+
         Analyze
-        <span>→</span>
+
+        <span class="di-arrow">→</span>
+
         Visualize
-        <span>→</span>
+
+        <span class="di-arrow">→</span>
+
         Decide
 
     </div>
@@ -1343,7 +1339,7 @@ st.markdown(
     """
 <div class="section">
 
-    <div class="eyebrow">
+    <div class="section-label">
         TRUST
     </div>
 
@@ -1352,9 +1348,9 @@ st.markdown(
     </div>
 
     <div class="section-description">
-        DACRE is being designed around responsible data
-        handling, controlled access and dependable
-        analytical workflows.
+        DACRE is being designed with responsible handling
+        of data, controlled access and a reliable analytical
+        environment as core principles.
     </div>
 
 </div>
@@ -1363,53 +1359,59 @@ st.markdown(
 )
 
 
-s1, s2, s3 = st.columns(3)
+sec1, sec2, sec3 = st.columns(3)
 
-with s1:
+with sec1:
     st.markdown(
         """
-<div class="security">
+<div class="security-card">
 
-    <h3>🔐 Security</h3>
+    <div class="security-title">
+        🔐 Security
+    </div>
 
-    <p>
-        Controlled access and secure application
-        architecture for analytical environments.
-    </p>
+    <div class="security-text">
+        Protect analytical environments with secure
+        authentication and controlled access.
+    </div>
 
 </div>
 """,
         unsafe_allow_html=True,
     )
 
-with s2:
+with sec2:
     st.markdown(
         """
-<div class="security">
+<div class="security-card">
 
-    <h3>⚙️ Reliability</h3>
+    <div class="security-title">
+        ⚙️ Reliability
+    </div>
 
-    <p>
-        Dependable workflows designed to make
-        analysis consistent and efficient.
-    </p>
+    <div class="security-text">
+        Build dependable analytical workflows designed
+        to operate consistently.
+    </div>
 
 </div>
 """,
         unsafe_allow_html=True,
     )
 
-with s3:
+with sec3:
     st.markdown(
         """
-<div class="security">
+<div class="security-card">
 
-    <h3>🛡️ Privacy</h3>
+    <div class="security-title">
+        🛡️ Privacy
+    </div>
 
-    <p>
-        Responsible handling of information with
-        user control at the center of the platform.
-    </p>
+    <div class="security-text">
+        Give users greater control over their data and
+        analytical information.
+    </div>
 
 </div>
 """,
@@ -1425,7 +1427,7 @@ st.markdown(
     """
 <div class="section">
 
-    <div class="eyebrow">
+    <div class="section-label">
         PLANS
     </div>
 
@@ -1434,7 +1436,8 @@ st.markdown(
     </div>
 
     <div class="section-description">
-        Flexible plans designed to grow with DACRE.
+        Flexible plans will be introduced as the DACRE
+        platform grows.
     </div>
 
 </div>
@@ -1443,14 +1446,15 @@ st.markdown(
 )
 
 
-p1, p2, p3 = st.columns(3)
+price1, price2, price3 = st.columns(3)
 
-with p1:
+with price1:
+
     st.markdown(
         """
 <div class="price-card">
 
-    <div class="price-label">
+    <div class="price-name">
         STARTER
     </div>
 
@@ -1458,11 +1462,11 @@ with p1:
         Free
     </div>
 
-    <p>
+    <div class="price-text">
         Explore the DACRE analytical environment.
-    </p>
+    </div>
 
-    <div class="check">
+    <div class="price-list">
         ✓ Basic analysis<br>
         ✓ Basic visualization<br>
         ✓ Data exploration<br>
@@ -1474,12 +1478,13 @@ with p1:
         unsafe_allow_html=True,
     )
 
-with p2:
+with price2:
+
     st.markdown(
         """
 <div class="price-card featured">
 
-    <div class="price-label">
+    <div class="price-name">
         PROFESSIONAL
     </div>
 
@@ -1487,11 +1492,11 @@ with p2:
         Coming Soon
     </div>
 
-    <p>
+    <div class="price-text">
         Designed for analysts and professional users.
-    </p>
+    </div>
 
-    <div class="check">
+    <div class="price-list">
         ✓ Advanced analysis<br>
         ✓ Advanced dashboards<br>
         ✓ David Intelligence<br>
@@ -1503,12 +1508,13 @@ with p2:
         unsafe_allow_html=True,
     )
 
-with p3:
+with price3:
+
     st.markdown(
         """
 <div class="price-card">
 
-    <div class="price-label">
+    <div class="price-name">
         BUSINESS
     </div>
 
@@ -1516,15 +1522,15 @@ with p3:
         Coming Soon
     </div>
 
-    <p>
+    <div class="price-text">
         Built for teams and organizations.
-    </p>
+    </div>
 
-    <div class="check">
+    <div class="price-list">
         ✓ Team analytics<br>
         ✓ Organization dashboards<br>
         ✓ Advanced reporting<br>
-        ✓ Organization controls
+        ✓ Enterprise controls
     </div>
 
 </div>
@@ -1541,7 +1547,7 @@ st.markdown(
     """
 <div class="section">
 
-    <div class="eyebrow">
+    <div class="section-label">
         QUESTIONS
     </div>
 
@@ -1557,23 +1563,23 @@ st.markdown(
 
 with st.expander("What is DACRE Analysis?"):
     st.write(
-        "DACRE Analysis is the data analysis platform "
-        "being developed by DACREglobal limited."
+        "DACRE Analysis is the analytical platform being "
+        "developed by DACREglobal limited."
     )
 
-with st.expander("What does DI mean?"):
+with st.expander("What is David Intelligence?"):
     st.write(
-        "DI means David Intelligence. It is the intelligence "
-        "layer being developed for the DACRE platform."
+        "David Intelligence, or DI, is the intelligence layer "
+        "being developed for the DACRE platform."
     )
 
 with st.expander("Can I upload my own data?"):
     st.write(
-        "Yes. The platform is designed to support user data "
+        "Yes. DACRE is designed to support user datasets "
         "for analysis and visualization."
     )
 
-with st.expander("Will DACRE have interactive dashboards?"):
+with st.expander("Will DACRE have dashboards?"):
     st.write(
         "Yes. Interactive dashboards, charts and analytical "
         "workspaces are part of the DACRE platform."
@@ -1582,8 +1588,8 @@ with st.expander("Will DACRE have interactive dashboards?"):
 with st.expander("Can DI use online information?"):
     st.write(
         "When connected to approved online services and APIs, "
-        "DI can use external information sources as part of "
-        "its knowledge workflow."
+        "DI can use external information sources as part "
+        "of its knowledge workflow."
     )
 
 
@@ -1595,7 +1601,7 @@ st.markdown(
     """
 <div class="cta">
 
-    <div class="eyebrow">
+    <div class="section-label">
         DACREGLOBAL LIMITED
     </div>
 
@@ -1615,12 +1621,9 @@ st.markdown(
 )
 
 
-_, final_button, _ = st.columns(
-    [1, 1.2, 1]
-)
+_, cta_button, _ = st.columns([1, 1.2, 1])
 
-with final_button:
-
+with cta_button:
     st.button(
         "Get Started with DACRE",
         use_container_width=True,
