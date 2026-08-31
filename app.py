@@ -1,30 +1,35 @@
 import os
+import streamlit as st
 import numpy as np
 import pandas as pd
-import streamlit as st
-
 
 # ============================================================
 # DACREGLOBAL LIMITED
 # DACRE ANALYSIS
-# Landing Page
+# APPLICATION CONFIGURATION
 # ============================================================
 
+# Exact DACRE logo location
 LOGO_PATH = "assets/dacre_logo.png"
+
+# Make sure the actual DACRE logo exists
+if not os.path.exists(LOGO_PATH):
+    st.error(
+        "DACRE LOGO NOT FOUND: Please make sure the exact "
+        "DACRE logo is uploaded as assets/dacre_logo.png"
+    )
+    st.stop()
+
+# ============================================================
+# STREAMLIT PAGE CONFIGURATION
+# ============================================================
 
 st.set_page_config(
     page_title="DACREglobal limited | DACRE Analysis",
-    page_icon=LOGO_PATH if os.path.exists(LOGO_PATH)
+    page_icon=LOGO_PATH,
     layout="wide",
     initial_sidebar_state="collapsed",
 )
-
-
-# ============================================================
-# PREMIUM DACRE THEME
-# ============================================================
-
-st.markdown(
     """
 <style>
 
