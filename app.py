@@ -1,35 +1,42 @@
 import os
-import streamlit as st
 import numpy as np
 import pandas as pd
+import streamlit as st
+
 
 # ============================================================
 # DACREGLOBAL LIMITED
 # DACRE ANALYSIS
-# APPLICATION CONFIGURATION
 # ============================================================
 
-# Exact DACRE logo location
 LOGO_PATH = "assets/dacre_logo.png"
 
-# Make sure the actual DACRE logo exists
-if not os.path.exists(LOGO_PATH):
-    st.error(
-        "DACRE LOGO NOT FOUND: Please make sure the exact "
-        "DACRE logo is uploaded as assets/dacre_logo.png"
-    )
-    st.stop()
+# ------------------------------------------------------------
+# PAGE CONFIG
+# ------------------------------------------------------------
+# The DACRE logo is the page icon.
+# Keep the actual logo at:
+# assets/dacre_logo.png
+# ------------------------------------------------------------
 
-# ============================================================
-# STREAMLIT PAGE CONFIGURATION
-# ============================================================
+if os.path.isfile(LOGO_PATH):
+    PAGE_ICON = LOGO_PATH
+else:
+    PAGE_ICON = "📊"
 
 st.set_page_config(
     page_title="DACREglobal limited | DACRE Analysis",
-    page_icon=LOGO_PATH,
+    page_icon=PAGE_ICON,
     layout="wide",
     initial_sidebar_state="collapsed",
 )
+
+
+# ============================================================
+# CUSTOM CSS
+# ============================================================
+
+st.markdown(
     """
 <style>
 
@@ -39,15 +46,15 @@ st.set_page_config(
 
 :root {
     --black: #050608;
-    --black2: #090c12;
+    --black2: #0b0e14;
     --blue: #1769ff;
-    --blue2: #37a4ff;
+    --blue2: #48a8ff;
     --gold: #e9b949;
-    --gold2: #ffd86a;
-    --green: #45e58a;
+    --gold2: #ffd96a;
+    --green: #42df88;
+    --purple: #a778ff;
     --white: #ffffff;
     --muted: #9ba5b8;
-    --border: rgba(255,255,255,0.09);
 }
 
 html {
@@ -59,41 +66,36 @@ body {
 }
 
 .stApp {
-
     background:
-
         radial-gradient(
-            circle at 8% 8%,
-            rgba(23,105,255,0.16),
+            circle at 8% 5%,
+            rgba(23, 105, 255, 0.15),
             transparent 25%
         ),
-
         radial-gradient(
-            circle at 88% 12%,
-            rgba(233,185,73,0.11),
+            circle at 88% 8%,
+            rgba(233, 185, 73, 0.12),
             transparent 23%
         ),
-
         radial-gradient(
-            circle at 55% 58%,
-            rgba(69,229,138,0.055),
+            circle at 50% 65%,
+            rgba(66, 223, 136, 0.05),
             transparent 28%
         ),
-
         linear-gradient(
             135deg,
             #030405 0%,
-            #070a10 38%,
-            #05070b 70%,
-            #090806 100%
+            #080b11 42%,
+            #05070b 72%,
+            #0b0906 100%
         );
 
-    color: white;
+    color: #ffffff;
 }
 
 .main .block-container {
     max-width: 1450px;
-    padding-top: 0.5rem;
+    padding-top: 0.6rem;
     padding-bottom: 4rem;
 }
 
@@ -111,72 +113,39 @@ header {
 
 
 /* ============================================================
-   TOP NAV
+   NAVIGATION
    ============================================================ */
 
 .dacre-nav {
-
-    border-bottom:
-        1px solid rgba(255,255,255,0.08);
-
-    padding:
-        13px 0 16px 0;
-
-    margin-bottom:
-        10px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding: 10px 0 16px 0;
+    margin-bottom: 10px;
 }
 
 .brand {
-
-    font-size:
-        1.18rem;
-
-    font-weight:
-        900;
-
-    letter-spacing:
-        -0.035em;
-
-    color:
-        white;
+    font-size: 1.18rem;
+    font-weight: 900;
+    letter-spacing: -0.035em;
+    color: #ffffff;
 }
 
 .brand span {
-    color:
-        var(--gold);
+    color: var(--gold);
 }
 
 .brand-small {
-
-    font-size:
-        0.62rem;
-
-    letter-spacing:
-        0.22em;
-
-    color:
-        #758096;
-
-    text-transform:
-        uppercase;
-
-    margin-top:
-        2px;
+    font-size: 0.61rem;
+    letter-spacing: 0.22em;
+    color: #758096;
+    text-transform: uppercase;
+    margin-top: 3px;
 }
 
 .nav-text {
-
-    color:
-        #aeb8c9;
-
-    font-size:
-        0.83rem;
-
-    font-weight:
-        600;
-
-    padding-top:
-        11px;
+    color: #aeb8c9;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding-top: 11px;
 }
 
 
@@ -185,39 +154,19 @@ header {
    ============================================================ */
 
 .stButton > button {
-
-    min-height:
-        43px;
-
-    border-radius:
-        11px !important;
-
-    font-weight:
-        750 !important;
-
-    border:
-        1px solid rgba(255,255,255,0.12) !important;
-
-    background:
-        rgba(255,255,255,0.045) !important;
-
-    color:
-        white !important;
-
-    transition:
-        all 0.2s ease;
+    min-height: 44px;
+    border-radius: 11px !important;
+    font-weight: 750 !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    background: rgba(255,255,255,0.045) !important;
+    color: #ffffff !important;
+    transition: all 0.2s ease;
 }
 
 .stButton > button:hover {
-
-    transform:
-        translateY(-2px);
-
-    border-color:
-        rgba(233,185,73,0.55) !important;
-
-    box-shadow:
-        0 10px 30px rgba(0,0,0,0.3);
+    transform: translateY(-2px);
+    border-color: rgba(233,185,73,0.55) !important;
+    box-shadow: 0 12px 35px rgba(0,0,0,0.35);
 }
 
 
@@ -226,124 +175,64 @@ header {
    ============================================================ */
 
 .hero {
-
-    text-align:
-        center;
-
-    padding:
-        90px 15px 35px;
+    text-align: center;
+    padding: 82px 15px 35px;
 }
 
 .hero-kicker {
-
-    display:
-        inline-block;
-
-    padding:
-        8px 17px;
-
-    border-radius:
-        50px;
-
-    border:
-        1px solid rgba(233,185,73,0.3);
-
+    display: inline-block;
+    padding: 8px 17px;
+    border-radius: 50px;
+    border: 1px solid rgba(233,185,73,0.3);
     background:
         linear-gradient(
             90deg,
             rgba(233,185,73,0.09),
             rgba(23,105,255,0.08)
         );
-
-    color:
-        var(--gold2);
-
-    font-size:
-        0.69rem;
-
-    font-weight:
-        800;
-
-    letter-spacing:
-        0.2em;
-
-    text-transform:
-        uppercase;
-
-    box-shadow:
-        0 0 30px rgba(233,185,73,0.06);
+    color: var(--gold2);
+    font-size: 0.69rem;
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
 }
 
 .hero-title {
-
-    margin:
-        25px 0 0;
-
-    font-size:
-        clamp(3.4rem, 8vw, 7rem);
-
-    line-height:
-        0.92;
-
-    font-weight:
-        900;
-
-    letter-spacing:
-        -0.065em;
+    margin: 25px 0 0;
+    font-size: clamp(3.4rem, 8vw, 7rem);
+    line-height: 0.92;
+    font-weight: 900;
+    letter-spacing: -0.065em;
 
     background:
-
         linear-gradient(
             100deg,
             #ffffff 0%,
-            #ffffff 28%,
-            #5eacff 48%,
-            #3d83ff 63%,
+            #ffffff 27%,
+            #56aaff 47%,
+            #367cff 62%,
             #f4ca61 82%,
             #ffffff 100%
         );
 
-    -webkit-background-clip:
-        text;
-
-    -webkit-text-fill-color:
-        transparent;
-
-    background-clip:
-        text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .hero-subtitle {
-
-    margin-top:
-        27px;
-
-    font-size:
-        clamp(1.25rem, 2.5vw, 2rem);
-
-    font-weight:
-        750;
-
-    color:
-        #ffffff;
+    margin-top: 28px;
+    font-size: clamp(1.25rem, 2.5vw, 2rem);
+    font-weight: 750;
+    color: #ffffff;
 }
 
 .hero-description {
-
-    max-width:
-        790px;
-
-    margin:
-        20px auto 0;
-
-    color:
-        var(--muted);
-
-    line-height:
-        1.8;
-
-    font-size:
-        1rem;
+    max-width: 790px;
+    margin: 20px auto 0;
+    color: var(--muted);
+    line-height: 1.8;
+    font-size: 1rem;
 }
 
 
@@ -352,21 +241,13 @@ header {
    ============================================================ */
 
 .dashboard {
+    margin-top: 60px;
+    padding: 18px;
+    border-radius: 25px;
 
-    margin-top:
-        65px;
-
-    padding:
-        16px;
-
-    border-radius:
-        25px;
-
-    border:
-        1px solid rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.1);
 
     background:
-
         linear-gradient(
             135deg,
             rgba(20,27,42,0.94),
@@ -374,160 +255,77 @@ header {
         );
 
     box-shadow:
-
         0 35px 100px rgba(0,0,0,0.55),
-
-        0 0 80px rgba(23,105,255,0.06),
-
-        inset 0 1px 0
-        rgba(255,255,255,0.06);
+        0 0 80px rgba(23,105,255,0.06);
 }
 
 .dashboard-header {
-
-    display:
-        flex;
-
-    justify-content:
-        space-between;
-
-    align-items:
-        center;
-
-    padding:
-        7px 8px 17px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 8px 16px;
 }
 
 .dashboard-name {
-
-    font-weight:
-        800;
-
-    font-size:
-        0.9rem;
-
-    color:
-        white;
+    font-weight: 800;
+    font-size: 0.9rem;
+    color: #ffffff;
 }
 
 .dashboard-sub {
-
-    color:
-        #77839a;
-
-    font-size:
-        0.69rem;
-
-    margin-top:
-        3px;
+    color: #77839a;
+    font-size: 0.69rem;
+    margin-top: 3px;
 }
 
 .live {
-
-    color:
-        var(--green);
-
-    font-size:
-        0.68rem;
-
-    font-weight:
-        800;
-
-    letter-spacing:
-        0.08em;
+    color: var(--green);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
 }
 
 .metric {
-
-    min-height:
-        125px;
-
-    border-radius:
-        17px;
-
-    border:
-        1px solid rgba(255,255,255,0.07);
-
-    padding:
-        19px;
-
-    background:
-        rgba(255,255,255,0.035);
+    min-height: 125px;
+    border-radius: 17px;
+    border: 1px solid rgba(255,255,255,0.07);
+    padding: 19px;
+    background: rgba(255,255,255,0.035);
 }
 
 .metric-label {
-
-    color:
-        #7f8ba0;
-
-    font-size:
-        0.67rem;
-
-    letter-spacing:
-        0.13em;
-
-    font-weight:
-        700;
+    color: #7f8ba0;
+    font-size: 0.67rem;
+    letter-spacing: 0.13em;
+    font-weight: 700;
 }
 
 .metric-value {
-
-    font-size:
-        1.75rem;
-
-    font-weight:
-        900;
-
-    margin-top:
-        9px;
-
-    color:
-        white;
+    font-size: 1.75rem;
+    font-weight: 900;
+    margin-top: 9px;
+    color: #ffffff;
 }
 
 .metric-green {
-
-    color:
-        var(--green);
-
-    font-size:
-        0.7rem;
-
-    font-weight:
-        700;
-
-    margin-top:
-        4px;
+    color: var(--green);
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-top: 4px;
 }
 
 .metric-gold {
-
-    color:
-        var(--gold2);
-
-    font-size:
-        0.7rem;
-
-    font-weight:
-        700;
-
-    margin-top:
-        4px;
+    color: var(--gold2);
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-top: 4px;
 }
 
 .metric-blue {
-
-    color:
-        var(--blue2);
-
-    font-size:
-        0.7rem;
-
-    font-weight:
-        700;
-
-    margin-top:
-        4px;
+    color: var(--blue2);
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-top: 4px;
 }
 
 
@@ -536,326 +334,182 @@ header {
    ============================================================ */
 
 .section {
-    padding-top:
-        105px;
+    padding-top: 105px;
 }
 
 .eyebrow {
-
-    color:
-        var(--gold);
-
-    font-size:
-        0.68rem;
-
-    font-weight:
-        850;
-
-    letter-spacing:
-        0.2em;
-
-    text-transform:
-        uppercase;
-
-    margin-bottom:
-        13px;
+    color: var(--gold);
+    font-size: 0.68rem;
+    font-weight: 850;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 13px;
 }
 
 .section-title {
-
-    color:
-        white;
-
-    font-size:
-        clamp(2rem, 4vw, 3.6rem);
-
-    line-height:
-        1.05;
-
-    letter-spacing:
-        -0.045em;
-
-    font-weight:
-        900;
-
-    margin:
-        0;
+    color: #ffffff;
+    font-size: clamp(2rem, 4vw, 3.6rem);
+    line-height: 1.05;
+    letter-spacing: -0.045em;
+    font-weight: 900;
+    margin: 0;
 }
 
 .section-description {
-
-    color:
-        #919caf;
-
-    max-width:
-        760px;
-
-    line-height:
-        1.8;
-
-    margin-top:
-        18px;
+    color: #919caf;
+    max-width: 760px;
+    line-height: 1.8;
+    margin-top: 18px;
 }
 
 
 /* ============================================================
-   FEATURE CARDS
+   FEATURES
    ============================================================ */
 
 .feature {
-
-    height:
-        100%;
-
-    min-height:
-        255px;
-
-    padding:
-        28px;
-
-    border-radius:
-        21px;
-
-    border:
-        1px solid rgba(255,255,255,0.08);
+    height: 100%;
+    min-height: 255px;
+    padding: 28px;
+    border-radius: 21px;
+    border: 1px solid rgba(255,255,255,0.08);
 
     background:
-
         linear-gradient(
             145deg,
             rgba(255,255,255,0.055),
             rgba(255,255,255,0.018)
         );
 
-    transition:
-        0.25s ease;
+    transition: 0.25s ease;
 }
 
 .feature:hover {
-
-    transform:
-        translateY(-6px);
-
-    border-color:
-        rgba(233,185,73,0.35);
-
-    box-shadow:
-        0 22px 60px rgba(0,0,0,0.3);
+    transform: translateY(-6px);
+    border-color: rgba(233,185,73,0.35);
+    box-shadow: 0 22px 60px rgba(0,0,0,0.3);
 }
 
 .icon-blue,
 .icon-gold,
 .icon-green,
 .icon-purple {
+    width: 52px;
+    height: 52px;
+    border-radius: 15px;
 
-    width:
-        52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
-    height:
-        52px;
-
-    border-radius:
-        15px;
-
-    display:
-        flex;
-
-    align-items:
-        center;
-
-    justify-content:
-        center;
-
-    font-size:
-        1.3rem;
-
-    margin-bottom:
-        21px;
+    font-size: 1.3rem;
+    margin-bottom: 21px;
 }
 
 .icon-blue {
-
-    background:
-        rgba(23,105,255,0.13);
-
-    border:
-        1px solid rgba(55,164,255,0.23);
+    background: rgba(23,105,255,0.13);
+    border: 1px solid rgba(55,164,255,0.23);
 }
 
 .icon-gold {
-
-    background:
-        rgba(233,185,73,0.12);
-
-    border:
-        1px solid rgba(233,185,73,0.24);
+    background: rgba(233,185,73,0.12);
+    border: 1px solid rgba(233,185,73,0.24);
 }
 
 .icon-green {
-
-    background:
-        rgba(69,229,138,0.1);
-
-    border:
-        1px solid rgba(69,229,138,0.2);
+    background: rgba(69,229,138,0.1);
+    border: 1px solid rgba(69,229,138,0.2);
 }
 
 .icon-purple {
-
-    background:
-        rgba(146,92,255,0.11);
-
-    border:
-        1px solid rgba(146,92,255,0.23);
+    background: rgba(146,92,255,0.11);
+    border: 1px solid rgba(146,92,255,0.23);
 }
 
 .feature-title {
-
-    font-size:
-        1.05rem;
-
-    font-weight:
-        800;
-
-    color:
-        white;
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #ffffff;
 }
 
 .feature-text {
-
-    color:
-        #8995aa;
-
-    font-size:
-        0.85rem;
-
-    line-height:
-        1.75;
-
-    margin-top:
-        10px;
+    color: #8995aa;
+    font-size: 0.85rem;
+    line-height: 1.75;
+    margin-top: 10px;
 }
 
 
 /* ============================================================
-   DEMO AREA
+   DEMO
    ============================================================ */
 
 .demo-panel {
-
-    border-radius:
-        23px;
-
-    padding:
-        23px;
-
-    border:
-        1px solid rgba(255,255,255,0.08);
-
-    background:
-        rgba(255,255,255,0.025);
+    border-radius: 23px;
+    padding: 23px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.025);
 }
 
 .demo-heading {
-
-    font-size:
-        0.72rem;
-
-    color:
-        #7f8ca2;
-
-    letter-spacing:
-        0.13em;
-
-    font-weight:
-        800;
-
-    margin-bottom:
-        12px;
+    font-size: 0.72rem;
+    color: #7f8ca2;
+    letter-spacing: 0.13em;
+    font-weight: 800;
+    margin-bottom: 12px;
 }
 
 
 /* ============================================================
-   DI PANEL
+   DI
    ============================================================ */
 
 .di {
-
-    margin-top:
-        105px;
-
-    padding:
-        55px;
-
-    border-radius:
-        28px;
-
-    border:
-        1px solid rgba(233,185,73,0.2);
+    margin-top: 105px;
+    padding: 55px;
+    border-radius: 28px;
+    border: 1px solid rgba(233,185,73,0.2);
 
     background:
-
         radial-gradient(
             circle at 80% 20%,
             rgba(23,105,255,0.17),
             transparent 28%
         ),
-
         radial-gradient(
             circle at 15% 80%,
             rgba(233,185,73,0.11),
             transparent 28%
         ),
-
         linear-gradient(
             135deg,
             rgba(16,20,29,0.96),
             rgba(6,8,12,0.97)
         );
 
-    box-shadow:
-        0 30px 90px rgba(0,0,0,0.35);
+    box-shadow: 0 30px 90px rgba(0,0,0,0.35);
 }
 
 .di-title {
-
-    font-size:
-        clamp(2.4rem, 5vw, 4.4rem);
-
-    font-weight:
-        900;
-
-    letter-spacing:
-        -0.055em;
-
-    color:
-        white;
+    font-size: clamp(2.4rem, 5vw, 4.4rem);
+    font-weight: 900;
+    letter-spacing: -0.055em;
+    color: #ffffff;
 }
 
 .di-name {
-    color:
-        var(--gold2);
+    color: var(--gold2);
 }
 
 .di-flow {
-
-    margin-top:
-        30px;
-
-    font-weight:
-        750;
-
-    color:
-        white;
+    margin-top: 30px;
+    font-weight: 750;
+    color: #ffffff;
 }
 
 .di-flow span {
-
-    color:
-        var(--gold);
-
-    padding:
-        0 8px;
+    color: var(--gold);
+    padding: 0 8px;
 }
 
 
@@ -864,33 +518,15 @@ header {
    ============================================================ */
 
 .trust {
-
-    margin-top:
-        70px;
-
-    padding:
-        24px;
-
-    border-top:
-        1px solid rgba(255,255,255,0.07);
-
-    border-bottom:
-        1px solid rgba(255,255,255,0.07);
-
-    text-align:
-        center;
-
-    color:
-        #78859a;
-
-    font-size:
-        0.72rem;
-
-    letter-spacing:
-        0.1em;
-
-    text-transform:
-        uppercase;
+    margin-top: 70px;
+    padding: 24px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    text-align: center;
+    color: #78859a;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
 }
 
 
@@ -899,36 +535,21 @@ header {
    ============================================================ */
 
 .security {
-
-    height:
-        100%;
-
-    padding:
-        29px;
-
-    border-radius:
-        20px;
-
-    background:
-        rgba(255,255,255,0.025);
-
-    border:
-        1px solid rgba(255,255,255,0.07);
+    height: 100%;
+    padding: 29px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.07);
 }
 
 .security h3 {
-    color:
-        white !important;
-
-    font-size:
-        1rem;
+    color: #ffffff !important;
+    font-size: 1rem;
 }
 
 .security p {
-    color:
-        #8995aa;
-    line-height:
-        1.7;
+    color: #8995aa;
+    line-height: 1.7;
 }
 
 
@@ -937,76 +558,43 @@ header {
    ============================================================ */
 
 .price-card {
-
-    height:
-        100%;
-
-    padding:
-        31px;
-
-    border-radius:
-        23px;
-
-    border:
-        1px solid rgba(255,255,255,0.08);
-
-    background:
-        rgba(255,255,255,0.025);
+    height: 100%;
+    padding: 31px;
+    border-radius: 23px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.025);
 }
 
 .price-card.featured {
-
-    border-color:
-        rgba(233,185,73,0.38);
+    border-color: rgba(233,185,73,0.38);
 
     background:
-
         linear-gradient(
             145deg,
             rgba(233,185,73,0.07),
             rgba(23,105,255,0.05)
         );
 
-    box-shadow:
-        0 25px 70px rgba(0,0,0,0.28);
+    box-shadow: 0 25px 70px rgba(0,0,0,0.28);
 }
 
 .price-label {
-
-    color:
-        var(--gold);
-
-    font-size:
-        0.67rem;
-
-    letter-spacing:
-        0.16em;
-
-    font-weight:
-        850;
+    color: var(--gold);
+    font-size: 0.67rem;
+    letter-spacing: 0.16em;
+    font-weight: 850;
 }
 
 .price {
-
-    font-size:
-        2.35rem;
-
-    font-weight:
-        900;
-
-    margin:
-        14px 0;
-
-    color:
-        white;
+    font-size: 2.35rem;
+    font-weight: 900;
+    margin: 14px 0;
+    color: #ffffff;
 }
 
 .check {
-    color:
-        #c3cbd9;
-
-    line-height:
-        2;
+    color: #c3cbd9;
+    line-height: 2;
 }
 
 
@@ -1015,49 +603,30 @@ header {
    ============================================================ */
 
 .cta {
-
-    margin-top:
-        110px;
-
-    padding:
-        80px 25px;
-
-    text-align:
-        center;
-
-    border-radius:
-        30px;
-
-    border:
-        1px solid rgba(233,185,73,0.23);
+    margin-top: 110px;
+    padding: 80px 25px;
+    text-align: center;
+    border-radius: 30px;
+    border: 1px solid rgba(233,185,73,0.23);
 
     background:
-
         radial-gradient(
             circle at center,
             rgba(23,105,255,0.15),
             transparent 48%
         ),
-
         radial-gradient(
             circle at 75% 100%,
             rgba(233,185,73,0.11),
             transparent 35%
         ),
-
         #07090d;
 }
 
 .cta-title {
-
-    font-size:
-        clamp(2.3rem, 5vw, 4.5rem);
-
-    font-weight:
-        900;
-
-    letter-spacing:
-        -0.055em;
+    font-size: clamp(2.3rem, 5vw, 4.5rem);
+    font-weight: 900;
+    letter-spacing: -0.055em;
 }
 
 
@@ -1066,29 +635,16 @@ header {
    ============================================================ */
 
 .footer {
-
-    margin-top:
-        100px;
-
-    padding:
-        42px 0 20px;
-
-    border-top:
-        1px solid rgba(255,255,255,0.07);
-
-    color:
-        #69758a;
-
-    font-size:
-        0.77rem;
-
-    text-align:
-        center;
+    margin-top: 100px;
+    padding: 42px 0 20px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    color: #69758a;
+    font-size: 0.77rem;
+    text-align: center;
 }
 
 .footer strong {
-    color:
-        white;
+    color: #ffffff;
 }
 
 
@@ -1099,23 +655,19 @@ header {
 @media (max-width: 768px) {
 
     .hero {
-        padding-top:
-            55px;
+        padding-top: 55px;
     }
 
     .hero-title {
-        font-size:
-            3.3rem;
+        font-size: 3.3rem;
     }
 
     .di {
-        padding:
-            30px;
+        padding: 30px;
     }
 
     .dashboard {
-        margin-top:
-            40px;
+        margin-top: 40px;
     }
 
 }
@@ -1136,7 +688,7 @@ nav1, nav2, nav3, nav4, nav5, nav6 = st.columns(
 
 with nav1:
 
-    if os.path.exists(LOGO_PATH):
+    if os.path.isfile(LOGO_PATH):
         st.image(
             LOGO_PATH,
             width=48,
@@ -1257,7 +809,7 @@ st.markdown(
             </div>
 
             <div class="dashboard-sub">
-                Analytical workspace preview
+                Live analytical environment preview
             </div>
         </div>
 
@@ -1365,47 +917,61 @@ with metric4:
 
 
 # ============================================================
-# DASHBOARD CHARTS
+# DASHBOARD DATA
 # ============================================================
 
-np.random.seed(14)
-
 months = [
-    "Jan", "Feb", "Mar", "Apr",
-    "May", "Jun", "Jul", "Aug",
-    "Sep", "Oct", "Nov", "Dec"
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
 ]
-
-performance = np.array(
-    [470, 530, 510, 620, 680, 650,
-     720, 790, 760, 850, 910, 970]
-)
 
 performance_data = pd.DataFrame(
     {
-        "Month": months,
-        "Performance": performance,
-    }
+        "Performance": [
+            470,
+            530,
+            510,
+            620,
+            680,
+            650,
+            720,
+            790,
+            760,
+            850,
+            910,
+            970,
+        ]
+    },
+    index=months,
 )
 
 business_data = pd.DataFrame(
     {
-        "Area": [
-            "Sales",
-            "Marketing",
-            "Operations",
-            "Customers",
-        ],
         "Score": [
             92,
             76,
             84,
             88,
-        ],
-    }
+        ]
+    },
+    index=[
+        "Sales",
+        "Marketing",
+        "Operations",
+        "Customers",
+    ],
 )
 
-st.markdown("<br>", unsafe_allow_html=True)
 
 chart1, chart2 = st.columns([1.6, 1])
 
@@ -1425,9 +991,10 @@ with chart1:
     )
 
     st.line_chart(
-        performance_data.set_index("Month"),
+        performance_data,
         height=270,
     )
+
 
 with chart2:
 
@@ -1445,7 +1012,7 @@ with chart2:
     )
 
     st.bar_chart(
-        business_data.set_index("Area"),
+        business_data,
         height=270,
     )
 
@@ -1473,7 +1040,7 @@ st.markdown(
 
 
 # ============================================================
-# PLATFORM SECTION
+# PLATFORM
 # ============================================================
 
 st.markdown(
@@ -1492,7 +1059,8 @@ st.markdown(
     <div class="section-description">
         DACRE brings data preparation, analysis,
         visualization, intelligence and reporting
-        together in one professional environment.
+        together in one professional analytical
+        environment.
     </div>
 
 </div>
@@ -1502,158 +1070,90 @@ st.markdown(
 
 
 # ============================================================
-# FEATURE CARDS
+# FEATURES
 # ============================================================
 
-f1, f2, f3 = st.columns(3)
+features = [
+    (
+        "icon-blue",
+        "◈",
+        "Data Cleaning",
+        "Detect duplicates, missing information, inconsistent "
+        "records and common data-quality problems before "
+        "analysis begins.",
+    ),
+    (
+        "icon-gold",
+        "◇",
+        "Advanced Analysis",
+        "Transform raw datasets into meaningful statistics, "
+        "trends, relationships and business information.",
+    ),
+    (
+        "icon-green",
+        "◎",
+        "Visualization",
+        "Turn complex information into interactive charts, "
+        "dashboards and visual reports.",
+    ),
+    (
+        "icon-purple",
+        "⚡",
+        "Fast Processing",
+        "Build efficient analytical workflows for processing "
+        "and exploring datasets.",
+    ),
+    (
+        "icon-blue",
+        "✦",
+        "David Intelligence",
+        "DI helps users interact with their information, "
+        "ask questions and obtain analytical assistance.",
+    ),
+    (
+        "icon-gold",
+        "⇩",
+        "Export & Reporting",
+        "Prepare analytical results for reporting, presentation "
+        "and continued business use.",
+    ),
+]
 
-with f1:
-    st.markdown(
-        """
+
+for row_start in range(0, len(features), 3):
+
+    row = features[row_start:row_start + 3]
+
+    columns = st.columns(3)
+
+    for index, feature in enumerate(row):
+
+        icon_class, icon, title, description = feature
+
+        with columns[index]:
+
+            st.markdown(
+                f"""
 <div class="feature">
 
-    <div class="icon-blue">
-        ◈
+    <div class="{icon_class}">
+        {icon}
     </div>
 
     <div class="feature-title">
-        Data Cleaning
+        {title}
     </div>
 
     <div class="feature-text">
-        Detect duplicates, missing information,
-        inconsistent records and data-quality
-        problems before analysis begins.
+        {description}
     </div>
 
 </div>
 """,
-        unsafe_allow_html=True,
-    )
+                unsafe_allow_html=True,
+            )
 
-with f2:
-    st.markdown(
-        """
-<div class="feature">
-
-    <div class="icon-gold">
-        ◇
-    </div>
-
-    <div class="feature-title">
-        Advanced Analysis
-    </div>
-
-    <div class="feature-text">
-        Transform raw datasets into meaningful
-        statistics, trends, relationships and
-        business information.
-    </div>
-
-</div>
-""",
-        unsafe_allow_html=True,
-    )
-
-with f3:
-    st.markdown(
-        """
-<div class="feature">
-
-    <div class="icon-green">
-        ◎
-    </div>
-
-    <div class="feature-title">
-        Visualization
-    </div>
-
-    <div class="feature-text">
-        Turn complex information into interactive
-        charts, dashboards and visual reports
-        that are easier to understand.
-    </div>
-
-</div>
-""",
-        unsafe_allow_html=True,
-    )
-
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-
-f4, f5, f6 = st.columns(3)
-
-with f4:
-    st.markdown(
-        """
-<div class="feature">
-
-    <div class="icon-purple">
-        ⚡
-    </div>
-
-    <div class="feature-title">
-        Fast Processing
-    </div>
-
-    <div class="feature-text">
-        Build efficient workflows for processing
-        and exploring analytical datasets.
-    </div>
-
-</div>
-""",
-        unsafe_allow_html=True,
-    )
-
-with f5:
-    st.markdown(
-        """
-<div class="feature">
-
-    <div class="icon-blue">
-        ✦
-    </div>
-
-    <div class="feature-title">
-        David Intelligence
-    </div>
-
-    <div class="feature-text">
-        DI helps users interact with their data,
-        ask questions and receive analytical
-        assistance through the DACRE platform.
-    </div>
-
-</div>
-""",
-        unsafe_allow_html=True,
-    )
-
-with f6:
-    st.markdown(
-        """
-<div class="feature">
-
-    <div class="icon-gold">
-        ⇩
-    </div>
-
-    <div class="feature-title">
-        Export & Reporting
-    </div>
-
-    <div class="feature-text">
-        Prepare analytical results for reporting,
-        presentation and continued business use.
-    </div>
-
-</div>
-""",
-        unsafe_allow_html=True,
-    )
+    st.markdown("<br>", unsafe_allow_html=True)
 
 
 # ============================================================
@@ -1745,7 +1245,7 @@ with demo_right:
 <div class="demo-panel">
 
     <div class="demo-heading">
-        DACRE OBSERVATIONS
+        AUTOMATED OBSERVATIONS
     </div>
 
     <br>
@@ -1814,7 +1314,7 @@ st.markdown(
         David Intelligence is the intelligence layer of DACRE.
         It is designed to help users ask questions about their
         information, explore patterns, understand analytical
-        results and move from information toward decisions.
+        results and move from analysis toward informed decisions.
     </div>
 
     <div class="di-flow">
@@ -2069,20 +1569,21 @@ with st.expander("What does DI mean?"):
 
 with st.expander("Can I upload my own data?"):
     st.write(
-        "Yes. The next stage of development will connect "
-        "the platform to CSV, Excel and other data sources."
+        "Yes. The platform is designed to support user data "
+        "for analysis and visualization."
     )
 
 with st.expander("Will DACRE have interactive dashboards?"):
     st.write(
         "Yes. Interactive dashboards, charts and analytical "
-        "workspaces will be connected to the platform."
+        "workspaces are part of the DACRE platform."
     )
 
 with st.expander("Can DI use online information?"):
     st.write(
-        "The architecture can connect DI to approved online "
-        "services and APIs when the user is online."
+        "When connected to approved online services and APIs, "
+        "DI can use external information sources as part of "
+        "its knowledge workflow."
     )
 
 
@@ -2114,9 +1615,12 @@ st.markdown(
 )
 
 
-_, final_button, _ = st.columns([1, 1.2, 1])
+_, final_button, _ = st.columns(
+    [1, 1.2, 1]
+)
 
 with final_button:
+
     st.button(
         "Get Started with DACRE",
         use_container_width=True,
