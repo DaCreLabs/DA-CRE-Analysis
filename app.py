@@ -49,25 +49,29 @@ from flask import (
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
-try:
+# Optional heavy dependencies are detected cheaply at startup and imported only
+# when a feature actually needs them. This keeps the landing/login path light.
+import importlib.util
+
+OPENPYXL_AVAILABLE = importlib.util.find_spec("openpyxl") is not None
+PANDAS_AVAILABLE = importlib.util.find_spec("pandas") is not None
+GENAI_AVAILABLE = importlib.util.find_spec("google.genai") is not None
+
+
+def get_openpyxl():
     from openpyxl import Workbook, load_workbook
     from openpyxl.styles import Alignment, Font, PatternFill
-    OPENPYXL_AVAILABLE = True
-except Exception:
-    OPENPYXL_AVAILABLE = False
+    return Workbook, load_workbook, Alignment, Font, PatternFill
 
-try:
+
+def get_pandas():
     import pandas as pd
-    PANDAS_AVAILABLE = True
-except Exception:
-    PANDAS_AVAILABLE = False
+    return pd
 
-# Optional Gemini SDK. The application still starts if it is absent.
-try:
+
+def get_genai():
     from google import genai
-    GENAI_AVAILABLE = True
-except Exception:
-    GENAI_AVAILABLE = False
+    return genai
 
 
 # ---------------------------------------------------------------------------
@@ -155,6 +159,8 @@ def security_headers(response):
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), geolocation=(), payment=()"
+    if request.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
     return response
 
 
@@ -374,6 +380,7 @@ def gemini_answer(prompt: str) -> Tuple[str, bool]:
         )
 
     try:
+        genai = get_genai()
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
             model=os.environ.get("GOOGLE_MODEL", "gemini-2.5-flash"),
@@ -414,6 +421,7 @@ def save_uploaded_file(file_storage, user_id: int) -> sqlite3.Row:
 def read_dataset_preview(path: Path, extension: str, limit: int = 15) -> Dict[str, Any]:
     if extension == "csv":
         if PANDAS_AVAILABLE:
+            pd = get_pandas()
             df = pd.read_csv(path, nrows=limit)
             return {
                 "columns": [str(c) for c in df.columns],
@@ -433,6 +441,7 @@ def read_dataset_preview(path: Path, extension: str, limit: int = 15) -> Dict[st
     if extension in {"xlsx", "xls"}:
         if not OPENPYXL_AVAILABLE:
             raise RuntimeError("openpyxl is required for Excel preview.")
+        _, load_workbook, _, _, _ = get_openpyxl()
         wb = load_workbook(path, read_only=True, data_only=True)
         ws = wb.active
         rows = []
@@ -458,6 +467,7 @@ def create_xlsx(filename: str, columns: List[str], rows: List[List[Any]]) -> Pat
 
     output = GENERATED_DIR / f"{secrets.token_hex(8)}_{safe_name}"
 
+    Workbook, _, Alignment, Font, PatternFill = get_openpyxl()
     wb = Workbook()
     ws = wb.active
     ws.title = "DACRE Analysis"
@@ -492,7 +502,7 @@ COMMON_HEAD = """
 <meta name="theme-color" content="#06111f">
 <meta name="description" content="DACRE Analysis — premium data analysis, visualisation, reporting and intelligence workspace.">
 <link rel="manifest" href="/manifest.webmanifest">
-<link rel="icon" href="/static/dacre-logo.png" type="image/png">
+<link rel="icon" href="/static/dacre-icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="/static/dacre-icon-192.png">
 <title>{{ title }} · DACRE Analysis</title>
 """
@@ -569,7 +579,6 @@ LANDING_HTML = r"""
 .nav{position:fixed;top:0;left:0;right:0;z-index:20;background:rgba(3,11,22,.76);backdrop-filter:blur(18px);border-bottom:1px solid rgba(150,200,240,.1)}
 .nav-inner{height:76px;display:flex;align-items:center;justify-content:space-between}
 .brand{display:flex;align-items:center;gap:11px;font-weight:900;letter-spacing:.16em}
-.brand-mark{width:35px;height:35px;border-radius:10px;box-shadow:0 0 25px rgba(33,199,255,.2)}
 .nav-links{display:flex;gap:24px;color:#a7bacd;font-size:14px}
 .nav-actions{display:flex;gap:10px}
 .hero{padding:155px 0 90px;position:relative;overflow:hidden}
@@ -615,7 +624,7 @@ footer{padding:35px 0;border-top:1px solid var(--line);color:#6f879c}
 </style></head>
 <body>
 <nav class="nav"><div class="container nav-inner">
-<a class="brand" href="/"><img class="brand-mark" src="/static/dacre-logo.png" alt="DACRE page icon">DACRE ANALYSIS</a>
+<a class="brand" href="/">DACRE ANALYSIS</a>
 <div class="nav-links">
 <a href="#capabilities">Capabilities</a><a href="#workspace">Workspace</a><a href="#pricing">Pricing</a>
 </div>
@@ -639,7 +648,7 @@ footer{padding:35px 0;border-top:1px solid var(--line);color:#6f879c}
 <span>✓ 30-day standard trial</span><span>✓ ₦30,000/month after trial</span><span>✓ Persistent account</span>
 </div>
 </div>
-<div class="hero-visual"><div class="glow"></div><img src="/static/landing-hero.png" alt="DACRE Analysis premium data workspace"></div>
+<div class="hero-visual"><div class="glow"></div><img src="/static/landing-hero.webp" alt="DACRE Analysis premium data workspace" fetchpriority="high" decoding="async"></div>
 </div></header>
 
 <section class="section" id="capabilities"><div class="container">
@@ -659,8 +668,8 @@ footer{padding:35px 0;border-top:1px solid var(--line);color:#6f879c}
 <section class="section" id="workspace"><div class="container">
 <div class="section-head"><div class="eyebrow">The workstation</div><h2>See the analysis environment.</h2><p>DACRE's interface is designed around a serious business intelligence workspace: dark, focused, fast and information-dense.</p></div>
 <div class="showcase">
-<img src="/static/dashboard-preview.png" alt="DACRE Analysis dashboard preview">
-<img src="/static/global-data-sync.png" alt="DACRE global data visualisation">
+<img src="/static/dashboard-preview.webp" alt="DACRE Analysis dashboard preview" loading="lazy" decoding="async">
+<img src="/static/global-data-sync.webp" alt="DACRE global data visualisation" loading="lazy" decoding="async">
 </div>
 </div></section>
 
@@ -711,7 +720,6 @@ AUTH_HTML = r"""
 .auth-wrap{min-height:100vh;display:grid;place-items:center;padding:35px 15px}
 .auth{width:min(600px,100%);padding:38px}
 .auth-top{text-align:center;margin-bottom:28px}
-.auth-top img{width:55px;height:55px;object-fit:cover;border-radius:14px}
 .auth-top h1{font-size:32px;margin:15px 0 8px}
 .auth-top p{color:var(--muted);line-height:1.6}
 .form-grid{margin-top:20px}
@@ -720,7 +728,7 @@ AUTH_HTML = r"""
 @media(max-width:600px){.auth{padding:25px 20px}.form-grid{grid-template-columns:1fr}}
 </style></head><body>
 <div class="auth-wrap"><div class="card auth">
-<div class="auth-top"><img src="/static/dacre-logo.png" alt="DACRE page icon"><h1>{{ heading }}</h1><p>{{ subheading }}</p></div>
+<div class="auth-top"><h1>{{ heading }}</h1><p>{{ subheading }}</p></div>
 {% with messages = get_flashed_messages(with_categories=true) %}
 {% for category, message in messages %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}
 {% endwith %}
@@ -738,7 +746,6 @@ body{overflow-x:hidden}
 .app-shell{min-height:100vh;display:flex}
 .sidebar{position:fixed;left:0;top:0;bottom:0;width:260px;background:rgba(3,12,23,.97);border-right:1px solid var(--line);z-index:30;padding:20px 14px;transition:.25s transform}
 .logo-row{display:flex;align-items:center;gap:10px;padding:7px 9px 20px;border-bottom:1px solid var(--line)}
-.logo-row img{width:36px;height:36px;border-radius:10px}
 .logo-row strong{letter-spacing:.12em;font-size:14px}
 .logo-row span{display:block;color:#6f91aa;font-size:9px;letter-spacing:.15em}
 .menu{margin-top:20px}.menu-label{font-size:10px;color:#58758d;letter-spacing:.16em;margin:18px 10px 8px;text-transform:uppercase}
@@ -778,7 +785,7 @@ background-size:100% 45px,80px 100%;display:flex;align-items:end;gap:12px;paddin
 </style></head><body>
 <div class="app-shell">
 <aside class="sidebar" id="sidebar">
-<div class="logo-row"><img src="/static/dacre-logo.png" alt="DACRE page icon"><div><strong>DACRE</strong><span>ANALYSIS</span></div></div>
+<div class="logo-row"><div><strong>DACRE</strong><span>ANALYSIS</span></div></div>
 <nav class="menu">
 <div class="menu-label">Workspace</div>
 <a class="{{ 'active' if section=='overview' else '' }}" href="/dashboard">⌂ <span>Overview</span></a>
@@ -1557,8 +1564,8 @@ def manifest():
 @app.route("/sw.js")
 def service_worker():
     script = """
-const CACHE = "dacre-analysis-shell-v1";
-const ASSETS = ["/", "/static/dacre-logo.png", "/static/landing-hero.png"];
+const CACHE = "dacre-analysis-shell-v2";
+const ASSETS = ["/", "/static/dacre-icon-192.png", "/static/dacre-icon-512.png"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)));
   self.skipWaiting();
