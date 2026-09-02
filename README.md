@@ -1,81 +1,44 @@
-# DACRE Analysis — Secure Upgraded Starter
+# DACRE Analysis — Complete Unified App
 
-DACRE Analysis is a Streamlit data workspace powered by DI — David's Intelligence.
+This package contains the complete DACRE Analysis application in one main
+`app.py`, plus its dependency file and required static assets.
 
-## Run locally
+## Included
+- Premium landing page
+- DACRE logo as page/browser icon and PWA icon
+- Get Started / Log In navigation
+- Signup and persistent SQLite accounts
+- Login and account-not-created handling
+- Responsive dashboard
+- Sidebar menu for all application areas
+- Data Workspace
+- Visualizations
+- Dashboard Studio
+- Reports
+- SQL Code Space
+- Power BI area
+- Connections
+- File Vault
+- Organisation Admin
+- Settings
+- Internal DI routing/status
+- XLSX generation
+- Optional server-side Gemini integration
+- PWA installation/download button
 
-```bash
-pip install -r requirements.txt
-streamlit run app.py
-```
+## Run
+`pip install -r requirements.txt`
+then
+`python app.py`
 
-Place `logo.png` beside `app.py` to enable the DACRE logo/favicon.
+Open `http://127.0.0.1:5000`.
 
-## Master security setup
+## Server secrets
+Set `DACRE_SECRET_KEY` to a strong random secret in production.
+Optionally set `GOOGLE_API_KEY` for server-side Gemini generation.
+Never put the Google key in frontend code.
 
-The Master passkey is **not embedded as a fallback in source code**.
-Set it before launching the app.
-
-### Environment variable
-
-Linux/macOS:
-
-```bash
-export DACRE_MASTER_PASSKEY='your-long-master-secret'
-streamlit run app.py
-```
-
-Windows PowerShell:
-
-```powershell
-$env:DACRE_MASTER_PASSKEY='your-long-master-secret'
-streamlit run app.py
-```
-
-### Streamlit Secrets
-
-Create `.streamlit/secrets.toml`:
-
-```toml
-DACRE_MASTER_PASSKEY = "your-long-master-secret"
-```
-
-Do **not** commit that file to GitHub.
-
-## Important authentication change
-
-Passwords and passkeys now use salted PBKDF2-HMAC-SHA256 rather than plain SHA-256.
-Legacy SHA-256 records are accepted once and automatically upgraded after a successful login.
-
-New account passwords must be at least 10 characters and contain:
-- uppercase letter
-- lowercase letter
-- number
-
-The Master portal does not expose plaintext passwords. It provides credential reset instead.
-
-## Main modules
-
-- Persistent SQLite authentication and company tenancy
-- Company Admin user management
-- File Vault with role-aware file visibility
-- Automatic project restore
-- Data cleaning and profiling
-- Editable workflow grid
-- Formula Lab
-- Read-only SQL Lab
-- ADD DYNAMICS charts
-- Chart attachment configuration
-- Excel export with embedded OpenPyXL chart
-- Data health / missing-value insights
-- Dynamic Presentation Engine
-- DI command dock and browser voice synthesis
-- Master DI audit portal and credential reset
-- Failed-login temporary lockout
-- Upload deduplication during Streamlit reruns
-
-## Database
-
-The SQLite database is created automatically as `dacre_platform.db`.
-It is intentionally local to the deployment directory for this starter build.
-For production deployment, use secure backups, encrypted storage, HTTPS, and a managed database when the platform grows.
+## Phone
+The landing page has a Download DACRE App button. On supported Android/Chrome
+browsers it uses the PWA install prompt. On iPhone, Safari can use Add to Home
+Screen. The hosted backend remains responsible for the persistent database.
