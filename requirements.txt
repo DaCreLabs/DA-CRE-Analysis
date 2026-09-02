@@ -40,3 +40,8 @@ livekit>=1.0
 transformers>=4.45
 
 pymongo>=4.10,<5
+Flask>=3.0,<4
+Werkzeug>=3.0,<4
+openpyxl>=3.1,<4
+pandas>=2.2,<3
+google-genai>=1.0,<2
