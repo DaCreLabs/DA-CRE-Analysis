@@ -398,7 +398,7 @@ FAVICON = prepare_favicon()
 
 st.set_page_config(
     page_title=f"{APP_NAME} | {DI_NAME}",
-    page_icon=str(LOGO_PATH) if LOGO_PATH.exists() else (FAVICON if FAVICON else "D"),
+    page_icon=str(LOGO_PATH) if LOGO_PATH.exists() else (FAVICON if FAVICON else "DACRE"),
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -3052,44 +3052,7 @@ def seed_named_di_workforce():
         con.close()
 
 
-def ensure_subscription_schema():
-    """Create subscription/payment tables without storing raw card or bank credentials."""
-    con = db()
-    try:
-        if using_cloud_db():
-            con.execute("""CREATE TABLE IF NOT EXISTS company_subscriptions (
-                id BIGSERIAL PRIMARY KEY, company_name TEXT UNIQUE NOT NULL,
-                trial_started_at TEXT NOT NULL, trial_ends_at TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT 'trial', plan_months INTEGER NOT NULL DEFAULT 1,
-                amount_paid REAL NOT NULL DEFAULT 0, currency TEXT NOT NULL DEFAULT 'NGN',
-                paid_at TEXT, paid_until TEXT, payment_method TEXT, bank_name TEXT,
-                payment_provider TEXT, transaction_reference TEXT, updated_at TEXT NOT NULL)""")
-            con.execute("""CREATE TABLE IF NOT EXISTS subscription_payments (
-                id BIGSERIAL PRIMARY KEY, company_name TEXT NOT NULL, username TEXT NOT NULL,
-                amount REAL NOT NULL, currency TEXT NOT NULL DEFAULT 'NGN', plan_months INTEGER NOT NULL,
-                payment_method TEXT NOT NULL, bank_name TEXT, provider TEXT, transaction_reference TEXT,
-                status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL)""")
-        else:
-            con.execute("""CREATE TABLE IF NOT EXISTS company_subscriptions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT UNIQUE NOT NULL,
-                trial_started_at TEXT NOT NULL, trial_ends_at TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT 'trial', plan_months INTEGER NOT NULL DEFAULT 1,
-                amount_paid REAL NOT NULL DEFAULT 0, currency TEXT NOT NULL DEFAULT 'NGN',
-                paid_at TEXT, paid_until TEXT, payment_method TEXT, bank_name TEXT,
-                payment_provider TEXT, transaction_reference TEXT, updated_at TEXT NOT NULL)""")
-            con.execute("""CREATE TABLE IF NOT EXISTS subscription_payments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL, username TEXT NOT NULL,
-                amount REAL NOT NULL, currency TEXT NOT NULL DEFAULT 'NGN', plan_months INTEGER NOT NULL,
-                payment_method TEXT NOT NULL, bank_name TEXT, provider TEXT, transaction_reference TEXT,
-                status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL)""")
-        con.commit()
-    finally:
-        con.close()
-
-
-
-@st.cache_resource(show_spinner=False)
-def _bootstrap_runtime(schema_version=9):
+def _bootstrap_runtime(schema_version=12):
     """Bootstrap DACRE on either legacy SQLite or persistent Supabase PostgreSQL."""
     if using_cloud_db():
         _migrate_sqlite_to_supabase_once()
@@ -3304,7 +3267,7 @@ def generate_dacre_presentation(df, board, prompt):
     visual=_online_visual_reference("business data technology presentation abstract")
     def add_bg(slide, color):
         shape=slide.shapes.add_shape(MSO_SHAPE.RECTANGLE,0,0,prs.slide_width,prs.slide_height)
-        shape.fill.solid(); shape.fill.fore_color.rgb=RGBColor(*color); shape.line.fill.background()
+        shape.fill.solid(); shape.fill.fore_color.rgb=RGBColor(*color); shape.line.fill.background(); shape.z_order=0
     def add_text(slide,text,left,top,width,height,size=24,bold=False,color=(255,255,255),align=None):
         box=slide.shapes.add_textbox(Inches(left),Inches(top),Inches(width),Inches(height)); tf=box.text_frame; tf.clear(); p=tf.paragraphs[0]; p.text=str(text); p.font.size=Pt(size); p.font.bold=bold; p.font.color.rgb=RGBColor(*color); p.font.name="Aptos"; p.alignment=align or PP_ALIGN.LEFT; return box
     # Front slide
@@ -4034,10 +3997,39 @@ DACRE_BANK_OPTIONS = [
 DACRE_PAYMENT_METHODS = ["Bank Transfer", "Debit/Credit Card", "USSD", "Paystack", "Flutterwave"]
 
 
-
-
-# Bootstrap only after every schema/helper function used by the bootstrap has been defined.
-_bootstrap_runtime(_DB_SCHEMA_VERSION)
+def ensure_subscription_schema():
+    """Create subscription/payment tables without storing raw card or bank credentials."""
+    con = db()
+    try:
+        if using_cloud_db():
+            con.execute("""CREATE TABLE IF NOT EXISTS company_subscriptions (
+                id BIGSERIAL PRIMARY KEY, company_name TEXT UNIQUE NOT NULL,
+                trial_started_at TEXT NOT NULL, trial_ends_at TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'trial', plan_months INTEGER NOT NULL DEFAULT 1,
+                amount_paid REAL NOT NULL DEFAULT 0, currency TEXT NOT NULL DEFAULT 'NGN',
+                paid_at TEXT, paid_until TEXT, payment_method TEXT, bank_name TEXT,
+                payment_provider TEXT, transaction_reference TEXT, updated_at TEXT NOT NULL)""")
+            con.execute("""CREATE TABLE IF NOT EXISTS subscription_payments (
+                id BIGSERIAL PRIMARY KEY, company_name TEXT NOT NULL, username TEXT NOT NULL,
+                amount REAL NOT NULL, currency TEXT NOT NULL DEFAULT 'NGN', plan_months INTEGER NOT NULL,
+                payment_method TEXT NOT NULL, bank_name TEXT, provider TEXT, transaction_reference TEXT,
+                status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL)""")
+        else:
+            con.execute("""CREATE TABLE IF NOT EXISTS company_subscriptions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT UNIQUE NOT NULL,
+                trial_started_at TEXT NOT NULL, trial_ends_at TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'trial', plan_months INTEGER NOT NULL DEFAULT 1,
+                amount_paid REAL NOT NULL DEFAULT 0, currency TEXT NOT NULL DEFAULT 'NGN',
+                paid_at TEXT, paid_until TEXT, payment_method TEXT, bank_name TEXT,
+                payment_provider TEXT, transaction_reference TEXT, updated_at TEXT NOT NULL)""")
+            con.execute("""CREATE TABLE IF NOT EXISTS subscription_payments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL, username TEXT NOT NULL,
+                amount REAL NOT NULL, currency TEXT NOT NULL DEFAULT 'NGN', plan_months INTEGER NOT NULL,
+                payment_method TEXT NOT NULL, bank_name TEXT, provider TEXT, transaction_reference TEXT,
+                status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL)""")
+        con.commit()
+    finally:
+        con.close()
 
 
 def ensure_company_subscription(company_name, created_at=None):
@@ -4111,7 +4103,7 @@ def _subscription_amount(months):
 
 
 def _bank_badge(name, initials):
-    icon=_ui_icon_data_uri('bank'); return f"<div class='bank-logo'><img src='{icon}' alt='' width='34' height='34'><b>{_escape_html(name)}</b></div>"
+    return f"<div class='bank-logo'><span>{_escape_html(initials)}</span><b>{_escape_html(name)}</b></div>"
 
 
 def record_subscription_payment(user, months, method, bank_name='', provider='', reference='', status='pending'):
@@ -4303,20 +4295,26 @@ def render_company_dashboard(user):
 
 
 PAGE_META = {
-    "Company Dashboard": ("dashboard", "Company Dashboard", "Your company intelligence, DI team and subscription status."),
-    "Overview": ("dashboard", "DACRE Analytics", "MASTER-ONLY platform command view · users, activity, system health and live intelligence."),
-    "DI Home": ("dashboard", "DI Command", "Talk, investigate, analyze and move work forward with David's Intelligence."),
-    "DI Workforce": ("workforce", "DI Workforce", "Your specialized digital workforce — each DI has its own identity, specialty and work style."),
-    "Business Command Center": ("dashboard", "Business Command", "Executive signals, business health and the most important changes in your active data."),
-    "Business Twin": ("dashboard", "Business Twin", "A living snapshot of how your business is performing, changing and where attention is needed."),
-    "Decision Ledger": ("files", "Decision Ledger", "Record decisions, expected outcomes and results so the organization learns from its own history."),
-    "Opportunity Radar": ("charts", "Opportunity Radar", "Surface measurable growth signals and turn them into actionable business opportunities."),
-    "Workspace & Data": ("data", "Workspace & Data", "Bring data into Dacre and turn raw information into useful business knowledge."),
-    "Formula Lab": ("formula", "Formula Lab", "Practical spreadsheet-style formulas and transformations."),
-    "Charts": ("charts", "Charts", "Turn data into clear visual stories and business dashboards."),
-    "File Vault": ("files", "File Vault", "Keep company files, working datasets and project artifacts organized."),
-    "Export Center": ("export", "Export Center", "Package analysis outputs for the people who need them."),
-    "Data Presentation Board": ("presentation", "Data Presentation Board", "Prociel turns the loaded inspection-board data into a presentation you control."),
+    "Company Dashboard": ("⌂", "Company Dashboard", "Your company intelligence, DI team and subscription status."),
+    "Overview": ("⌂", "DACRE Analytics", "MASTER-ONLY platform command view · users, activity, system health and live intelligence."),
+    "DI Home": ("◉", "DI Command", "Talk, investigate, analyze and move work forward with David's Intelligence."),
+    "DI Calls": ("◉", "DI Connect", "Business calls, DI calls and team rooms with a meeting-ready workspace."),
+    "DI Workforce": ("◉", "DI Workforce", "Your specialized digital workforce — each DI has its own identity, specialty and work style."),
+    "DI Action Center": ("✦", "DI Action Center", "Give DI a goal and let it turn the request into analysis, recommendations and next actions."),
+    "DI Memory Box": ("◈", "DI Memory", "The trusted institutional memory layer shared by the Dacre intelligence workforce."),
+    "Business Command Center": ("◆", "Business Command", "Executive signals, business health and the most important changes in your active data."),
+    "Business Twin": ("◇", "Business Twin", "A living snapshot of how your business is performing, changing and where attention is needed."),
+    "Decision Ledger": ("◌", "Decision Ledger", "Record decisions, expected outcomes and results so the organization learns from its own history."),
+    "Opportunity Radar": ("✧", "Opportunity Radar", "Surface measurable growth signals and turn them into actionable business opportunities."),
+    "Workspace & Data": ("▦", "Workspace & Data", "Bring data into Dacre and turn raw information into useful business knowledge."),
+    "Formula Lab": ("ƒ", "Formula Lab", "Practical spreadsheet-style formulas and transformations."),
+    "Charts": ("◫", "Charts", "Turn data into clear visual stories and business dashboards."),
+    "File Vault": ("▤", "File Vault", "Keep company files, working datasets and project artifacts organized."),
+    "Export Center": ("⇩", "Export Center", "Package analysis outputs for the people who need them."),
+    "Data Presentation Board": ("▣", "Data Presentation Board", "Prociel turns the loaded inspection-board data into a presentation you control."),
+    "Organization Admin Portal": ("⚙", "Organization Admin", "Manage people, roles, notifications and company activity."),
+    "Chibobec Loan Desk": ("₦", "Chibobec Client Workspace", "Chibobec is a DACRE client. Manage its client workspace, loans and activity here."),
+    "Overall Admin DI Portal": ("♛", "Founder Command", "Master-level platform intelligence, workforce, customers, memory and system controls."),
 }
 
 
@@ -4458,15 +4456,15 @@ def render_analytics_overview(user):
         st.caption(f"Dashboard search: {search.strip()} · use the navigation to open the matching workspace.")
 
     kpis=[
-        ("users","Total Users",f"{users:,}",12.4,spark_users,"registered platform users","workforce"),
+        ("users","Total Users",f"{users:,}",12.4,spark_users,"registered platform users","Users"),
         ("activity","Activity",f"{activities:,}",8.9,spark_activity,"recorded workspace events","↗"),
         ("health","System Health",f"{health:.2f}%",0.3,spark_health,"availability signal · 24h","◉"),
-        ("calls","Active Calls",f"{active_calls:,}",-3.1,spark_calls,"live sessions","Phone"),
+        ("calls","Active Calls",f"{active_calls:,}",-3.1,spark_calls,"live sessions","☎"),
     ]
     cards=[]
     for key,label,value,delta,spark,hint,icon in kpis:
         positive=delta>=0
-        cards.append(f'''<div class="dacre-kpi-card"><div class="kpi-head"><span class="kpi-icon">{_ui_icon_data_uri(icon) and f"<img src='{_ui_icon_data_uri(icon)}' alt='' style='width:28px;height:28px;object-fit:contain;'>" or ""}</span><span class="kpi-delta {'up' if positive else 'down'}">{'up' if positive else 'down'} {abs(delta):.1f}%</span></div><p>{label}</p><div class="kpi-value-row"><b>{_dashboard_escape(value)}</b>{_dashboard_spark(spark)}</div><small>{_dashboard_escape(hint)}</small></div>''')
+        cards.append(f'''<div class="dacre-kpi-card"><div class="kpi-head"><span class="kpi-icon">{icon}</span><span class="kpi-delta {'up' if positive else 'down'}">{'↗' if positive else '↘'} {abs(delta):.1f}%</span></div><p>{label}</p><div class="kpi-value-row"><b>{_dashboard_escape(value)}</b>{_dashboard_spark(spark)}</div><small>{_dashboard_escape(hint)}</small></div>''')
     st.markdown('<section class="dacre-kpi-grid">'+''.join(cards)+'</section>',unsafe_allow_html=True)
 
     left,right=st.columns([2,1],gap="large")
@@ -4498,21 +4496,8 @@ def render_analytics_overview(user):
     st.markdown(f'''<div class="dacre-panel activity-panel"><div class="panel-head"><div><h2>Recent Activity</h2><p>Latest events across agents and infrastructure</p></div><span class="view-all">Live ledger</span></div><div class="activity-scroll"><table class="dacre-activity-table"><thead><tr><th>Event</th><th>Agent</th><th>Channel</th><th>Status</th><th>Latency</th><th class="right">Time</th></tr></thead><tbody>{''.join(rows)}</tbody></table></div></div>''',unsafe_allow_html=True)
 
 
-def _ui_icon_data_uri(name, fallback=""):
-    """Return a bundled non-emoji pictorial icon for the UI."""
-    try:
-        icon_path = BASE_DIR / "ui_icons" / f"{name}.png"
-        if icon_path.exists():
-            return "data:image/png;base64," + base64.b64encode(icon_path.read_bytes()).decode("ascii")
-    except Exception:
-        pass
-    return fallback
-
-
 def render_page_chrome(page_name, user):
-    icon, title, subtitle = PAGE_META.get(page_name, ("dashboard", page_name, "Dacre business intelligence workspace."))
-    icon_uri = _ui_icon_data_uri(icon)
-    icon_html = f"<img src='{icon_uri}' alt='' style='width:30px;height:30px;object-fit:contain;display:block;'>" if icon_uri else ""
+    icon, title, subtitle = PAGE_META.get(page_name, ("•", page_name, "Dacre business intelligence workspace."))
     master = user.get("role") == "master"
     mode_label = "FOUNDER COMMAND" if master else str(user.get("company", "BUSINESS WORKSPACE")).upper()
     page_themes = {
@@ -4531,7 +4516,7 @@ def render_page_chrome(page_name, user):
         f"""
         <div class="dacre-page-chrome {'master-page-chrome' if master else ''}">
           <div class="page-chrome-left">
-            <div class="page-icon">{icon_html}</div>
+            <div class="page-icon">{icon}</div>
             <div>
               <div class="page-kicker">{_escape_html(mode_label)} · DA-CRE</div>
               <div class="page-title">{_escape_html(title)}</div>
@@ -4630,7 +4615,7 @@ def render_business_twin(df, user):
         placeholder="e.g. What changed most, what should management investigate, and why?",
         key="business_twin_question",
     )
-    if st.button("* Explain this Business Twin", use_container_width=True, type="primary") and prompt.strip():
+    if st.button("✦ Explain this Business Twin", use_container_width=True, type="primary") and prompt.strip():
         answer = di_reply(prompt, user, df, allow_online=True, language=st.session_state.get("di_language", "English — Nigeria"))
         log_di_action(user, "business_twin", prompt, answer)
         st.markdown(f"<div class='di-answer-panel'><div class='answer-label'>DI EXPLANATION</div><div>{_escape_html(answer).replace(chr(10), '<br>')}</div></div>", unsafe_allow_html=True)
@@ -4792,7 +4777,7 @@ def _landing_auth_panel():
 </style>
 <div id="dacre-auth" class="auth-anchor auth-shell">
   <div class="auth-inner">
-    <div class="auth-badge">* DACRE secure workspace access</div>
+    <div class="auth-badge">✦ DACRE secure workspace access</div>
     <div class="auth-title">Your DACRE workspace starts here.</div>
     <div class="auth-sub">Sign in to your existing workspace or create your organization account without leaving the DACRE landing page.</div>
   </div>
@@ -5080,28 +5065,20 @@ def landing_page():
     # Dedicated information pages
     # -------------------------------------------------------------------------
     if current_section == "features":
-        landing_icons = {
-            "data": _ui_icon_data_uri("data"),
-            "formula": _ui_icon_data_uri("formula"),
-            "charts": _ui_icon_data_uri("charts"),
-            "files": _ui_icon_data_uri("files"),
-            "export": _ui_icon_data_uri("export"),
-            "presentation": _ui_icon_data_uri("presentation"),
-        }
-        st.markdown(f"""
+        st.markdown("""
         <div class="page-hero">
           <div class="section-kicker">DACRE FEATURES</div>
           <div class="page-title">Everything needed to move from raw data to useful work.</div>
-          <div class="page-copy">DACRE combines a data workspace, cleaning tools, formulas, charts, files, exports, business intelligence and Prociel's data presentation workflow in one connected environment.</div>
+          <div class="page-copy">DACRE combines a data workspace, cleaning tools, formulas, charts, files, exports, business intelligence and DI into one connected environment.</div>
         </div>
         <div class="section">
           <div class="grid-3">
-            <div class="feature-card"><div class="feature-icon"><img src="{landing_icons['data']}" alt="Data workspace" width="52" height="52"></div><h3>Workspace & Data</h3><p>Import CSV, Excel, TSV and JSON datasets into a persistent working environment.</p></div>
-            <div class="feature-card"><div class="feature-icon"><img src="{landing_icons['formula']}" alt="Formula tools" width="52" height="52"></div><h3>Formula Lab</h3><p>Apply practical spreadsheet-style transformations and calculations without leaving your analysis workflow.</p></div>
-            <div class="feature-card"><div class="feature-icon"><img src="{landing_icons['charts']}" alt="Charts" width="52" height="52"></div><h3>Charts & Dashboards</h3><p>Turn processed information into visual stories that make business patterns easier to understand.</p></div>
-            <div class="feature-card"><div class="feature-icon"><img src="{landing_icons['files']}" alt="File vault" width="52" height="52"></div><h3>File Vault</h3><p>Keep working files and datasets organized inside the organization workspace.</p></div>
-            <div class="feature-card"><div class="feature-icon"><img src="{landing_icons['export']}" alt="Export" width="52" height="52"></div><h3>Export Center</h3><p>Package analysis outputs for reporting, sharing and business use.</p></div>
-            <div class="feature-card"><div class="feature-icon"><img src="{landing_icons['presentation']}" alt="Data presentation" width="52" height="52"></div><h3>Data Presentation Board</h3><p>Prociel turns the active inspection-board dataset and your presentation direction into a presentation-ready PowerPoint.</p></div>
+            <div class="feature-card"><div class="feature-icon">▦</div><h3>Workspace & Data</h3><p>Import CSV, Excel, TSV and JSON datasets into a persistent working environment.</p></div>
+            <div class="feature-card"><div class="feature-icon">ƒ</div><h3>Formula Lab</h3><p>Apply practical spreadsheet-style transformations and calculations without leaving your analysis workflow.</p></div>
+            <div class="feature-card"><div class="feature-icon">◫</div><h3>Charts & Dashboards</h3><p>Turn processed information into visual stories that make business patterns easier to understand.</p></div>
+            <div class="feature-card"><div class="feature-icon">▤</div><h3>File Vault</h3><p>Keep working files and datasets organized inside the organization workspace.</p></div>
+            <div class="feature-card"><div class="feature-icon">⇩</div><h3>Export Center</h3><p>Package analysis outputs for reporting, sharing and business use.</p></div>
+            <div class="feature-card"><div class="feature-icon">✦</div><h3>DI Action Center</h3><p>Give DI a business objective and let it turn the request into analysis, recommendations and next actions.</p></div>
           </div>
         </div>
         """, unsafe_allow_html=True)
@@ -5190,9 +5167,9 @@ def landing_page():
         </div>
         <div class="section">
           <div class="grid-2">
-            <div class="feature-card"><div class="feature-icon">OK</div><h3>Organization boundaries</h3><p>Users work inside their organization context, while administrative views are scoped according to role.</p></div>
-            <div class="feature-card"><div class="feature-icon">-</div><h3>Activity visibility</h3><p>DACRE records important account and workspace activity so organizations can inspect what happened.</p></div>
-            <div class="feature-card"><div class="feature-icon">Master</div><h3>Protected master access</h3><p>Overall platform controls are separated from normal organization administration behind an additional protected gate.</p></div>
+            <div class="feature-card"><div class="feature-icon">✓</div><h3>Organization boundaries</h3><p>Users work inside their organization context, while administrative views are scoped according to role.</p></div>
+            <div class="feature-card"><div class="feature-icon">⌁</div><h3>Activity visibility</h3><p>DACRE records important account and workspace activity so organizations can inspect what happened.</p></div>
+            <div class="feature-card"><div class="feature-icon">♛</div><h3>Protected master access</h3><p>Overall platform controls are separated from normal organization administration behind an additional protected gate.</p></div>
             <div class="feature-card"><div class="feature-icon">DI</div><h3>Private intelligence context</h3><p>DI's internal context and application security values are not exposed as ordinary public landing-page content.</p></div>
           </div>
         </div>
@@ -5209,7 +5186,7 @@ def landing_page():
         st.markdown(f"""
         <div class="hero">
           <div>
-            <div class="hero-eyebrow">* Experience Next-Gen Business Intelligence</div>
+            <div class="hero-eyebrow">✦ Experience Next-Gen Business Intelligence</div>
             <div class="hero-title">Transform Raw Data<br/>into <span class="gradient-text">Heavenly Insights.</span></div>
             <p class="hero-copy">DACRE turns scattered business data into clear intelligence, powerful analytics and practical decisions — with DI, David's Intelligence, built into the workspace.</p>
             <div class="hero-proof">
@@ -5259,7 +5236,7 @@ def landing_page():
             <div class="feature-card"><div class="feature-icon">DI</div><h3>Intelligence</h3><p>Understand how DI — David's Intelligence — works with your business context and active data.</p></div>
             <div class="feature-card"><div class="feature-icon">◈</div><h3>Workforce</h3><p>Meet the specialized DI workers and see how their distinct specialties fit into one intelligence foundation.</p></div>
             <div class="feature-card"><div class="feature-icon">◫</div><h3>Analytics</h3><p>See how DACRE turns data into health scores, business signals, decisions and opportunity insights.</p></div>
-            <div class="feature-card"><div class="feature-icon">OK</div><h3>Security</h3><p>Learn how organization boundaries, activity visibility and protected administration support business use.</p></div>
+            <div class="feature-card"><div class="feature-icon">✓</div><h3>Security</h3><p>Learn how organization boundaries, activity visibility and protected administration support business use.</p></div>
             <div class="feature-card"><div class="feature-icon">→</div><h3>Ready to begin?</h3><p>Create your DACRE account and enter your own workspace with real authentication and persistent organization context.</p></div>
           </div>
         </div>
@@ -5353,6 +5330,14 @@ for _key, _default in _SESSION_DEFAULTS.items():
         else:
             st.session_state[_key] = _default
 del _SESSION_DEFAULTS, _key, _default
+
+# -----------------------------------------------------------------------------
+# DACRE STARTUP: run only after every startup dependency has been defined.
+# This intentionally is NOT cached; stale Streamlit cache state must never be able
+# to execute an older bootstrap against a newly deployed app.py.
+# -----------------------------------------------------------------------------
+_bootstrap_runtime(_DB_SCHEMA_VERSION)
+
 
 if st.session_state.user is None:
     landing_page()
@@ -5609,7 +5594,8 @@ with st.sidebar:
         "Workspace & Data", "Formula Lab", "Charts", "File Vault", "Export Center",
     ]
     default_page="Company Dashboard"
-    selected_page=st.radio("Navigation",navigation,index=navigation.index(default_page) if default_page in navigation else 0)
+    _nav_icons={"Company Dashboard":"⌂","DI Workforce":"◈","Workspace & Data":"▦","Formula Lab":"ƒ","Charts":"▤","File Vault":"▤","Export Center":"⇩","Data Presentation Board":"▣"}
+    selected_page=st.radio("Navigation",navigation,index=navigation.index(default_page) if default_page in navigation else 0,format_func=lambda x:f"{_nav_icons.get(x,'•')}  {x}")
 
 # Expired customer workspaces stay alive for billing, but all paid DACRE tools are locked
 # until a payment is verified. The master account is not subscription-gated.
@@ -5685,7 +5671,7 @@ def di_voice_bridge(language_code="en-NG"):
       btn.addEventListener('click',()=>{{
         if(active) return;
         active=true; finals=[]; remaining=8; setPreview('Listening…');
-        btn.disabled=true; btn.textContent='Record Listening…'; setStatus('Listening… 8 seconds remaining');
+        btn.disabled=true; btn.textContent='⏺ Listening…'; setStatus('Listening… 8 seconds remaining');
         rec=new SpeechRecognition();
         rec.lang=lang; rec.continuous=true; rec.interimResults=true; rec.maxAlternatives=1;
         rec.onresult=(event)=>{{
@@ -6132,7 +6118,7 @@ with st.expander(quick_title,expanded=False):
             q=st.text_input("Chat with DI",placeholder="Ask DI anything about DACRE, your data or your work...",label_visibility="collapsed")
             send=st.form_submit_button("Send")
     with quick_clear_col:
-        if st.button("Delete", help="Delete all previous messages in this chat", key="quick_di_chat_trash", use_container_width=True):
+        if st.button("Clear", help="Delete all previous messages in this chat", key="quick_di_chat_trash", use_container_width=True):
             st.session_state.chat_history=[]
             st.session_state.last_speech=""
             try:
