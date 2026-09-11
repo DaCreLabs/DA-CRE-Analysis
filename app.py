@@ -3052,6 +3052,42 @@ def seed_named_di_workforce():
         con.close()
 
 
+def ensure_subscription_schema():
+    """Create subscription/payment tables without storing raw card or bank credentials."""
+    con = db()
+    try:
+        if using_cloud_db():
+            con.execute("""CREATE TABLE IF NOT EXISTS company_subscriptions (
+                id BIGSERIAL PRIMARY KEY, company_name TEXT UNIQUE NOT NULL,
+                trial_started_at TEXT NOT NULL, trial_ends_at TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'trial', plan_months INTEGER NOT NULL DEFAULT 1,
+                amount_paid REAL NOT NULL DEFAULT 0, currency TEXT NOT NULL DEFAULT 'NGN',
+                paid_at TEXT, paid_until TEXT, payment_method TEXT, bank_name TEXT,
+                payment_provider TEXT, transaction_reference TEXT, updated_at TEXT NOT NULL)""")
+            con.execute("""CREATE TABLE IF NOT EXISTS subscription_payments (
+                id BIGSERIAL PRIMARY KEY, company_name TEXT NOT NULL, username TEXT NOT NULL,
+                amount REAL NOT NULL, currency TEXT NOT NULL DEFAULT 'NGN', plan_months INTEGER NOT NULL,
+                payment_method TEXT NOT NULL, bank_name TEXT, provider TEXT, transaction_reference TEXT,
+                status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL)""")
+        else:
+            con.execute("""CREATE TABLE IF NOT EXISTS company_subscriptions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT UNIQUE NOT NULL,
+                trial_started_at TEXT NOT NULL, trial_ends_at TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'trial', plan_months INTEGER NOT NULL DEFAULT 1,
+                amount_paid REAL NOT NULL DEFAULT 0, currency TEXT NOT NULL DEFAULT 'NGN',
+                paid_at TEXT, paid_until TEXT, payment_method TEXT, bank_name TEXT,
+                payment_provider TEXT, transaction_reference TEXT, updated_at TEXT NOT NULL)""")
+            con.execute("""CREATE TABLE IF NOT EXISTS subscription_payments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL, username TEXT NOT NULL,
+                amount REAL NOT NULL, currency TEXT NOT NULL DEFAULT 'NGN', plan_months INTEGER NOT NULL,
+                payment_method TEXT NOT NULL, bank_name TEXT, provider TEXT, transaction_reference TEXT,
+                status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL)""")
+        con.commit()
+    finally:
+        con.close()
+
+
+
 @st.cache_resource(show_spinner=False)
 def _bootstrap_runtime(schema_version=9):
     """Bootstrap DACRE on either legacy SQLite or persistent Supabase PostgreSQL."""
@@ -3998,39 +4034,6 @@ DACRE_BANK_OPTIONS = [
 DACRE_PAYMENT_METHODS = ["Bank Transfer", "Debit/Credit Card", "USSD", "Paystack", "Flutterwave"]
 
 
-def ensure_subscription_schema():
-    """Create subscription/payment tables without storing raw card or bank credentials."""
-    con = db()
-    try:
-        if using_cloud_db():
-            con.execute("""CREATE TABLE IF NOT EXISTS company_subscriptions (
-                id BIGSERIAL PRIMARY KEY, company_name TEXT UNIQUE NOT NULL,
-                trial_started_at TEXT NOT NULL, trial_ends_at TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT 'trial', plan_months INTEGER NOT NULL DEFAULT 1,
-                amount_paid REAL NOT NULL DEFAULT 0, currency TEXT NOT NULL DEFAULT 'NGN',
-                paid_at TEXT, paid_until TEXT, payment_method TEXT, bank_name TEXT,
-                payment_provider TEXT, transaction_reference TEXT, updated_at TEXT NOT NULL)""")
-            con.execute("""CREATE TABLE IF NOT EXISTS subscription_payments (
-                id BIGSERIAL PRIMARY KEY, company_name TEXT NOT NULL, username TEXT NOT NULL,
-                amount REAL NOT NULL, currency TEXT NOT NULL DEFAULT 'NGN', plan_months INTEGER NOT NULL,
-                payment_method TEXT NOT NULL, bank_name TEXT, provider TEXT, transaction_reference TEXT,
-                status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL)""")
-        else:
-            con.execute("""CREATE TABLE IF NOT EXISTS company_subscriptions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT UNIQUE NOT NULL,
-                trial_started_at TEXT NOT NULL, trial_ends_at TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT 'trial', plan_months INTEGER NOT NULL DEFAULT 1,
-                amount_paid REAL NOT NULL DEFAULT 0, currency TEXT NOT NULL DEFAULT 'NGN',
-                paid_at TEXT, paid_until TEXT, payment_method TEXT, bank_name TEXT,
-                payment_provider TEXT, transaction_reference TEXT, updated_at TEXT NOT NULL)""")
-            con.execute("""CREATE TABLE IF NOT EXISTS subscription_payments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL, username TEXT NOT NULL,
-                amount REAL NOT NULL, currency TEXT NOT NULL DEFAULT 'NGN', plan_months INTEGER NOT NULL,
-                payment_method TEXT NOT NULL, bank_name TEXT, provider TEXT, transaction_reference TEXT,
-                status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL)""")
-        con.commit()
-    finally:
-        con.close()
 
 
 # Bootstrap only after every schema/helper function used by the bootstrap has been defined.
