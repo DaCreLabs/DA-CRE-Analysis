@@ -12,6 +12,8 @@ import smtplib
 import threading
 import time
 import uuid
+import base64
+import zipfile
 from contextlib import contextmanager
 from html.parser import HTMLParser
 from urllib.parse import urlparse
@@ -25,6 +27,17 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 from PIL import Image
+
+try:
+    from pptx import Presentation
+    from pptx.util import Inches, Pt
+    from pptx.dml.color import RGBColor
+    from pptx.enum.text import PP_ALIGN
+    from pptx.enum.shapes import MSO_SHAPE
+    from pptx.enum.dml import MSO_THEME_COLOR
+except Exception:
+    Presentation = None
+    Inches = Pt = RGBColor = PP_ALIGN = MSO_SHAPE = MSO_THEME_COLOR = None
 
 try:
     import psycopg
@@ -239,8 +252,8 @@ SUPPORTED_EXTENSIONS = ["csv", "xlsx", "xls", "tsv", "json", "pdf"]
 SHEET_FORMULAS = ["SUM","AVERAGE","COUNT","COUNTA","MAX","MIN","CONCATENATE","UPPER","LOWER","TRIM"]
 
 APP_KNOWLEDGE = """
-DACRE Analysis is a business and data analysis workspace. Users can upload CSV, Excel, TSV and JSON files; clean datasets; remove empty rows/columns and duplicates; inspect rows and columns; run formulas such as SUM, AVERAGE, COUNT, COUNTA, MAX, MIN, CONCATENATE, UPPER, LOWER and TRIM; build bar, line and area charts; save workspace state; use a File Vault; and export processed data as CSV or Excel.
-DI means David's Intelligence. DI is the assistant inside DACRE Analysis. Free-first reasoning is preferred: the normal deployment must not make paid model calls automatically. Free-tier Gemini and Groq keys may be configured server-side, while OpenAI remains disabled unless the owner explicitly enables paid AI. Each organization has its own workspace. The first person who creates a new organization becomes that organization's company admin. Later users joining an existing organization are regular users unless an admin grants them admin rights. Company admins can inspect users, account creation, sign-ins, file activity and changes for their organization. The master account can see system-wide activity.
+DACRE Analysis is a data analysis and presentation workspace. Users can upload CSV, Excel, TSV and JSON files; clean datasets; remove empty rows/columns and duplicates; inspect rows and columns; run formulas such as SUM, AVERAGE, COUNT, COUNTA, MAX, MIN, CONCATENATE, UPPER, LOWER and TRIM; build bar, line and area charts; save workspace state; use a File Vault; and export processed data as CSV or Excel.
+DI means David's Intelligence. DI is the assistant inside DACRE Analysis. Free-first reasoning is preferred: the normal deployment must not make paid model calls automatically. Free-tier Gemini and Groq keys may be configured server-side, while OpenAI remains disabled unless the owner explicitly enables paid AI. DACRE Analysis is intentionally focused on data work, DI execution and presentation. Platform-wide business administration, global customer oversight and the Overall Admin portal belong to the future DGL (DACRE Global Limited) platform. DACRE Analysis exposes only the user workspace and its six active DIs. Online AI/research connectors remain server-side and are not displayed as infrastructure screens.
 """.strip()
 
 def _secret_or_env(name, default=""):
@@ -395,7 +408,7 @@ st.set_page_config(
 # =============================================================================
 
 _DB_SCHEMA_LOCK = threading.RLock()
-_DB_SCHEMA_VERSION = 9
+_DB_SCHEMA_VERSION = 12
 
 @contextmanager
 def _db_file_lock(timeout=90):
@@ -952,6 +965,39 @@ def init_db():
             impact TEXT NOT NULL,
             evidence TEXT NOT NULL,
             action TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+    """)
+
+    # DACRE Data Presentation Board — presentation requirements are kept separate
+    # from the generated PowerPoint artifact so Prociel can continue a presentation
+    # conversation without losing the user's choices.
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS presentation_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_name TEXT NOT NULL,
+            username TEXT NOT NULL,
+            title TEXT NOT NULL DEFAULT '',
+            audience TEXT NOT NULL DEFAULT '',
+            objective TEXT NOT NULL DEFAULT '',
+            front_slide TEXT NOT NULL DEFAULT '',
+            style TEXT NOT NULL DEFAULT '',
+            color_direction TEXT NOT NULL DEFAULT '',
+            animation_direction TEXT NOT NULL DEFAULT '',
+            prompt TEXT NOT NULL DEFAULT '',
+            research_json TEXT NOT NULL DEFAULT '[]',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS presentation_brain_cache (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            di_name TEXT NOT NULL,
+            source_type TEXT NOT NULL,
+            source_title TEXT NOT NULL DEFAULT '',
+            source_url TEXT NOT NULL DEFAULT '',
+            content TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL
         )
     """)
@@ -3014,6 +3060,8 @@ def _bootstrap_runtime(schema_version=9):
         ensure_master()
         seed_di_memory()
         seed_named_di_workforce()
+        ensure_presentation_schema()
+        seed_active_di_workforce()
         return True
 
     init_db()
@@ -3022,7 +3070,270 @@ def _bootstrap_runtime(schema_version=9):
     ensure_master()
     seed_di_memory()
     seed_named_di_workforce()
+    ensure_presentation_schema()
+    seed_active_di_workforce()
     return True
+
+
+
+# =============================================================================
+# PRESENTATION BOARD / SIX-DI WORKFORCE INFRASTRUCTURE
+# =============================================================================
+
+ACTIVE_DI_ROSTER = [
+    ("Prociel", "Data Presentation", "Own the Data Presentation Board, interview the user about the desired story, design slides, research visual references, build PowerPoint decks and prepare presentation-ready insights.", "Creative, structured, visual, executive and presentation-first.", "female", "https://randomuser.me/api/portraits/women/21.jpg", "Data Presentation Director", 10),
+    ("Oriel", "Data Analysis", "Inspect the loaded dataset, calculate statistics, find patterns, validate conclusions and supply evidence to the other DIs.", "Numerical, evidence-first, precise and analytical.", "male", "https://randomuser.me/api/portraits/men/18.jpg", "Lead Data Analyst", 9),
+    ("Sofiel", "Research & Intelligence", "Research public information, verify sources, gather current facts and provide online intelligence to the active DACRE task.", "Investigative, source-conscious, curious and analytical.", "female", "https://randomuser.me/api/portraits/women/32.jpg", "Research Intelligence Lead", 8),
+    ("Daniel", "Data Processing", "Clean, transform, validate and structure datasets so analysis and presentation work starts from reliable data.", "Systematic, careful, consistent and detail-oriented.", "male", "https://randomuser.me/api/portraits/men/75.jpg", "Data Operations Specialist", 7),
+    ("Graciel", "Insights & Storytelling", "Turn validated findings into clear business/data insights, narratives, headlines and speaker-ready explanations without inventing facts.", "Strategic, clear, practical and audience-aware.", "female", "https://randomuser.me/api/portraits/women/44.jpg", "Insights Director", 8),
+    ("Henriel", "Files & Documents", "Manage presentation assets, source files, document context, templates, exports and supporting artifacts for the active project.", "Organized, careful, document-focused and dependable.", "male", "https://randomuser.me/api/portraits/men/83.jpg", "Knowledge & Documents Specialist", 7),
+]
+
+
+def ensure_presentation_schema():
+    """Create the presentation/DI brain tables on both SQLite and Postgres."""
+    con = db()
+    try:
+        if using_cloud_db():
+            con.execute("""CREATE TABLE IF NOT EXISTS presentation_requests (
+                id BIGSERIAL PRIMARY KEY, company_name TEXT NOT NULL, username TEXT NOT NULL,
+                title TEXT NOT NULL DEFAULT '', audience TEXT NOT NULL DEFAULT '', objective TEXT NOT NULL DEFAULT '',
+                front_slide TEXT NOT NULL DEFAULT '', style TEXT NOT NULL DEFAULT '', color_direction TEXT NOT NULL DEFAULT '',
+                animation_direction TEXT NOT NULL DEFAULT '', prompt TEXT NOT NULL DEFAULT '', research_json TEXT NOT NULL DEFAULT '[]',
+                created_at TEXT NOT NULL, updated_at TEXT NOT NULL)""")
+            con.execute("""CREATE TABLE IF NOT EXISTS presentation_brain_cache (
+                id BIGSERIAL PRIMARY KEY, di_name TEXT NOT NULL, source_type TEXT NOT NULL,
+                source_title TEXT NOT NULL DEFAULT '', source_url TEXT NOT NULL DEFAULT '', content TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL)""")
+        else:
+            con.execute("""CREATE TABLE IF NOT EXISTS presentation_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL, username TEXT NOT NULL,
+                title TEXT NOT NULL DEFAULT '', audience TEXT NOT NULL DEFAULT '', objective TEXT NOT NULL DEFAULT '',
+                front_slide TEXT NOT NULL DEFAULT '', style TEXT NOT NULL DEFAULT '', color_direction TEXT NOT NULL DEFAULT '',
+                animation_direction TEXT NOT NULL DEFAULT '', prompt TEXT NOT NULL DEFAULT '', research_json TEXT NOT NULL DEFAULT '[]',
+                created_at TEXT NOT NULL, updated_at TEXT NOT NULL)""")
+            con.execute("""CREATE TABLE IF NOT EXISTS presentation_brain_cache (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, di_name TEXT NOT NULL, source_type TEXT NOT NULL,
+                source_title TEXT NOT NULL DEFAULT '', source_url TEXT NOT NULL DEFAULT '', content TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL)""")
+        con.commit()
+    finally:
+        con.close()
+
+
+def seed_active_di_workforce():
+    """Keep exactly six active DACRE Analysis DIs; DGL will own the wider workforce later."""
+    con = db(); now = datetime.now().isoformat(timespec="seconds")
+    active_names = {row[0] for row in ACTIVE_DI_ROSTER}
+    try:
+        for name, specialty, role, style, gender, avatar, position, rank in ACTIVE_DI_ROSTER:
+            row = con.execute("SELECT id FROM di_agents WHERE di_name=?", (name,)).fetchone()
+            code = "DI-" + re.sub(r"[^A-Z0-9]+", "-", name.upper()).strip("-")
+            if row:
+                con.execute("""UPDATE di_agents SET di_code=?, specialty=?, system_role=?, status='Available',
+                    assigned_company=NULL, avatar_url=?, voice_profile=?, thinking_style=?, position_title=?, rank_level=?,
+                    last_active=? WHERE id=?""", (code, specialty, role, avatar, gender, style, position, rank, now, int(row["id"])))
+            else:
+                con.execute("""INSERT INTO di_agents(di_name,di_code,specialty,status,assigned_company,system_role,avatar_url,voice_profile,
+                    thinking_style,position_title,rank_level,appointed_at,appointed_by,created_by,created_at,last_active)
+                    VALUES(?,?,?,'Available',NULL,?,?,?,?,?,?,?,?,?,?,?)""", (name, code, specialty, role, avatar, gender, style, position, rank, now, MASTER_USERNAME, MASTER_USERNAME, now, now))
+        # Preserve old records for historical integrity, but archive them from DACRE's visible workforce.
+        for row in con.execute("SELECT id,di_name FROM di_agents").fetchall():
+            if row["di_name"] not in active_names:
+                con.execute("UPDATE di_agents SET status='Archived', assigned_company=NULL, last_active=? WHERE id=?", (now, int(row["id"])))
+        con.commit()
+    finally:
+        con.close()
+
+
+def _presentation_secret(name, default=""):
+    return _free_secret(name) if "_free_secret" in globals() else str(os.getenv(name, default) or default).strip()
+
+
+def _hex_rgb(value, fallback=(25, 70, 150)):
+    text = str(value or "").strip().lstrip("#")
+    if len(text) == 6 and all(c in "0123456789abcdefABCDEF" for c in text):
+        return tuple(int(text[i:i+2], 16) for i in (0, 2, 4))
+    return fallback
+
+
+def _online_design_references(query, limit=5):
+    """Public web research for design/template/animation references; URLs stay in Prociel's private board context."""
+    return online_lookup(query, max_results=limit)
+
+
+def _online_color_palette(seed="#1769aa"):
+    """Ask a public color service for a palette; fall back to a deterministic professional palette."""
+    try:
+        clean = str(seed or "#1769aa").lstrip("#")
+        url = f"https://www.thecolorapi.com/scheme?hex={urllib.parse.quote(clean)}&mode=analogic&count=5"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 DACRE-Prociel/1.0"})
+        with urllib.request.urlopen(req, timeout=8) as response:
+            data = json.loads(response.read().decode("utf-8"))
+        colors = [str(x.get("hex", {}).get("value", "")) for x in data.get("colors", [])]
+        return [c for c in colors if re.fullmatch(r"#[0-9A-Fa-f]{6}", c)][:5] or ["#1769AA", "#00A6C8", "#6C63FF", "#F4F7FB", "#172033"]
+    except Exception:
+        return ["#1769AA", "#00A6C8", "#6C63FF", "#F4F7FB", "#172033"]
+
+
+def _online_visual_reference(query):
+    """Find a reusable public visual reference from Wikimedia Commons without exposing credentials."""
+    try:
+        params = urllib.parse.urlencode({"action":"query", "generator":"search", "gsrsearch":query, "gsrnamespace":"6", "gsrlimit":"5", "prop":"imageinfo", "iiprop":"url", "iiurlwidth":"1400", "format":"json"})
+        req = urllib.request.Request("https://commons.wikimedia.org/w/api.php?" + params, headers={"User-Agent":"DACRE-Prociel/1.0"})
+        with urllib.request.urlopen(req, timeout=10) as response:
+            data=json.loads(response.read().decode("utf-8"))
+        pages=list((data.get("query",{}).get("pages") or {}).values())
+        if not pages: return None
+        page=pages[0]
+        info=(page.get("imageinfo") or [{}])[0]
+        return {"title":page.get("title",""), "url":info.get("thumburl") or info.get("url",""), "source":"Wikimedia Commons"}
+    except Exception:
+        return None
+
+
+def _fetch_binary(url, timeout=15, max_bytes=7_000_000):
+    try:
+        req=urllib.request.Request(url, headers={"User-Agent":"Mozilla/5.0 DACRE-Prociel/1.0"})
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            data=response.read(max_bytes+1)
+        return data if len(data) <= max_bytes else None
+    except Exception:
+        return None
+
+
+def _add_slide_transition(slide, kind="fade"):
+    """Add a real PowerPoint slide transition when the OOXML element is supported."""
+    try:
+        from pptx.oxml.xmlchemy import OxmlElement
+        spTree = slide._element
+        old = spTree.find("{http://schemas.openxmlformats.org/presentationml/2006/main}transition")
+        if old is not None:
+            spTree.remove(old)
+        transition=OxmlElement("p:transition")
+        transition.set("spd", "med")
+        transition.append(OxmlElement("p:" + ("fade" if kind not in {"fade","cut"} else kind)))
+        spTree.insert(2, transition)
+    except Exception:
+        pass
+
+
+def _presentation_prompt_spec(prompt, board, df):
+    """Let Gemini design the story when configured; otherwise use a deterministic local plan."""
+    system=("You are Prociel, DACRE's Data Presentation Director. Create a factual PowerPoint plan from the loaded inspection-board dataset. "
+            "Never invent values. Return concise JSON with keys: title, subtitle, narrative, slides, palette, animation. "
+            "slides must be a list of objects with title, purpose, bullets, chart_column. Keep it suitable for the requested audience.")
+    summary={"rows":0 if df is None else len(df),"columns":[] if df is None else [str(c) for c in df.columns],"numeric":[] if df is None else [str(c) for c in df.select_dtypes(include="number").columns],"front_slide":board.get("front_slide",""),"audience":board.get("audience",""),"objective":board.get("objective",""),"style":board.get("style",""),"colors":board.get("color_direction",""),"animation":board.get("animation_direction","")}
+    if df is not None and not df.empty:
+        stats={}
+        for c in df.select_dtypes(include="number").columns[:8]:
+            vals=pd.to_numeric(df[c],errors="coerce")
+            stats[str(c)]={"sum":float(vals.sum()),"mean":float(vals.mean()) if vals.notna().any() else 0,"min":float(vals.min()) if vals.notna().any() else 0,"max":float(vals.max()) if vals.notna().any() else 0}
+        summary["stats"]=stats
+    ai=ai_generate(system, json.dumps({"request":prompt,"board":summary}, ensure_ascii=False), max_tokens=1600)
+    if ai:
+        try:
+            clean=ai.strip()
+            clean=re.sub(r"^```(?:json)?", "", clean, flags=re.I).strip().removesuffix("```").strip()
+            spec=json.loads(clean)
+            if isinstance(spec,dict) and isinstance(spec.get("slides"),list):
+                return spec
+        except Exception:
+            pass
+    numeric=[] if df is None else [str(c) for c in df.select_dtypes(include="number").columns]
+    bullets=[f"{len(df):,} records",f"{len(df.columns):,} columns"] if df is not None else ["No dataset loaded"]
+    if df is not None: bullets.append(f"{int(df.isna().sum().sum()):,} missing cells")
+    slides=[
+        {"title":board.get("front_slide") or "Data Story", "purpose":"Opening", "bullets":bullets, "chart_column":numeric[0] if numeric else ""},
+        {"title":"What the dataset contains", "purpose":"Scope", "bullets":[f"Columns: {', '.join(map(str, df.columns[:12]))}" if df is not None else "Load data to populate this slide"], "chart_column":""},
+    ]
+    if numeric:
+        target=numeric[0]; vals=pd.to_numeric(df[target],errors="coerce")
+        slides.append({"title":f"Key finding: {target}","purpose":"Evidence","bullets":[f"Total: {vals.sum():,.2f}",f"Average: {vals.mean():,.2f}",f"Highest: {vals.max():,.2f}"],"chart_column":target})
+    slides.append({"title":"Recommended next steps","purpose":"Action","bullets":["Validate the strongest finding against source data","Discuss the decision or action required","Use the exported deck as the presentation record"],"chart_column":""})
+    return {"title":board.get("title") or "DACRE Data Presentation","subtitle":board.get("objective") or "Evidence from the active inspection board","narrative":"A data-first presentation generated by Prociel.","slides":slides,"palette":_online_color_palette(),"animation":"Fade between major sections."}
+
+
+def generate_dacre_presentation(df, board, prompt):
+    if Presentation is None:
+        raise RuntimeError("python-pptx is not installed. Add python-pptx to requirements.txt and redeploy DACRE.")
+    spec=_presentation_prompt_spec(prompt, board, df)
+    palette=spec.get("palette") if isinstance(spec.get("palette"),list) else _online_color_palette()
+    palette=[x for x in palette if re.fullmatch(r"#[0-9A-Fa-f]{6}",str(x))][:5] or _online_color_palette()
+    prs=Presentation(); prs.slide_width=Inches(13.333); prs.slide_height=Inches(7.5)
+    blank=prs.slide_layouts[6]
+    dark=_hex_rgb(palette[-1],(16,27,48)); accent=_hex_rgb(palette[0],(23,105,170)); accent2=_hex_rgb(palette[1],(0,166,200)); light=_hex_rgb(palette[-2],(244,247,251))
+    # Optional online visual reference for the title slide. It is fetched only as a visual aid.
+    visual=_online_visual_reference("business data technology presentation abstract")
+    def add_bg(slide, color):
+        shape=slide.shapes.add_shape(MSO_SHAPE.RECTANGLE,0,0,prs.slide_width,prs.slide_height)
+        shape.fill.solid(); shape.fill.fore_color.rgb=RGBColor(*color); shape.line.fill.background(); shape.z_order=0
+    def add_text(slide,text,left,top,width,height,size=24,bold=False,color=(255,255,255),align=None):
+        box=slide.shapes.add_textbox(Inches(left),Inches(top),Inches(width),Inches(height)); tf=box.text_frame; tf.clear(); p=tf.paragraphs[0]; p.text=str(text); p.font.size=Pt(size); p.font.bold=bold; p.font.color.rgb=RGBColor(*color); p.font.name="Aptos"; p.alignment=align or PP_ALIGN.LEFT; return box
+    # Front slide
+    slide=prs.slides.add_slide(blank); add_bg(slide,dark)
+    if visual and visual.get("url"):
+        raw=_fetch_binary(visual["url"],max_bytes=4_000_000)
+        if raw:
+            try: slide.shapes.add_picture(io.BytesIO(raw), Inches(8.7), Inches(0.7), width=Inches(3.9), height=Inches(5.9))
+            except Exception: pass
+    add_text(slide,"DACRE ANALYSIS",0.8,0.65,7.0,0.5,15,True,accent2)
+    add_text(slide,spec.get("title") or board.get("front_slide") or "Data Presentation",0.8,1.45,7.3,1.5,34,True,(255,255,255))
+    add_text(slide,spec.get("subtitle") or board.get("objective") or "Data-driven presentation",0.8,3.15,6.9,1.0,20,False,(220,232,245))
+    add_text(slide,f"Prepared by Prociel · {datetime.now().strftime('%d %b %Y')}",0.8,6.55,6.8,0.35,12,False,(160,185,210))
+    _add_slide_transition(slide,"fade")
+    # Content slides
+    for idx,item in enumerate(spec.get("slides",[])[:14],start=2):
+        slide=prs.slides.add_slide(blank); add_bg(slide,light)
+        add_text(slide,f"{idx:02d}",0.7,0.45,0.5,0.4,12,True,accent)
+        add_text(slide,item.get("title") or "Untitled",1.25,0.35,10.9,0.8,27,True,dark)
+        bullets=item.get("bullets") or []
+        y=1.55
+        for bullet in bullets[:6]:
+            add_text(slide,"• "+str(bullet),1.0,y,10.8,0.58,17,False,dark); y+=0.72
+        chart_col=item.get("chart_column")
+        if df is not None and chart_col and chart_col in df.columns:
+            vals=pd.to_numeric(df[chart_col],errors="coerce").dropna()
+            if not vals.empty:
+                maxv=float(vals.abs().max() or 1)
+                base_y=6.35; x0=1.0; barw=0.48; gap=0.18
+                sample=vals.head(12).tolist()
+                for j,v in enumerate(sample):
+                    h=max(0.08,4.0*abs(float(v))/maxv)
+                    sh=slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(x0+j*(barw+gap)), Inches(base_y-h), Inches(barw), Inches(h))
+                    sh.fill.solid(); sh.fill.fore_color.rgb=RGBColor(*accent); sh.line.fill.background()
+                add_text(slide,f"Visual sample · {chart_col}",1.0,6.5,5.0,0.3,10,False,(90,110,130))
+        add_text(slide,"DACRE · Prociel",10.2,7.08,2.2,0.25,9,False,(100,120,140),PP_ALIGN.RIGHT)
+        _add_slide_transition(slide,"fade")
+    out=io.BytesIO(); prs.save(out); out.seek(0); return out.getvalue(),spec,visual
+
+
+def save_presentation_request(user, board, prompt, research):
+    now=datetime.now().isoformat(timespec="seconds")
+    con=db()
+    con.execute("""INSERT INTO presentation_requests(company_name,username,title,audience,objective,front_slide,style,color_direction,animation_direction,prompt,research_json,created_at,updated_at)
+                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",(user["company"],user["username"],board.get("title",""),board.get("audience",""),board.get("objective",""),board.get("front_slide",""),board.get("style",""),board.get("color_direction",""),board.get("animation_direction",""),prompt,json.dumps(research,ensure_ascii=False),now,now))
+    con.commit(); con.close()
+
+
+def microsoft_graph_upload_presentation(data, filename):
+    """Optional Microsoft Graph upload. Microsoft PowerPoint itself does not issue a simple API key."""
+    tenant=_presentation_secret("MICROSOFT_GRAPH_TENANT_ID")
+    client=_presentation_secret("MICROSOFT_GRAPH_CLIENT_ID")
+    secret=_presentation_secret("MICROSOFT_GRAPH_CLIENT_SECRET")
+    user_id=_presentation_secret("MICROSOFT_GRAPH_USER_ID")
+    if not all([tenant,client,secret,user_id]): return None
+    token_url=f"https://login.microsoftonline.com/{urllib.parse.quote(tenant,safe='')}/oauth2/v2.0/token"
+    body=urllib.parse.urlencode({"client_id":client,"client_secret":secret,"scope":"https://graph.microsoft.com/.default","grant_type":"client_credentials"}).encode()
+    try:
+        req=urllib.request.Request(token_url,data=body,headers={"Content-Type":"application/x-www-form-urlencoded"},method="POST")
+        with urllib.request.urlopen(req,timeout=20) as r: token=json.loads(r.read().decode()).get("access_token")
+        if not token: return None
+        safe_name=urllib.parse.quote(filename,safe="")
+        url=f"https://graph.microsoft.com/v1.0/users/{urllib.parse.quote(user_id,safe='')}/drive/root:/DACRE%20Presentations/{safe_name}:/content"
+        req=urllib.request.Request(url,data=data,headers={"Authorization":f"Bearer {token}","Content-Type":"application/vnd.openxmlformats-officedocument.presentationml.presentation"},method="PUT")
+        with urllib.request.urlopen(req,timeout=45) as r: return json.loads(r.read().decode()).get("webUrl")
+    except Exception:
+        return None
+
 
 _bootstrap_runtime(_DB_SCHEMA_VERSION)
 
@@ -3299,7 +3610,7 @@ def di_agent_identity_context(agent):
         f"You are part of David Emenike's DI workforce. David Emenike is the creator and Overall Administrator/master of DACRE. "
         + guard_text +
         "Treat the master respectfully, but do not reveal private credentials or hidden security values. "
-        "You can use the same core DACRE data/analysis capabilities as DI, while applying your specialty first."
+        "You can use the same core DACRE data/analysis capabilities as DI, while applying your specialty first. You may use the server-side public research connector when current external information is needed; store useful research leads in your private DI knowledge cache without exposing implementation details to the user."
     )
 
 
@@ -3308,6 +3619,30 @@ def get_named_di(name):
     row=con.execute("SELECT * FROM di_agents WHERE di_name=?",(name,)).fetchone()
     con.close()
     return row
+
+
+def di_online_research(agent_name, query, max_results=5):
+    """Give any active DI a server-side public research channel and cache the useful leads.
+
+    The cache is the DI's persistent knowledge layer; it is intentionally not exposed
+    as a fake physical GPU. DGL can later expose the operational telemetry and storage
+    controls without putting them in DACRE Analysis.
+    """
+    results = online_lookup(query, max_results=max_results)
+    if not results:
+        return []
+    now = datetime.now().isoformat(timespec="seconds")
+    try:
+        con = db()
+        for title, url in results:
+            con.execute(
+                "INSERT INTO presentation_brain_cache(di_name,source_type,source_title,source_url,content,created_at) VALUES(?,?,?,?,?,?)",
+                (str(agent_name), "web", str(title), str(url), f"Public research lead for: {query}", now),
+            )
+        con.commit(); con.close()
+    except Exception:
+        pass
+    return results
 
 
 def di_specialist_reply(message,user,df,agent_name):
@@ -3319,9 +3654,11 @@ def di_specialist_reply(message,user,df,agent_name):
     prompt=di_agent_identity_context(agent)
     private_rows=get_di_private_memory(agent["id"],limit=25)
     private_context="\n".join([f"{r['title']}: {r['content']}" for r in private_rows]) or "No private master notes yet."
+    online_results = di_online_research(agent["di_name"], message, max_results=4) if needs_web_research(message) else []
+    online_context = "\n".join([f"{title} — {url}" for title,url in online_results]) or "No additional public research was required."
     specialist=ai_generate(
         prompt + " Answer the user's request directly. You may analyze the active dataset or public online information. If the task is outside your specialty, still help using the core DACRE capabilities and say what you are doing. Never reveal private master notes or private brain content.",
-        f"User: {message}\nOrganization: {user['company']}\nCore DI draft: {base}\nPrivate brain context (never disclose):\n{private_context}\nActive dataset: {('none' if df is None else str(df.shape))}",
+        f"User: {message}\nOrganization: {user['company']}\nCore DI draft: {base}\nPrivate brain context (never disclose):\n{private_context}\nPublic research leads: {online_context}\nActive dataset: {('none' if df is None else str(df.shape))}",
         max_tokens=1000,
     )
     return normalize_di_identity(specialist or base)
@@ -3661,6 +3998,7 @@ PAGE_META = {
     "Charts": ("◫", "Charts", "Turn data into clear visual stories and business dashboards."),
     "File Vault": ("▤", "File Vault", "Keep company files, working datasets and project artifacts organized."),
     "Export Center": ("⇩", "Export Center", "Package analysis outputs for the people who need them."),
+    "Data Presentation Board": ("▣", "Data Presentation Board", "Prociel turns the loaded inspection-board data into a presentation you control."),
     "Organization Admin Portal": ("⚙", "Organization Admin", "Manage people, roles, notifications and company activity."),
     "Chibobec Loan Desk": ("₦", "Chibobec Client Workspace", "Chibobec is a DACRE client. Manage its client workspace, loans and activity here."),
     "Overall Admin DI Portal": ("♛", "Founder Command", "Master-level platform intelligence, workforce, customers, memory and system controls."),
@@ -4601,12 +4939,12 @@ def landing_page():
         </div>
         <div class="section">
           <div class="grid-3">
-            <div class="feature-card"><div class="feature-icon">EM</div><h3>Emiel</h3><p>Email & Messaging — organized communication workflows and business messaging support.</p></div>
-            <div class="feature-card"><div class="feature-icon">OL</div><h3>Oriel</h3><p>Data Analysis — metrics, trends, patterns and evidence-first analytical work.</p></div>
-            <div class="feature-card"><div class="feature-icon">SO</div><h3>Sofiel</h3><p>Research & Intelligence — investigative research and source-conscious summaries.</p></div>
-            <div class="feature-card"><div class="feature-icon">DA</div><h3>Daniel</h3><p>Data Entry & Processing — clean, consistent and accurate repetitive data operations.</p></div>
-            <div class="feature-card"><div class="feature-icon">GR</div><h3>Graciel</h3><p>Business Intelligence — KPIs, dashboards, executive insights and recommendations.</p></div>
-            <div class="feature-card"><div class="feature-icon">JA</div><h3>Jamiel</h3><p>Security & Administration — access controls, audit trails and platform operations.</p></div>
+            <div class="feature-card"><div class="feature-icon">PR</div><h3>Prociel</h3><p>Data Presentation — presentation interview, slide design, PowerPoint generation and visual storytelling.</p></div>
+            <div class="feature-card"><div class="feature-icon">OR</div><h3>Oriel</h3><p>Data Analysis — metrics, trends, patterns and evidence-first analytical work.</p></div>
+            <div class="feature-card"><div class="feature-icon">SO</div><h3>Sofiel</h3><p>Research & Intelligence — current online research and source verification.</p></div>
+            <div class="feature-card"><div class="feature-icon">DA</div><h3>Daniel</h3><p>Data Processing — cleaning, validation, transformation and data quality.</p></div>
+            <div class="feature-card"><div class="feature-icon">GR</div><h3>Graciel</h3><p>Insights & Storytelling — turns validated findings into clear narratives and recommendations.</p></div>
+            <div class="feature-card"><div class="feature-icon">HE</div><h3>Henriel</h3><p>Files & Documents — presentation assets, source files, documents and exports.</p></div>
           </div>
         </div>
         """, unsafe_allow_html=True)
@@ -4630,10 +4968,10 @@ def landing_page():
             <div class="metric"><small>Workspace</small><strong>LIVE</strong></div>
           </div>
           <div class="grid-2" style="margin-top:18px;">
-            <div class="callout"><h3>Business Command Center</h3><p>Review data health, executive briefs, trends, anomalies and questions against the active workspace.</p></div>
-            <div class="callout"><h3>Business Twin</h3><p>Build a living snapshot of the current dataset with health scoring, attention signals and measurable opportunities.</p></div>
-            <div class="callout"><h3>Decision Ledger</h3><p>Record decisions, context, expected outcomes and later results so organizational history becomes structured knowledge.</p></div>
-            <div class="callout"><h3>Opportunity Radar</h3><p>Surface measurable growth signals from numeric trends and turn them into investigation prompts.</p></div>
+            <div class="callout"><h3>Data Presentation Board</h3><p>Turn the loaded inspection-board data into a professional presentation with Prociel, including a designed front slide, charts, visual references and export.</p></div>
+            <div class="callout"><h3>Six active DIs</h3><p>Prociel, Oriel, Sofiel, Daniel, Graciel and Henriel each have a defined execution role inside DACRE Analysis.</p></div>
+            <div class="callout"><h3>Inspection Board</h3><p>The presentation layer works from the dataset already loaded into the workspace, so you do not need to upload the same data twice.</p></div>
+            <div class="callout"><h3>DI research connectors</h3><p>The six DIs can use protected server-side AI and public research connectors without exposing keys, brains or implementation details in the DACRE interface.</p></div>
           </div>
         </div>
         """, unsafe_allow_html=True)
@@ -4986,10 +5324,9 @@ if user.get("role") == "master":
     .master-badge{display:inline-flex;padding:7px 12px;border-radius:999px;background:#ffb84d;color:#17101e;font-weight:900;letter-spacing:.08em}
     </style>""",unsafe_allow_html=True)
 
-# Run any due Chibobec reminder checks whenever that protected workspace is open.
-# The ledger prevents duplicate messages. For truly unattended delivery, a scheduled
-# external trigger is still required because Streamlit Cloud can sleep idle apps.
-chibobec_reminder_results = process_chibobec_reminders(user["username"], user["company"]) if is_chibobec_company(user.get("company")) else []
+# DACRE Analysis deliberately does not run client/business automation here.
+# Platform-wide client operations and global administration are reserved for DGL.
+chibobec_reminder_results = []
 
 head_col1,head_col2=st.columns([4,1])
 with head_col1:
@@ -5052,33 +5389,17 @@ with st.sidebar:
     # of the normal user experience and is never promoted to the top.
     # Platform-wide analytics/activity is deliberately MASTER ONLY.
     # Company admins and ordinary users get their own workspace, not the global DACRE dashboard.
-    if user["role"] == "master":
-        navigation=[
-            "Overview", "DI Home", "DI Workforce",
-            "DI Action Center", "DI Memory Box", "Business Command Center",
-            "Business Twin", "Decision Ledger", "Opportunity Radar",
-            "Workspace & Data", "Formula Lab", "Charts", "File Vault", "Export Center",
-        ]
-    else:
-        navigation=[
-            "DI Home", "DI Workforce", "DI Action Center", "DI Memory Box",
-            "Business Command Center", "Business Twin", "Decision Ledger",
-            "Opportunity Radar", "Workspace & Data", "Formula Lab", "Charts",
-            "File Vault", "Export Center",
-        ]
+    navigation=[
+        "DI Home", "DI Workforce", "DI Action Center", "DI Memory Box",
+        "Data Presentation Board", "Workspace & Data", "Formula Lab", "Charts",
+        "File Vault", "Export Center",
+    ]
     # Only company admins and the master may initiate DI calls.
     if user["role"] in ("company_admin", "master"):
         navigation.insert(2 if user["role"] == "company_admin" else 3, "DI Calls")
-    if is_chibobec_company(user.get("company")):
-        navigation.append("Chibobec Loan Desk")
-    if user["role"] in ("company_admin", "master"):
-        navigation.append("Organization Admin Portal")
-    if user["role"] == "master":
-        navigation.append("Overall Admin DI Portal")
-
     # Nobody is automatically dropped into the CEO Office.
     default_page=navigation[0]
-    _nav_icons={"Overview":"⌂","DI Home":"◉","DI Calls":"☎","DI Workforce":"◈","DI Action Center":"✦","DI Memory Box":"◇","Business Command Center":"◆","Business Twin":"◇","Decision Ledger":"◌","Opportunity Radar":"✧","Workspace & Data":"▦","Formula Lab":"ƒ","Charts":"▤","File Vault":"▤","Export Center":"⇩","Chibobec Loan Desk":"₦","Organization Admin Portal":"⚙","Overall Admin DI Portal":"♛","Sovereign Master Call":"☷","David Creations":"◆"}
+    _nav_icons={"Overview":"⌂","DI Home":"◉","DI Calls":"☎","DI Workforce":"◈","DI Action Center":"✦","DI Memory Box":"◇","Workspace & Data":"▦","Formula Lab":"ƒ","Charts":"▤","File Vault":"▤","Export Center":"⇩","Data Presentation Board":"▣","Sovereign Master Call":"☷","David Creations":"◆"}
     selected_page=st.radio("Navigation",navigation,index=navigation.index(default_page) if default_page in navigation else 0,format_func=lambda x:f"{_nav_icons.get(x,'•')}  {x}")
 
 # Universal inner-page interface. Every Dacre workspace gets the same premium chrome,
@@ -5655,7 +5976,96 @@ elif selected_page=="Charts":
         st.dataframe(safe_dataframe_for_streamlit(df),use_container_width=True,hide_index=True)
 
 # =============================================================================
-# PAGE 4 FILE VAULT
+# PAGE 4 DATA PRESENTATION BOARD
+# =============================================================================
+elif selected_page=="Data Presentation Board":
+    st.markdown("<div class='dacre-hero'><div class='dacre-title'>Data Presentation Board</div><div class='dacre-sub'>Prociel is the active Data Presentation DI. The dataset is already loaded from Workspace & Data; now describe the story you want and Prociel will build the deck.</div></div>",unsafe_allow_html=True)
+    df=st.session_state.processed_df
+    if df is None or df.empty:
+        st.warning("Load a dataset in Workspace & Data first. The Presentation Board uses the active processed dataset as its inspection board.")
+    else:
+        st.success(f"Inspection board ready: {len(df):,} rows × {len(df.columns):,} columns · {st.session_state.active_filename or 'active dataset'}")
+        with st.expander("Inspection Board — preview the data Prociel will use",expanded=True):
+            st.dataframe(safe_dataframe_for_streamlit(df.head(100)),use_container_width=True,hide_index=True)
+        if "presentation_board" not in st.session_state:
+            st.session_state.presentation_board={}
+        board=st.session_state.presentation_board
+        st.markdown("### 1. Prociel's presentation questions")
+        q1,q2=st.columns(2)
+        with q1:
+            board["front_slide"]=st.text_input("What should be on the front slide?",value=board.get("front_slide",""),placeholder="e.g. 2026 Sales Performance")
+            board["title"]=st.text_input("Presentation title",value=board.get("title",""),placeholder="e.g. Q3 Executive Data Review")
+            board["audience"]=st.text_input("Who is the audience?",value=board.get("audience",""),placeholder="e.g. CEO, investors, management team")
+        with q2:
+            board["objective"]=st.text_area("What should the presentation achieve?",value=board.get("objective",""),height=92,placeholder="e.g. Explain the strongest trends and recommend what management should do next.")
+            board["style"]=st.selectbox("Presentation design style",["Executive / premium","Modern technology","Minimal / clean","Corporate","Creative / bold","Academic / research"],index=["Executive / premium","Modern technology","Minimal / clean","Corporate","Creative / bold","Academic / research"].index(board.get("style","Executive / premium")) if board.get("style","Executive / premium") in ["Executive / premium","Modern technology","Minimal / clean","Corporate","Creative / bold","Academic / research"] else 0)
+            board["color_direction"]=st.text_input("Colour direction",value=board.get("color_direction","DACRE blue + cyan + green accents"),placeholder="e.g. dark blue and gold")
+        board["animation_direction"]=st.text_input("Animation direction",value=board.get("animation_direction","Use professional, restrained PowerPoint transitions; avoid distracting effects."))
+        st.session_state.presentation_board=board
+
+        st.markdown("### 2. Presentation prompt for Prociel")
+        prompt=st.text_area("Tell Prociel exactly how you want the presentation",height=150,placeholder="Example: Make it 8 slides. Put the strongest sales finding on slide 2, use a clean executive style, show the top 5 categories, explain the trend, and finish with three recommendations.")
+        c1,c2,c3=st.columns(3)
+        with c1:
+            if st.button("Ask Prociel questions",use_container_width=True,key="prociel_question_btn"):
+                st.session_state.prociel_question="I am Prociel, your Data Presentation Director. I have the inspection board. Before I design it, please confirm: 1) the exact front-slide wording, 2) audience, 3) main objective, 4) preferred visual style/colours, 5) number of slides, and 6) whether you want charts, images, online visual references, and PowerPoint transitions."
+        with c2:
+            if st.button("Research design references",use_container_width=True,key="prociel_research_btn"):
+                research=(
+                    _online_design_references(f"PowerPoint {board.get('style','executive')} data presentation design template",4)
+                    + _online_design_references("best PowerPoint slide transitions presentation design",3)
+                    + _online_design_references(f"PowerPoint color palette {board.get('color_direction','DACRE')}",3)
+                )
+                st.session_state.prociel_research=research
+                for title,url in research:
+                    try:
+                        con=db(); con.execute("INSERT INTO presentation_brain_cache(di_name,source_type,source_title,source_url,content,created_at) VALUES(?,?,?,?,?,?)",("Prociel","web",title,url,"Public design reference",datetime.now().isoformat(timespec="seconds"))); con.commit(); con.close()
+                    except Exception: pass
+        with c3:
+            if st.button("Clear presentation board",use_container_width=True,key="clear_presentation_board"):
+                st.session_state.presentation_board={}; st.session_state.prociel_question=""; st.session_state.prociel_research=[]; st.session_state.presentation_spec=None; st.rerun()
+        if st.session_state.get("prociel_question"):
+            st.info(st.session_state.prociel_question)
+        if st.session_state.get("prociel_research"):
+            st.markdown("#### Online design references found by Prociel")
+            for title,url in st.session_state.prociel_research[:8]:
+                st.markdown(f"- [{title}]({url})")
+        if st.button("🚀 Send prompt to Prociel & Generate PowerPoint",use_container_width=True,type="primary",key="prociel_generate_ppt"):
+            with st.spinner("Prociel is inspecting the board, researching design references and building the PowerPoint…"):
+                research=st.session_state.get("prociel_research") or _online_design_references(f"PowerPoint {board.get('style','executive')} data presentation",5)
+                save_presentation_request(user,board,prompt.strip(),research)
+                try:
+                    pptx_bytes,spec,visual=generate_dacre_presentation(df,board,prompt.strip())
+                    st.session_state.presentation_spec=spec
+                    st.session_state.presentation_bytes=pptx_bytes
+                    st.session_state.presentation_filename=(re.sub(r"[^A-Za-z0-9_-]+","_",(board.get("title") or "DACRE_Presentation")).strip("_") or "DACRE_Presentation")+".pptx"
+                    st.session_state.presentation_visual=visual
+                    log_di_action(user,"presentation_generated",prompt.strip() or "Generate presentation",f"Generated {len(spec.get('slides',[]))} slides with Prociel","Prociel")
+                    log_activity(user["username"],user["company"],"Prociel generated a PowerPoint presentation")
+                except Exception as exc:
+                    st.error(f"Prociel could not generate the PowerPoint: {exc}")
+        if st.session_state.get("presentation_bytes"):
+            st.markdown("### 3. Presentation result")
+            spec=st.session_state.get("presentation_spec") or {}
+            st.write(f"**{spec.get('title',board.get('title') or 'DACRE Presentation')}** — {len(spec.get('slides',[]))} content slides + front slide")
+            if spec.get("narrative"): st.caption(spec["narrative"])
+            if st.session_state.get("presentation_visual"): st.caption("Prociel also checked an online public visual reference for the design context.")
+            dl,up=st.columns(2)
+            with dl:
+                st.download_button("Download PowerPoint",data=st.session_state.presentation_bytes,file_name=st.session_state.presentation_filename,mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",use_container_width=True)
+            with up:
+                if st.button("Send to Microsoft 365 / PowerPoint",use_container_width=True,key="prociel_graph_upload"):
+                    weburl=microsoft_graph_upload_presentation(st.session_state.presentation_bytes,st.session_state.presentation_filename)
+                    if weburl: st.success(f"Uploaded to Microsoft 365: {weburl}")
+                    else: st.warning("Microsoft Graph is not configured yet. DACRE keeps the generated PowerPoint locally and the connector stays invisible until its server-side Microsoft credentials are added.")
+            st.markdown("#### Prociel's slide plan")
+            for i,item in enumerate(spec.get("slides",[]),start=1):
+                with st.expander(f"Slide {i}: {item.get('title','Untitled')}",expanded=False):
+                    st.write(item.get("purpose",""))
+                    for bullet in item.get("bullets",[]): st.write("• "+str(bullet))
+
+# =============================================================================
+# PAGE 5 FILE VAULT
 # =============================================================================
 elif selected_page=="File Vault":
     st.header("Organization File Vault")
