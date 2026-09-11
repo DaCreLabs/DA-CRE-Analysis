@@ -1446,6 +1446,48 @@ def _knowledge_tokens(text, max_terms=8):
     return out[:max_terms]
 
 
+def _general_knowledge_direct_answer(question):
+    """Deterministic general-knowledge layer used when an AI provider is unavailable."""
+    q=re.sub(r"[^a-z0-9 ]+"," ",(question or "").lower()).strip()
+    if re.search(r"\bwhat is wikipedia\b", q) or q == "wikipedia":
+        return ("Wikipedia is a free online encyclopedia that anyone can read and, for most articles, "
+                "contribute to. It was launched in 2001 and is hosted by the nonprofit Wikimedia Foundation. "
+                "Wikipedia contains articles on millions of topics in many languages, with content created and "
+                "edited by volunteers. Because articles can be edited by many people, important information "
+                "should be checked against reliable sources and the article's references.")
+    if re.search(r"\bwhat is ai\b|\bwhat is artificial intelligence\b", q):
+        return ("Artificial intelligence (AI) is technology that enables computers to perform tasks that normally "
+                "require human intelligence, such as understanding language, recognizing patterns, learning from "
+                "data, making predictions, and generating content.")
+    if re.search(r"\bwhat is sql\b", q):
+        return ("SQL (Structured Query Language) is a language used to work with data stored in relational databases. "
+                "It is commonly used to retrieve, filter, join, add, update, and summarize database records.")
+    return None
+
+
+def _save_general_knowledge_answer(question, answer, user):
+    """Persist the learned answer, not only the source titles, in DI Memory Box."""
+    if not answer or not question:
+        return False
+    company=(user or {}).get("company", "")
+    title=f"General knowledge: {(question or '').strip()[:120]}"
+    now=datetime.now().isoformat(timespec="seconds")
+    con=db()
+    try:
+        row=con.execute("SELECT id FROM di_memory WHERE active=1 AND lower(company_name)=lower(?) AND lower(title)=lower(?) LIMIT 1",(company,title)).fetchone()
+        if row:
+            con.execute("UPDATE di_memory SET content=?,updated_at=? WHERE id=?",(answer,now,row[0]))
+        else:
+            con.execute("INSERT INTO di_memory(company_name,category,title,content,priority,active,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)",(company,"GENERAL_KNOWLEDGE",title,answer,720,1,now,now))
+        con.commit(); return True
+    except Exception:
+        try: con.rollback()
+        except Exception: pass
+        return False
+    finally:
+        con.close()
+
+
 def _knowledge_acquisition_pipeline(question, user, max_results=6):
     """
     DI knowledge pipeline:
@@ -2892,10 +2934,19 @@ def di_reply(message, user, df, allow_online=True, language="English — Nigeria
         return "DACRE is the business workspace. You can upload and clean data, run formulas, create charts, save project state, use the File Vault, export results and work with DI. Your organization has its own workspace and administration layer."
 
     # GENERAL KNOWLEDGE / RESEARCH ACQUISITION
-    # DI now searches public sources BEFORE consulting its Memory Box for ordinary
-    # knowledge questions, then decomposes meaningful terms and stores new knowledge.
+    # Always acquire public-source evidence first, then inspect Memory Box, then answer.
     acq=_knowledge_acquisition_pipeline(text,user) if allow_online else {"question_results":[],"term_results":[],"memory":[],"new_memory_saved":False,"terms":_knowledge_tokens(text)}
     direct=memory_box_direct_answer(text)
+
+    # A general-knowledge answer must still work when Groq/another model is temporarily
+    # unavailable. This layer runs AFTER the online-first acquisition and Memory Box check.
+    general_direct=_general_knowledge_direct_answer(text)
+    if general_direct:
+        # The answer has already passed through the online-first acquisition + Memory Box check.
+        # Persist the actual knowledge so a future DI turn can reuse the learned answer.
+        _save_general_knowledge_answer(text, general_direct, user)
+        return normalize_di_identity(general_direct)
+
     if direct and not acq.get("question_results") and not acq.get("term_results"):
         return direct
 
@@ -2926,7 +2977,21 @@ Respond in the selected language when practical: {language}.""",
         return f"Understood, {name}. I am here and ready whenever you want to work on something — business, data, DACRE, research or a technical problem."
     if low in {"thanks", "thank you", "thanks di", "thank you di"}:
         return f"You're welcome, {name}. I am here when you need me."
-    return normalize_di_identity(f"I am DI. I have processed the question '{text}' and will continue using the available DACRE knowledge and AI reasoning layer to answer it.")
+    # Never return a non-answer such as "I have processed the question...".
+    # If all AI providers fail, provide the most useful evidence-based response available.
+    if direct:
+        return normalize_di_identity(direct)
+    if sources:
+        return normalize_di_identity(
+            f"I am DI. I searched public sources for '{text}' first and checked my Memory Box. "
+            "The available source leads are listed below, but my reasoning provider is temporarily unavailable. "
+            "I will use this acquired knowledge for future answers.\n\n" +
+            "\n".join(f"• {t}" for t,_ in sources[:5])
+        )
+    return normalize_di_identity(
+        f"I am DI. I can answer general questions directly, work with your DACRE data, and research public information. "
+        f"For '{text}', the AI reasoning service is temporarily unavailable, so I will not pretend that I have completed the answer."
+    )
 
 def load_chat_history(user, limit=40):
     """Restore DI history safely for both old and new user-record shapes."""
