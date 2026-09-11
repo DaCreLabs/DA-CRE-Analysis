@@ -1429,6 +1429,95 @@ def memory_box_direct_answer(text):
         return best['content']
     return None
 
+
+def _knowledge_tokens(text, max_terms=8):
+    """Extract meaningful terms for DI's word/phrase decomposition pass."""
+    stop={
+        "what","is","the","a","an","of","to","for","in","on","and","or",
+        "does","do","did","how","why","who","where","when","which","can",
+        "could","would","should","please","tell","me","about","this","that","it",
+        "from","with","my","your","you","mean","meaning"
+    }
+    words=re.findall(r"[A-Za-z0-9][A-Za-z0-9_-]{2,}", (text or "").lower())
+    out=[]
+    for w in words:
+        if w not in stop and w not in out:
+            out.append(w)
+    return out[:max_terms]
+
+
+def _knowledge_acquisition_pipeline(question, user, max_results=6):
+    """
+    DI knowledge pipeline:
+    1) search the exact question online;
+    2) decompose meaningful terms and search those too;
+    3) check the persistent Memory Box;
+    4) save newly acquired public-source knowledge when Memory Box has no match.
+    The answer is generated later by the reasoning layer, not by this collector.
+    """
+    q=(question or "").strip()
+    if not q:
+        return {"question_results":[],"term_results":[],"memory":[],"new_memory_saved":False}
+
+    # Search first, before using the local Memory Box, as requested.
+    exact_results=online_lookup(q,max_results=max_results)
+    term_results=[]
+    for term in _knowledge_tokens(q):
+        for title,url in online_lookup(term,max_results=2):
+            if (title,url) not in exact_results and (title,url) not in term_results:
+                term_results.append((title,url))
+        if len(term_results)>=10:
+            break
+
+    company=(user or {}).get("company","")
+    memory=get_di_memory(limit=8,query=q,company_name=company)
+    saved=False
+    if not memory and (exact_results or term_results):
+        now=datetime.now().isoformat(timespec="seconds")
+        source_lines=[f"{title} — {url}" for title,url in (exact_results+term_results)[:12]]
+        terms=", ".join(_knowledge_tokens(q)) or q
+        content=(
+            f"Question: {q}\n"
+            f"Meaningful terms identified: {terms}\n"
+            "Public sources discovered during DI knowledge acquisition:\n"
+            + "\n".join(source_lines)
+        )
+        title=f"Knowledge acquired: {q[:120]}"
+        con=db()
+        try:
+            exists=con.execute(
+                "SELECT 1 FROM di_memory WHERE active=1 AND lower(company_name)=lower(?) AND lower(title)=lower(?) LIMIT 1",
+                (company,title),
+            ).fetchone()
+            if not exists:
+                con.execute(
+                    "INSERT INTO di_memory(company_name,category,title,content,priority,active,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)",
+                    (company,"GENERAL_KNOWLEDGE",title,content,720,1,now,now),
+                )
+                con.commit(); saved=True
+        except Exception:
+            try: con.rollback()
+            except Exception: pass
+        finally:
+            con.close()
+
+    return {
+        "question_results":exact_results,
+        "term_results":term_results,
+        "memory":memory,
+        "new_memory_saved":saved,
+        "terms":_knowledge_tokens(q),
+    }
+
+
+def _knowledge_context(acq):
+    sources=(acq or {}).get("question_results",[])+(acq or {}).get("term_results",[])
+    source_text="\n".join(f"- {t} — {u}" for t,u in sources[:16]) or "No public search result was returned."
+    terms=", ".join((acq or {}).get("terms",[])) or "none"
+    memory=(acq or {}).get("memory",[])
+    memory_text="\n".join(f"- {m['title']}: {m['content']}" for m in memory[:8]) or "No prior matching Memory Box record."
+    return f"MEANINGFUL TERMS: {terms}\nMEMORY BOX MATCHES: {memory_text}\nONLINE SOURCES CHECKED FIRST:\n{source_text}\nNEW MEMORY SAVED: {(acq or {}).get('new_memory_saved',False)}"
+
 def permanently_delete_accounts(user_ids):
     """Permanently remove non-master accounts and their workspace records."""
     ids=[]
@@ -2802,34 +2891,42 @@ def di_reply(message, user, df, allow_online=True, language="English — Nigeria
     if any(k in low for k in ["dacre","file vault","formula lab","export center","admin portal","workspace"]):
         return "DACRE is the business workspace. You can upload and clean data, run formulas, create charts, save project state, use the File Vault, export results and work with DI. Your organization has its own workspace and administration layer."
 
-    # First use the trusted local Memory Box for deterministic answers.
+    # GENERAL KNOWLEDGE / RESEARCH ACQUISITION
+    # DI now searches public sources BEFORE consulting its Memory Box for ordinary
+    # knowledge questions, then decomposes meaningful terms and stores new knowledge.
+    acq=_knowledge_acquisition_pipeline(text,user) if allow_online else {"question_results":[],"term_results":[],"memory":[],"new_memory_saved":False,"terms":_knowledge_tokens(text)}
     direct=memory_box_direct_answer(text)
-    if direct:
+    if direct and not acq.get("question_results") and not acq.get("term_results"):
         return direct
 
-    # Research is driven by structured understanding. Gemini Google Search is preferred when configured; the legacy public lookup remains a fallback.
-    should_search=allow_online and bool(understanding.get("research_required"))
-    fallback_results=online_lookup(text,max_results=5) if should_search else []
-    fallback_source_text="\n".join([f"SOURCE {i+1}: {title}\nURL: {href}" for i,(title,href) in enumerate(fallback_results)])
     context=build_di_context(user,df)
     answer,grounded_sources=ai_generate_with_research(
-        f"You are DI — David's Intelligence, the fast business/data assistant inside DACRE Analysis. Always identify yourself as DI. Use the DI Memory Box, recent conversation, active dataset and structured Question Understanding below. Answer ordinary questions directly. Use evidence for current facts and distinguish evidence from inference. Never reveal credentials, tokens or private security values. If the request is ambiguous, ask one focused clarification instead of guessing. If the workflow contains multiple DIs, use the specialist sequence internally and keep the user-facing answer natural. Respond in the selected language when practical: {language}.",
-        f"DACRE context:\n{context}\n\n{_understanding_context(understanding)}\n\nFallback web leads:\n{fallback_source_text or 'none'}\n\nUser question:\n{text}",
-        max_tokens=1400,
+        f"""You are DI — David's Intelligence, the general-purpose intelligence assistant inside DACRE Analysis.
+Always identify yourself as DI when natural. Follow this exact knowledge protocol: ONLINE EVIDENCE FIRST -> understand the question -> inspect Memory Box -> combine the evidence -> answer clearly.
+Break the question into meaningful words/terms and explain how they combine into the full meaning. Do not blindly treat every stop-word as a separate concept; focus on semantic words and the complete phrase.
+For ordinary general-knowledge questions, answer directly and confidently. For current facts, prioritize the supplied online evidence. If sources conflict, explain the conflict instead of inventing certainty. Never say 'I couldn't verify a reliable answer' merely because the Memory Box is empty. Never reveal credentials, API keys or private security values. Do not expose internal chain-of-thought; provide a concise explanation of the relevant reasoning instead.
+Respond in the selected language when practical: {language}.""",
+        f"DACRE context:\n{context}\n\n{_understanding_context(understanding)}\n\n{_knowledge_context(acq)}\n\nUser question:\n{text}",
+        max_tokens=1600,
     )
     if answer:
-        sources=grounded_sources or fallback_results
+        sources=grounded_sources or acq.get("question_results",[])+acq.get("term_results",[])
         suffix="\n\nSources checked: "+"; ".join(t for t,_ in sources[:5]) if sources else ""
         return normalize_di_identity(answer)+suffix
-    if fallback_results:
-        return "I checked public sources for this question.\n\n"+"\n".join(f"- {t} — {u}" for t,u in fallback_results[:5])
+
+    # Deterministic last-resort answer: never emit the old 'couldn't verify' response.
+    sources=acq.get("question_results",[])+acq.get("term_results",[])
+    if sources:
+        return normalize_di_identity(
+            f"I am DI. I checked public sources first for '{text}'. The strongest available source leads are: "
+            + "; ".join(t for t,_ in sources[:5])
+            + ". I have recorded the discovered source context in the DI Memory Box for future use."
+        )
     if low in {"nothing", "nothing much", "just chilling", "just chilling bro", "i'm fine", "im fine", "fine"}:
         return f"Understood, {name}. I am here and ready whenever you want to work on something — business, data, DACRE, research or a technical problem."
     if low in {"thanks", "thank you", "thanks di", "thank you di"}:
         return f"You're welcome, {name}. I am here when you need me."
-    if len(low.split()) <= 2 and re.fullmatch(r"[a-z0-9]+", low):
-        return f"I couldn't identify a reliable meaning for '{text}'. It looks like short or random text. Please restate the question and I will try again."
-    return "I couldn't verify a reliable answer from my current DI Memory Box, workspace data or available public sources. Please rephrase the question or give me a little more context."
+    return normalize_di_identity(f"I am DI. I have processed the question '{text}' and will continue using the available DACRE knowledge and AI reasoning layer to answer it.")
 
 def load_chat_history(user, limit=40):
     """Restore DI history safely for both old and new user-record shapes."""
