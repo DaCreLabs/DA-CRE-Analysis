@@ -3338,8 +3338,6 @@ def microsoft_graph_upload_presentation(data, filename):
         return None
 
 
-_bootstrap_runtime(_DB_SCHEMA_VERSION)
-
 
 def ensure_admin_runtime_schema():
     # Idempotently repair every table/column required by the Overall Admin portal.
@@ -4035,6 +4033,10 @@ def ensure_subscription_schema():
         con.close()
 
 
+# Bootstrap only after every schema/helper function used by the bootstrap has been defined.
+_bootstrap_runtime(_DB_SCHEMA_VERSION)
+
+
 def ensure_company_subscription(company_name, created_at=None):
     company_name = str(company_name or '').strip()
     if not company_name or company_name.upper() == 'DACRE MASTER':
@@ -4456,7 +4458,7 @@ def render_analytics_overview(user):
         ("users","Total Users",f"{users:,}",12.4,spark_users,"registered platform users","workforce"),
         ("activity","Activity",f"{activities:,}",8.9,spark_activity,"recorded workspace events","↗"),
         ("health","System Health",f"{health:.2f}%",0.3,spark_health,"availability signal · 24h","◉"),
-        ("calls","Active Calls",f"{active_calls:,}",-3.1,spark_calls,"live sessions","☎"),
+        ("calls","Active Calls",f"{active_calls:,}",-3.1,spark_calls,"live sessions","Phone"),
     ]
     cards=[]
     for key,label,value,delta,spark,hint,icon in kpis:
@@ -4625,7 +4627,7 @@ def render_business_twin(df, user):
         placeholder="e.g. What changed most, what should management investigate, and why?",
         key="business_twin_question",
     )
-    if st.button("✦ Explain this Business Twin", use_container_width=True, type="primary") and prompt.strip():
+    if st.button("* Explain this Business Twin", use_container_width=True, type="primary") and prompt.strip():
         answer = di_reply(prompt, user, df, allow_online=True, language=st.session_state.get("di_language", "English — Nigeria"))
         log_di_action(user, "business_twin", prompt, answer)
         st.markdown(f"<div class='di-answer-panel'><div class='answer-label'>DI EXPLANATION</div><div>{_escape_html(answer).replace(chr(10), '<br>')}</div></div>", unsafe_allow_html=True)
@@ -4787,7 +4789,7 @@ def _landing_auth_panel():
 </style>
 <div id="dacre-auth" class="auth-anchor auth-shell">
   <div class="auth-inner">
-    <div class="auth-badge">✦ DACRE secure workspace access</div>
+    <div class="auth-badge">* DACRE secure workspace access</div>
     <div class="auth-title">Your DACRE workspace starts here.</div>
     <div class="auth-sub">Sign in to your existing workspace or create your organization account without leaving the DACRE landing page.</div>
   </div>
@@ -5185,9 +5187,9 @@ def landing_page():
         </div>
         <div class="section">
           <div class="grid-2">
-            <div class="feature-card"><div class="feature-icon">✓</div><h3>Organization boundaries</h3><p>Users work inside their organization context, while administrative views are scoped according to role.</p></div>
-            <div class="feature-card"><div class="feature-icon">⌁</div><h3>Activity visibility</h3><p>DACRE records important account and workspace activity so organizations can inspect what happened.</p></div>
-            <div class="feature-card"><div class="feature-icon">♛</div><h3>Protected master access</h3><p>Overall platform controls are separated from normal organization administration behind an additional protected gate.</p></div>
+            <div class="feature-card"><div class="feature-icon">OK</div><h3>Organization boundaries</h3><p>Users work inside their organization context, while administrative views are scoped according to role.</p></div>
+            <div class="feature-card"><div class="feature-icon">-</div><h3>Activity visibility</h3><p>DACRE records important account and workspace activity so organizations can inspect what happened.</p></div>
+            <div class="feature-card"><div class="feature-icon">Master</div><h3>Protected master access</h3><p>Overall platform controls are separated from normal organization administration behind an additional protected gate.</p></div>
             <div class="feature-card"><div class="feature-icon">DI</div><h3>Private intelligence context</h3><p>DI's internal context and application security values are not exposed as ordinary public landing-page content.</p></div>
           </div>
         </div>
@@ -5204,7 +5206,7 @@ def landing_page():
         st.markdown(f"""
         <div class="hero">
           <div>
-            <div class="hero-eyebrow">✦ Experience Next-Gen Business Intelligence</div>
+            <div class="hero-eyebrow">* Experience Next-Gen Business Intelligence</div>
             <div class="hero-title">Transform Raw Data<br/>into <span class="gradient-text">Heavenly Insights.</span></div>
             <p class="hero-copy">DACRE turns scattered business data into clear intelligence, powerful analytics and practical decisions — with DI, David's Intelligence, built into the workspace.</p>
             <div class="hero-proof">
@@ -5254,7 +5256,7 @@ def landing_page():
             <div class="feature-card"><div class="feature-icon">DI</div><h3>Intelligence</h3><p>Understand how DI — David's Intelligence — works with your business context and active data.</p></div>
             <div class="feature-card"><div class="feature-icon">◈</div><h3>Workforce</h3><p>Meet the specialized DI workers and see how their distinct specialties fit into one intelligence foundation.</p></div>
             <div class="feature-card"><div class="feature-icon">◫</div><h3>Analytics</h3><p>See how DACRE turns data into health scores, business signals, decisions and opportunity insights.</p></div>
-            <div class="feature-card"><div class="feature-icon">✓</div><h3>Security</h3><p>Learn how organization boundaries, activity visibility and protected administration support business use.</p></div>
+            <div class="feature-card"><div class="feature-icon">OK</div><h3>Security</h3><p>Learn how organization boundaries, activity visibility and protected administration support business use.</p></div>
             <div class="feature-card"><div class="feature-icon">→</div><h3>Ready to begin?</h3><p>Create your DACRE account and enter your own workspace with real authentication and persistent organization context.</p></div>
           </div>
         </div>
@@ -5680,7 +5682,7 @@ def di_voice_bridge(language_code="en-NG"):
       btn.addEventListener('click',()=>{{
         if(active) return;
         active=true; finals=[]; remaining=8; setPreview('Listening…');
-        btn.disabled=true; btn.textContent='⏺ Listening…'; setStatus('Listening… 8 seconds remaining');
+        btn.disabled=true; btn.textContent='Record Listening…'; setStatus('Listening… 8 seconds remaining');
         rec=new SpeechRecognition();
         rec.lang=lang; rec.continuous=true; rec.interimResults=true; rec.maxAlternatives=1;
         rec.onresult=(event)=>{{
