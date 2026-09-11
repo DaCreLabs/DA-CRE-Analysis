@@ -249,7 +249,8 @@ def _secret_or_env(name, default=""):
 
 
 # FREE AI CONFIGURATION (server-side Streamlit Secrets):
-# GROQ_API_KEY = "your free-tier Groq key"
+# GROQ_API_KEY is supplied securely through Streamlit Secrets; never hard-code the credential.
+# Optional model override: DACRE_GROQ_MODEL = "openai/gpt-oss-120b"
 # GEMINI_API_KEY = "your free-tier Gemini key"
 # DACRE_FREE_AI_ONLY = "true"  # hard default: paid OpenAI calls stay disabled
 # Later, only if deliberately chosen: DACRE_AI_API_KEY + DACRE_FREE_AI_ONLY="false"
@@ -379,16 +380,11 @@ def prepare_favicon():
 
 FAVICON = prepare_favicon()
 
-_PAGE_ICON = None
-try:
-    if LOGO_PATH.exists():
-        _PAGE_ICON = Image.open(LOGO_PATH).convert("RGBA")
-except Exception:
-    _PAGE_ICON = None
+_PAGE_ICON = "dacre_logo.png"
 
 st.set_page_config(
     page_title=f"{APP_NAME} | {DI_NAME}",
-    page_icon=_PAGE_ICON if _PAGE_ICON is not None else (FAVICON if FAVICON else "DACRE"),
+    page_icon=_PAGE_ICON,
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -5645,6 +5641,85 @@ st.markdown("""
 .plan-card{height:100%;padding:16px;border-radius:18px;border:1px solid rgba(91,164,239,.28);background:linear-gradient(145deg,#0c2745,#12385c);text-align:center}.plan-months{font-size:.76rem;text-transform:uppercase;letter-spacing:.08em;color:#82ccff!important;font-weight:900}.plan-price{font-size:1.5rem;font-weight:950;margin-top:6px}.plan-note{font-size:.72rem;color:#a9bed3!important}.trial-banner{display:flex;gap:14px;align-items:center;padding:14px 17px;border-radius:16px;border:1px solid rgba(226,184,79,.5);background:linear-gradient(90deg,rgba(226,184,79,.12),rgba(64,157,235,.08));margin:15px 0}.trial-banner b{padding:6px 9px;border-radius:999px;background:#e2b84f;color:#081423!important;white-space:nowrap}.trial-banner span{color:#d1dfeb!important}.payment-summary{padding:18px;border-radius:18px;border:1px solid rgba(93,175,255,.28);background:#0b2440;display:flex;flex-direction:column;gap:6px}.payment-summary strong{font-size:1.15rem}.payment-summary b{font-size:2rem;color:#f2cc61!important}.payment-summary small{color:#9fb9cf!important;line-height:1.45}.bank-logo{display:flex;align-items:center;gap:8px;padding:10px;border:1px solid rgba(120,181,238,.22);border-radius:14px;background:#0c2745;min-height:46px}.bank-logo span{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(135deg,#2e78dc,#e2b84f);color:#071423!important;font-weight:950;font-size:.72rem}.bank-logo b{font-size:.76rem}.method-chip{padding:11px 8px;border-radius:12px;border:1px solid rgba(104,179,242,.24);background:#0d2947;text-align:center;font-size:.72rem;font-weight:800;min-height:42px}
 @media(max-width:850px){.company-dashboard-hero{flex-direction:column;align-items:flex-start}.company-dashboard-status{align-self:flex-start}.trial-banner{align-items:flex-start;flex-direction:column}}
 .billing-lock{display:flex;gap:12px;align-items:center;padding:14px 17px;border-radius:16px;border:1px solid rgba(255,112,112,.45);background:linear-gradient(90deg,rgba(132,26,42,.28),rgba(226,184,79,.08));margin:0 0 20px}.billing-lock b{color:#ffd477!important;white-space:nowrap}.billing-lock span{color:#d8e2ed!important}@media(max-width:650px){.billing-lock{align-items:flex-start;flex-direction:column}}
+</style>
+""",unsafe_allow_html=True)
+
+
+# FINAL DACRE CONTROL/INPUT VISIBILITY OVERRIDE
+# Gold is the visibility/accent color for controls; placeholders stay neutral grey.
+st.markdown(r"""
+<style>
+/* ===== DACRE STRICT GOLD CONTROL VISIBILITY ===== */
+:root{--dacre-strict-gold:#e2b84f;--dacre-strict-gold-2:#f5d77a;--dacre-placeholder:#8f9baa;--dacre-control:#10243b;--dacre-control-2:#173453}
+
+/* Text fields / text areas / number & date inputs */
+.stTextInput input,.stTextArea textarea,.stNumberInput input,.stDateInput input,
+.stTextInput input:focus,.stTextArea textarea:focus,.stNumberInput input:focus,.stDateInput input:focus{
+ background:var(--dacre-control)!important;color:#fff!important;
+ border:1.5px solid var(--dacre-strict-gold)!important;
+ box-shadow:0 0 0 1px rgba(226,184,79,.16),0 5px 18px rgba(0,0,0,.12)!important;
+}
+.stTextInput input::placeholder,.stTextArea textarea::placeholder,
+.stNumberInput input::placeholder,.stDateInput input::placeholder{
+ color:var(--dacre-placeholder)!important;opacity:1!important;
+}
+
+/* Select boxes / multiselects */
+.stSelectbox [data-baseweb="select"]>div,
+.stMultiSelect [data-baseweb="select"]>div,
+[data-baseweb="select"]>div{
+ background:var(--dacre-control)!important;color:#fff!important;
+ border:1.5px solid var(--dacre-strict-gold)!important;
+ box-shadow:0 5px 18px rgba(0,0,0,.10)!important;
+}
+.stSelectbox [data-baseweb="select"] span,
+.stMultiSelect [data-baseweb="select"] span{color:#fff!important}
+[data-baseweb="popover"],[data-baseweb="menu"]{background:#10243b!important;border:1px solid rgba(226,184,79,.55)!important}
+[data-baseweb="option"]{color:#fff!important;background:#10243b!important}
+[data-baseweb="option"]:hover,[aria-selected="true"]{background:#29435e!important;color:#fff!important}
+
+/* Sliders: gold track/thumb so the value is visible */
+.stSlider [data-baseweb="slider"] [role="slider"]{background:var(--dacre-strict-gold)!important;border-color:#fff!important}
+.stSlider [data-baseweb="slider"]>div>div{background:var(--dacre-strict-gold)!important}
+.stSlider [data-baseweb="slider"]>div>div>div{background:var(--dacre-strict-gold)!important}
+
+/* Progress bars / meter-like bars */
+.stProgress [role="progressbar"]{background:#394653!important;border:1px solid rgba(226,184,79,.35)!important}
+.stProgress [role="progressbar"]>div{background:linear-gradient(90deg,var(--dacre-strict-gold),var(--dacre-strict-gold-2))!important}
+progress{accent-color:var(--dacre-strict-gold)!important}
+
+/* Tabs, radio and checkbox controls */
+[data-testid="stTabs"] button{color:#c6d0db!important}
+[data-testid="stTabs"] button[aria-selected="true"]{color:#fff!important;border-bottom-color:var(--dacre-strict-gold)!important}
+[data-testid="stRadio"] label,[data-testid="stCheckbox"] label{color:#fff!important}
+[data-testid="stRadio"] [data-baseweb="radio"]>div:first-child{border-color:var(--dacre-strict-gold)!important}
+[data-testid="stRadio"] [aria-checked="true"]>div:first-child{background:var(--dacre-strict-gold)!important}
+
+/* Buttons remain blue/gold rather than disappearing as white bars */
+.stButton>button,.stFormSubmitButton>button,.stDownloadButton>button,
+button[data-testid="baseButton-primary"],button[data-testid="baseButton-secondary"]{
+ color:#fff!important;border:1.5px solid var(--dacre-strict-gold)!important;
+ background:linear-gradient(135deg,#173b66,#245487 62%,#7a6127)!important;
+}
+.stButton>button:hover,.stFormSubmitButton>button:hover,.stDownloadButton>button:hover{
+ color:#07111f!important;background:linear-gradient(135deg,var(--dacre-strict-gold),var(--dacre-strict-gold-2))!important;
+ border-color:#fff!important;
+}
+
+/* Expander headers and other horizontal control bars */
+[data-testid="stExpander"] summary{background:#122b45!important;color:#fff!important;border-color:rgba(226,184,79,.45)!important}
+[data-testid="stExpander"] summary:hover{background:#183957!important;border-color:var(--dacre-strict-gold)!important}
+
+/* File uploader: no white-on-white drop area */
+[data-testid="stFileUploaderDropzone"]{background:#10243b!important;border:1.5px dashed var(--dacre-strict-gold)!important;color:#fff!important}
+[data-testid="stFileUploaderDropzone"] *{color:#fff!important}
+
+/* Keep native input caret and placeholder readable */
+input,textarea{caret-color:var(--dacre-strict-gold-2)!important}
+
+/* DACRE logo must remain the sole branded app/page icon */
+.dacre-page-chrome .page-logo-icon{background:#fff!important;border:2px solid var(--dacre-strict-gold)!important}
+.dacre-page-chrome .page-logo-icon img{content-visibility:auto!important;object-fit:contain!important}
 </style>
 """,unsafe_allow_html=True)
 
