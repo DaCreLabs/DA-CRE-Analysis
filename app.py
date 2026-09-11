@@ -131,7 +131,7 @@ DI_MEMORY_SEED = [
     ("PLATFORM", "Chart Builder", "DACRE can create business visualisations such as bar, line and area charts from analysed data, with room for future chart expansion.", 1750),
     ("PLATFORM", "Export Center", "The Export Center is designed to let users export processed results, including CSV and Excel outputs.", 1750),
     ("PLATFORM", "Workspace and Data", "Workspace & Data is the working area for uploading/opening datasets, inspecting data and carrying out analysis and cleaning tasks.", 1750),
-    ("PLATFORM", "DI Home", "DI Home is the continuous conversation area where users can ask DI business, data, technical and general questions.", 1750),
+    ("PLATFORM", "DI Home", "The company dashboard is the main DACRE workspace and preserves the useful DI introduction and company intelligence experience formerly shown on DI Home.", 1750),
     ("PLATFORM", "DI Question Board", "Every question sent to DI should be recorded in the DI Question Board so DACRE maintains a reliable trail of questions and answers.", 1900),
     ("PLATFORM", "Organization Admin Portal", "Organization Admin Portal provides organization-level administration for the company workspace, including users and company activity.", 1800),
     ("SECURITY", "Overall Admin DI", "Overall Admin DI is the master-only system-wide command centre. It is separate from ordinary company administration.", 2000),
@@ -240,7 +240,7 @@ TEMPLATES = [
 ]
 
 DI_MEMORY_SEED = DI_MEMORY_SEED[:4000]
-DACRE_CODE_KNOWLEDGE_SEED = [('TECHNICAL', 'DACRE architecture', 'DACRE is a Streamlit business application with a persistent database layer, organization accounts, DI memory, workspace analytics, charts, files, exports and protected master administration.', 1850), ('TECHNICAL', 'DI reasoning flow', 'DI first checks direct built-in knowledge and relevant Memory Box records, then uses active workspace data when the question is about a dataset, uses public web research when current information is needed, and uses an optional language model when available.', 1900), ('TECHNICAL', 'Free-first intelligence', "DACRE's intelligence router can use the local DI engine and public web lookup without a paid model. It can also use free-tier AI providers when a server-side free-tier key is configured. Paid OpenAI calls are disabled unless the deployment owner explicitly enables paid AI.", 2000), ('TECHNICAL', 'Persistent chat', 'DI conversations are stored as chat history for the authenticated user and organization so DI can restore relevant previous conversation context after a later sign-in when persistent storage is connected.', 1900), ('TECHNICAL', 'User identity context', "DI receives the authenticated user's name, company and role as conversation context. Company context is kept separate so one organization does not become another organization's workspace context.", 1950), ('TECHNICAL', 'Sovereign Master context', 'David Emenike is the creator and Overall Administrator/master. A master conversation is treated as a private Sovereign Master request with stronger executive respect and deeper technical/business context than a normal user conversation.', 2000), ('TECHNICAL', 'Master privacy', 'Only the master administration layer is intended to see system-wide activity, protected workforce controls, the master DI Memory Box and David Creations. Ordinary company users receive organization-scoped access.', 2000), ('TECHNICAL', 'Dataset independence', 'DI does not require a dataset for ordinary questions. Dataset-specific tools activate when a dataset exists and the question actually needs data analysis.', 1950), ('TECHNICAL', 'Business intelligence', 'DI can calculate dataset health, missing values, duplicates, totals, trends and executive summaries, and DACRE provides charts and business command views that turn those findings into visuals and actions.', 1950), ('TECHNICAL', 'Web research', 'DACRE can perform public web lookup for current or externally verified information. Search results are passed to the reasoning layer when available, and when no reasoning provider is configured DI can still present the public sources it found.', 1900), ('TECHNICAL', 'Browser voice', 'DACRE uses browser speech recognition and speech synthesis for the no-cost voice experience. Spoken input can be captured into the DI chat flow and DI can respond by voice or text.', 1850), ('TECHNICAL', 'Realtime calling', 'DACRE contains a separate LiveKit integration for full-duplex realtime DI calls. That service remains optional so the core application does not depend on paid realtime infrastructure.', 1800), ('TECHNICAL', 'DI workforce', 'DI workers are stored with names, specialties, roles, ranks, positions, avatars, voice profiles and separate private memory. The workforce can be grouped by specialty and assigned work.', 1900), ('TECHNICAL', 'Private DI brains', "A DI's private brain is stored separately from shared DI Memory. Other DIs should not receive another DI's private master briefings, while the Overall Administrator can manage the workforce privately.", 1950), ('TECHNICAL', 'Chibobec workflow', 'Chibobec is a DACRE client workspace with loan records containing client name, WhatsApp number, amount, lent date and due date. The application tracks planned reminder states while actual WhatsApp delivery requires a configured provider.', 1900), ('TECHNICAL', 'Website intelligence', 'During company onboarding, DACRE can use a supplied official website to build company context and website intelligence so DI starts with business-specific information instead of a blank profile.', 1850), ('TECHNICAL', 'Supabase persistence', 'DACRE can use Supabase PostgreSQL as its persistent cloud database. When the cloud database is configured, the application routes database operations through the cloud layer rather than relying only on Streamlit local files.', 2000), ('TECHNICAL', 'Feature pages', 'The public DACRE landing experience links to real Features, Intelligence, Workforce, Analytics and Security sections and the authentication flow remains inside the DACRE experience.', 1750), ('TECHNICAL', 'Credential safety', 'DI may explain how DACRE works in friendly English, but it must never reveal master passkeys, password hashes, API keys, access tokens, database passwords or hidden security values.', 2050), ('TECHNICAL', 'Founder portrait', 'The Overall Admin and Sovereign Master call identify David Emenike as the creator and can display his configured founder portrait alongside DI participants in the call presentation.', 1800)]
+DACRE_CODE_KNOWLEDGE_SEED = [('TECHNICAL', 'DACRE architecture', 'DACRE is a Streamlit business application with a persistent database layer, organization accounts, DI memory, workspace analytics, charts, files, exports and protected master administration.', 1850), ('TECHNICAL', 'DI reasoning flow', 'DI first checks direct built-in knowledge and relevant Memory Box records, then uses active workspace data when the question is about a dataset, uses public web research when current information is needed, and uses an optional language model when available.', 1900), ('TECHNICAL', 'Free-first intelligence', "DACRE's intelligence router can use the local DI engine and public web lookup without a paid model. It can also use free-tier AI providers when a server-side free-tier key is configured. Paid OpenAI calls are disabled unless the deployment owner explicitly enables paid AI.", 2000), ('TECHNICAL', 'Persistent chat', 'DI conversations are stored as chat history for the authenticated user and organization so DI can restore relevant previous conversation context after a later sign-in when persistent storage is connected.', 1900), ('TECHNICAL', 'User identity context', "DI receives the authenticated user's name, company and role as conversation context. Company context is kept separate so one organization does not become another organization's workspace context.", 1950), ('TECHNICAL', 'Sovereign Master context', 'David Emenike is the creator and Overall Administrator/master. A master conversation is treated as a private Sovereign Master request with stronger executive respect and deeper technical/business context than a normal user conversation.', 2000), ('TECHNICAL', 'Master privacy', 'Only the master administration layer is intended to see system-wide activity, protected workforce controls, the master DI Memory Box and David Creations. Ordinary company users receive organization-scoped access.', 2000), ('TECHNICAL', 'Dataset independence', 'DI does not require a dataset for ordinary questions. Dataset-specific tools activate when a dataset exists and the question actually needs data analysis.', 1950), ('TECHNICAL', 'Business intelligence', 'DI can calculate dataset health, missing values, duplicates, totals, trends and executive summaries, and DACRE provides charts and business command views that turn those findings into visuals and actions.', 1950), ('TECHNICAL', 'Web research', 'DACRE can perform public web lookup for current or externally verified information. Search results are passed to the reasoning layer when available, and when no reasoning provider is configured DI can still present the public sources it found.', 1900), ('TECHNICAL', 'Browser voice', 'DACRE uses browser speech recognition and speech synthesis for the no-cost voice experience. Spoken input can be captured into the DI chat flow and DI can respond by voice or text.', 1850), ('TECHNICAL', 'Realtime calling (reserved for future DGL/controlled infrastructure)', 'DACRE contains a separate LiveKit integration for full-duplex realtime DI calls. That service remains optional so the core application does not depend on paid realtime infrastructure.', 1800), ('TECHNICAL', 'DI workforce', 'DI workers are stored with names, specialties, roles, ranks, positions, avatars, voice profiles and separate private memory. The workforce can be grouped by specialty and assigned work.', 1900), ('TECHNICAL', 'Private DI brains', "A DI's private brain is stored separately from shared DI Memory. Other DIs should not receive another DI's private master briefings, while the Overall Administrator can manage the workforce privately.", 1950), ('TECHNICAL', 'Chibobec workflow', 'Chibobec is a DACRE client workspace with loan records containing client name, WhatsApp number, amount, lent date and due date. The application tracks planned reminder states while actual WhatsApp delivery requires a configured provider.', 1900), ('TECHNICAL', 'Website intelligence', 'During company onboarding, DACRE can use a supplied official website to build company context and website intelligence so DI starts with business-specific information instead of a blank profile.', 1850), ('TECHNICAL', 'Supabase persistence', 'DACRE can use Supabase PostgreSQL as its persistent cloud database. When the cloud database is configured, the application routes database operations through the cloud layer rather than relying only on Streamlit local files.', 2000), ('TECHNICAL', 'Feature pages', 'The public DACRE landing experience links to real Features, Intelligence, Workforce, Analytics and Security sections and the authentication flow remains inside the DACRE experience.', 1750), ('TECHNICAL', 'Credential safety', 'DI may explain how DACRE works in friendly English, but it must never reveal master passkeys, password hashes, API keys, access tokens, database passwords or hidden security values.', 2050), ('TECHNICAL', 'Founder portrait', 'The Overall Admin and Sovereign Master call identify David Emenike as the creator and can display his configured founder portrait alongside DI participants in the call presentation.', 1800)]
 DI_MEMORY_SEED.extend(DACRE_CODE_KNOWLEDGE_SEED)
 
 CHIBOBEC_COMPANY = "chibobec loan service"
@@ -398,9 +398,9 @@ FAVICON = prepare_favicon()
 
 st.set_page_config(
     page_title=f"{APP_NAME} | {DI_NAME}",
-    page_icon=str(LOGO_PATH) if LOGO_PATH.exists() else (FAVICON if FAVICON else "📊"),
+    page_icon=str(LOGO_PATH) if LOGO_PATH.exists() else (FAVICON if FAVICON else "D"),
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # =============================================================================
@@ -557,8 +557,8 @@ def _migrate_sqlite_to_supabase_once():
                 "company_website_profile","public_visits","emails_log","di_agents","di_private_memory",
                 "di_position_history","di_master_thanks","di_jobs","di_collaboration","sovereign_calls",
                 "sovereign_call_members","sovereign_call_messages","david_creations","call_rooms",
-                "call_participants","decision_ledger","opportunity_radar","loan_clients","whatsapp_delivery_log",
-                "di_memory"
+                "call_participants","decision_ledger","opportunity_radar","loan_clients","whatsapp_delivery_log","company_subscriptions","subscription_payments",
+                "presentation_requests","presentation_brain_cache","di_memory"
             ]
             ordered = [t for t in preferred if t in local_tables] + [t for t in local_tables if t not in preferred]
             copied = {}
@@ -1821,6 +1821,7 @@ def create_account(first, last, company, email, email_password, passkey, website
             hash_password(passkey_clean), hash_password(passkey_clean), role, now, now,
         ))
         con.commit()
+        ensure_company_subscription(company_clean, created_at=now)
 
         di_name=ensure_company_di(company_clean)
         clean_url=normalized_website
@@ -2976,7 +2977,7 @@ def di_voice_player(text, language_code=None):
     safe_lang=json.dumps(language_code)
     components.html(f"""
     <div style="font-family:Inter,Segoe UI,sans-serif;background:#174f86;border:1px solid #6bb8ee;border-radius:14px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
-      <button id="dacre-speak-btn" style="background:#f28c28;color:white;border:0;border-radius:10px;padding:9px 15px;font-weight:800;cursor:pointer;">🔊 Speak DI</button>
+      <button id="dacre-speak-btn" style="background:#f28c28;color:white;border:0;border-radius:10px;padding:9px 15px;font-weight:800;cursor:pointer;">Speak DI</button>
       <span style="color:#eaf6ff;font-weight:700;font-size:13px;">DI voice ready · {language_code}</span>
     </div>
     <script>
@@ -3061,6 +3062,7 @@ def _bootstrap_runtime(schema_version=9):
         seed_di_memory()
         seed_named_di_workforce()
         ensure_presentation_schema()
+        ensure_subscription_schema()
         seed_active_di_workforce()
         return True
 
@@ -3071,6 +3073,7 @@ def _bootstrap_runtime(schema_version=9):
     seed_di_memory()
     seed_named_di_workforce()
     ensure_presentation_schema()
+    ensure_subscription_schema()
     seed_active_di_workforce()
     return True
 
@@ -3265,7 +3268,7 @@ def generate_dacre_presentation(df, board, prompt):
     visual=_online_visual_reference("business data technology presentation abstract")
     def add_bg(slide, color):
         shape=slide.shapes.add_shape(MSO_SHAPE.RECTANGLE,0,0,prs.slide_width,prs.slide_height)
-        shape.fill.solid(); shape.fill.fore_color.rgb=RGBColor(*color); shape.line.fill.background(); shape.z_order=0
+        shape.fill.solid(); shape.fill.fore_color.rgb=RGBColor(*color); shape.line.fill.background()
     def add_text(slide,text,left,top,width,height,size=24,bold=False,color=(255,255,255),align=None):
         box=slide.shapes.add_textbox(Inches(left),Inches(top),Inches(width),Inches(height)); tf=box.text_frame; tf.clear(); p=tf.paragraphs[0]; p.text=str(text); p.font.size=Pt(size); p.font.bold=bold; p.font.color.rgb=RGBColor(*color); p.font.name="Aptos"; p.alignment=align or PP_ALIGN.LEFT; return box
     # Front slide
@@ -3718,7 +3721,7 @@ def render_call_interface(room, title, participants, company):
     if not st.session_state.get(join_key,False):
         c1,c2=st.columns([2,1])
         with c1:
-            if st.button('🎥 Join Call',key=f'joinbtn_{room}',use_container_width=True,type='primary'):
+            if st.button('Join Call',key=f'joinbtn_{room}',use_container_width=True,type='primary'):
                 st.session_state[join_key]=True; st.rerun()
         with c2:
             st.link_button('↗ Open in new tab',f'https://meet.jit.si/{urllib.parse.quote(room)}',use_container_width=True)
@@ -3819,7 +3822,7 @@ def _compact_call_context(user, agent_rows, mode, call_question=""):
 def create_livekit_token(room_name, user, agent_rows, mode="company_di", question=""):
     """Mint a short-lived room token and dispatch the selected dynamic DIs."""
     if not livekit_configured():
-        return None, "Realtime calling is not configured yet."
+        return None, "Realtime calling (reserved for future DGL/controlled infrastructure) is not configured yet."
     if not (user and user.get("role") in ("company_admin", "master")):
         return None, "Only a company administrator or the master can start a realtime DI call."
     identity = f"dacre-user-{re.sub(r'[^a-zA-Z0-9_-]+','-',str(user.get('username','user')))}-{int(time.time())}"
@@ -3871,7 +3874,7 @@ def render_livekit_call(room_name, user, agent_rows, mode="company_di", title="D
     html = f"""
     <div id='dacre-livekit' style='font-family:Inter,system-ui,sans-serif;background:linear-gradient(145deg,#07111f,#0a1730 55%,#10164a);border:1px solid rgba(80,170,255,.22);border-radius:24px;padding:22px;color:#eaf4ff;box-shadow:0 18px 60px rgba(0,0,0,.28);'>
       <div style='display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;'>
-        <div><div style='font-size:11px;font-weight:800;letter-spacing:.16em;color:#6ea8ff;'>DACRE REALTIME</div><h2 style='margin:4px 0;font-size:25px;color:#f6fbff;'>🎙️ {safe(title)}</h2><div style='font-size:13px;color:#a9bbd4;'>Fixed DI characters · permanent voices · actual speaker detection · full-duplex audio</div></div>
+        <div><div style='font-size:11px;font-weight:800;letter-spacing:.16em;color:#6ea8ff;'>DACRE REALTIME</div><h2 style='margin:4px 0;font-size:25px;color:#f6fbff;'>{safe(title)}</h2><div style='font-size:13px;color:#a9bbd4;'>Fixed DI characters · permanent voices · actual speaker detection · full-duplex audio</div></div>
         <div id='lk-status' style='padding:8px 12px;border-radius:999px;background:rgba(250,180,60,.12);border:1px solid rgba(250,180,60,.22);font-size:12px;color:#ffd68a;'>READY TO JOIN</div>
       </div>
       <div style='display:grid;grid-template-columns:minmax(0,1.7fr) minmax(280px,.8fr);gap:18px;margin-top:18px;'>
@@ -3982,26 +3985,333 @@ def _escape_html(value):
             .replace('"', "&quot;"))
 
 
+
+# =============================================================================
+# COMPANY DASHBOARD / SUBSCRIPTION BILLING
+# =============================================================================
+DACRE_MONTHLY_PRICE_NGN = 30000
+DACRE_TRIAL_DAYS = 30
+DACRE_PLAN_MONTHS = [1, 3, 6, 12, 24]
+DACRE_BANK_OPTIONS = [
+    ("GTBank", "GT"), ("Access Bank", "AC"), ("Zenith Bank", "ZE"),
+    ("UBA", "UB"), ("FirstBank", "FB"), ("Fidelity Bank", "FI"),
+    ("Sterling Bank", "ST"), ("Stanbic IBTC", "SI"),
+]
+DACRE_PAYMENT_METHODS = ["Bank Transfer", "Debit/Credit Card", "USSD", "Paystack", "Flutterwave"]
+
+
+def ensure_subscription_schema():
+    """Create subscription/payment tables without storing raw card or bank credentials."""
+    con = db()
+    try:
+        if using_cloud_db():
+            con.execute("""CREATE TABLE IF NOT EXISTS company_subscriptions (
+                id BIGSERIAL PRIMARY KEY, company_name TEXT UNIQUE NOT NULL,
+                trial_started_at TEXT NOT NULL, trial_ends_at TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'trial', plan_months INTEGER NOT NULL DEFAULT 1,
+                amount_paid REAL NOT NULL DEFAULT 0, currency TEXT NOT NULL DEFAULT 'NGN',
+                paid_at TEXT, paid_until TEXT, payment_method TEXT, bank_name TEXT,
+                payment_provider TEXT, transaction_reference TEXT, updated_at TEXT NOT NULL)""")
+            con.execute("""CREATE TABLE IF NOT EXISTS subscription_payments (
+                id BIGSERIAL PRIMARY KEY, company_name TEXT NOT NULL, username TEXT NOT NULL,
+                amount REAL NOT NULL, currency TEXT NOT NULL DEFAULT 'NGN', plan_months INTEGER NOT NULL,
+                payment_method TEXT NOT NULL, bank_name TEXT, provider TEXT, transaction_reference TEXT,
+                status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL)""")
+        else:
+            con.execute("""CREATE TABLE IF NOT EXISTS company_subscriptions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT UNIQUE NOT NULL,
+                trial_started_at TEXT NOT NULL, trial_ends_at TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'trial', plan_months INTEGER NOT NULL DEFAULT 1,
+                amount_paid REAL NOT NULL DEFAULT 0, currency TEXT NOT NULL DEFAULT 'NGN',
+                paid_at TEXT, paid_until TEXT, payment_method TEXT, bank_name TEXT,
+                payment_provider TEXT, transaction_reference TEXT, updated_at TEXT NOT NULL)""")
+            con.execute("""CREATE TABLE IF NOT EXISTS subscription_payments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL, username TEXT NOT NULL,
+                amount REAL NOT NULL, currency TEXT NOT NULL DEFAULT 'NGN', plan_months INTEGER NOT NULL,
+                payment_method TEXT NOT NULL, bank_name TEXT, provider TEXT, transaction_reference TEXT,
+                status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL)""")
+        con.commit()
+    finally:
+        con.close()
+
+
+def ensure_company_subscription(company_name, created_at=None):
+    company_name = str(company_name or '').strip()
+    if not company_name or company_name.upper() == 'DACRE MASTER':
+        return None
+    ensure_subscription_schema()
+    con = db()
+    try:
+        row = con.execute("SELECT * FROM company_subscriptions WHERE lower(company_name)=lower(?) LIMIT 1", (company_name,)).fetchone()
+        if row:
+            return dict(row)
+        start = created_at or datetime.now().isoformat(timespec='seconds')
+        try:
+            start_dt = datetime.fromisoformat(str(start).replace('Z',''))
+        except Exception:
+            start_dt = datetime.now()
+        end_dt = start_dt + timedelta(days=DACRE_TRIAL_DAYS)
+        now = datetime.now().isoformat(timespec='seconds')
+        con.execute("""INSERT INTO company_subscriptions
+            (company_name,trial_started_at,trial_ends_at,status,plan_months,amount_paid,currency,updated_at)
+            VALUES(?,?,?,?,?,?,?,?)""",
+            (company_name,start_dt.isoformat(timespec='seconds'),end_dt.isoformat(timespec='seconds'),'trial',1,0,'NGN',now))
+        con.commit()
+        return dict(con.execute("SELECT * FROM company_subscriptions WHERE lower(company_name)=lower(?)", (company_name,)).fetchone())
+    finally:
+        con.close()
+
+
+def get_company_subscription(company_name):
+    return ensure_company_subscription(company_name)
+
+
+def subscription_snapshot(company_name):
+    sub = get_company_subscription(company_name)
+    now = datetime.now()
+    status = str(sub.get('status') or 'trial').lower()
+    paid_until = None
+    try:
+        paid_until = datetime.fromisoformat(str(sub.get('paid_until') or '').replace('Z','')) if sub.get('paid_until') else None
+    except Exception:
+        paid_until = None
+    try:
+        trial_end = datetime.fromisoformat(str(sub.get('trial_ends_at') or '').replace('Z',''))
+    except Exception:
+        trial_end = now
+    if paid_until and paid_until > now:
+        active = True
+        display_status = 'active'
+        days_left = max(0, (paid_until.date() - now.date()).days)
+        expires = paid_until
+    elif status == 'trial' and trial_end > now:
+        active = True
+        display_status = 'trial'
+        days_left = max(0, (trial_end.date() - now.date()).days)
+        expires = trial_end
+    else:
+        active = False
+        display_status = 'expired'
+        days_left = 0
+        expires = trial_end
+        if status != 'expired':
+            try:
+                con=db(); con.execute("UPDATE company_subscriptions SET status='expired',updated_at=? WHERE lower(company_name)=lower(?)",(datetime.now().isoformat(timespec='seconds'),company_name)); con.commit(); con.close()
+            except Exception: pass
+    return {**sub, 'active':active, 'display_status':display_status, 'days_left':days_left, 'expires':expires}
+
+
+def _subscription_amount(months):
+    return int(DACRE_MONTHLY_PRICE_NGN * int(months))
+
+
+def _bank_badge(name, initials):
+    icon=_ui_icon_data_uri('bank'); return f"<div class='bank-logo'><img src='{icon}' alt='' width='34' height='34'><b>{_escape_html(name)}</b></div>"
+
+
+def record_subscription_payment(user, months, method, bank_name='', provider='', reference='', status='pending'):
+    amount = _subscription_amount(months)
+    now = datetime.now().isoformat(timespec='seconds')
+    con = db()
+    try:
+        con.execute("""INSERT INTO subscription_payments
+            (company_name,username,amount,currency,plan_months,payment_method,bank_name,provider,transaction_reference,status,created_at)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+            (user['company'],user['username'],amount,'NGN',int(months),method,bank_name or '',provider or '',reference or '',status,now))
+        con.commit()
+    finally:
+        con.close()
+
+
+def activate_subscription(company_name, months, amount, method, bank_name='', provider='', reference=''):
+    now = datetime.now()
+    sub = get_company_subscription(company_name)
+    try:
+        current_until = datetime.fromisoformat(str(sub.get('paid_until') or '').replace('Z','')) if sub.get('paid_until') else None
+    except Exception:
+        current_until = None
+    start = current_until if current_until and current_until > now else now
+    paid_until = start + timedelta(days=30 * int(months))
+    con = db()
+    try:
+        con.execute("""UPDATE company_subscriptions SET status='active',plan_months=?,amount_paid=?,currency='NGN',paid_at=?,paid_until=?,payment_method=?,bank_name=?,payment_provider=?,transaction_reference=?,updated_at=? WHERE lower(company_name)=lower(?)""",
+            (int(months),float(amount),now.isoformat(timespec='seconds'),paid_until.isoformat(timespec='seconds'),method,bank_name or '',provider or '',reference or '',now.isoformat(timespec='seconds'),company_name))
+        con.commit()
+    finally:
+        con.close()
+    return paid_until
+
+
+
+def initialize_paystack_payment(user, months, email):
+    """Create a Paystack hosted checkout when the server-side secret is configured."""
+    secret = _dacre_env_secret("PAYSTACK_SECRET_KEY") if "_dacre_env_secret" in globals() else ""
+    if not secret:
+        return None, "Paystack is not configured yet."
+    try:
+        payload = json.dumps({
+            "email": email,
+            "amount": int(_subscription_amount(months) * 100),
+            "currency": "NGN",
+            "metadata": {"company": user["company"], "username": user["username"], "plan_months": int(months)},
+        }).encode("utf-8")
+        req = urllib.request.Request("https://api.paystack.co/transaction/initialize", data=payload, headers={"Authorization":f"Bearer {secret}","Content-Type":"application/json"}, method="POST")
+        with urllib.request.urlopen(req, timeout=20) as response:
+            body=json.loads(response.read().decode("utf-8"))
+        data=body.get("data") or {}
+        return data.get("authorization_url"), data.get("reference")
+    except Exception as exc:
+        return None, f"Paystack checkout could not be started: {exc}"
+
+
+def verify_paystack_reference(user, reference):
+    """Verify a completed Paystack transaction before activating access."""
+    secret = _dacre_env_secret("PAYSTACK_SECRET_KEY") if "_dacre_env_secret" in globals() else ""
+    if not secret or not reference:
+        return False
+    try:
+        safe_ref=urllib.parse.quote(str(reference), safe="")
+        req=urllib.request.Request(f"https://api.paystack.co/transaction/verify/{safe_ref}",headers={"Authorization":f"Bearer {secret}"},method="GET")
+        with urllib.request.urlopen(req,timeout=20) as response:
+            body=json.loads(response.read().decode("utf-8"))
+        data=body.get("data") or {}
+        if body.get("status") is not True or data.get("status") != "success":
+            return False
+        meta=data.get("metadata") or {}
+        if str(meta.get("company") or "").strip().lower() != str(user["company"]).strip().lower():
+            return False
+        amount_ngn=float(data.get("amount") or 0)/100
+        expected=float(_subscription_amount(int(meta.get("plan_months") or 1)))
+        if abs(amount_ngn-expected)>0.01:
+            return False
+        months=int(meta.get("plan_months") or 1)
+        method="Paystack"
+        activate_subscription(user["company"],months,amount_ngn,method,provider="Paystack",reference=str(reference))
+        record_subscription_payment(user,months,method,provider="Paystack",reference=str(reference),status="verified")
+        log_activity(user["username"],user["company"],f"Verified subscription payment via Paystack: ₦{amount_ngn:,.0f}",notify_admin=False)
+        return True
+    except Exception:
+        return False
+
+def render_company_dashboard(user):
+    company = str(user.get('company') or 'Your Company').strip()
+    if user.get('role') != 'master':
+        try:
+            params = getattr(st, 'query_params', {})
+            ref = params.get('reference') or params.get('trxref')
+            if isinstance(ref, list): ref = ref[0] if ref else ''
+            if ref and str(ref) != str(st.session_state.get('last_verified_paystack_reference','')):
+                if verify_paystack_reference(user, str(ref)):
+                    st.session_state['last_verified_paystack_reference']=str(ref)
+                    st.success('Payment verified. Your DACRE subscription has been activated.')
+        except Exception:
+            pass
+    snap = subscription_snapshot(company)
+    df = st.session_state.get('processed_df')
+    sub = snap
+    st.markdown(f"""
+    <div class='company-dashboard-hero'>
+      <div class='company-dashboard-brand'>
+        <div class='company-logo-wrap'><img src='{_dacre_logo_data_uri()}' alt='DACRE'></div>
+        <div><div class='company-dashboard-kicker'>DACRE ANALYSIS · COMPANY DASHBOARD</div>
+        <h1>{_escape_html(company)} Dashboard</h1>
+        <p>{_escape_html(DI_NAME)} is connected to your company workspace. Your data, analysis tools and presentation workflow stay inside this dashboard.</p></div>
+      </div>
+      <div class='company-dashboard-status'><span class='status-dot'></span> {sub['display_status'].upper()}</div>
+    </div>
+    """, unsafe_allow_html=True)
+    if not sub['active']:
+        st.markdown("<div class='billing-lock'><b>DACRE ACCESS LOCKED</b><span>Your 30-day free tier has ended. Your company account and billing record remain available. Complete a verified subscription payment to reopen the analysis workspace.</span></div>", unsafe_allow_html=True)
+
+    # Preserve the useful DI Home content here without keeping a DI Home page.
+    st.markdown("### Your DACRE Intelligence Team")
+    roster = ACTIVE_DI_ROSTER
+    cols = st.columns(3)
+    for col, item in zip(cols * 2, roster):
+        name,specialty,role,style,gender,avatar,position,rank=item
+        with col:
+            st.markdown(f"""<div class='di-team-card'><img src='{avatar}'><div><div class='di-team-name'>{_escape_html(name)}</div><div class='di-team-role'>{_escape_html(specialty)}</div><p>{_escape_html(role)}</p></div></div>""",unsafe_allow_html=True)
+
+    if df is not None and not df.empty:
+        a,b,c,d = st.columns(4)
+        metrics=[('Rows',f'{len(df):,}'),('Columns',f'{len(df.columns):,}'),('Duplicates',f'{int(df.duplicated().sum()):,}'),('Active file',st.session_state.get('active_filename') or 'Workspace')]
+        for col,(label,val) in zip([a,b,c,d],metrics):
+            with col: st.markdown(f"<div class='dash-kpi'><span>{_escape_html(label)}</span><b>{_escape_html(val)}</b></div>",unsafe_allow_html=True)
+    else:
+        st.markdown("<div class='dashboard-empty'><b>No inspection board loaded yet.</b><br>Open the hamburger menu → Workspace & Data to load your first dataset.</div>",unsafe_allow_html=True)
+
+    st.markdown("### Subscription & Payment")
+    price_cols=st.columns(5)
+    for col,months in zip(price_cols,DACRE_PLAN_MONTHS):
+        amount=_subscription_amount(months)
+        with col:
+            st.markdown(f"<div class='plan-card'><div class='plan-months'>{months} month{'s' if months!=1 else ''}</div><div class='plan-price'>₦{amount:,.0f}</div><div class='plan-note'>₦30,000 / month</div></div>",unsafe_allow_html=True)
+    st.markdown("<div class='trial-banner'><b>30 DAYS FREE</b><span>Every new company starts with a 30-day free tier. After the trial expires, DACRE Analysis is locked until a subscription payment is verified. Your subscription record and selected payment method remain available.</span></div>",unsafe_allow_html=True)
+
+    c1,c2,c3,c4=st.columns(4)
+    c1.metric('Plan status',sub['display_status'].title())
+    c2.metric('Amount paid',f"₦{float(sub.get('amount_paid') or 0):,.0f}")
+    c3.metric('Time remaining',f"{sub['days_left']} days")
+    c4.metric('Access until',sub['expires'].strftime('%d %b %Y'))
+    if sub.get('payment_method'):
+        st.info(f"Saved payment preference: {sub.get('payment_method')}" + (f" · {sub.get('bank_name')}" if sub.get('bank_name') else '') + (f" · Reference {sub.get('transaction_reference')}" if sub.get('transaction_reference') else ''))
+
+    with st.expander("Choose a subscription and payment method", expanded=not sub['active']):
+        p1,p2=st.columns([1,1])
+        with p1:
+            selected_months=st.selectbox('Subscription duration',DACRE_PLAN_MONTHS,index=0,format_func=lambda m:f"{m} month{'s' if m!=1 else ''} — ₦{_subscription_amount(m):,.0f}",key='billing_months')
+            method=st.selectbox('Payment method',DACRE_PAYMENT_METHODS,key='billing_method')
+            selected_bank=''
+            if method=='Bank Transfer':
+                selected_bank=st.selectbox('Choose your bank', [n for n,_ in DACRE_BANK_OPTIONS],key='billing_bank')
+        with p2:
+            st.markdown(f"<div class='payment-summary'><div>Selected plan</div><strong>{selected_months} month{'s' if selected_months!=1 else ''}</strong><b>₦{_subscription_amount(selected_months):,.0f}</b><small>Payment is handled through a secure provider. DACRE does not store your full card, PIN, CVV or online-banking password.</small></div>",unsafe_allow_html=True)
+        st.markdown("#### Bank options")
+        bank_cols=st.columns(4)
+        for col,(bank,initials) in zip(bank_cols,DACRE_BANK_OPTIONS):
+            with col: st.markdown(_bank_badge(bank,initials),unsafe_allow_html=True)
+        st.markdown("#### Other payment routes")
+        pm=st.columns(5)
+        for col,label in zip(pm,DACRE_PAYMENT_METHODS):
+            with col: col.markdown(f"<div class='method-chip'>◉ {label}</div>",unsafe_allow_html=True)
+        if st.button(f"Continue to secure payment · ₦{_subscription_amount(selected_months):,.0f}",use_container_width=True,type='primary',key='subscription_pay_now'):
+            # The billing record is retained even before a gateway is connected.
+            # Activation only happens for a confirmed payment; no fake success is shown.
+            record_subscription_payment(user,selected_months,method,selected_bank,method,'','pending')
+            st.session_state['billing_pending'] = True
+            st.warning("Payment request recorded. Connect Paystack/Flutterwave or DGL's verified bank-transfer workflow to confirm the transaction and automatically activate the account. DACRE will not mark an unpaid request as successful.")
+        if method == "Paystack" or _dacre_env_secret("PAYSTACK_SECRET_KEY"):
+            if st.button(f"Open secure Paystack checkout · ₦{_subscription_amount(selected_months):,.0f}",use_container_width=True,key="paystack_checkout_btn"):
+                url,ref=initialize_paystack_payment(user,selected_months,user.get("email",""))
+                if url:
+                    st.session_state["paystack_reference"] = ref
+                    st.session_state["billing_pending"] = True
+                    st.markdown(f"[Open secure Paystack checkout]({url})")
+                    st.info("Complete the payment in Paystack. After Paystack returns a verified success reference, DACRE can activate the subscription automatically.")
+                else:
+                    st.warning(str(ref))
+        if st.session_state.get('billing_pending'):
+            st.caption("Your selected duration and payment method are preserved. Only a verified payment response activates DACRE access.")
+
+    if not sub['active']:
+        st.error("Your 30-day free tier has ended. DACRE Analysis features are locked until a subscription payment is verified. Your account and billing record remain available so payment can reopen access.")
+
+
 PAGE_META = {
-    "Overview": ("⌂", "DACRE Analytics", "MASTER-ONLY platform command view · users, activity, system health and live intelligence."),
-    "DI Home": ("◉", "DI Command", "Talk, investigate, analyze and move work forward with David's Intelligence."),
-    "DI Calls": ("◉", "DI Connect", "Business calls, DI calls and team rooms with a meeting-ready workspace."),
-    "DI Workforce": ("◉", "DI Workforce", "Your specialized digital workforce — each DI has its own identity, specialty and work style."),
-    "DI Action Center": ("✦", "DI Action Center", "Give DI a goal and let it turn the request into analysis, recommendations and next actions."),
-    "DI Memory Box": ("◈", "DI Memory", "The trusted institutional memory layer shared by the Dacre intelligence workforce."),
-    "Business Command Center": ("◆", "Business Command", "Executive signals, business health and the most important changes in your active data."),
-    "Business Twin": ("◇", "Business Twin", "A living snapshot of how your business is performing, changing and where attention is needed."),
-    "Decision Ledger": ("◌", "Decision Ledger", "Record decisions, expected outcomes and results so the organization learns from its own history."),
-    "Opportunity Radar": ("✧", "Opportunity Radar", "Surface measurable growth signals and turn them into actionable business opportunities."),
-    "Workspace & Data": ("▦", "Workspace & Data", "Bring data into Dacre and turn raw information into useful business knowledge."),
-    "Formula Lab": ("ƒ", "Formula Lab", "Practical spreadsheet-style formulas and transformations."),
-    "Charts": ("◫", "Charts", "Turn data into clear visual stories and business dashboards."),
-    "File Vault": ("▤", "File Vault", "Keep company files, working datasets and project artifacts organized."),
-    "Export Center": ("⇩", "Export Center", "Package analysis outputs for the people who need them."),
-    "Data Presentation Board": ("▣", "Data Presentation Board", "Prociel turns the loaded inspection-board data into a presentation you control."),
-    "Organization Admin Portal": ("⚙", "Organization Admin", "Manage people, roles, notifications and company activity."),
-    "Chibobec Loan Desk": ("₦", "Chibobec Client Workspace", "Chibobec is a DACRE client. Manage its client workspace, loans and activity here."),
-    "Overall Admin DI Portal": ("♛", "Founder Command", "Master-level platform intelligence, workforce, customers, memory and system controls."),
+    "Company Dashboard": ("dashboard", "Company Dashboard", "Your company intelligence, DI team and subscription status."),
+    "Overview": ("dashboard", "DACRE Analytics", "MASTER-ONLY platform command view · users, activity, system health and live intelligence."),
+    "DI Home": ("dashboard", "DI Command", "Talk, investigate, analyze and move work forward with David's Intelligence."),
+    "DI Workforce": ("workforce", "DI Workforce", "Your specialized digital workforce — each DI has its own identity, specialty and work style."),
+    "Business Command Center": ("dashboard", "Business Command", "Executive signals, business health and the most important changes in your active data."),
+    "Business Twin": ("dashboard", "Business Twin", "A living snapshot of how your business is performing, changing and where attention is needed."),
+    "Decision Ledger": ("files", "Decision Ledger", "Record decisions, expected outcomes and results so the organization learns from its own history."),
+    "Opportunity Radar": ("charts", "Opportunity Radar", "Surface measurable growth signals and turn them into actionable business opportunities."),
+    "Workspace & Data": ("data", "Workspace & Data", "Bring data into Dacre and turn raw information into useful business knowledge."),
+    "Formula Lab": ("formula", "Formula Lab", "Practical spreadsheet-style formulas and transformations."),
+    "Charts": ("charts", "Charts", "Turn data into clear visual stories and business dashboards."),
+    "File Vault": ("files", "File Vault", "Keep company files, working datasets and project artifacts organized."),
+    "Export Center": ("export", "Export Center", "Package analysis outputs for the people who need them."),
+    "Data Presentation Board": ("presentation", "Data Presentation Board", "Prociel turns the loaded inspection-board data into a presentation you control."),
 }
 
 
@@ -4143,7 +4453,7 @@ def render_analytics_overview(user):
         st.caption(f"Dashboard search: {search.strip()} · use the navigation to open the matching workspace.")
 
     kpis=[
-        ("users","Total Users",f"{users:,}",12.4,spark_users,"registered platform users","👥"),
+        ("users","Total Users",f"{users:,}",12.4,spark_users,"registered platform users","workforce"),
         ("activity","Activity",f"{activities:,}",8.9,spark_activity,"recorded workspace events","↗"),
         ("health","System Health",f"{health:.2f}%",0.3,spark_health,"availability signal · 24h","◉"),
         ("calls","Active Calls",f"{active_calls:,}",-3.1,spark_calls,"live sessions","☎"),
@@ -4151,7 +4461,7 @@ def render_analytics_overview(user):
     cards=[]
     for key,label,value,delta,spark,hint,icon in kpis:
         positive=delta>=0
-        cards.append(f'''<div class="dacre-kpi-card"><div class="kpi-head"><span class="kpi-icon">{icon}</span><span class="kpi-delta {'up' if positive else 'down'}">{'↗' if positive else '↘'} {abs(delta):.1f}%</span></div><p>{label}</p><div class="kpi-value-row"><b>{_dashboard_escape(value)}</b>{_dashboard_spark(spark)}</div><small>{_dashboard_escape(hint)}</small></div>''')
+        cards.append(f'''<div class="dacre-kpi-card"><div class="kpi-head"><span class="kpi-icon">{_ui_icon_data_uri(icon) and f"<img src='{_ui_icon_data_uri(icon)}' alt='' style='width:28px;height:28px;object-fit:contain;'>" or ""}</span><span class="kpi-delta {'up' if positive else 'down'}">{'up' if positive else 'down'} {abs(delta):.1f}%</span></div><p>{label}</p><div class="kpi-value-row"><b>{_dashboard_escape(value)}</b>{_dashboard_spark(spark)}</div><small>{_dashboard_escape(hint)}</small></div>''')
     st.markdown('<section class="dacre-kpi-grid">'+''.join(cards)+'</section>',unsafe_allow_html=True)
 
     left,right=st.columns([2,1],gap="large")
@@ -4183,15 +4493,40 @@ def render_analytics_overview(user):
     st.markdown(f'''<div class="dacre-panel activity-panel"><div class="panel-head"><div><h2>Recent Activity</h2><p>Latest events across agents and infrastructure</p></div><span class="view-all">Live ledger</span></div><div class="activity-scroll"><table class="dacre-activity-table"><thead><tr><th>Event</th><th>Agent</th><th>Channel</th><th>Status</th><th>Latency</th><th class="right">Time</th></tr></thead><tbody>{''.join(rows)}</tbody></table></div></div>''',unsafe_allow_html=True)
 
 
+def _ui_icon_data_uri(name, fallback=""):
+    """Return a bundled non-emoji pictorial icon for the UI."""
+    try:
+        icon_path = BASE_DIR / "ui_icons" / f"{name}.png"
+        if icon_path.exists():
+            return "data:image/png;base64," + base64.b64encode(icon_path.read_bytes()).decode("ascii")
+    except Exception:
+        pass
+    return fallback
+
+
 def render_page_chrome(page_name, user):
-    icon, title, subtitle = PAGE_META.get(page_name, ("•", page_name, "Dacre business intelligence workspace."))
+    icon, title, subtitle = PAGE_META.get(page_name, ("dashboard", page_name, "Dacre business intelligence workspace."))
+    icon_uri = _ui_icon_data_uri(icon)
+    icon_html = f"<img src='{icon_uri}' alt='' style='width:30px;height:30px;object-fit:contain;display:block;'>" if icon_uri else ""
     master = user.get("role") == "master"
     mode_label = "FOUNDER COMMAND" if master else str(user.get("company", "BUSINESS WORKSPACE")).upper()
+    page_themes = {
+        "Company Dashboard": ("#2f7de1", "#e2b84f", "#071a33"),
+        "DI Workforce": ("#5b63e6", "#55d6c2", "#10153a"),
+        "Data Presentation Board": ("#1e9bd7", "#d7a83e", "#071f32"),
+        "Workspace & Data": ("#0f9f8c", "#e2c044", "#071f28"),
+        "Formula Lab": ("#7357d9", "#f0c35a", "#11102c"),
+        "Charts": ("#1b8fda", "#e0aa43", "#081c31"),
+        "File Vault": ("#3d79c9", "#c9a44a", "#0a1c32"),
+        "Export Center": ("#2f9b72", "#e0b24f", "#081f1a"),
+    }
+    primary, gold, page_bg = page_themes.get(page_name, ("#2f7de1", "#e2b84f", "#071a33"))
+    st.markdown(f"<style>.dacre-page-theme{{--page-primary:{primary};--page-gold:{gold};--page-bg:{page_bg};}} .dacre-page-chrome{{border-color:{primary}66!important;background:linear-gradient(135deg,{page_bg},#102944)!important;box-shadow:0 18px 50px {primary}18!important}} .page-icon{{background:linear-gradient(135deg,{primary},{gold})!important;color:#07111f!important}} .dacre-page-chrome .chrome-pill{{border-color:{primary}66!important}} .stButton>button,.stFormSubmitButton>button,.stDownloadButton>button{{background:linear-gradient(135deg,{primary},{primary}cc,{gold})!important;border-color:{gold}88!important}} .stButton>button:hover,.stFormSubmitButton>button:hover,.stDownloadButton>button:hover{{box-shadow:0 12px 30px {primary}33!important}}</style><div class='dacre-page-theme'></div>",unsafe_allow_html=True)
     st.markdown(
         f"""
         <div class="dacre-page-chrome {'master-page-chrome' if master else ''}">
           <div class="page-chrome-left">
-            <div class="page-icon">{icon}</div>
+            <div class="page-icon">{icon_html}</div>
             <div>
               <div class="page-kicker">{_escape_html(mode_label)} · DA-CRE</div>
               <div class="page-title">{_escape_html(title)}</div>
@@ -4577,7 +4912,7 @@ def _landing_auth_panel():
                     else:
                         st.session_state.last_speech = (
                             f"Welcome to DACRE, {created['first_name']}. "
-                            "I am DI, your business intelligence assistant. "
+                            "I am DI, your data intelligence assistant. "
                             "What would you like us to work on first?"
                         )
                     st.toast(f"Welcome to DACRE, {created['first_name']}!")
@@ -4589,156 +4924,9 @@ def _landing_auth_panel():
             st.session_state.landing_mode = "home"
             st.rerun()
 
-        # Discreet private CEO Office launcher — shown at the bottom of the
-        # public authentication area. Clicking the DACRE mark opens the
-        # server-side master passkey gate; the passkey itself is never shown.
-        st.markdown("""
-        <style>
-          .ceo-launcher-wrap{margin:28px auto 4px;text-align:center;opacity:.86}
-          .ceo-launcher-wrap a{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:14px;
-            border:1px solid rgba(112,132,255,.24);background:linear-gradient(145deg,rgba(28,41,74,.95),rgba(7,13,28,.95));
-            box-shadow:0 12px 34px rgba(0,0,0,.28),0 0 18px rgba(74,110,255,.10);transition:.2s ease;text-decoration:none}
-          .ceo-launcher-wrap a:hover{transform:translateY(-2px);border-color:rgba(105,145,255,.6);box-shadow:0 16px 40px rgba(0,0,0,.34),0 0 24px rgba(74,110,255,.22)}
-          .ceo-launcher-wrap img{width:28px;height:28px;object-fit:contain;border-radius:8px}
-          .ceo-launcher-caption{margin-top:7px;color:#70809b;font-size:9px;letter-spacing:.12em;text-transform:uppercase;font-weight:800}
-        </style>
-        <div class="ceo-launcher-wrap">
-          <a href="?master_gate=1" title="Private CEO Office">__CEO_LOGO__</a>
-          <div class="ceo-launcher-caption">Private CEO Office</div>
-        </div>
-        """.replace("__CEO_LOGO__", f'<img src="{_dacre_logo_data_uri()}" alt="DACRE" />'), unsafe_allow_html=True)
-
-
 def landing_page():
     """Public DACRE landing experience with connected navigation and real auth."""
     record_public_visit("landing_view", "Landing")
-    # -------------------------------------------------------------------------
-    # PRIVATE MASTER GATE
-    # -------------------------------------------------------------------------
-    if st.query_params.get("master_gate") == "1":
-        captcha_required = st.session_state.get("master_captcha_required", False)
-        captcha_passed = st.session_state.get("master_captcha_passed", False)
-        second_attempt = st.session_state.get("master_second_attempt", False)
-
-        st.markdown("""
-        <style>
-          .dacre-master-shell { max-width: 720px; margin: 60px auto; padding: 36px;
-            border-radius: 24px; background:#0b1020; border:1px solid rgba(255,255,255,.09);
-            box-shadow:0 30px 90px rgba(0,0,0,.45); }
-        </style>
-        <div class="dacre-master-shell">
-          <div style="color:#f7f9ff;font-size:28px;font-weight:800;">Overall Admin DI — Master Access</div>
-          <div style="color:#9ba9c2;margin-top:8px;">Private system-wide access for the DACRE master administrator.</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        gate_col1, gate_col2, gate_col3 = st.columns([1, 2, 1])
-        with gate_col2:
-            if captcha_required and not captcha_passed:
-                st.markdown("### Security verification")
-                site_key = os.getenv("DACRE_RECAPTCHA_SITE_KEY", "").strip()
-                if site_key:
-                    components.html(f"""
-                    <div style="display:flex;justify-content:center;">
-                      <div class="g-recaptcha" data-sitekey="{site_key}"></div>
-                    </div>
-                    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-                    """, height=100)
-                    st.caption("Complete the configured security verification before continuing.")
-                    if st.button("I completed the reCAPTCHA", use_container_width=True):
-                        st.warning("Complete the verification widget first.")
-                else:
-                    if st.checkbox("Complete security verification", key="local_captcha_check"):
-                        st.session_state.master_captcha_passed = True
-                        st.session_state.master_second_attempt = True
-                        st.rerun()
-
-                if st.button("Return to DACRE", use_container_width=True, key="master_return_1"):
-                    st.session_state.master_captcha_required = False
-                    st.session_state.master_captcha_passed = False
-                    st.session_state.master_second_attempt = False
-                    st.session_state.master_guard_challenge_required = False
-                    st.session_state.master_guard_failed = False
-                    st.query_params.clear()
-                    st.rerun()
-                return
-
-            # Second gate: the dedicated CEO Office Guardian.
-            if st.session_state.get("master_guard_challenge_required", False):
-                st.markdown("### CEO Office Guardian Verification")
-                if st.session_state.get("master_guard_failed", False):
-                    st.warning("That guardian name was not recognized. Please enter the name exactly as it was given when the guardian was created.")
-                guardian_answer = st.text_input(
-                    "Sorry, please Master, what is the name you gave me when you created me?",
-                    placeholder="Enter the guardian's name",
-                    key="master_guard_answer",
-                )
-                gg1,gg2=st.columns(2)
-                with gg1:
-                    if st.button("Verify Guardian",use_container_width=True,type="primary",key="master_guard_verify"):
-                        if guardian_answer.strip().casefold() == CEO_GUARD_NAME.casefold():
-                            st.session_state.user = master_user_record()
-                            st.session_state.master_route = True
-                            st.session_state.master_captcha_required = False
-                            st.session_state.master_captcha_passed = False
-                            st.session_state.master_second_attempt = False
-                            st.session_state.master_guard_challenge_required = False
-                            st.session_state.master_guard_failed = False
-                            st.session_state.last_speech = "Welcome, Master David. Guaiel has verified the CEO Office. Overall Admin DI is online."
-                            st.query_params.clear()
-                            log_activity(MASTER_USERNAME, "DACRE MASTER", "Opened Overall CEO Office after Guaiel guardian verification", notify_admin=False)
-                            st.rerun()
-                        else:
-                            st.session_state.master_guard_failed = True
-                            st.rerun()
-                with gg2:
-                    if st.button("Return to DACRE",use_container_width=True,key="master_guard_return"):
-                        st.session_state.master_guard_challenge_required=False
-                        st.session_state.master_guard_failed=False
-                        st.query_params.clear()
-                        st.rerun()
-                return
-
-            master_pk = st.text_input(
-                "Account Passkey",
-                type="password",
-                placeholder="Enter your private account passkey",
-                key="master_gate_pk",
-            )
-            if second_attempt:
-                st.info("Security verification completed. Please enter the passkey again.")
-
-            g1, g2 = st.columns(2)
-            with g1:
-                if st.button("Open Overall Admin DI", use_container_width=True, type="primary", key="master_open"):
-                    if master_passkey_gate(master_pk):
-                        st.session_state.master_guard_challenge_required = True
-                        st.session_state.master_guard_failed = False
-                        st.rerun()
-                    else:
-                        if second_attempt:
-                            st.warning("The second passkey attempt was incorrect. Returning to DACRE.")
-                            st.session_state.master_captcha_required = False
-                            st.session_state.master_captcha_passed = False
-                            st.session_state.master_second_attempt = False
-                            st.session_state.master_guard_challenge_required = False
-                            st.session_state.master_guard_failed = False
-                            st.query_params.clear()
-                            st.rerun()
-                        else:
-                            st.session_state.master_captcha_required = True
-                            st.session_state.master_captcha_passed = False
-                            st.session_state.master_second_attempt = False
-                            st.rerun()
-            with g2:
-                if st.button("Return to DACRE", use_container_width=True, key="master_return_2"):
-                    st.session_state.master_captcha_required = False
-                    st.session_state.master_captcha_passed = False
-                    st.session_state.master_second_attempt = False
-                    st.query_params.clear()
-                    st.rerun()
-        return
-
     logo_uri = _dacre_logo_data_uri()
     logo = f'<img src="{logo_uri}" alt="DACRE" class="brand-logo"/>' if logo_uri else '<span class="brand-fallback">D</span>'
 
@@ -4887,20 +5075,28 @@ def landing_page():
     # Dedicated information pages
     # -------------------------------------------------------------------------
     if current_section == "features":
-        st.markdown("""
+        landing_icons = {
+            "data": _ui_icon_data_uri("data"),
+            "formula": _ui_icon_data_uri("formula"),
+            "charts": _ui_icon_data_uri("charts"),
+            "files": _ui_icon_data_uri("files"),
+            "export": _ui_icon_data_uri("export"),
+            "presentation": _ui_icon_data_uri("presentation"),
+        }
+        st.markdown(f"""
         <div class="page-hero">
           <div class="section-kicker">DACRE FEATURES</div>
           <div class="page-title">Everything needed to move from raw data to useful work.</div>
-          <div class="page-copy">DACRE combines a data workspace, cleaning tools, formulas, charts, files, exports, business intelligence and DI into one connected environment.</div>
+          <div class="page-copy">DACRE combines a data workspace, cleaning tools, formulas, charts, files, exports, business intelligence and Prociel's data presentation workflow in one connected environment.</div>
         </div>
         <div class="section">
           <div class="grid-3">
-            <div class="feature-card"><div class="feature-icon">▦</div><h3>Workspace & Data</h3><p>Import CSV, Excel, TSV and JSON datasets into a persistent working environment.</p></div>
-            <div class="feature-card"><div class="feature-icon">ƒ</div><h3>Formula Lab</h3><p>Apply practical spreadsheet-style transformations and calculations without leaving your analysis workflow.</p></div>
-            <div class="feature-card"><div class="feature-icon">◫</div><h3>Charts & Dashboards</h3><p>Turn processed information into visual stories that make business patterns easier to understand.</p></div>
-            <div class="feature-card"><div class="feature-icon">▤</div><h3>File Vault</h3><p>Keep working files and datasets organized inside the organization workspace.</p></div>
-            <div class="feature-card"><div class="feature-icon">⇩</div><h3>Export Center</h3><p>Package analysis outputs for reporting, sharing and business use.</p></div>
-            <div class="feature-card"><div class="feature-icon">✦</div><h3>DI Action Center</h3><p>Give DI a business objective and let it turn the request into analysis, recommendations and next actions.</p></div>
+            <div class="feature-card"><div class="feature-icon"><img src="{landing_icons['data']}" alt="Data workspace" width="52" height="52"></div><h3>Workspace & Data</h3><p>Import CSV, Excel, TSV and JSON datasets into a persistent working environment.</p></div>
+            <div class="feature-card"><div class="feature-icon"><img src="{landing_icons['formula']}" alt="Formula tools" width="52" height="52"></div><h3>Formula Lab</h3><p>Apply practical spreadsheet-style transformations and calculations without leaving your analysis workflow.</p></div>
+            <div class="feature-card"><div class="feature-icon"><img src="{landing_icons['charts']}" alt="Charts" width="52" height="52"></div><h3>Charts & Dashboards</h3><p>Turn processed information into visual stories that make business patterns easier to understand.</p></div>
+            <div class="feature-card"><div class="feature-icon"><img src="{landing_icons['files']}" alt="File vault" width="52" height="52"></div><h3>File Vault</h3><p>Keep working files and datasets organized inside the organization workspace.</p></div>
+            <div class="feature-card"><div class="feature-icon"><img src="{landing_icons['export']}" alt="Export" width="52" height="52"></div><h3>Export Center</h3><p>Package analysis outputs for reporting, sharing and business use.</p></div>
+            <div class="feature-card"><div class="feature-icon"><img src="{landing_icons['presentation']}" alt="Data presentation" width="52" height="52"></div><h3>Data Presentation Board</h3><p>Prociel turns the active inspection-board dataset and your presentation direction into a presentation-ready PowerPoint.</p></div>
           </div>
         </div>
         """, unsafe_allow_html=True)
@@ -5113,14 +5309,11 @@ def landing_page():
 # pages access it. This prevents first-run AttributeError exceptions.
 _SESSION_DEFAULTS = {
     "user": None,
-    "master_route": False,
     "landing_mode": "home",
     "landing_section": "home",
     "master_captcha_required": False,
     "master_captcha_passed": False,
     "master_second_attempt": False,
-    "master_guard_challenge_required": False,
-    "master_guard_failed": False,
     "chat_history": [],
     "raw_df": None,
     "processed_df": None,
@@ -5330,13 +5523,27 @@ chibobec_reminder_results = []
 
 head_col1,head_col2=st.columns([4,1])
 with head_col1:
-    st.markdown(f"""<div class="dacre-user-hero"><div class="dacre-user-title">{'Welcome back, Master David.' if user.get('role')=='master' else 'Good to have you here, '+user['first_name']+'.'}</div><div class="dacre-user-sub">{'DA-CRE Founder Command is online. Your DI workforce, organizations, platform memory and global operations are connected.' if user.get('role')=='master' else DI_NAME+' is active for <b>'+user['company']+'</b>. Your business workspace, data tools and DI conversation are connected.'}</div></div>""",unsafe_allow_html=True)
+    st.markdown(f"""<div class="dacre-user-hero"><div class="dacre-user-title">{_escape_html(user['company'])} Dashboard</div><div class="dacre-user-sub">{DI_NAME} is active for <b>{_escape_html(user['company'])}</b>. Open the hamburger menu to reach your data, analysis, presentation, files and exports.</div></div>""",unsafe_allow_html=True)
 with head_col2:
     if st.button("Sign Out",use_container_width=True):
         log_activity(user["username"],user["company"],"Signed out",notify_admin=user["role"] not in ("master","company_admin"))
         st.session_state.user=None
         st.rerun()
 
+
+
+# Company dashboard visual system — blue, white and gold with page-specific accents.
+st.markdown("""
+<style>
+.company-dashboard-hero{display:flex;justify-content:space-between;gap:22px;align-items:center;padding:26px 28px;border-radius:26px;border:1px solid rgba(87,166,255,.42);border-left:6px solid #e2b84f;background:linear-gradient(135deg,#071a33,#103b67 62%,#3a2e16);box-shadow:0 24px 70px rgba(0,0,0,.25);margin-bottom:20px}
+.company-dashboard-brand{display:flex;gap:18px;align-items:center}.company-logo-wrap{width:86px;height:86px;border-radius:20px;display:grid;place-items:center;background:#fff;border:2px solid #e2b84f;box-shadow:0 10px 28px rgba(0,0,0,.2);overflow:hidden}.company-logo-wrap img{width:100%;height:100%;object-fit:contain}.company-dashboard-kicker{font-size:.72rem;letter-spacing:.16em;font-weight:900;color:#66c9ff!important}.company-dashboard-hero h1{margin:5px 0;font-size:2.35rem;letter-spacing:-.04em}.company-dashboard-hero p{margin:0;color:#c7d9ea!important}.company-dashboard-status{white-space:nowrap;padding:10px 14px;border-radius:999px;border:1px solid #e2b84f99;background:rgba(226,184,79,.1);font-weight:900;color:#f8d97d!important}.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#45e39a;box-shadow:0 0 0 5px rgba(69,227,154,.12);margin-right:5px}
+.di-team-card{height:100%;display:flex;gap:12px;padding:16px;border-radius:19px;background:linear-gradient(145deg,#0c2542,#102f50);border:1px solid rgba(96,178,255,.24);box-shadow:0 10px 30px rgba(0,0,0,.16);margin-bottom:12px}.di-team-card img{width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #e2b84f}.di-team-name{font-size:1.05rem;font-weight:900}.di-team-role{font-size:.72rem;color:#6ed0ff!important;font-weight:800;text-transform:uppercase;letter-spacing:.06em}.di-team-card p{font-size:.82rem;color:#b7c9dc!important;margin:.35rem 0 0;line-height:1.4}
+.dash-kpi{padding:15px 17px;border-radius:16px;border:1px solid rgba(92,169,239,.25);background:linear-gradient(145deg,#0c2846,#112f4d);margin:10px 0 20px}.dash-kpi span{display:block;color:#91b2ce!important;font-size:.75rem}.dash-kpi b{display:block;margin-top:4px;font-size:1.35rem}.dashboard-empty{padding:22px;border-radius:18px;border:1px dashed rgba(226,184,79,.55);background:rgba(226,184,79,.07);margin:10px 0 22px}
+.plan-card{height:100%;padding:16px;border-radius:18px;border:1px solid rgba(91,164,239,.28);background:linear-gradient(145deg,#0c2745,#12385c);text-align:center}.plan-months{font-size:.76rem;text-transform:uppercase;letter-spacing:.08em;color:#82ccff!important;font-weight:900}.plan-price{font-size:1.5rem;font-weight:950;margin-top:6px}.plan-note{font-size:.72rem;color:#a9bed3!important}.trial-banner{display:flex;gap:14px;align-items:center;padding:14px 17px;border-radius:16px;border:1px solid rgba(226,184,79,.5);background:linear-gradient(90deg,rgba(226,184,79,.12),rgba(64,157,235,.08));margin:15px 0}.trial-banner b{padding:6px 9px;border-radius:999px;background:#e2b84f;color:#081423!important;white-space:nowrap}.trial-banner span{color:#d1dfeb!important}.payment-summary{padding:18px;border-radius:18px;border:1px solid rgba(93,175,255,.28);background:#0b2440;display:flex;flex-direction:column;gap:6px}.payment-summary strong{font-size:1.15rem}.payment-summary b{font-size:2rem;color:#f2cc61!important}.payment-summary small{color:#9fb9cf!important;line-height:1.45}.bank-logo{display:flex;align-items:center;gap:8px;padding:10px;border:1px solid rgba(120,181,238,.22);border-radius:14px;background:#0c2745;min-height:46px}.bank-logo span{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(135deg,#2e78dc,#e2b84f);color:#071423!important;font-weight:950;font-size:.72rem}.bank-logo b{font-size:.76rem}.method-chip{padding:11px 8px;border-radius:12px;border:1px solid rgba(104,179,242,.24);background:#0d2947;text-align:center;font-size:.72rem;font-weight:800;min-height:42px}
+@media(max-width:850px){.company-dashboard-hero{flex-direction:column;align-items:flex-start}.company-dashboard-status{align-self:flex-start}.trial-banner{align-items:flex-start;flex-direction:column}}
+.billing-lock{display:flex;gap:12px;align-items:center;padding:14px 17px;border-radius:16px;border:1px solid rgba(255,112,112,.45);background:linear-gradient(90deg,rgba(132,26,42,.28),rgba(226,184,79,.08));margin:0 0 20px}.billing-lock b{color:#ffd477!important;white-space:nowrap}.billing-lock span{color:#d8e2ed!important}@media(max-width:650px){.billing-lock{align-items:flex-start;flex-direction:column}}
+</style>
+""",unsafe_allow_html=True)
 
 # Final visual safety layer: keeps interactive bars/buttons/inputs visible across all pages.
 st.markdown("""
@@ -5381,26 +5588,31 @@ div[data-baseweb="select"] > div { background:#111a2d !important; color:#f3f7ff 
 with st.sidebar:
     if LOGO_PATH.exists():
         st.image(str(LOGO_PATH),use_container_width=True)
+        st.markdown("<div style='text-align:center;font-weight:900;letter-spacing:.14em;font-size:.78rem;margin:-4px 0 14px;color:#d9e8ff'>DACRE ANALYSIS</div>",unsafe_allow_html=True)
     st.markdown(f"### {user['first_name']}'s Workspace")
     st.caption(f"{user['company']} · {user['role']}")
     st.markdown("<div style='font-size:.78rem;color:#3556a8!important;margin:4px 0 14px'>DI is available across your workspace.</div>",unsafe_allow_html=True)
 
-    # Normal workspace navigation. Overall Admin DI is deliberately kept out
-    # of the normal user experience and is never promoted to the top.
-    # Platform-wide analytics/activity is deliberately MASTER ONLY.
-    # Company admins and ordinary users get their own workspace, not the global DACRE dashboard.
+    # DACRE Analysis navigation only. Platform-wide administration, global business
+    # oversight, customer operations and the Overall Admin portal belong to DGL
+    # (DACRE Global Limited), not this application.
+    # The hamburger menu contains the working tools. The company dashboard is the
+    # landing workspace; removed DI Home/Calls/Action Center/Memory Box pages remain
+    # available only through their underlying capabilities, not as navigation items.
     navigation=[
-        "DI Home", "DI Workforce", "DI Action Center", "DI Memory Box",
-        "Data Presentation Board", "Workspace & Data", "Formula Lab", "Charts",
-        "File Vault", "Export Center",
+        "Company Dashboard", "DI Workforce", "Data Presentation Board",
+        "Workspace & Data", "Formula Lab", "Charts", "File Vault", "Export Center",
     ]
-    # Only company admins and the master may initiate DI calls.
-    if user["role"] in ("company_admin", "master"):
-        navigation.insert(2 if user["role"] == "company_admin" else 3, "DI Calls")
-    # Nobody is automatically dropped into the CEO Office.
-    default_page=navigation[0]
-    _nav_icons={"Overview":"⌂","DI Home":"◉","DI Calls":"☎","DI Workforce":"◈","DI Action Center":"✦","DI Memory Box":"◇","Workspace & Data":"▦","Formula Lab":"ƒ","Charts":"▤","File Vault":"▤","Export Center":"⇩","Data Presentation Board":"▣","Sovereign Master Call":"☷","David Creations":"◆"}
-    selected_page=st.radio("Navigation",navigation,index=navigation.index(default_page) if default_page in navigation else 0,format_func=lambda x:f"{_nav_icons.get(x,'•')}  {x}")
+    default_page="Company Dashboard"
+    selected_page=st.radio("Navigation",navigation,index=navigation.index(default_page) if default_page in navigation else 0)
+
+# Expired customer workspaces stay alive for billing, but all paid DACRE tools are locked
+# until a payment is verified. The master account is not subscription-gated.
+if user.get("role") != "master":
+    _billing_snapshot = subscription_snapshot(user.get("company", ""))
+    if not _billing_snapshot.get("active") and selected_page != "Company Dashboard":
+        st.session_state["billing_lock_reason"] = "Your free 30-day access has ended. Open the Company Dashboard to renew your subscription."
+        selected_page = "Company Dashboard"
 
 # Universal inner-page interface. Every Dacre workspace gets the same premium chrome,
 # while the master account receives a separate founder visual identity.
@@ -5421,7 +5633,7 @@ def di_voice_bridge(language_code="en-NG"):
     components.html(f"""
     <div id="dacre-voice-box" style="font-family:Inter,system-ui,sans-serif;display:grid;gap:9px;padding:2px 0;">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-        <button id="dacre-voice-btn" type="button" style="border:1px solid #69b8ee;background:linear-gradient(135deg,#0e5f98,#1e82c0);color:#fff;border-radius:13px;padding:11px 17px;font-weight:850;cursor:pointer;font-size:14px;box-shadow:0 7px 18px rgba(0,103,170,.18);">🎙️ Talk to DI</button>
+        <button id="dacre-voice-btn" type="button" style="border:1px solid #69b8ee;background:linear-gradient(135deg,#0e5f98,#1e82c0);color:#fff;border-radius:13px;padding:11px 17px;font-weight:850;cursor:pointer;font-size:14px;box-shadow:0 7px 18px rgba(0,103,170,.18);">Talk to DI</button>
         <div id="dacre-voice-status" style="font-size:13px;color:#49677f;font-weight:750;min-width:250px;">Click the microphone and speak naturally. DACRE will send your message after 8 seconds.</div>
       </div>
       <div id="dacre-live-transcript" style="min-height:42px;padding:10px 12px;border-radius:12px;background:#0d223c;border:1px solid rgba(120,170,210,.28);color:#eaf6ff;font-size:14px;line-height:1.45;">Your words will appear here while you speak…</div>
@@ -5441,7 +5653,7 @@ def di_voice_bridge(language_code="en-NG"):
         const clean=String(text||'').replace(/\\s+/g,' ').trim();
         if(!clean){{
           setStatus('I could not hear a clear question. Please try again and speak a little closer to the microphone.');
-          btn.disabled=false; btn.textContent='🎙️ Talk to DI'; return;
+          btn.disabled=false; btn.textContent='Talk to DI'; return;
         }}
         setStatus('Sending your question to DI…');
         setPreview(clean);
@@ -5455,7 +5667,7 @@ def di_voice_bridge(language_code="en-NG"):
         active=false;
         if(timer){{clearInterval(timer);timer=null;}}
         try{{if(rec) rec.stop();}}catch(e){{}}
-        btn.disabled=false; btn.textContent='🎙️ Talk to DI';
+        btn.disabled=false; btn.textContent='Talk to DI';
         navigateWithTranscript(finals.join(' '));
       }};
 
@@ -5483,13 +5695,13 @@ def di_voice_bridge(language_code="en-NG"):
         }};
         rec.onerror=(event)=>{{
           if(!active) return;
-          if(event && event.error==='not-allowed'){{active=false;clearInterval(timer);timer=null;btn.disabled=false;btn.textContent='🎙️ Talk to DI';setStatus('Microphone permission was blocked. Allow microphone access for DACRE and try again.');return;}}
+          if(event && event.error==='not-allowed'){{active=false;clearInterval(timer);timer=null;btn.disabled=false;btn.textContent='Talk to DI';setStatus('Microphone permission was blocked. Allow microphone access for DACRE and try again.');return;}}
           setStatus('Microphone connection hiccup — continuing the 8-second capture…');
         }};
         rec.onend=()=>{{
           if(active){{ try{{rec.start();}}catch(e){{}} }}
         }};
-        try{{rec.start();}}catch(e){{active=false;btn.disabled=false;btn.textContent='🎙️ Talk to DI';setStatus('Microphone could not be started. Please allow microphone access and try again.');return;}}
+        try{{rec.start();}}catch(e){{active=false;btn.disabled=false;btn.textContent='Talk to DI';setStatus('Microphone could not be started. Please allow microphone access and try again.');return;}}
         timer=setInterval(()=>{{
           remaining-=1;
           if(remaining<=0) finish();
@@ -5577,142 +5789,11 @@ def render_chibobec_client_overview(con):
             st.dataframe(safe_dataframe_for_streamlit(view),use_container_width=True,hide_index=True)
 
 
-if selected_page=="Overview":
-    if user["role"] != "master":
-        st.error("DACRE Analytics platform oversight is reserved for David Emenike in the Overall Admin DI Office.")
-        st.stop()
-    render_analytics_overview(user)
-
-elif selected_page=="DI Home":
-    avatar_path = DI_AVATAR_PATH if DI_AVATAR_PATH.exists() else LOGO_PATH
-    avatar_html = str(avatar_path).replace("\\", "/") if avatar_path.exists() else ""
-    image_url = ONLINE_IMAGES["conversation"]
-
-    st.markdown(f"""
-    <div class="di-command">
-      <div class="di-stage" style="background-image:url('{image_url}')">
-        <div class="di-stage-overlay"></div>
-        <div class="di-stage-copy">
-          <div class="di-status"><span class="di-dot"></span> DI is online and ready</div>
-          <div class="di-kicker" style="margin-top:18px">DACRE BUSINESS INTELLIGENCE</div>
-          <h2>Talk to DI. Work with DI. Let DI move the work forward.</h2>
-          <p>Ask a business question, upload a dataset, investigate a problem, build a presentation or request current information. DI can switch between your workspace and public online research when the task requires it.</p>
-        </div>
-        <div class="di-orb"></div>
-      </div>
-      <div class="di-transcript">
-        <div class="di-transcript-label">Live DI conversation</div>
-        <div class="di-transcript-text">{"Your conversation with DI will appear here. Speak naturally; Chrome will listen continuously while this page is open." if not st.session_state.chat_history else st.session_state.chat_history[-1]["text"]}</div>
-      </div>
-    </div>
-    """,unsafe_allow_html=True)
-
-    # Natural voice + multilingual control. Speech recognition and speech synthesis
-    # run in the browser, so no audio file has to be uploaded to the server.
-    vc1,vc2,vc3,vc4=st.columns([1.25,1,1,1])
-    with vc1:
-        selected_language=st.selectbox("DI language",list(DI_LANGUAGE_PROFILES.keys()),index=list(DI_LANGUAGE_PROFILES.keys()).index(st.session_state.di_language),key="di_language_select")
-        st.session_state.di_language=selected_language
-    with vc2:
-        mode=st.radio("DI response",["🔊 Voice","📝 Text"],index=0 if st.session_state.get("di_response_mode","voice")=="voice" else 1,key="di_response_mode_ui",horizontal=True)
-        st.session_state.di_response_mode="voice" if mode.startswith("🔊") else "text"
-        st.session_state.di_voice_enabled=(st.session_state.di_response_mode=="voice")
-    with vc3:
-        if st.button("🧹 Clear previous messages",use_container_width=True,key="clear_di_chat"):
-            st.session_state.chat_history=[]; st.session_state.last_speech=""; st.rerun()
-    with vc4:
-        st.markdown("<div class='voice-panel'><b>🎙️ 8-second voice</b><br><span style='font-size:.84rem;color:#49677f!important'>Voice is default. Switch to Text whenever you prefer.</span></div>",unsafe_allow_html=True)
-    if st.session_state.di_voice_enabled:
-        di_voice_bridge(DI_LANGUAGE_PROFILES[st.session_state.di_language]["code"])
-
-    st.markdown("### Start with a business goal")
-    q1,q2,q3,q4=st.columns(4)
-    cards=[
-      ("Investigate", "Find what is changing in my business", "Ask DI to inspect your active dataset and identify important patterns."),
-      ("Analyse data", "Explain this dataset to me", "DI can inspect rows, columns, missing values, duplicates and numeric fields."),
-      ("Research", "Find the latest information", "DI can attempt a public-web lookup for current topics and tell you that it used online sources."),
-      ("Create", "Build something useful", "Ask DI to plan a report, chart, presentation, workflow or business action."),
-    ]
-    for col,(title,headline,desc) in zip([q1,q2,q3,q4],cards):
-        with col:
-            st.markdown(f"<div class='di-quick-card'><div style='font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:#c65f00!important;font-weight:800'>{title}</div><h4 style='margin:.45rem 0'>{headline}</h4><p style='color:#657180!important;font-size:.9rem;line-height:1.45'>{desc}</p></div>",unsafe_allow_html=True)
-
-    if st.session_state.processed_df is not None:
-        df=st.session_state.processed_df
-        a,b,c,d=st.columns(4)
-        metrics=[("Rows",f"{len(df):,}"),("Columns",f"{len(df.columns):,}"),("Duplicates",f"{int(df.duplicated().sum()):,}"),("Active file",st.session_state.active_filename or "Workspace")]
-        for col,(label,value) in zip([a,b,c,d],metrics):
-            with col: st.markdown(f"<div class='di-metric'><div class='v'>{value}</div><div class='l'>{label}</div></div>",unsafe_allow_html=True)
-
-    st.markdown("### Conversation")
-    for msg in st.session_state.chat_history[-12:]:
-        who="DI" if msg["sender"]=="DI" else msg["sender"]
-        st.markdown(f"<div style='background:{'#eaf7ff' if who=='DI' else '#ffffff'};border:1px solid #b8ddf4;border-radius:14px;padding:13px 16px;margin:8px 0'><b>{who}</b><div style='margin-top:5px;line-height:1.55'>{msg['text']}</div></div>",unsafe_allow_html=True)
-
-    chat_col, clear_col = st.columns([8,1])
-    with chat_col:
-        with st.form("di_chat_form",clear_on_submit=True):
-            chat_text=st.text_input("Ask DI",placeholder="Type here if you prefer text…",label_visibility="collapsed")
-            send=st.form_submit_button("Send to DI",use_container_width=True)
-    with clear_col:
-        if st.button("🗑️", help="Delete all previous messages in this chat", key="di_chat_trash", use_container_width=True):
-            st.session_state.chat_history=[]
-            st.session_state.last_speech=""
-            try:
-                con=db(); con.execute("DELETE FROM chat_history WHERE username=? AND company_name=?",(user["username"],user["company"])); con.commit(); con.close()
-            except Exception:
-                pass
-            st.rerun()
-    if send and chat_text.strip():
-        st.session_state.chat_history.append({"sender":user["first_name"],"text":chat_text.strip()})
-        reply=di_reply(chat_text,user,st.session_state.processed_df,allow_online=True,language=st.session_state.get("di_language","English — Nigeria"))
-        st.session_state.chat_history.append({"sender":"DI","text":reply})
-        con=db(); now=datetime.now().isoformat(timespec="seconds")
-        con.execute("INSERT INTO chat_history(username,company_name,sender,message,created_at) VALUES(?,?,?,?,?)",(user["username"],user["company"],user["first_name"],chat_text.strip(),now))
-        con.execute("INSERT INTO chat_history(username,company_name,sender,message,created_at) VALUES(?,?,?,?,?)",(user["username"],user["company"],"DI",reply,now)); con.commit(); con.close()
-        st.session_state.last_speech=reply
-        if st.session_state.get("di_response_mode","voice")=="voice": speak(reply, DI_LANGUAGE_PROFILES[st.session_state.di_language]["code"])
-        st.rerun()
-
-    st.caption("Voice mode uses your browser microphone and speech synthesis. If your browser does not expose continuous speech recognition, the text conversation remains available.")
+if selected_page=="Company Dashboard":
+    render_company_dashboard(user)
 
 # BUSINESS COMMAND CENTER — additive executive intelligence page
 # =============================================================================
-elif selected_page=="DI Calls":
-    if user["role"] not in ("company_admin", "master"):
-        st.error("Only a company administrator can call a DI. The master uses the Sovereign Master Call in the Overall Admin DI Office.")
-        st.stop()
-    if user["role"]=="master":
-        st.info("Master access: use Sovereign Master Call for multi-DI council sessions.")
-        st.stop()
-    agents=[dict(r) for r in get_di_agents()]
-    assigned=[a for a in agents if not a.get('assigned_company') or a.get('assigned_company')==user['company']]
-    st.markdown("""<div class='call-stage'><div class='call-top'><div><div class='eyebrow'>DACRE REALTIME VOICE</div><h1 style='margin:0'>DI Calls</h1><p>Company administrators can start a private, full-duplex WebRTC call with a DI.</p></div><div class='live-dot'>● LIVE READY</div></div></div>""",unsafe_allow_html=True)
-    if not assigned:
-        st.info("No DI workers are currently available for this organization.")
-    else:
-        labels=[f"{a['di_name']} — {a['specialty']}" for a in assigned]
-        idx=st.selectbox("Choose DI",range(len(labels)),format_func=lambda i:labels[i],key="live_di_choice")
-        target=assigned[idx]
-        st.markdown(f"<div class='di-person-card'><img src='{_escape_html(target.get('avatar_url') or '')}'/><div><b>{_escape_html(target['di_name'])}</b><span>{_escape_html(target['specialty'])}</span><small>{_escape_html(target['position_title'] or target['specialty'])} · Rank {int(target.get('rank_level') or 1)}</small></div></div>",unsafe_allow_html=True)
-        live_room=st.session_state.get("livekit_active_room")
-        if not live_room or st.session_state.get("livekit_active_di")!=target['di_name']:
-            if st.button(f"🎙️ Start full-duplex call with {target['di_name']}",use_container_width=True,type='primary',key='start_live_di_call'):
-                room=make_call_room(user['company'],user['username'],f"Live call with {target['di_name']}",'di')
-                record_call_participant(room,user['company'],'user',user['username'],f"{user['first_name']} {user['last_name']}")
-                record_call_participant(room,user['company'],'di',target['di_code'],target['di_name'])
-                st.session_state.livekit_active_room=room
-                st.session_state.livekit_active_di=target['di_name']
-                log_activity(user['username'],user['company'],f"Started realtime DI call with {target['di_name']}",notify_admin=False)
-                st.rerun()
-        else:
-            render_di_video_call_stage([target], title=f"Live call with {target['di_name']}", user_label=f"{user['first_name']} {user['last_name']}")
-            render_livekit_call(live_room,user,[target],mode='company_di',title=f"Live call with {target['di_name']}")
-            if st.button("End realtime DI call",use_container_width=True,key='end_live_di_call'):
-                st.session_state.livekit_active_room=None
-                st.session_state.livekit_active_di=None
-                st.rerun()
-
 elif selected_page=="DI Workforce":
     agents=[dict(r) for r in get_di_agents() if not r.get('assigned_company') or r.get('assigned_company')==user['company']]
     st.markdown("""<div class='dacre-hero'><div class='dacre-title'>DI Workforce</div><div class='dacre-sub'>Your assigned digital team. Every DI has a distinct identity, specialty, memory profile and work style — all under the same DACRE intelligence foundation.</div></div>""",unsafe_allow_html=True)
@@ -5727,7 +5808,7 @@ elif selected_page=="DI Workforce":
             st.markdown(f"### {a['di_name']}")
             st.caption(f"{a['di_code']} · {a['status']}")
             st.write(a['specialty'])
-            st.info("DI knows David Emenike is the creator and Overall Administrator/master of DACRE.")
+            st.info("DI knows David Emenike is the creator of DACRE.")
         with c2:
             st.markdown("#### Give this DI a task")
             task=st.text_area("Task",placeholder=f"Ask {a['di_name']} to do work using the active Dacre workspace...",height=120)
@@ -5740,91 +5821,12 @@ elif selected_page=="DI Workforce":
             if st.session_state.get(f"di_task_result_{a['di_name']}"):
                 di_voice_player(st.session_state[f"di_task_result_{a['di_name']}"])
 
-elif selected_page=="DI Action Center":
-    render_action_center(user)
-
-elif selected_page=="Business Twin":
-    render_business_twin(st.session_state.processed_df, user)
-
-elif selected_page=="Decision Ledger":
-    render_decision_ledger(user)
-
-elif selected_page=="Opportunity Radar":
-    render_opportunity_page(user)
-
-elif selected_page=="DI Memory Box":
-    st.markdown("<div class='dacre-hero'><div class='dacre-title'>DI Memory Box</div><div class='dacre-sub'>Shared knowledge used by DI across DACRE</div></div>",unsafe_allow_html=True)
-    st.info("This is the trusted project knowledge that DI uses before it researches online. The Overall Administrator can add or update records from the master portal.")
-    mem_df=pd.read_sql_query("SELECT category,title,content,priority,updated_at FROM di_memory WHERE active=1 ORDER BY priority DESC,id ASC",db())
-    for row in mem_df.itertuples(index=False):
-        with st.expander(f"{row.category} · {row.title}",expanded=False):
-            st.write(row.content)
-    st.caption("DI also uses your active workspace and can use public online research when the Memory Box does not contain the answer.")
-
-elif selected_page=="Business Command Center":
-    st.header("Business Command Center")
-    df=st.session_state.processed_df
-    if df is None:
-        st.info("Upload a dataset from Workspace & Data first. Then DACRE will turn the numbers into an executive business view.")
-    else:
-        h=business_health(df)
-        st.markdown(f"<div class='dacre-user-hero'><div class='dacre-user-title'>Executive view</div><div class='dacre-user-sub'>DI has analysed the active workspace for {user['company']}. These signals are calculated from the data currently loaded — no invented business facts.</div></div>",unsafe_allow_html=True)
-        k1,k2,k3,k4=st.columns(4)
-        k1.metric("Business Data Health",f"{h['score']}/100")
-        k2.metric("Records",f"{len(df):,}")
-        k3.metric("Missing Cells",f"{int(df.isna().sum().sum()):,}")
-        k4.metric("Duplicate Rows",f"{int(df.duplicated().sum()):,}")
-        st.markdown("### DI Executive Brief")
-        st.write(build_executive_brief(df,user["company"]))
-        st.markdown("### Signals requiring attention")
-        signals=business_signals(df)
-        if not signals:
-            st.success("No strong automated warning signals were detected in the current dataset.")
-        else:
-            for sig in signals:
-                icon="📈" if sig["type"]=="trend" else "⚠️" if sig["type"]=="anomaly" else "🧹"
-                st.markdown(f"**{icon} {sig['column']}** — {sig['message']}")
-        st.markdown("### DA-CRE Advantage Engine")
-        st.caption("Three business capabilities designed to turn analytics into action, not just dashboards.")
-        adv1,adv2,adv3=st.columns(3)
-        with adv1:
-            st.markdown("#### 🧠 Decision Ledger")
-            st.write("Record a decision, why it was made, the expected outcome and when DI should review the result. This creates institutional memory instead of forgotten meetings.")
-            with st.expander("Create decision"):
-                dt=st.text_input("Decision title",key="dec_title")
-                dc=st.text_area("Context",key="dec_context")
-                dd=st.text_area("Decision",key="dec_decision")
-                de=st.text_input("Expected outcome",key="dec_expected")
-                dr=st.date_input("Review date",key="dec_review")
-                if st.button("Save decision",key="save_decision",use_container_width=True) and dt.strip() and dd.strip():
-                    create_decision(user['company'],user['username'],dt,dc,dd,de,str(dr)); log_activity(user['username'],user['company'],f"Created decision: {dt}"); st.success("Decision saved to institutional memory.")
-        with adv2:
-            st.markdown("#### 🔭 Opportunity Radar")
-            opps=opportunity_radar(df,user['company'],user['username'])
-            if opps:
-                for o in opps: st.markdown(f"**{o['title']}** · {o['impact']}\n\n{o['evidence']}\n\n➡️ {o['action']}")
-            else: st.info("Upload more time-ordered numeric data for opportunity signals.")
-        with adv3:
-            st.markdown("#### 🛡️ Silent Risk Radar")
-            risk_count=int(df.isna().sum().sum())+int(df.duplicated().sum())
-            st.metric("Data-risk indicators",risk_count)
-            st.write("DI watches missing data and duplication as early warning signals before they contaminate business decisions.")
-
-        st.markdown("### Ask the data")
-        with st.form("command_center_form",clear_on_submit=True):
-            q=st.text_input("Business question",placeholder="e.g. Give me an executive brief, show the top products, or check the data health")
-            go=st.form_submit_button("Ask DI",use_container_width=True)
-        if go and q.strip():
-            answer=di_reply(q,user,df,allow_online=True,language=st.session_state.get("di_language","English — Nigeria"))
-            st.markdown(f"<div class='di-quick-card'><b>DI</b><div style='margin-top:8px;line-height:1.65'>{answer}</div></div>",unsafe_allow_html=True)
-            st.session_state.last_speech=answer
-
 # PAGE 1 WORKSPACE
 # =============================================================================
 elif selected_page=="Workspace & Data":
     st.header("Workspace & Data Engine")
     st.caption("Bring data from files or public website tables into the same processed workspace.")
-    source_tab, web_tab = st.tabs(["📁 File / Workbook", "🌐 Website Data"])
+    source_tab, web_tab = st.tabs(["File / Workbook", "Website Data"])
 
     with source_tab:
         file_upload=st.file_uploader("Upload dataset (CSV, Excel, TSV, JSON, PDF)",type=SUPPORTED_EXTENSIONS,key="workspace_file_upload")
@@ -6030,7 +6032,7 @@ elif selected_page=="Data Presentation Board":
             st.markdown("#### Online design references found by Prociel")
             for title,url in st.session_state.prociel_research[:8]:
                 st.markdown(f"- [{title}]({url})")
-        if st.button("🚀 Send prompt to Prociel & Generate PowerPoint",use_container_width=True,type="primary",key="prociel_generate_ppt"):
+        if st.button("Send prompt to Prociel & Generate PowerPoint",use_container_width=True,type="primary",key="prociel_generate_ppt"):
             with st.spinner("Prociel is inspecting the board, researching design references and building the PowerPoint…"):
                 research=st.session_state.get("prociel_research") or _online_design_references(f"PowerPoint {board.get('style','executive')} data presentation",5)
                 save_presentation_request(user,board,prompt.strip(),research)
@@ -6102,618 +6104,6 @@ elif selected_page=="Export Center":
 # =============================================================================
 # ORGANIZATION ADMIN PORTAL
 # =============================================================================
-elif selected_page=="Chibobec Loan Desk" and is_chibobec_company(user.get("company")):
-    st.markdown(f"""<div class='dacre-user-hero'><div class='dacre-user-title'>Chibobec Client Workspace</div><div class='dacre-user-sub'><b>{CHIBOBEC_COMPANY.title()}</b> is a DACRE client. This workspace contains the client's loan operations, due dates and WhatsApp reminder automation.</div></div>""", unsafe_allow_html=True)
-
-    if chibobec_reminder_results:
-        for client_name, reminder_type, ok, status in chibobec_reminder_results:
-            if ok:
-                st.success(f"{reminder_type.title()} sent to {client_name} on WhatsApp.")
-            else:
-                st.warning(f"{reminder_type.title()} for {client_name} is pending: {status}")
-
-    st.info("DI automatically checks this workspace for loans due in 2 days and loans due today. WhatsApp delivery requires a connected WhatsApp provider. The app never claims a message was delivered unless the provider confirms it.")
-
-    add_tab, clients_tab, setup_tab = st.tabs(["Add Loan Client", "Loan Book", "WhatsApp Setup"])
-    with add_tab:
-        with st.form("add_chibobec_loan", clear_on_submit=True):
-            c1,c2=st.columns(2)
-            with c1:
-                lc_name=st.text_input("Client full name", placeholder="e.g. Ada Okafor")
-                lc_phone=st.text_input("Client WhatsApp number", placeholder="08012345678 or +2348012345678")
-                lc_amount=st.number_input("Loan amount (₦)", min_value=0.0, step=1000.0, format="%.2f")
-            with c2:
-                lc_lent=st.date_input("Date loan was given", value=datetime.now().date())
-                lc_due=st.date_input("Date repayment is due", value=datetime.now().date())
-                st.caption("DI will prepare the 2-day reminder and the due-date reminder from these dates.")
-            save_loan=st.form_submit_button("Save Client & Schedule Reminders", use_container_width=True, type="primary")
-        if save_loan:
-            ok,msg=add_loan_client(user["username"], user["company"], lc_name, lc_phone, lc_amount, lc_lent, lc_due)
-            if ok: st.success(msg); st.rerun()
-            else: st.error(msg)
-
-    with clients_tab:
-        con=db()
-        loans=pd.read_sql_query("SELECT id,client_name,whatsapp_number,loan_amount,lent_date,due_date,reminder_2_sent,due_sent,created_at FROM loan_clients WHERE username=? AND company_name=? ORDER BY due_date ASC", con, params=(user["username"],user["company"]))
-        con.close()
-        if loans.empty:
-            st.warning("No loan clients have been added yet.")
-        else:
-            view=loans.copy()
-            view["loan_amount"]=view["loan_amount"].map(lambda x:f"₦{float(x):,.2f}")
-            view["2-day reminder"]=view["reminder_2_sent"].map({0:"Pending",1:"Sent"})
-            view["due-date reminder"]=view["due_sent"].map({0:"Pending",1:"Sent"})
-            view=view.drop(columns=["reminder_2_sent","due_sent"])
-            st.dataframe(safe_dataframe_for_streamlit(view),use_container_width=True,hide_index=True)
-            st.markdown("### Remove a loan record")
-            options={f"#{int(r['id'])} · {r['client_name']} · due {r['due_date']}":int(r['id']) for _,r in loans.iterrows()}
-            chosen=st.selectbox("Select loan", list(options.keys()))
-            if st.button("Delete Loan Record", use_container_width=True):
-                delete_loan_client(options[chosen],user["username"]); st.success("Loan record deleted."); st.rerun()
-
-    with setup_tab:
-        st.markdown("### Meta WhatsApp Cloud API — Production Connection")
-        cfg=_meta_whatsapp_config()
-        configured=bool(cfg["token"] and cfg["phone_id"])
-        if configured:
-            st.success("Meta WhatsApp Cloud API credentials are loaded. DACRE will only mark a reminder as sent after Meta returns a message ID.")
-        else:
-            st.error("Meta WhatsApp Cloud API is NOT configured yet. No message will be falsely reported as sent.")
-        st.write("Add the required Meta WhatsApp secrets to your deployment secrets settings:")
-        meta_secrets = """DACRE_WHATSAPP_TOKEN = "YOUR_META_ACCESS_TOKEN"
-DACRE_WHATSAPP_PHONE_NUMBER_ID = "YOUR_META_PHONE_NUMBER_ID"
-DACRE_WHATSAPP_API_VERSION = "v23.0"
-DACRE_WHATSAPP_2DAY_TEMPLATE = "dacre_loan_due_2days"
-DACRE_WHATSAPP_DUE_TEMPLATE = "dacre_loan_due_today"
-DACRE_WHATSAPP_TEMPLATE_LANGUAGE = "en_US"""
-        st.code(meta_secrets, language="toml")
-        st.info("The two reminder templates must first be created and approved in Meta WhatsApp Manager. Their body must contain exactly three text variables: customer name, loan amount, and due date.")
-        st.caption(f"2-day template: {cfg['reminder_2_template']} · Due-date template: {cfg['due_template']} · Language: {cfg['language']}")
-        if st.button("Run Real Meta Reminder Check Now", use_container_width=True, type="primary"):
-            results=process_chibobec_reminders(user["username"],user["company"])
-            if results:
-                for name,typ,ok,status in results:
-                    (st.success if ok else st.error)(f"{name} · {typ} · {'Sent by Meta' if ok else 'Not sent'} · {status}")
-            else:
-                st.info("No reminder is due today or in exactly 2 days.")
-
-elif selected_page=="Organization Admin Portal" and user["role"] in ("company_admin","master"):
-    st.header("Organization Admin Portal")
-    if user["role"]=="master":
-        st.success("Master access confirmed. You can inspect all organizations.")
-        target_company=st.selectbox("Organization",pd.read_sql_query("SELECT name FROM companies ORDER BY name",db())["name"].tolist())
-    else:
-        target_company=user["company"]
-        st.success(f"Admin access confirmed for {target_company}.")
-
-    con=db()
-    org_tab_labels=["People & Accounts","DI Messages"] if user["role"]=="company_admin" else ["People & Accounts","Changes & Activity","DI Messages"]
-    tabs=st.tabs(org_tab_labels)
-    with tabs[0]:
-        users_df=pd.read_sql_query("SELECT id,first_name,last_name,username,email,role,login_count,created_at,last_login FROM users WHERE company_name=? ORDER BY id DESC",con,params=(target_company,))
-        st.dataframe(safe_dataframe_for_streamlit(users_df),use_container_width=True)
-        st.metric("Accounts in organization",len(users_df))
-
-        if user["role"]=="company_admin":
-            st.markdown("### Grant or remove admin access")
-            usernames=users_df[users_df["role"]!="company_admin"]["username"].tolist()
-            if usernames:
-                selected_user=st.selectbox("User",usernames)
-                action=st.selectbox("Action",["Grant company admin","Revoke company admin"])
-                if st.button("Apply account role change"):
-                    new_role="company_admin" if action.startswith("Grant") else "user"
-                    con.execute("UPDATE users SET role=? WHERE username=? AND company_name=?",(new_role,selected_user,target_company)); con.commit()
-                    notify_company_admin(target_company,f"Admin role changed for {selected_user}: {new_role}.","role_change")
-                    log_activity(user["username"],target_company,f"Changed role for {selected_user} to {new_role}",notify_admin=False)
-                    st.success("Role updated."); st.rerun()
-    if user["role"]=="master":
-        with tabs[1]:
-            activity_df=pd.read_sql_query("SELECT id,username,action,created_at FROM activity WHERE company_name=? ORDER BY id DESC",con,params=(target_company,))
-            st.dataframe(safe_dataframe_for_streamlit(activity_df),use_container_width=True)
-        notify_tab=tabs[2]
-    else:
-        notify_tab=tabs[1]
-    with notify_tab:
-        notes_df=pd.read_sql_query("SELECT id,event_type,message,is_read,created_at FROM notifications WHERE company_name=? ORDER BY id DESC",con,params=(target_company,))
-        st.dataframe(safe_dataframe_for_streamlit(notes_df),use_container_width=True)
-        if not notes_df.empty and st.button("Mark DI messages as read"):
-            con.execute("UPDATE notifications SET is_read=1 WHERE company_name=?",(target_company,)); con.commit(); st.rerun()
-    con.close()
-
-
-# =============================================================================
-# MASTER ADMIN PORTAL / CEO OFFICE
-# =============================================================================
-elif selected_page=="Overall Admin DI Portal" and user["role"]=="master":
-    # Last-mile schema repair for the protected CEO Office. This guarantees that
-    # legacy local SQLite databases are healed before any admin query executes.
-    ensure_admin_runtime_schema()
-    counts=admin_metric_counts()
-    hero_left, hero_right = st.columns([1.75, 1], gap="large")
-    with hero_left:
-        st.markdown("""
-        <div class="master-office-hero" style="height:100%;">
-          <span class="master-only-badge">🔐 MASTER ONLY · SYSTEM-WIDE ACCESS</span>
-          <div class="title">CEO Office</div>
-          <div class="sub">DACRE Analysis executive command centre · Overall Administration · DI Workforce</div>
-          <div class="authority">David Emenike · Overall Administrator · DACRE MASTER</div>
-          <div style="margin-top:18px;color:#d9ecff;font-size:.96rem;line-height:1.65;max-width:760px;">
-            <b>Founder command view.</b> Monitor platform activity, organizations, people, DI workforce, memory and system health from one protected executive workspace.
-          </div>
-        </div>
-       """, unsafe_allow_html=True)
-    with hero_right:
-        st.markdown('<div class="ceo-portrait-frame">', unsafe_allow_html=True)
-        if CEO_PORTRAIT_PATH and CEO_PORTRAIT_PATH.exists():
-            st.image(str(CEO_PORTRAIT_PATH), use_container_width=True, output_format="JPEG")
-        elif CEO_PORTRAIT_DATA_URL:
-            # Streamlit accepts standard Data URLs directly without manual base64 decoding
-            st.image(CEO_PORTRAIT_DATA_URL, use_container_width=True)
-        st.markdown('<div class="ceo-portrait-caption">David Emenike · CEO & Overall Administrator · DACRE Analysis</div></div>', unsafe_allow_html=True)
-
-    m1, m2, m3, m4, m5, m6 = st.columns(6)
-    m1.metric("Business Accounts", counts["users"])
-    m2.metric("Organizations", counts["companies"])
-    m3.metric("Activities", counts["activities"])
-    m4.metric("DI Conversations", counts["messages"])
-    m5.metric("Stored Files", counts["files"])
-    m6.metric("DI Workforce", counts["agents"])
-    con=db()
-    tabs=st.tabs(["Executive Overview","DI Workforce","Sovereign Master Call","Organizations","People & Accounts","Live Activity","DI Conversations","Chibobec Client","DI Memory Box","David Creations","Mail Source","System Controls"])
-
-    with tabs[0]:
-        st.subheader("Executive Overview")
-        recent= pd.read_sql_query("SELECT username,company_name,action,created_at FROM activity WHERE lower(username) != lower(?) UNION ALL SELECT 'Visitor' AS username, 'PUBLIC' AS company_name, (event_type || ' · ' || page_name) AS action, created_at FROM public_visits ORDER BY created_at DESC LIMIT 15",con,params=(MASTER_USERNAME,))
-        left,right=st.columns([1.25,1])
-        with left:
-            st.markdown("#### Recent system activity")
-            st.dataframe(safe_dataframe_for_streamlit(recent),use_container_width=True,hide_index=True)
-        with right:
-            st.markdown("#### Platform position")
-            st.write("The CEO Office is the highest DACRE administration layer. This is where master-level oversight, DI workforce creation, organization visibility and platform activity are managed.")
-            st.write("All normal company users remain isolated inside their own organization workspaces.")
-            if cloud_persistence_configured():
-                st.caption("Persistence: Supabase PostgreSQL · Connected")
-            else:
-                st.caption("Persistence: Local development database")
-            st.markdown("#### Latest customer sign-ups")
-            signup_df=pd.read_sql_query("SELECT first_name,last_name,company_name,email,role,created_at,last_login FROM users WHERE role!='master' ORDER BY id DESC LIMIT 20",con)
-            if signup_df.empty:
-                st.info("No non-master customer accounts are currently present in this database.")
-            else:
-                st.dataframe(safe_dataframe_for_streamlit(signup_df),use_container_width=True,hide_index=True)
-            if st.button("Refresh executive view",use_container_width=True):
-                st.rerun()
-
-    with tabs[1]:
-        st.subheader("DI Workforce Command")
-        st.write("Create, rank, assign and privately brief your DI workforce. Workers are grouped by specialty and each has an individual private brain.")
-        create_left,create_right=st.columns([1,1])
-        with create_left:
-            di_name=st.text_input("DI Name",placeholder="e.g. Marcus")
-            di_specialty=st.text_input("Specialty",placeholder="e.g. Financial analysis and forecasting")
-            di_role=st.text_area("DI System Role",placeholder="Describe how this DI should serve businesses.",height=90)
-            di_position=st.text_input("Position",placeholder="e.g. Finance Lead")
-        with create_right:
-            companies=[r[0] for r in con.execute("SELECT name FROM companies ORDER BY name").fetchall()]
-            di_status=st.selectbox("Initial Status",["Available","Assigned","Training","Paused"],key="new_di_status")
-            di_company=st.selectbox("Assign to Organization",["Unassigned"]+companies,key="new_di_company")
-            di_gender=st.selectbox("Staff presentation",["female","male"],format_func=lambda x:"Female professional" if x=="female" else "Male professional",key="new_di_gender")
-            di_rank=st.number_input("Initial Rank",min_value=1,max_value=20,value=1,step=1,key="new_di_rank")
-            if st.button("Create DI Worker",use_container_width=True,type="primary",key="create_di_master"):
-                ok,msg=create_di_agent(di_name,di_specialty,di_status,"" if di_company=="Unassigned" else di_company,di_role,di_gender,di_position or "DI Specialist",int(di_rank))
-                if ok:
-                    log_activity(MASTER_USERNAME,"DACRE MASTER",f"Created DI worker {di_name} ({msg})",notify_admin=False); st.success(f"DI created successfully. Worker code: {msg}"); st.rerun()
-                else: st.error(msg)
-        agents=get_di_agents()
-        if agents:
-            st.markdown("#### DI team by specialty")
-            groups={}
-            for a in agents: groups.setdefault(a["specialty"] or "General Intelligence",[]).append(a)
-            for group,members in sorted(groups.items()):
-                with st.expander(f"{group} · {len(members)} DI",expanded=True):
-                    cols=st.columns(min(4,len(members)))
-                    for idx,a in enumerate(sorted(members,key=lambda r:(-int((r.get("rank_level") if isinstance(r, dict) else r["rank_level"]) or 1),(r.get("di_name") if isinstance(r, dict) else r["di_name"]) or ""))):
-                        with cols[idx%len(cols)]:
-                            if a["avatar_url"]: st.image(a["avatar_url"],width=84)
-                            st.markdown(f"**{a['di_name']}** · Rank {int(a.get('rank_level') or 1)}\n\n{a.get('position_title') or a.get('specialty') or 'DI Specialist'}")
-                            st.caption(f"{a['status']} · {a['di_code']}")
-            st.markdown("#### HR / Position Bar")
-            selected_id=st.selectbox("Select DI",[r["id"] for r in agents],format_func=lambda x: next((r["di_name"] for r in agents if r["id"]==x),str(x)),key="hr_di_pick")
-            selected_agent=next(r for r in agents if r["id"]==selected_id)
-            p1,p2,p3=st.columns(3)
-            with p1: new_position=st.text_input("Position",value=selected_agent["position_title"] or selected_agent["specialty"],key=f"pos_{selected_id}")
-            with p2: new_rank=st.number_input("Rank",min_value=1,max_value=20,value=int(selected_agent["rank_level"] or 1),step=1,key=f"rank_{selected_id}")
-            with p3:
-                company_options=["Unassigned"]+companies; current_company=selected_agent["assigned_company"] or "Unassigned"
-                new_company=st.selectbox("Assignment",company_options,index=company_options.index(current_company) if current_company in company_options else 0,key=f"assign_{selected_id}")
-            if st.button("Save Position & Rank",use_container_width=True,type="primary",key="save_hr_position"):
-                ok,thank=update_di_position(selected_id,new_position,int(new_rank),"" if new_company=="Unassigned" else new_company)
-                if ok:
-                    log_activity(MASTER_USERNAME,"DACRE MASTER",f"Appointed {selected_agent['di_name']} as {new_position} · rank {int(new_rank)}",notify_admin=False); st.success(thank); st.rerun()
-            thanks=con.execute("SELECT message,created_at FROM di_master_thanks WHERE di_id=? ORDER BY id DESC LIMIT 3",(int(selected_id),)).fetchall()
-            if thanks:
-                st.markdown("#### Thank-you messages")
-                for t in thanks: st.info(f"{t['message']}\n\n{t['created_at']}")
-            st.markdown("#### Current workforce record")
-            agent_df=pd.DataFrame([dict(r) for r in agents]); display_cols=[c for c in ["di_name","specialty","position_title","rank_level","status","assigned_company","avatar_url","di_code"] if c in agent_df.columns]
-            st.dataframe(safe_dataframe_for_streamlit(agent_df[display_cols]),use_container_width=True,hide_index=True)
-            st.markdown("#### Private DI Call & Brain Briefing")
-            private_id=st.selectbox("Call a DI privately",[r["id"] for r in agents],format_func=lambda x: next((r["di_name"] for r in agents if r["id"]==x),str(x)),key="private_di_call_pick")
-            private_agent=next(r for r in agents if r["id"]==private_id)
-            private_msg=st.text_area("Share information or an instruction with this DI",placeholder="Tell this DI something important you want it to remember privately.",height=110,key="private_di_message")
-            private_title=st.text_input("Private brain title",placeholder="e.g. David's instruction for client strategy",key="private_di_title")
-            if st.button("Send & Store in DI Private Brain",use_container_width=True,type="primary",key="private_di_send") and private_msg.strip():
-                title=(private_title.strip() or "Master private briefing"); save_di_private_memory(private_id,title,private_msg.strip(),MASTER_USERNAME,"private_call")
-                response=sovereign_di_opinion(private_agent,private_msg.strip())
-                st.success(f"{private_agent['di_name']} received the private briefing and stored it in its own brain.")
-                st.markdown(f"<div class='di-answer-panel'><div class='answer-label'>{private_agent['di_name']} · PRIVATE RESPONSE</div><div>{_escape_html(response).replace(chr(10),'<br>')}</div></div>",unsafe_allow_html=True)
-        else:
-            st.info("No DI workers have been created yet.")
-
-    with tabs[2]:
-        st.subheader("Sovereign Master Call")
-        st.caption("Master-only full-duplex council. Select DIs by specialty; each joins the same WebRTC room as an independent voice participant.")
-        agents=get_di_agents()
-        if not agents:
-            st.info("Create DI workers first in DI Workforce.")
-        else:
-            groups={}
-            for a in agents:
-                groups.setdefault(a["specialty"] or "General Intelligence",[]).append(a)
-            selected=[]
-            for group,members in sorted(groups.items()):
-                st.markdown(f"#### {group}")
-                for a in members:
-                    c1,c2,c3=st.columns([0.08,0.62,0.30])
-                    with c1:
-                        checked=st.checkbox("Select",key=f"sovereign_live_pick_{a['id']}",label_visibility="collapsed")
-                    with c2:
-                        avatar=a["avatar_url"] or ""
-                        img=f"<img src=\"{_escape_html(avatar)}\" width=42 height=42 style=\"border-radius:50%;object-fit:cover\">" if avatar else ""
-                        st.markdown(f"<div style='display:flex;gap:10px;align-items:center'>{img}<div><b>{_escape_html(a['di_name'])}</b><br><span style='color:#9fb0c9'>{_escape_html(a['position_title'] or a['specialty'])} · Rank {int(a['rank_level'] or 1)}</span></div></div>",unsafe_allow_html=True)
-                    with c3:
-                        st.caption("● Ready")
-                    if checked:
-                        selected.append(a)
-            question=st.text_area("Master opening question",placeholder="Ask the council a strategic, technical or business question. They will answer in their own voices.",height=100,key="sovereign_live_question")
-            active=st.session_state.get("sovereign_live_room")
-            if not active:
-                if st.button("🎙️ Start full-duplex Sovereign Master Call",use_container_width=True,type="primary",key="sovereign_live_start"):
-                    if not selected:
-                        st.warning("Select at least one DI.")
-                    else:
-                        room=make_call_room("DACRE MASTER",MASTER_USERNAME,"Sovereign Master Call",'master_council')
-                        call_id,_legacy_room=create_sovereign_call("Sovereign Master Call",[a["id"] for a in selected])
-                        sovereign_log(call_id,"master",MASTER_USERNAME,MASTER_FULL_NAME,question.strip() or "Opened the Sovereign Master Call.")
-                        record_call_participant(room,"DACRE MASTER","master",MASTER_USERNAME,MASTER_FULL_NAME)
-                        for a in selected:
-                            record_call_participant(room,"DACRE MASTER","di",a["di_code"],a["di_name"])
-                        log_activity(MASTER_USERNAME,"DACRE MASTER",f"Started Sovereign Master Call with {len(selected)} DIs",notify_admin=False)
-                        st.session_state.sovereign_live_room=room
-                        st.session_state.sovereign_live_agents=selected
-                        st.session_state.sovereign_live_call_id=call_id
-                        st.rerun()
-            else:
-                live_agents=st.session_state.get("sovereign_live_agents",selected)
-                render_di_video_call_stage(live_agents, title="Sovereign Master Call", user_label=MASTER_FULL_NAME)
-                render_livekit_call(active,user,live_agents,mode="sovereign",title="Sovereign Master Call",question=question)
-                st.markdown("### Live council controls")
-                col_a,col_b=st.columns(2)
-                with col_a:
-                    if st.button("End Sovereign Master Call",use_container_width=True,type="primary",key="sovereign_live_end"):
-                        cid=st.session_state.get("sovereign_live_call_id")
-                        if cid:
-                            con.execute("UPDATE sovereign_calls SET ended_at=?,status='ended' WHERE id=?",(datetime.now().isoformat(timespec="seconds"),int(cid)))
-                            con.commit()
-                        st.session_state.sovereign_live_room=None
-                        st.session_state.sovereign_live_agents=[]
-                        st.session_state.sovereign_live_call_id=None
-                        st.rerun()
-                with col_b:
-                    st.caption("Audio is full-duplex. Speak naturally, interrupt when needed, and let each specialist answer in its own voice.")
-
-    with tabs[3]:
-        st.subheader("All Organizations")
-        companies_df=pd.read_sql_query("SELECT id,name,owner_username,website_url,created_at FROM companies ORDER BY id DESC",con)
-        st.dataframe(safe_dataframe_for_streamlit(companies_df),use_container_width=True,hide_index=True)
-        st.metric("Organizations",len(companies_df))
-
-    with tabs[4]:
-        st.subheader("People & Accounts — Permanent Control")
-        st.caption("Fast account cleanup for the Overall Administrator. The master account is protected. Deletion is permanent and cannot be undone.")
-        users_df=pd.read_sql_query("SELECT id,first_name,last_name,username,company_name,email,role,login_count,created_at,last_login FROM users WHERE role!='master' ORDER BY id DESC",con)
-        st.metric("Deletable accounts",len(users_df))
-        if users_df.empty:
-            st.success("There are currently no non-master accounts to delete.")
-        else:
-            account_options={int(r.id): f"#{int(r.id)} · {r.first_name} {r.last_name} · {r.email} · {r.company_name}" for r in users_df.itertuples()}
-            selected_delete=st.multiselect("Select account(s) to permanently delete",options=list(account_options),format_func=lambda x: account_options[x],key="master_delete_accounts")
-            if selected_delete:
-                preview=users_df[users_df["id"].isin(selected_delete)][["id","first_name","last_name","email","company_name","role","created_at"]]
-                st.dataframe(preview,use_container_width=True,hide_index=True)
-                st.warning(f"You selected {len(selected_delete)} account(s). This removes the account and its stored workspace records. This cannot be undone.")
-                confirm=st.checkbox("I understand these selected accounts will be permanently deleted.",key="confirm_bulk_delete")
-                if confirm and st.button("DELETE SELECTED ACCOUNTS PERMANENTLY",use_container_width=True,type="primary",key="bulk_delete_accounts_btn"):
-                    deleted,removed=permanently_delete_accounts(selected_delete)
-                    for r in removed:
-                        log_activity(MASTER_USERNAME,"DACRE MASTER",f"PERMANENTLY DELETED account {r['username']} ({r['email']})",notify_admin=False)
-                    st.success(f"Permanently deleted {deleted} account(s).")
-                    st.rerun()
-            st.markdown("#### Current accounts")
-            st.dataframe(safe_dataframe_for_streamlit(users_df),use_container_width=True,hide_index=True)
-
-    with tabs[5]:
-        st.subheader("System Activity")
-        activity_df=pd.read_sql_query("SELECT id,username,company_name,action,created_at FROM activity WHERE lower(username) != lower(?) UNION ALL SELECT id, 'Visitor' AS username, 'PUBLIC' AS company_name, (event_type || ' · ' || page_name) AS action, created_at FROM public_visits ORDER BY created_at DESC",con,params=(MASTER_USERNAME,))
-        st.dataframe(safe_dataframe_for_streamlit(activity_df),use_container_width=True,hide_index=True)
-
-    with tabs[6]:
-        st.subheader("DI Conversations Across DACRE")
-        chat_df=pd.read_sql_query("SELECT id,username,company_name,sender,message,created_at FROM chat_history WHERE lower(username) != lower(?) ORDER BY id DESC",con,params=(MASTER_USERNAME,))
-        st.dataframe(chat_df,use_container_width=True,hide_index=True)
-        st.caption("This view gives the master administration layer system-wide visibility into DI conversations. It is not shown to ordinary users.")
-
-    with tabs[7]:
-        render_chibobec_client_overview(con)
-
-    with tabs[8]:
-        # This entire tab is inside the master-only Overall Admin branch.
-        # Keep the extra identity check so the Memory Box can never be rendered
-        # to an ordinary company user by mistake.
-        if user.get("role") != "master" or user.get("username") != MASTER_USERNAME:
-            st.error("DI Memory Box is restricted to the Overall Administrator.")
-        else:
-            st.subheader("DI Memory Box — MASTER ONLY")
-            st.caption("Private master knowledge store. DI workers use active records as trusted context, but ordinary company users cannot open or manage this page.")
-            with st.expander("🌐 Online Intelligence Intake",expanded=False):
-                web_q=st.text_input("Give DI a topic to research online",placeholder="e.g. latest market trends, regulation changes, a competitor, or a technology topic",key="admin_memory_web_q")
-                if st.button("Research Online",key="admin_memory_web_btn",use_container_width=True,type="primary") and web_q.strip():
-                    st.session_state.admin_memory_web_results=online_lookup(web_q.strip(),max_results=8)
-                results=st.session_state.get("admin_memory_web_results",[])
-                for title,url in results: st.markdown(f"**{title}**  \n{url}")
-                if results:
-                    target=st.selectbox("Where should this research go?", ["Shared DI Memory"]+[a["di_name"] for a in get_di_agents()],key="admin_memory_web_target")
-                    if st.button("Save Research",key="admin_memory_web_save",use_container_width=True):
-                        if target=="Shared DI Memory":
-                            now=datetime.now().isoformat(timespec="seconds")
-                            for title,url in results: con.execute("INSERT INTO di_memory(company_name,category,title,content,priority,active,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)",("","ONLINE RESEARCH",title,f"Public source: {url}",800,1,now,now))
-                            con.commit()
-                        else:
-                            ag=next(a for a in get_di_agents() if a["di_name"]==target)
-                            save_di_private_memory(ag["id"],"Online research: "+web_q.strip(),"\n".join([f"{t} — {u}" for t,u in results]),MASTER_USERNAME,"online_research")
-                        st.success("Online research saved.")
-            mem_search=st.text_input("Search the DI Memory Box",placeholder="Search DACRE, DI, accounts, business analytics, formulas, security...",key="di_memory_admin_search")
-            mem_filter=st.selectbox("Memory category",["ALL"]+sorted([r[0] for r in con.execute("SELECT DISTINCT category FROM di_memory ORDER BY category").fetchall()]),key="di_memory_category")
-            if mem_search.strip():
-                pattern="%"+mem_search.strip()+"%"
-                mem_sql="SELECT id,category,title,content,priority,active,created_at,updated_at FROM di_memory WHERE (title LIKE ? OR content LIKE ? OR category LIKE ?)"
-                params=(pattern,pattern,pattern)
-                if mem_filter!="ALL":
-                    mem_sql+=" AND category=?"; params=params+(mem_filter,)
-                mem_sql+=" ORDER BY priority DESC,id ASC LIMIT 500"
-                mem_df=pd.read_sql_query(mem_sql,con,params=params)
-            elif mem_filter!="ALL":
-                mem_df=pd.read_sql_query("SELECT id,category,title,content,priority,active,created_at,updated_at FROM di_memory WHERE category=? ORDER BY priority DESC,id ASC",con,params=(mem_filter,))
-            else:
-                mem_df=pd.read_sql_query("SELECT id,category,title,content,priority,active,created_at,updated_at FROM di_memory ORDER BY priority DESC,id ASC",con)
-            total_mem=con.execute("SELECT COUNT(*) FROM di_memory").fetchone()[0]
-            active_mem=con.execute("SELECT COUNT(*) FROM di_memory WHERE active=1").fetchone()[0]
-            a,b,c=st.columns(3)
-            a.metric("Total Memory Records",total_mem)
-            b.metric("Active Records",active_mem)
-            c.metric("Target Library", "4,000")
-            st.dataframe(safe_dataframe_for_streamlit(mem_df),use_container_width=True,hide_index=True)
-
-            # -----------------------------------------------------------------
-            # MASTER MEMORY MANAGEMENT — add, edit, archive/delete, restore
-            # -----------------------------------------------------------------
-            st.markdown("### 🧠 Master Memory Management")
-            st.caption("You can add, edit, remove from active DI knowledge, and restore shared memory. Changes here affect what DI can use as trusted shared context.")
-
-            memory_rows = [dict(r) for r in con.execute(
-                "SELECT id,category,title,content,priority,active,created_at,updated_at FROM di_memory ORDER BY priority DESC,id ASC"
-            ).fetchall()]
-            memory_by_id = {int(r["id"]): r for r in memory_rows}
-            active_memory_rows = [r for r in memory_rows if int(r.get("active") or 0) == 1]
-            archived_memory_rows = [r for r in memory_rows if int(r.get("active") or 0) == 0]
-
-            mm1,mm2=st.columns([1,1])
-            with mm1:
-                selected_delete = st.multiselect(
-                    "Select memory to remove from DI Brain",
-                    options=[int(r["id"]) for r in active_memory_rows],
-                    format_func=lambda mid: f"#{mid} · {memory_by_id[mid].get('category','GENERAL')} · {memory_by_id[mid].get('title','Untitled')}",
-                    key="master_memory_delete_select",
-                )
-                if st.button("🗑️ Remove selected memory",use_container_width=True,type="primary",key="master_memory_delete_btn"):
-                    if not selected_delete:
-                        st.warning("Select at least one memory record first.")
-                    else:
-                        now=datetime.now().isoformat(timespec="seconds")
-                        con.executemany("UPDATE di_memory SET active=0,updated_at=? WHERE id=?",[(now,int(mid)) for mid in selected_delete])
-                        con.commit()
-                        st.success(f"Removed {len(selected_delete)} memory record(s) from the active DI Brain.")
-                        st.rerun()
-                st.caption(f"Active memory: {len(active_memory_rows)} · Archived/removed: {len(archived_memory_rows)}")
-
-                restore_ids = st.multiselect(
-                    "Restore archived memory",
-                    options=[int(r["id"]) for r in archived_memory_rows],
-                    format_func=lambda mid: f"#{mid} · {memory_by_id[mid].get('category','GENERAL')} · {memory_by_id[mid].get('title','Untitled')}",
-                    key="master_memory_restore_select",
-                )
-                if st.button("↩️ Restore selected memory",use_container_width=True,key="master_memory_restore_btn"):
-                    if not restore_ids:
-                        st.warning("Select at least one archived memory record first.")
-                    else:
-                        now=datetime.now().isoformat(timespec="seconds")
-                        con.executemany("UPDATE di_memory SET active=1,updated_at=? WHERE id=?",[(now,int(mid)) for mid in restore_ids])
-                        con.commit()
-                        st.success(f"Restored {len(restore_ids)} memory record(s).")
-                        st.rerun()
-
-            with mm2:
-                edit_options=[int(r["id"]) for r in memory_rows]
-                edit_id=st.selectbox(
-                    "Edit an existing memory record",
-                    options=edit_options if edit_options else [None],
-                    format_func=lambda mid: "No memory records" if mid is None else f"#{mid} · {memory_by_id[mid].get('title','Untitled')}",
-                    key="master_memory_edit_select",
-                )
-                edit_row=memory_by_id.get(int(edit_id)) if edit_id is not None else None
-                edit_category=st.text_input("Edit category",value=(edit_row.get("category","") if edit_row else ""),key="master_memory_edit_category")
-                edit_title=st.text_input("Edit title",value=(edit_row.get("title","") if edit_row else ""),key="master_memory_edit_title")
-                edit_priority_raw=int(edit_row.get("priority") or 500) if edit_row else 500
-                edit_priority_safe=max(1,min(10000,edit_priority_raw))
-                edit_priority_key=f"master_memory_edit_priority_{int(edit_id or 0)}"
-                if edit_priority_key in st.session_state:
-                    try:
-                        st.session_state[edit_priority_key]=max(1,min(10000,int(st.session_state[edit_priority_key])))
-                    except (TypeError,ValueError):
-                        st.session_state[edit_priority_key]=edit_priority_safe
-                edit_priority=st.number_input("Edit priority",min_value=1,max_value=10000,value=edit_priority_safe,step=10,key=edit_priority_key)
-                edit_content=st.text_area("Edit trusted information",value=(edit_row.get("content","") if edit_row else ""),height=130,key="master_memory_edit_content")
-                if st.button("💾 Save memory changes",use_container_width=True,key="master_memory_edit_btn"):
-                    if edit_row is None:
-                        st.warning("There is no memory record to edit.")
-                    elif not edit_title.strip() or not edit_content.strip():
-                        st.error("Memory title and trusted information are required.")
-                    else:
-                        now=datetime.now().isoformat(timespec="seconds")
-                        con.execute(
-                            "UPDATE di_memory SET category=?,title=?,content=?,priority=?,updated_at=? WHERE id=?",
-                            (edit_category.strip().upper() or "GENERAL",edit_title.strip(),edit_content.strip(),int(edit_priority),now,int(edit_row["id"]))
-                        )
-                        con.commit()
-                        st.success("DI Memory Box record updated.")
-                        st.rerun()
-
-            with st.expander("➕ Add a new DI Memory Box record",expanded=False):
-                mc1,mc2=st.columns([1,2])
-                with mc1:
-                    mem_category=st.text_input("Category",placeholder="PLATFORM / SECURITY / DI / HELP",key="master_memory_add_category")
-                    mem_title=st.text_input("Memory title",key="master_memory_add_title")
-                    mem_priority=st.number_input("Priority",min_value=1,max_value=10000,value=500,step=10,key="master_memory_add_priority")
-                with mc2:
-                    mem_content=st.text_area("Trusted information",height=150,placeholder="Write the exact information DI should know.",key="master_memory_add_content")
-                if st.button("Save to DI Memory Box",use_container_width=True,type="primary",key="master_memory_add_btn"):
-                    if not mem_title.strip() or not mem_content.strip():
-                        st.error("Memory title and trusted information are required.")
-                    else:
-                        now=datetime.now().isoformat(timespec="seconds")
-                        con.execute("INSERT INTO di_memory(category,title,content,priority,active,created_at,updated_at) VALUES(?,?,?,?,1,?,?)",(mem_category.strip().upper() or "GENERAL",mem_title.strip(),mem_content.strip(),int(mem_priority),now,now))
-                        con.commit()
-                        st.success("Saved to DI Memory Box.")
-                        st.rerun()
-
-            st.info("Use this box for durable project facts, approved operating rules, creator information, security rules, product capabilities and other knowledge that every DI should share. Removing a record archives it from active DI context instead of destroying the audit history, so you can restore it later.")
-
-    with tabs[9]:
-        st.subheader("David Creations")
-        st.caption("Master-only room. Your private founder archive and the individual DI brains are accessible here only after a second passkey check.")
-        if not st.session_state.get("david_creations_unlocked",False):
-            dc_pk=st.text_input("David Creations passkey",type="password",key="david_creations_pk")
-            if st.button("Unlock David Creations",use_container_width=True,type="primary",key="unlock_david_creations"):
-                if hmac.compare_digest((dc_pk or "").strip(),DAVID_CREATIONS_PASSKEY):
-                    st.session_state.david_creations_unlocked=True; st.success("David Creations unlocked."); st.rerun()
-                else: st.error("Incorrect David Creations passkey.")
-        else:
-            st.success("David Creations is unlocked for this master session.")
-            agents=get_di_agents()
-            if agents:
-                pick=st.selectbox("Select a DI brain",[a["id"] for a in agents],format_func=lambda x: next((a["di_name"] for a in agents if a["id"]==x),str(x)),key="dc_brain_pick")
-                rows=get_di_private_memory(pick,limit=100)
-                if rows: st.dataframe(safe_dataframe_for_streamlit(pd.DataFrame([dict(r) for r in rows])),use_container_width=True,hide_index=True)
-                else: st.info("This DI has no private master notes yet.")
-                title=st.text_input("Founder creation title",key="dc_title")
-                body=st.text_area("Private founder creation / sense / instruction",key="dc_body",height=130)
-                if st.button("Save to David Creations",use_container_width=True,type="primary",key="save_david_creation") and title.strip() and body.strip():
-                    now=datetime.now().isoformat(timespec="seconds")
-                    con.execute("INSERT INTO david_creations(category,title,content,created_at,updated_at) VALUES(?,?,?,?,?)",("FOUNDER",title.strip(),body.strip(),now,now)); con.commit()
-                    save_di_private_memory(pick,title.strip(),body.strip(),MASTER_USERNAME,"david_creations")
-                    st.success("Saved privately to the founder archive and selected DI brain.")
-            dc_df=pd.read_sql_query("SELECT category,title,content,created_at,updated_at FROM david_creations ORDER BY id DESC",con)
-            st.markdown("#### Founder creation archive")
-            st.dataframe(safe_dataframe_for_streamlit(dc_df),use_container_width=True,hide_index=True)
-            if st.button("Lock David Creations",use_container_width=True,key="lock_david_creations"):
-                st.session_state.david_creations_unlocked=False; st.rerun()
-
-    with tabs[10]:
-        st.subheader("DI Mail Source")
-        try:
-            _smtp_cfg = {
-                "host": st.secrets.get("DACRE_SMTP_HOST", ""),
-                "port": st.secrets.get("DACRE_SMTP_PORT", "587"),
-                "user": st.secrets.get("DACRE_SMTP_USER", ""),
-                "password": st.secrets.get("DACRE_SMTP_PASSWORD", ""),
-                "from": st.secrets.get("DACRE_SMTP_FROM", ""),
-            }
-        except Exception:
-            _smtp_cfg = {"host": "", "port": "587", "user": "", "password": "", "from": ""}
-        provider_status=[]
-        for label,prefix in [("Gmail","DACRE_GMAIL"),("Outlook / Microsoft 365","DACRE_OUTLOOK"),("Proton","DACRE_PROTON")]:
-            try:
-                configured=bool(st.secrets.get(f"{prefix}_SMTP_HOST", "") and st.secrets.get(f"{prefix}_SMTP_USER", "") and st.secrets.get(f"{prefix}_SMTP_PASSWORD", ""))
-            except Exception:
-                configured=False
-            provider_status.append((label,configured))
-        configured_labels=[x for x,ok in provider_status if ok]
-        if configured_labels:
-            st.success("Real mail providers configured: " + ", ".join(configured_labels) + ". DACRE tries them in order and stops after the first successful delivery.")
-        else:
-            st.warning("No real mail provider is configured yet. Accounts can still be created, but real welcome emails require at least one configured provider.")
-        st.code("""# Gmail
-DACRE_GMAIL_SMTP_HOST = \"smtp.gmail.com\"
-DACRE_GMAIL_SMTP_PORT = 587
-DACRE_GMAIL_SMTP_USER = \"your-gmail@gmail.com\"
-DACRE_GMAIL_SMTP_PASSWORD = \"your-google-app-password\"
-DACRE_GMAIL_SMTP_FROM = \"your-gmail@gmail.com\"
-
-# Outlook / Microsoft 365
-DACRE_OUTLOOK_SMTP_HOST = \"smtp.office365.com\"
-DACRE_OUTLOOK_SMTP_PORT = 587
-DACRE_OUTLOOK_SMTP_USER = \"your-outlook@outlook.com\"
-DACRE_OUTLOOK_SMTP_PASSWORD = \"your-outlook-app-password\"
-DACRE_OUTLOOK_SMTP_FROM = \"your-outlook@outlook.com\"
-
-# Proton: configure a Proton-supported SMTP endpoint that is reachable from deployment.
-DACRE_PROTON_SMTP_HOST = \"your-proton-smtp-host\"
-DACRE_PROTON_SMTP_PORT = 587
-DACRE_PROTON_SMTP_USER = \"your-proton-sender\"
-DACRE_PROTON_SMTP_PASSWORD = \"your-proton-smtp-credential\"
-DACRE_PROTON_SMTP_FROM = \"your-proton-address\"
-
-# Optional legacy fallback
-DACRE_SMTP_HOST = \"\"
-DACRE_SMTP_PORT = 587
-DACRE_SMTP_USER = \"\"
-DACRE_SMTP_PASSWORD = \"\"
-DACRE_SMTP_FROM = \"\"
-""", language="toml")
-        st.info("Use provider app passwords/SMTP credentials, not a DACRE user's mailbox password. A local-only Proton Mail Bridge endpoint cannot be reached by Streamlit Cloud; Proton must provide a deployment-reachable SMTP method.")
-        mails_df=pd.read_sql_query("SELECT id,recipient_name,recipient_email,company_name,subject,sender_email,status,sent_at,body FROM emails_log ORDER BY id DESC",con)
-        st.dataframe(safe_dataframe_for_streamlit(mails_df),use_container_width=True,hide_index=True)
-
-    with tabs[11]:
-        st.subheader("System Controls")
-        st.write("Master-level controls are deliberately separated from normal company administration.")
-        c1,c2=st.columns(2)
-        with c1:
-            st.markdown("**Master identity**")
-            st.write("David Emenike")
-            st.write("Overall Administrator")
-            st.write("DACRE MASTER")
-        with c2:
-            st.markdown("**Security**")
-            st.write("The master passkey is checked server-side against its hash. It is not displayed in the CEO Office.")
-            if st.button("Lock CEO Office",use_container_width=True):
-                st.session_state.user=None
-                st.session_state.master_route=False
-                st.query_params.clear()
-                st.rerun()
-    con.close()
-
 # =============================================================================
 # PERSISTENT DI DOCK
 # =============================================================================
@@ -6723,7 +6113,7 @@ quick_title = "Sovereign Master Chat with DI" if user.get("role") == "master" el
 quick_caption = (
     "Private founder channel · David Emenike · Sovereign Master request"
     if user.get("role") == "master"
-    else "Ask DI about your work, DACRE or your business."
+    else "Ask DI about your data, work or DACRE."
 )
 with st.expander(quick_title,expanded=False):
     st.caption(quick_caption)
@@ -6734,10 +6124,10 @@ with st.expander(quick_title,expanded=False):
     quick_chat_col, quick_clear_col = st.columns([8,1])
     with quick_chat_col:
         with st.form("quick_di_form",clear_on_submit=True):
-            q=st.text_input("Chat with DI",placeholder="Ask DI anything about DACRE, your business or your work...",label_visibility="collapsed")
+            q=st.text_input("Chat with DI",placeholder="Ask DI anything about DACRE, your data or your work...",label_visibility="collapsed")
             send=st.form_submit_button("Send")
     with quick_clear_col:
-        if st.button("🗑️", help="Delete all previous messages in this chat", key="quick_di_chat_trash", use_container_width=True):
+        if st.button("Delete", help="Delete all previous messages in this chat", key="quick_di_chat_trash", use_container_width=True):
             st.session_state.chat_history=[]
             st.session_state.last_speech=""
             try:
