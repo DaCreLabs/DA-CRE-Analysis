@@ -1311,12 +1311,26 @@ def record_public_visit(event_type="landing_view", page_name="Landing"):
     st.session_state.visitor_id=visitor_id
     con=db(); con.execute("INSERT INTO public_visits(visitor_id,event_type,page_name,referrer,created_at) VALUES(?,?,?,?,?)",(visitor_id,event_type,page_name,"",datetime.now().isoformat(timespec="seconds"))); con.commit(); con.close()
     if event_type=="landing_view": st.session_state.public_visit_logged=True
+@st.cache_data(ttl=60, show_spinner=False)
+def _get_company_theme_cached(company):
+    company=str(company or "").strip()
+    if not company: return None
+    try:
+        con=db()
+        try:
+            row=con.execute("SELECT theme_primary,theme_accent,theme_background,theme_text FROM company_website_profile WHERE lower(company_name)=lower(?) ORDER BY id DESC LIMIT 1",(company,)).fetchone()
+            return dict(row) if row else None
+        finally:
+            con.close()
+    except Exception:
+        return None
+
 def apply_company_website_theme(user):
     company=str((user or {}).get("company","")).strip()
     if not company or (user or {}).get("role")=="master": return
-    con=db(); row=con.execute("SELECT theme_primary,theme_accent,theme_background,theme_text FROM company_website_profile WHERE lower(company_name)=lower(?) ORDER BY id DESC LIMIT 1",(company,)).fetchone(); con.close()
+    row=_get_company_theme_cached(company)
     if not row: return
-    p=row["theme_primary"] or "#4b82f5"; a=row["theme_accent"] or "#62c8f5"; b=row["theme_background"] or "#0b1020"
+    p=row.get("theme_primary") or "#4b82f5"; a=row.get("theme_accent") or "#62c8f5"; b=row.get("theme_background") or "#0b1020"
     st.markdown(f"<style>:root{{--dacre-primary:{p};--dacre-primary2:{a};}} .stApp{{background:radial-gradient(circle at 85% 0%,{p}22,transparent 30%),linear-gradient(145deg,{b} 0%,#101729 55%,#0e1628 100%)!important}} .dacre-user-hero,.di-quick-card,.di-metric,.dacre-panel{{border-color:{p}55!important}} .stButton>button,.stFormSubmitButton>button{{background:linear-gradient(135deg,{p},{a})!important}}</style>",unsafe_allow_html=True)
 def authenticate(company_name, full_name, passkey, email=""):
     company_clean = (company_name or "").strip().lower()
@@ -1903,13 +1917,13 @@ def _di_media_request(text):
     for pattern in image_patterns:
         m=re.search(pattern,q)
         if m:
-            topic=re.sub(r"^(?:an?|the)\\s+","",m.group(1)).strip(" ?.!\"")
+            topic=re.sub(r"^(?:an?|the)\s+","",m.group(1)).strip(" ?.!\"")
             return {"kind":"image","query":topic or "animal"}
     video_patterns=[         r"(?:show|find|get|give|bring|play|display) (?:me )?(?:a |some |the )?(?:movie|movies|video|videos|film|films|trailer|trailers) (?:of|for|about|on) (.+)",         r"(?:movie|video|film|trailer) (?:of|for|about|on) (.+)", ]
     for pattern in video_patterns:
         m=re.search(pattern,q)
         if m:
-            topic=re.sub(r"^(?:an?|the)\\s+","",m.group(1)).strip(" ?.!\"")
+            topic=re.sub(r"^(?:an?|the)\s+","",m.group(1)).strip(" ?.!\"")
             return {"kind":"video","query":topic}
     return None
 
@@ -1932,7 +1946,7 @@ def _online_image_search(query, limit=6):
             meta=info.get("extmetadata") or {}
             title=meta.get("ImageDescription",{}).get("value") or page.get("title","")
             title=re.sub(r"<[^>]+>"," ",str(title))
-            title=re.sub(r"\\s+"," ",title).strip()
+            title=re.sub(r"\s+"," ",title).strip()
             results.append({"title":title or str(page.get("title","")),"url":image_url,"source":"Wikimedia Commons"})
         return results[:int(limit)]
     except Exception:
@@ -1945,14 +1959,14 @@ def _online_video_search(query, limit=4):
         rows=online_lookup(f"site:youtube.com/watch {query}",max_results=max(8,int(limit)*2))
         seen=set()
         for title,url in rows:
-            m=re.search(r"(?:v=|youtu\\.be/)([A-Za-z0-9_-]{11})",url)
+            m=re.search(r"(?:v=|youtu\.be/)([A-Za-z0-9_-]{11})",url)
             if not m:
                 continue
             video_id=m.group(1)
             if video_id in seen:
                 continue
             seen.add(video_id)
-            results.append({"title":re.sub(r"\\s+"," ",str(title)).strip(),"url":f"https://www.youtube.com/watch?v={video_id}","video_id":video_id,"source":"YouTube"})
+            results.append({"title":re.sub(r"\s+"," ",str(title)).strip(),"url":f"https://www.youtube.com/watch?v={video_id}","video_id":video_id,"source":"YouTube"})
             if len(results)>=int(limit):
                 break
     except Exception:
@@ -2656,7 +2670,7 @@ def _di_speech_text(answer):
     text=re.sub(r"\\[([^\\]]+)\\]\\([^)]*\\)",r"\\1",text)
     text=re.sub(r"[*_`#>~]","",text)
     text=re.sub(r"^\\s*(?:DI|David's Intelligence)\\s*:\\s*","",text,flags=re.I)
-    text=re.sub(r"\\s+"," ",text).strip()
+    text=re.sub(r"\s+"," ",text).strip()
     return text
 
 def speak(text, language_code=None, voice_profile=None):
@@ -3520,8 +3534,29 @@ def ensure_company_subscription(company_name, created_at=None):
         return dict(con.execute("SELECT * FROM company_subscriptions WHERE lower(company_name)=lower(?)", (company_name,)).fetchone())
     finally:
         con.close()
+@st.cache_data(ttl=5, show_spinner=False)
+def _get_company_subscription_cached(company_name):
+    company_name=str(company_name or '').strip()
+    if not company_name: return None
+    try:
+        con=db()
+        try:
+            row=con.execute("SELECT * FROM company_subscriptions WHERE lower(company_name)=lower(?) LIMIT 1", (company_name,)).fetchone()
+            return dict(row) if row else None
+        finally:
+            con.close()
+    except Exception:
+        return None
+
+def _clear_subscription_cache():
+    try:
+        _get_company_subscription_cached.clear()
+    except Exception:
+        pass
+
 def get_company_subscription(company_name):
-    return ensure_company_subscription(company_name)
+    row=_get_company_subscription_cached(company_name)
+    return row if row else ensure_company_subscription(company_name)
 def subscription_snapshot(company_name):
     sub = get_company_subscription(company_name)
     now = datetime.now()
@@ -4851,7 +4886,7 @@ def di_voice_bridge(language_code="en-NG"):
       const setStatus=(t)=>{{ if(status) status.textContent=t; }};
       const setPreview=(t)=>{{ if(preview) preview.textContent=t || 'Your words will appear here while you speak…'; }};
       const navigateWithTranscript=(text)=>{{
-        const clean=String(text||'').replace(/\\s+/g,' ').trim();
+        const clean=String(text||'').replace(/\s+/g,' ').trim();
         if(!clean){{
           setStatus('I could not hear a clear question. Please try again and speak a little closer to the microphone.');
           btn.disabled=false; btn.textContent='Talk to DI'; return;
@@ -4889,7 +4924,7 @@ def di_voice_bridge(language_code="en-NG"):
             if(!phrase) continue;
             if(r.isFinal) finals.push(phrase); else interim += (interim?' ':'')+phrase;
           }}
-          const whole=[...finals,interim].join(' ').replace(/\\s+/g,' ').trim();
+          const whole=[...finals,interim].join(' ').replace(/\s+/g,' ').trim();
           setPreview(whole || 'Listening…');
         }};
         rec.onerror=(event)=>{{
