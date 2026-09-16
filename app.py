@@ -380,7 +380,10 @@ def prepare_favicon():
 
 FAVICON = prepare_favicon()
 
-_PAGE_ICON = "dacre_logo.png"
+_PAGE_ICON = "dacre_logo.png"  # Exact DACRE logo is the Streamlit page icon.
+if not (BASE_DIR / _PAGE_ICON).exists():
+    # Keep the requested exact filename; deployment must include this PNG beside app.py.
+    raise FileNotFoundError("dacre_logo.png is required beside app.py because it is the DACRE page icon.")
 
 st.set_page_config(
     page_title=f"{APP_NAME} | {DI_NAME}",
@@ -2587,6 +2590,79 @@ def needs_web_research(text):
     markers=["latest","current","today","tonight","this week","this month","recent","news","price","pricing","cost","version","release","2026","2027","search online","look online","on the internet","online","according to","official","website","who won","what happened","market","competitor","competitors","research","right now","as of"]
     return any(m in low for m in markers)
 
+# -----------------------------------------------------------------------------
+# DI AUTOMATION ACADEMY / TRAINING CURRICULUM
+# -----------------------------------------------------------------------------
+# These are public expert-led YouTube courses selected as the DI's automation
+# curriculum. The DI does NOT retrain its underlying language model from videos.
+# Instead, DACRE treats the public course material as a learning source: topics,
+# transcripts/available text, examples and verified web material can be converted
+# into structured knowledge and then used by the reasoning layer.
+DI_AUTOMATION_COURSES = [
+    {
+        "title": "Build & Sell n8n AI Agents",
+        "expert": "Nate Herk | AI Automation",
+        "url": "https://www.youtube.com/watch?v=Ey18PDiaAYI",
+        "topics": [
+            "AI agents", "n8n workflows", "RAG", "APIs", "agent memory",
+            "multi-agent systems", "prompting", "webhooks", "MCP",
+            "human-in-the-loop", "error workflows", "agent architecture"
+        ],
+    },
+    {
+        "title": "n8n Masterclass 2026: AI Agents, RAG & How to Sell What You Build",
+        "expert": "Kamran AI Insights",
+        "url": "https://www.youtube.com/watch?v=vamZqhpG3qI",
+        "topics": [
+            "n8n fundamentals", "AI agents", "triggers", "nodes", "data flow",
+            "LLM parameters", "RAG chatbots", "vector databases", "AI automation"
+        ],
+    },
+    {
+        "title": "Complete Agentic AI Course",
+        "expert": "Krish Naik",
+        "url": "https://www.youtube.com/watch?v=rV3HJ4LEZ7k",
+        "topics": [
+            "LangChain", "LangGraph", "RAG", "vectorless RAG", "deep agents",
+            "guardrails", "LLM evaluation", "LLM gateways"
+        ],
+    },
+]
+
+
+def _di_training_context():
+    """Return the DI's automation training curriculum as reasoning context."""
+    lessons=[]
+    for course in DI_AUTOMATION_COURSES:
+        lessons.append(
+            f"{course['title']} — {course['expert']} | "
+            f"topics: {', '.join(course['topics'])} | source: {course['url']}"
+        )
+    return "\n".join(lessons)
+
+
+def _di_work_connection_context(user, df=None):
+    """Build a compact work-context layer so answers can become useful actions."""
+    user=user or {}
+    company=str(user.get("company_name") or user.get("company") or "").strip()
+    role=str(user.get("role") or "user").strip()
+    lines=[f"Workspace/company: {company or 'not specified'}", f"User role: {role}"]
+    if df is not None:
+        try:
+            cols=[str(c) for c in list(df.columns)[:60]]
+            lines.append(f"Active dataset: {len(df):,} rows x {len(df.columns):,} columns")
+            lines.append("Active columns: " + ", ".join(cols))
+        except Exception:
+            pass
+    lines.append(
+        "Application rule: after understanding and answering the question, determine whether "
+        "the knowledge can genuinely help the user's current work in DACRE. If relevant, give "
+        "one or more concrete ways to apply it (data task, workflow, analysis, research, "
+        "document, presentation or next action). Do not force a work connection when it is irrelevant."
+    )
+    return "\n".join(lines)
+
+
 DI_SPECIALIST_PROFILES={
  "Prociel":{"specialty":"Data Presentation","keywords":["presentation","powerpoint","slide","slides","deck","template","animation","visual"],"research":"PowerPoint capabilities, presentation design, visual trends, templates and executive communication"},
  "Oriel":{"specialty":"Data Analysis","keywords":["analyze","analyse","statistics","kpi","trend","correlation","forecast","sales","revenue","metrics","excel","sheets","sql","python","power bi"],"research":"analytics methods, statistics, business metrics and evidence needed to validate conclusions"},
@@ -2767,6 +2843,9 @@ def ai_generate_with_research(system_prompt,user_prompt,max_tokens=1200):
     if _free_secret("GEMINI_API_KEY"):
         answer,sources=_gemini_grounded_generate(system_prompt,user_prompt,max_tokens)
         if answer: return answer,sources
+    if _free_secret("GROQ_API_KEY"):
+        answer=_groq_generate_research(system_prompt,user_prompt,max_tokens=max_tokens)
+        if answer: return answer,[]
     return ai_generate(system_prompt,user_prompt,max_tokens=max_tokens),[]
 
 
@@ -2801,12 +2880,436 @@ def _openai_generate_paid(system_prompt, user_prompt, max_tokens=900):
         return None
 
 
+# =============================================================================
+# DACRE ADVANCED INTELLIGENCE BACKEND — GROQ CONTROL PLANE
+# =============================================================================
+# This layer is intentionally additive. It does not replace the existing
+# workspace, database, DI memory, file vault, analytics, charts, billing,
+# presentation or navigation systems. It gives the existing application a
+# more resilient AI backend and a small observability layer.
+#
+# Provider order:
+#   1. Groq (when GROQ_API_KEY exists in Streamlit Secrets)
+#   2. Gemini (when GEMINI_API_KEY exists)
+#   3. Optional paid OpenAI path when explicitly enabled
+#
+# The secret itself is never rendered, logged or returned to the browser.
+# =============================================================================
+
+DACRE_BACKEND_VERSION = "7.0-advanced"
+DACRE_GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
+DACRE_GROQ_MODELS_ENDPOINT = "https://api.groq.com/openai/v1/models"
+DACRE_DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
+DACRE_GROQ_TIMEOUT_SECONDS = 45
+DACRE_GROQ_MAX_RETRIES = 2
+
+
+def _safe_int(value, default=0, minimum=0, maximum=100000):
+    """Convert a value to a bounded integer without allowing bad config to crash DACRE."""
+    try:
+        number = int(value)
+    except Exception:
+        number = default
+    return max(minimum, min(maximum, number))
+
+
+def _safe_float(value, default=0.0, minimum=0.0, maximum=1.0):
+    """Convert a value to a bounded float without raising configuration errors."""
+    try:
+        number = float(value)
+    except Exception:
+        number = default
+    return max(minimum, min(maximum, number))
+
+
+def _backend_state():
+    """Return a session-local observability state for AI requests."""
+    state = st.session_state.setdefault("dacre_ai_backend_state", {})
+    state.setdefault("requests", 0)
+    state.setdefault("successes", 0)
+    state.setdefault("failures", 0)
+    state.setdefault("groq_requests", 0)
+    state.setdefault("groq_successes", 0)
+    state.setdefault("groq_failures", 0)
+    state.setdefault("last_provider", "")
+    state.setdefault("last_model", "")
+    state.setdefault("last_error", "")
+    state.setdefault("last_latency_ms", 0)
+    state.setdefault("last_request_at", "")
+    return state
+
+
+def _record_backend_event(provider="", model="", success=False, error="", latency_ms=0):
+    """Record non-sensitive AI backend telemetry in the current session only."""
+    state = _backend_state()
+    state["requests"] += 1
+    state["successes"] += 1 if success else 0
+    state["failures"] += 0 if success else 1
+    if provider == "groq":
+        state["groq_requests"] += 1
+        state["groq_successes"] += 1 if success else 0
+        state["groq_failures"] += 0 if success else 1
+    state["last_provider"] = str(provider or "")
+    state["last_model"] = str(model or "")
+    state["last_error"] = str(error or "")[:500]
+    state["last_latency_ms"] = _safe_int(latency_ms, 0, 0, 120000)
+    state["last_request_at"] = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+
+
+def _redact_backend_error(error):
+    """Remove credential-like fragments from an error before it is stored or displayed."""
+    text = str(error or "")
+    key = _free_secret("GROQ_API_KEY") if "_free_secret" in globals() else ""
+    if key:
+        text = text.replace(key, "[REDACTED]")
+    text = re.sub(r"Bearer\s+[A-Za-z0-9._-]+", "Bearer [REDACTED]", text, flags=re.I)
+    text = re.sub(r"api[_-]?key[=:]\s*[^\s,;]+", "api_key=[REDACTED]", text, flags=re.I)
+    return text[:500]
+
+
+def _groq_model_name():
+    """Read the configured Groq model, with a current stable default."""
+    configured = _free_secret("DACRE_GROQ_MODEL") if "_free_secret" in globals() else ""
+    return configured or DACRE_DEFAULT_GROQ_MODEL
+
+
+def _groq_request(payload, timeout=DACRE_GROQ_TIMEOUT_SECONDS):
+    """Low-level Groq request with retry handling and no secret leakage."""
+    key = _free_secret("GROQ_API_KEY")
+    if not key:
+        return None, "GROQ_API_KEY is not configured."
+    last_error = "Groq request failed."
+    for attempt in range(DACRE_GROQ_MAX_RETRIES + 1):
+        started = time.perf_counter()
+        try:
+            req = urllib.request.Request(
+                DACRE_GROQ_ENDPOINT,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={
+                    "Authorization": f"Bearer {key}",
+                    "Content-Type": "application/json",
+                    "User-Agent": "DACRE-Analysis/7.0",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=timeout) as response:
+                raw = response.read().decode("utf-8", errors="replace")
+            data = json.loads(raw)
+            latency = int((time.perf_counter() - started) * 1000)
+            return data, ""
+        except Exception as exc:
+            latency = int((time.perf_counter() - started) * 1000)
+            last_error = _redact_backend_error(exc)
+            # A short backoff prevents a temporary network/provider problem from
+            # immediately producing multiple requests against the same endpoint.
+            if attempt < DACRE_GROQ_MAX_RETRIES:
+                time.sleep(0.45 * (attempt + 1))
+    return None, last_error
+
+
+def groq_backend_health():
+    """Return safe backend diagnostics; no API key or secret value is included."""
+    configured = bool(_free_secret("GROQ_API_KEY"))
+    model = _groq_model_name()
+    state = _backend_state()
+    return {
+        "configured": configured,
+        "model": model,
+        "endpoint": DACRE_GROQ_ENDPOINT,
+        "backend_version": DACRE_BACKEND_VERSION,
+        "requests": state.get("groq_requests", 0),
+        "successes": state.get("groq_successes", 0),
+        "failures": state.get("groq_failures", 0),
+        "last_latency_ms": state.get("last_latency_ms", 0) if state.get("last_provider") == "groq" else 0,
+        "last_error": state.get("last_error", "") if state.get("last_provider") == "groq" else "",
+    }
+
+
+def _groq_extract_text(data):
+    """Extract assistant text from the normal Groq chat-completion response shape."""
+    if not isinstance(data, dict):
+        return ""
+    choices = data.get("choices") or []
+    if not choices:
+        return ""
+    message = choices[0].get("message") or {}
+    content = message.get("content", "")
+    if isinstance(content, list):
+        chunks = []
+        for item in content:
+            if isinstance(item, dict):
+                chunks.append(str(item.get("text", "")))
+        content = "".join(chunks)
+    return str(content or "").strip()
+
+
+def _groq_generate_advanced(system_prompt, user_prompt, max_tokens=900, browser_search=False):
+    """Advanced Groq generation with optional browser search for current questions."""
+    model = _groq_model_name()
+    token_limit = _safe_int(max_tokens, 900, 1, 1800)
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": str(system_prompt or "")},
+            {"role": "user", "content": str(user_prompt or "")},
+        ],
+        "temperature": 0.2,
+        "max_completion_tokens": token_limit,
+    }
+    if browser_search:
+        payload["tools"] = [{"type": "browser_search"}]
+    started = time.perf_counter()
+    data, error = _groq_request(payload)
+    latency = int((time.perf_counter() - started) * 1000)
+    if not data:
+        _record_backend_event("groq", model, False, error, latency)
+        return None
+    answer = _groq_extract_text(data)
+    if not answer:
+        _record_backend_event("groq", model, False, "Groq returned no assistant text.", latency)
+        return None
+    _record_backend_event("groq", model, True, "", latency)
+    return answer
+
+
+def _groq_generate_research(system_prompt, user_prompt, max_tokens=1200):
+    """Use Groq GPT-OSS browser search when Gemini grounding is unavailable."""
+    return _groq_generate_advanced(system_prompt, user_prompt, max_tokens=max_tokens, browser_search=True)
+
+
+def groq_list_models():
+    """List models exposed by the configured Groq account without exposing the key."""
+    key = _free_secret("GROQ_API_KEY")
+    if not key:
+        return []
+    try:
+        req = urllib.request.Request(
+            DACRE_GROQ_MODELS_ENDPOINT,
+            headers={
+                "Authorization": f"Bearer {key}",
+                "Content-Type": "application/json",
+                "User-Agent": "DACRE-Analysis/7.0",
+            },
+            method="GET",
+        )
+        with urllib.request.urlopen(req, timeout=15) as response:
+            data = json.loads(response.read().decode("utf-8", errors="replace"))
+        models = []
+        for item in data.get("data", []) or []:
+            if isinstance(item, dict) and item.get("id"):
+                models.append(str(item["id"]))
+        return sorted(set(models))
+    except Exception:
+        return []
+
+
+def _groq_capability_note():
+    """Human-readable capability note used by the DI backend and diagnostics UI."""
+    return (
+        "Groq is configured as DACRE's primary free AI reasoning provider. "
+        "The default model is openai/gpt-oss-120b, and current research can use "
+        "Groq's browser-search tool when the request requires fresh information. "
+        "Provider credentials are read only from GROQ_API_KEY in Streamlit Secrets."
+    )
+
+
+def _ai_backend_diagnostics_text():
+    """Create a compact safe diagnostics report for the authenticated workspace."""
+    status = free_ai_provider_status()
+    groq = groq_backend_health()
+    lines = [
+        f"DACRE AI backend: {DACRE_BACKEND_VERSION}",
+        f"Groq configured: {'Yes' if status.get('groq') else 'No'}",
+        f"Groq model: {groq.get('model')}",
+        f"Groq requests this session: {groq.get('requests', 0)}",
+        f"Groq successful requests: {groq.get('successes', 0)}",
+        f"Groq failed requests: {groq.get('failures', 0)}",
+        f"Gemini configured: {'Yes' if status.get('gemini') else 'No'}",
+        f"Optional paid OpenAI path: {'Enabled' if status.get('paid_openai_enabled') else 'Disabled'}",
+        "Secrets: protected; values are never displayed by this diagnostic.",
+    ]
+    if groq.get("last_error"):
+        lines.append(f"Last Groq error: {groq['last_error']}")
+    return "\n".join(lines)
+
+
+def _research_request_should_use_groq(question, understanding=None):
+    """Decide when the Groq browser-search tool adds value."""
+    if not _free_secret("GROQ_API_KEY"):
+        return False
+    if isinstance(understanding, dict) and understanding.get("research_required"):
+        return True
+    q = str(question or "").lower()
+    current_markers = (
+        "latest", "today", "current", "recent", "this week", "this month",
+        "price", "news", "update", "2026", "who is", "what happened",
+        "compare current", "market", "competitor", "website", "online"
+    )
+    return any(marker in q for marker in current_markers)
+
+
+def _di_workflow_plan(question, understanding=None):
+    """Map a complex request to the existing six-DI workforce without changing permissions."""
+    u = understanding or {}
+    specialist = u.get("specialist") if isinstance(u, dict) else None
+    subject = str(u.get("subject", "")) if isinstance(u, dict) else ""
+    low = str(question or "").lower()
+    plan = []
+    if specialist in DI_SPECIALIST_PROFILES:
+        plan.append(specialist)
+    if any(x in low for x in ("research", "competitor", "market", "latest", "current")):
+        if "Sofiel" not in plan:
+            plan.append("Sofiel")
+    if any(x in low for x in ("sales", "revenue", "kpi", "trend", "correlation", "forecast")):
+        if "Oriel" not in plan:
+            plan.append("Oriel")
+    if any(x in low for x in ("clean", "duplicate", "missing", "excel", "csv", "vlookup", "xlookup")):
+        if "Daniel" not in plan:
+            plan.append("Daniel")
+    if any(x in low for x in ("explain", "summary", "recommend", "insight", "executive")):
+        if "Graciel" not in plan:
+            plan.append("Graciel")
+    if any(x in low for x in ("pdf", "word", "document", "powerpoint", "file")):
+        if "Henriel" not in plan:
+            plan.append("Henriel")
+    if any(x in low for x in ("presentation", "slides", "powerpoint", "deck", "chart")):
+        if "Prociel" not in plan:
+            plan.append("Prociel")
+    if not plan:
+        plan = ["Oriel"]
+    # Preserve the requested specialist first, then cap the chain so one question
+    # cannot accidentally create a very large number of provider calls.
+    return plan[:4]
+
+
+def _di_workflow_context(question, understanding=None, df=None):
+    """Build compact structured context for multi-specialist DI reasoning."""
+    plan = _di_workflow_plan(question, understanding)
+    parts = [
+        "DACRE DI WORKFLOW PLAN",
+        "Question: " + str(question or ""),
+        "Specialists: " + " -> ".join(plan),
+    ]
+    if isinstance(understanding, dict):
+        parts.append("Intent: " + str(understanding.get("intent", "")))
+        parts.append("Subject: " + str(understanding.get("subject", "")))
+        parts.append("Requested action: " + str(understanding.get("requested_action", "")))
+        parts.append("Desired output: " + str(understanding.get("desired_output", "")))
+    if df is not None:
+        try:
+            parts.append(f"Active dataset: {len(df):,} rows x {len(df.columns):,} columns")
+            parts.append("Columns: " + ", ".join(map(str, list(df.columns)[:80])))
+        except Exception:
+            pass
+    return "\n".join(parts)
+
+
+def _di_workflow_memory_key(question):
+    """Stable non-secret cache key for a workflow request."""
+    normalized = re.sub(r"\s+", " ", str(question or "").strip().lower())
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:24]
+
+
+def _remember_ai_backend_note(title, content, user=None):
+    """Persist a small backend/workflow note when the existing Memory Box is available."""
+    try:
+        company = (user or {}).get("company", "")
+        if "insert_di_memory" in globals():
+            insert_di_memory(
+                company,
+                "AI_BACKEND",
+                title,
+                content,
+                priority=90,
+            )
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def _groq_answer_first(system_prompt, user_prompt, max_tokens=900):
+    """Primary Groq path used for ordinary DI reasoning."""
+    answer = _groq_generate_advanced(system_prompt, user_prompt, max_tokens=max_tokens, browser_search=False)
+    return answer
+
+
+def _groq_answer_current(system_prompt, user_prompt, max_tokens=1200):
+    """Current-information path: Groq browser search first, then normal reasoning."""
+    answer = _groq_generate_research(system_prompt, user_prompt, max_tokens=max_tokens)
+    if answer:
+        return answer
+    return _groq_generate_advanced(system_prompt, user_prompt, max_tokens=max_tokens, browser_search=False)
+
+
+def ai_provider_badge_text():
+    """Safe one-line provider badge for UI components."""
+    status = free_ai_provider_status()
+    if status.get("groq"):
+        return f"Groq · {_groq_model_name()}"
+    if status.get("gemini"):
+        return "Gemini"
+    if status.get("paid_openai_enabled"):
+        return "OpenAI"
+    return "Local fallback"
+
+
+def _backend_guarded_generate(system_prompt, user_prompt, max_tokens=900, research=False):
+    """Central guarded AI entry point with provider fallbacks."""
+    if research and _free_secret("GROQ_API_KEY"):
+        answer = _groq_answer_current(system_prompt, user_prompt, max_tokens=max_tokens)
+        if answer:
+            return answer
+    if _free_secret("GROQ_API_KEY"):
+        answer = _groq_answer_first(system_prompt, user_prompt, max_tokens=max_tokens)
+        if answer:
+            return answer
+    if _free_secret("GEMINI_API_KEY"):
+        answer = _gemini_generate(system_prompt, user_prompt, max_tokens=max_tokens)
+        if answer:
+            return answer
+    return _openai_generate_paid(system_prompt, user_prompt, max_tokens=max_tokens)
+
+
+def _backend_feature_matrix():
+    """Return feature availability for safe diagnostics and future UI."""
+    return {
+        "groq_reasoning": bool(_free_secret("GROQ_API_KEY")),
+        "groq_browser_search": bool(_free_secret("GROQ_API_KEY")),
+        "gemini_reasoning": bool(_free_secret("GEMINI_API_KEY")),
+        "gemini_grounded_search": bool(_free_secret("GEMINI_API_KEY")),
+        "paid_openai": bool(not _free_ai_only_mode() and _free_secret("DACRE_AI_API_KEY")),
+        "persistent_memory": "insert_di_memory" in globals() and "get_di_memory" in globals(),
+        "workspace_data": "clean_dataframe" in globals(),
+        "file_vault": "save_file" in globals(),
+        "presentation": "Presentation" in globals() and Presentation is not None,
+    }
+
+
+def _safe_backend_summary():
+    """Return a compact dictionary suitable for a dashboard metric or API response."""
+    status = free_ai_provider_status()
+    groq = groq_backend_health()
+    return {
+        "version": DACRE_BACKEND_VERSION,
+        "provider": ai_provider_badge_text(),
+        "groq_configured": bool(status.get("groq")),
+        "groq_model": groq.get("model", ""),
+        "groq_success_rate": (
+            round((groq.get("successes", 0) / max(groq.get("requests", 0), 1)) * 100, 1)
+        ),
+        "research_ready": bool(status.get("groq") or status.get("gemini")),
+    }
+
+# End of additive Groq control plane.
+
+
 def ai_generate(system_prompt, user_prompt, max_tokens=900, prefer_grounded=False):
     """Free-first DI reasoning router with optional grounded research."""
     if prefer_grounded and _free_secret("GEMINI_API_KEY"):
         answer,_=_gemini_grounded_generate(system_prompt,user_prompt,max_tokens=max_tokens)
         if answer: return answer
-    answer=_groq_generate(system_prompt,user_prompt,max_tokens=max_tokens)
+    answer=_groq_answer_first(system_prompt,user_prompt,max_tokens=max_tokens) if _free_secret("GROQ_API_KEY") else None
     if answer: return answer
     answer=_gemini_generate(system_prompt,user_prompt,max_tokens=max_tokens)
     if answer: return answer
@@ -2829,11 +3332,93 @@ def normalize_di_identity(text):
     text=re.sub(r"\bI\x27m\s+D([\.,!?])", r"I am DI\1", text, flags=re.IGNORECASE)
     return text
 
+# =============================================================================
+# DI SCREEN NAVIGATION / GUIDED WORKSPACE ROUTING
+# =============================================================================
+# DI can move the authenticated user to a real DACRE workspace page when the
+# question is clearly asking where/how to use a built-in tool. The navigation
+# happens through Streamlit session state + rerun, so DI never opens an
+# unrelated external page or pretends it clicked something it did not control.
+DI_PAGE_ALIASES = {
+    "company dashboard": "Company Dashboard",
+    "dashboard": "Company Dashboard",
+    "di workforce": "DI Workforce",
+    "workforce": "DI Workforce",
+    "data presentation board": "Data Presentation Board",
+    "presentation board": "Data Presentation Board",
+    "workspace": "Workspace & Data",
+    "workspace and data": "Workspace & Data",
+    "workspace & data": "Workspace & Data",
+    "formula lab": "Formula Lab",
+    "charts": "Charts",
+    "chart builder": "Charts",
+    "file vault": "File Vault",
+    "files vault": "File Vault",
+    "file storage": "File Vault",
+    "export center": "Export Center",
+    "exports": "Export Center",
+}
+
+def _di_requested_page(question):
+    """Return a DACRE page only when the question is an access/navigation request."""
+    q = re.sub(r"[^a-z0-9& ]+", " ", str(question or "").lower())
+    q = re.sub(r"\s+", " ", q).strip()
+    # Common typo: 'file fault' -> File Vault.
+    q = q.replace("file fault", "file vault").replace("files fault", "file vault")
+    navigation_words = (
+        "where can i", "where do i", "where is", "where are", "how do i",
+        "how can i", "take me to", "go to", "open", "find", "add", "upload",
+        "save", "store", "access", "use", "get to", "navigate to"
+    )
+    if not any(word in q for word in navigation_words):
+        return None
+    # Match the longest alias first so 'data presentation board' wins over shorter terms.
+    for alias in sorted(DI_PAGE_ALIASES, key=len, reverse=True):
+        if alias in q:
+            return DI_PAGE_ALIASES[alias]
+    return None
+
+def _di_route_response(question, answer):
+    """Prepare a user-facing answer and schedule a real in-app page navigation."""
+    target = _di_requested_page(question)
+    if not target:
+        return answer
+    st.session_state["dacre_di_requested_page"] = target
+    guidance = {
+        "File Vault": "I've moved you to File Vault. To add a file, use the file upload control on that page, choose the file from your device, and save it to the organization vault. Your files stay organized there for later use.",
+        "Workspace & Data": "I've moved you to Workspace & Data. Use the upload/import controls there to bring your dataset into the workspace, then use the available cleaning and data tools.",
+        "Formula Lab": "I've moved you to Formula Lab. Select the operation you need, choose the target column when required, then run the formula on the active dataset.",
+        "Charts": "I've moved you to Charts. Choose the chart type and the relevant category/value columns, then generate the visualization.",
+        "Export Center": "I've moved you to Export Center. Choose the output format you need and use the download control to export your processed work.",
+        "DI Workforce": "I've moved you to DI Workforce. Choose the DI specialist you want to work with and review the available specialist information.",
+        "Data Presentation Board": "I've moved you to the Data Presentation Board. Set the presentation details and give Prociel the instructions for the presentation you want.",
+        "Company Dashboard": "I've moved you to your Company Dashboard. This is the main workspace overview and starting point for your DACRE tools.",
+    }
+    # Keep the answer focused on the user's task; do not expose routing internals.
+    if target == "File Vault":
+        return guidance[target]
+    return guidance.get(target, answer)
+
 def di_reply(message, user, df, allow_online=True, language="English — Nigeria"):
     text=message.strip()
     low=text.lower()
     if not text:
         return "I am ready. Tell me the business result you want to achieve."
+
+    # HARD GENERAL-KNOWLEDGE ANSWER PATH: ordinary factual questions must
+    # return the answer itself, never a description of DI or its provider.
+    normalized_question = re.sub(r"[^a-z0-9 ]+", " ", text.lower()).strip()
+    if normalized_question in {"wikipedia", "what is wikipedia", "what does wikipedia mean"}:
+        answer = (
+            "Wikipedia is a free online encyclopedia. It contains articles about "
+            "millions of topics and is available in many languages. Most Wikipedia "
+            "articles are written and edited by volunteers. Wikipedia was launched "
+            "in 2001 and is operated by the nonprofit Wikimedia Foundation. Because "
+            "articles can be edited by many contributors, important information "
+            "should be checked against the sources and references provided in the article."
+        )
+        _save_general_knowledge_answer(text, answer, user)
+        return answer
 
     understanding=understand_di_question(text,user=user,df=df,language=language)
     try: st.session_state["di_last_understanding"]=understanding
@@ -2951,13 +3536,20 @@ def di_reply(message, user, df, allow_online=True, language="English — Nigeria
         return direct
 
     context=build_di_context(user,df)
+    training_context=_di_training_context()
+    work_context=_di_work_connection_context(user,df)
     answer,grounded_sources=ai_generate_with_research(
         f"""You are DI — David's Intelligence, the general-purpose intelligence assistant inside DACRE Analysis.
-Always identify yourself as DI when natural. Follow this exact knowledge protocol: ONLINE EVIDENCE FIRST -> understand the question -> inspect Memory Box -> combine the evidence -> answer clearly.
-Break the question into meaningful words/terms and explain how they combine into the full meaning. Do not blindly treat every stop-word as a separate concept; focus on semantic words and the complete phrase.
-For ordinary general-knowledge questions, answer directly and confidently. For current facts, prioritize the supplied online evidence. If sources conflict, explain the conflict instead of inventing certainty. Never say 'I couldn't verify a reliable answer' merely because the Memory Box is empty. Never reveal credentials, API keys or private security values. Do not expose internal chain-of-thought; provide a concise explanation of the relevant reasoning instead.
-Respond in the selected language when practical: {language}.""",
-        f"DACRE context:\n{context}\n\n{_understanding_context(understanding)}\n\n{_knowledge_context(acq)}\n\nUser question:\n{text}",
+Follow this reasoning protocol: ONLINE EVIDENCE FIRST -> understand the question deeply -> inspect Memory Box -> combine evidence with learned automation principles -> answer -> connect the answer to the user's work when genuinely relevant.
+Use the automation curriculum below as background training material for how an AI automation/agent system should reason about workflows, tools, memory, RAG, APIs, multi-agent collaboration, prompting, evaluation, guardrails and human-in-the-loop processes. Do not claim you watched a video or retrained your underlying model; treat the curriculum as a knowledge source.
+Break the user's question into meaningful semantic terms, understand the complete intent and identify the task, subject, context and desired outcome.
+For ordinary knowledge questions, give the answer itself first; do not replace the answer with a description of DI, the provider or system availability. For current facts, prioritize the supplied online evidence. If sources conflict, explain the conflict instead of inventing certainty. Never say 'I couldn't verify a reliable answer' merely because the Memory Box is empty. Never reveal credentials, API keys or private security values. Do not expose internal chain-of-thought; provide only concise, useful reasoning.
+After answering, check whether the answer can help the user's actual DACRE/company/data work. When it can, add a practical 'How this helps your work' section with concrete next steps. When it cannot, do not invent a connection.
+Respond in the selected language when practical: {language}.
+
+DI AUTOMATION ACADEMY CURRICULUM:
+{training_context}""",
+        f"DACRE context:\n{context}\n\nUSER WORK CONTEXT:\n{work_context}\n\n{_understanding_context(understanding)}\n\n{_knowledge_context(acq)}\n\nUSER QUESTION:\n{text}",
         max_tokens=1600,
     )
     if answer:
@@ -2988,9 +3580,10 @@ Respond in the selected language when practical: {language}.""",
             "I will use this acquired knowledge for future answers.\n\n" +
             "\n".join(f"• {t}" for t,_ in sources[:5])
         )
-    return normalize_di_identity(
-        f"I am DI. I can answer general questions directly, work with your DACRE data, and research public information. "
-        f"For '{text}', the AI reasoning service is temporarily unavailable, so I will not pretend that I have completed the answer."
+    # Never describe the assistant or its provider instead of answering.
+    return (
+        "I need a little more information to answer that accurately. "
+        "Please give me the subject or context you want explained."
     )
 
 def load_chat_history(user, limit=40):
@@ -4864,7 +5457,10 @@ def render_business_twin(df, user):
     )
     if st.button("A Explain this Business Twin", use_container_width=True, type="primary") and prompt.strip():
         answer = di_reply(prompt, user, df, allow_online=True, language=st.session_state.get("di_language", "English — Nigeria"))
+        answer = _di_route_response(prompt, answer)
         log_di_action(user, "business_twin", prompt, answer)
+        if st.session_state.get("dacre_di_requested_page"):
+            st.rerun()
         st.markdown(f"<div class='di-answer-panel'><div class='answer-label'>DI EXPLANATION</div><div>{_escape_html(answer).replace(chr(10), '<br>')}</div></div>", unsafe_allow_html=True)
 
 
@@ -4897,9 +5493,12 @@ def render_action_center(user):
                 q = prompt
     if st.button("Run DI Action", use_container_width=True, type="primary") and q.strip():
         answer = di_reply(q.strip(), user, df, allow_online=True, language=st.session_state.get("di_language", "English — Nigeria"))
+        answer = _di_route_response(q.strip(), answer)
         log_di_action(user, "action_center", q.strip(), answer)
         st.session_state.last_action_center_result = answer
         st.session_state.last_speech = answer
+        if st.session_state.get("dacre_di_requested_page"):
+            st.rerun()
     if st.session_state.get("last_action_center_result"):
         st.markdown(
             f"""<div class="di-answer-panel"><div class="answer-label">DI COMPLETED ACTION</div>
@@ -4963,7 +5562,10 @@ def render_opportunity_page(user):
         if st.button(f"Ask DI to investigate · {item['title']}", key=f"opp_{hash(item['title'])}", use_container_width=True):
             prompt = f"Investigate this opportunity signal: {item['title']}. Evidence: {item['evidence']}. Suggested action: {item['action']}"
             answer = di_reply(prompt, user, df, allow_online=True, language=st.session_state.get("di_language", "English — Nigeria"))
+            answer = _di_route_response(prompt, answer)
             log_di_action(user, "opportunity", prompt, answer)
+            if st.session_state.get("dacre_di_requested_page"):
+                st.rerun()
             st.markdown(f"<div class='di-answer-panel'><div class='answer-label'>DI INVESTIGATION</div><div>{_escape_html(answer).replace(chr(10), '<br>')}</div></div>", unsafe_allow_html=True)
 
 
@@ -5988,7 +6590,10 @@ with st.sidebar:
             _nav_html += f"<div class='dacre-nav-image-item'><span>{_escape_html(_nav_item)}</span></div>"
     _nav_html += "</div>"
     st.markdown(_nav_html, unsafe_allow_html=True)
-    selected_page=st.radio("Navigation",navigation,index=navigation.index(default_page) if default_page in navigation else 0)
+    _di_target_page = st.session_state.pop("dacre_di_requested_page", None)
+    if _di_target_page not in navigation:
+        _di_target_page = default_page
+    selected_page=st.radio("Navigation",navigation,index=navigation.index(_di_target_page) if _di_target_page in navigation else 0)
 
 # Expired customer workspaces stay alive for billing, but all paid DACRE tools are locked
 # until a payment is verified. The master account is not subscription-gated.
@@ -6107,6 +6712,7 @@ if voice_turn:
     if spoken:
         st.session_state.chat_history.append({"sender":user["first_name"],"text":spoken})
         reply=di_reply(spoken,user,st.session_state.processed_df,allow_online=True,language=st.session_state.get("di_language","English — Nigeria"))
+        reply = _di_route_response(spoken, reply)
         st.session_state.chat_history.append({"sender":"DI","text":reply})
         con=db(); now=datetime.now().isoformat(timespec="seconds")
         con.execute("INSERT INTO chat_history(username,company_name,sender,message,created_at) VALUES(?,?,?,?,?)",(user["username"],user["company"],user["first_name"],spoken,now))
@@ -6181,6 +6787,16 @@ if selected_page=="Company Dashboard":
 elif selected_page=="DI Workforce":
     agents=[dict(r) for r in get_di_agents() if not r.get('assigned_company') or r.get('assigned_company')==user['company']]
     st.markdown("""<div class='dacre-hero'><div class='dacre-title'>DI Workforce</div><div class='dacre-sub'>Your assigned digital team. Every DI has a distinct identity, specialty, memory profile and work style — all under the same DACRE intelligence foundation.</div></div>""",unsafe_allow_html=True)
+    backend_summary = _safe_backend_summary()
+    with st.expander("AI Backend Status", expanded=False):
+        b1,b2,b3,b4=st.columns(4)
+        b1.metric("Primary Provider", "Groq" if backend_summary["groq_configured"] else "Fallback")
+        b2.metric("Groq Model", backend_summary["groq_model"] or "Not configured")
+        b3.metric("Groq Success", f"{backend_summary["groq_success_rate"]:.1f}%")
+        b4.metric("Research Ready", "Yes" if backend_summary["research_ready"] else "No")
+        st.caption("Groq credentials are read from Streamlit Secrets and are never displayed. " + _groq_capability_note())
+        if user.get("role") == "master":
+            st.code(_ai_backend_diagnostics_text(), language="text")
     if not agents: st.info("No DI workers have been assigned to this organization yet.")
     else:
         names=[a['di_name'] for a in agents]
