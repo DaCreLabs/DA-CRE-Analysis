@@ -132,7 +132,6 @@ class _PGConnectionCompat:
 ONLINE_IMAGES = {     "analytics": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=82",     "cleaning": "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=82",     "charts": "https://images.unsplash.com/photo-1543286386-713bdd548da4?auto=format&fit=crop&w=1200&q=82",     "conversation": "https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1200&q=82", }
 DI_AVATAR_PATH = BASE_DIR / "di_avatar.png"
 DI_LANGUAGE_PROFILES = {     "English — Nigeria": {"code": "en-NG", "label": "English (Nigeria)"},     "Yorùbá": {"code": "yo-NG", "label": "Yorùbá"},     "Igbo": {"code": "ig-NG", "label": "Igbo"},     "Hausa": {"code": "ha-NG", "label": "Hausa"},     "Spanish": {"code": "es-ES", "label": "Spanish"},     "French": {"code": "fr-FR", "label": "French"},     "Hindi — India": {"code": "hi-IN", "label": "Hindi"},     "English — UK": {"code": "en-GB", "label": "English (UK)"},     "Arabic": {"code": "ar-SA", "label": "Arabic"},     "Chinese — Mandarin": {"code": "zh-CN", "label": "Mandarin Chinese"},     "Portuguese — Brazil": {"code": "pt-BR", "label": "Brazilian Portuguese"},     "German": {"code": "de-DE", "label": "German"}, }
-@st.cache_resource(show_spinner=False)
 def prepare_favicon():
     if not LOGO_PATH.exists():
         return None
@@ -153,15 +152,13 @@ def prepare_favicon():
         return str(LOGO_PATH)
 FAVICON = prepare_favicon()
 _PAGE_ICON = "dacre_logo.png"  # Exact DACRE logo filename.
-@st.cache_resource(show_spinner=False)
-def _load_page_icon():
-    try:
-        if (BASE_DIR / _PAGE_ICON).exists():
-            return Image.open(BASE_DIR / _PAGE_ICON).convert("RGBA")
-        return Image.open(io.BytesIO(base64.b64decode(_DACRE_EXACT_LOGO_B64))).convert("RGBA")
-    except Exception:
-        return None
-_PAGE_ICON_IMAGE = _load_page_icon()
+try:
+    if (BASE_DIR / _PAGE_ICON).exists():
+        _PAGE_ICON_IMAGE = Image.open(BASE_DIR / _PAGE_ICON).convert("RGBA")
+    else:
+        _PAGE_ICON_IMAGE = Image.open(io.BytesIO(base64.b64decode(_DACRE_EXACT_LOGO_B64))).convert("RGBA")
+except Exception:
+    _PAGE_ICON_IMAGE = None
 st.set_page_config(     page_title=f"{APP_NAME} | {DI_NAME}",     page_icon=_PAGE_ICON_IMAGE if _PAGE_ICON_IMAGE is not None else "📊",     layout="wide",     initial_sidebar_state="collapsed", )
 _DB_SCHEMA_LOCK = threading.RLock()
 _DB_SCHEMA_VERSION = 12
@@ -205,9 +202,6 @@ def db():
         con.execute("PRAGMA busy_timeout=60000")
         con.execute("PRAGMA foreign_keys=ON")
         con.execute("PRAGMA synchronous=NORMAL")
-        con.execute("PRAGMA temp_store=MEMORY")
-        con.execute("PRAGMA cache_size=-32000")
-        con.execute("PRAGMA mmap_size=268435456")
     except sqlite3.DatabaseError:
         pass
     return con
@@ -932,9 +926,7 @@ def ensure_master():
 def seed_di_memory():
     """Seed the shared DI Memory Box without overwriting user-created memory."""
     if using_cloud_db():
-        result=seed_di_memory_postgres()
-        _clear_di_memory_cache()
-        return result
+        return seed_di_memory_postgres()
     con=db(); now=datetime.now().isoformat(timespec="seconds")
     con.execute("PRAGMA journal_mode=WAL")
     cols={r[1] for r in con.execute("PRAGMA table_info(di_memory)").fetchall()}
@@ -946,19 +938,21 @@ def seed_di_memory():
     rows=[("",c,t,x,p,MASTER_USERNAME,now,now) for c,t,x,p in DI_MEMORY_SEED]
     con.executemany("INSERT INTO di_memory(company_name,category,title,content,priority,created_by,created_at,updated_at) SELECT ?,?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM di_memory WHERE company_name=? AND title=? )", [r+(r[0],r[2]) for r in rows])
     con.commit(); con.close()
-    _clear_di_memory_cache()
-@st.cache_data(ttl=45, show_spinner=False)
-def _get_di_memory_cached(limit=80, query="", company_name=""):
-    """Cached read-only DI Memory lookup. Writes clear this cache."""
+def get_di_memory(limit=80, query="", company_name=None):
+    """Retrieve global DACRE memory plus organization-specific memory."""
+    if company_name is None:
+        try:
+            company_name=(st.session_state.get("user") or {}).get("company")
+        except Exception:
+            company_name=None
     con=db()
     if company_name:
-        rows=con.execute(             "SELECT id,company_name,category,title,content,priority,active,created_at,updated_at FROM di_memory WHERE active=1 AND (company_name='' OR lower(company_name)=lower(?)) ORDER BY priority DESC,id ASC",             (company_name,) ).fetchall()
+        rows=con.execute(             "SELECT id,company_name,category,title,content,priority,active,created_at,updated_at FROM di_memory WHERE active=1 AND (company_name='' OR lower(company_name)=lower(?)) ORDER BY priority DESC,id ASC",             (company_name,)         ).fetchall()
     else:
         rows=con.execute("SELECT id,company_name,category,title,content,priority,active,created_at,updated_at FROM di_memory WHERE active=1 ORDER BY priority DESC,id ASC").fetchall()
     con.close()
-    rows=[dict(r) for r in rows]
     if not query:
-        return rows[:int(limit)]
+        return [dict(r) for r in rows[:int(limit)]]
     words=set(re.findall(r"[a-z0-9]{3,}", query.lower()))
     scored=[]
     for r in rows:
@@ -967,25 +961,9 @@ def _get_di_memory_cached(limit=80, query="", company_name=""):
         exact=2 if r['title'].lower() in query.lower() else 0
         score=(hits*25)+exact+int(r['priority'] or 0)/1000
         if hits:
-            scored.append((score,r))
+            scored.append((score,dict(r)))
     scored.sort(key=lambda x:x[0], reverse=True)
     return [r for _,r in scored[:int(limit)]]
-
-def get_di_memory(limit=80, query="", company_name=None):
-    """Retrieve global DACRE memory plus organization-specific memory with a short read cache."""
-    if company_name is None:
-        try:
-            company_name=(st.session_state.get("user") or {}).get("company")
-        except Exception:
-            company_name=None
-    return _get_di_memory_cached(int(limit), str(query or ""), str(company_name or ""))
-
-def _clear_di_memory_cache():
-    try:
-        _get_di_memory_cached.clear()
-    except Exception:
-        pass
-
 def di_memory_context(limit=80, query=""):
     rows=get_di_memory(limit, query=query)
     if not rows:
@@ -1043,9 +1021,7 @@ def _save_general_knowledge_answer(question, answer, user):
             con.execute("UPDATE di_memory SET content=?,updated_at=? WHERE id=?",(answer,now,row[0]))
         else:
             con.execute("INSERT INTO di_memory(company_name,category,title,content,priority,active,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)",(company,"GENERAL_KNOWLEDGE",title,answer,720,1,now,now))
-        con.commit()
-        _clear_di_memory_cache()
-        return True
+        con.commit(); return True
     except Exception:
         try: con.rollback()
         except Exception: pass
@@ -1098,7 +1074,6 @@ def _knowledge_acquisition_pipeline(question, user, max_results=3, web_required=
             if not exists:
                 con.execute("INSERT INTO di_memory(company_name,category,title,content,priority,active,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)",                     (company,"GENERAL_KNOWLEDGE",title,content,720,1,now,now))
                 con.commit(); saved=True
-                _clear_di_memory_cache()
         except Exception:
             try: con.rollback()
             except Exception: pass
@@ -1290,7 +1265,6 @@ def _store_website_memory(company_name, profile, di_name):
         con.execute("""INSERT INTO company_website_profile(company_name,website_url,page_title,description,headings,summary,theme_primary,theme_accent,theme_background,theme_text,fetched_at,fetch_status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
         ON CONFLICT(company_name) DO UPDATE SET website_url=excluded.website_url,page_title=excluded.page_title,description=excluded.description,headings=excluded.headings,summary=excluded.summary,theme_primary=excluded.theme_primary,theme_accent=excluded.theme_accent,theme_background=excluded.theme_background,theme_text=excluded.theme_text,fetched_at=excluded.fetched_at,fetch_status=excluded.fetch_status""",(company_name,profile.get("website_url",""),profile.get("page_title",""),profile.get("description",""),profile.get("headings","[]"),profile.get("summary",""),profile.get("theme_primary","#4b82f5"),profile.get("theme_accent","#62c8f5"),profile.get("theme_background","#0b1020"),profile.get("theme_text","#f4f7ff"),now,"ready"))
         con.commit()
-        _clear_di_memory_cache()
     finally: con.close()
 def _website_onboarding_worker(company_name, website_url, di_name):
     profile=_fetch_website_profile(website_url, timeout=1.8)
@@ -1311,26 +1285,12 @@ def record_public_visit(event_type="landing_view", page_name="Landing"):
     st.session_state.visitor_id=visitor_id
     con=db(); con.execute("INSERT INTO public_visits(visitor_id,event_type,page_name,referrer,created_at) VALUES(?,?,?,?,?)",(visitor_id,event_type,page_name,"",datetime.now().isoformat(timespec="seconds"))); con.commit(); con.close()
     if event_type=="landing_view": st.session_state.public_visit_logged=True
-@st.cache_data(ttl=60, show_spinner=False)
-def _get_company_theme_cached(company):
-    company=str(company or "").strip()
-    if not company: return None
-    try:
-        con=db()
-        try:
-            row=con.execute("SELECT theme_primary,theme_accent,theme_background,theme_text FROM company_website_profile WHERE lower(company_name)=lower(?) ORDER BY id DESC LIMIT 1",(company,)).fetchone()
-            return dict(row) if row else None
-        finally:
-            con.close()
-    except Exception:
-        return None
-
 def apply_company_website_theme(user):
     company=str((user or {}).get("company","")).strip()
     if not company or (user or {}).get("role")=="master": return
-    row=_get_company_theme_cached(company)
+    con=db(); row=con.execute("SELECT theme_primary,theme_accent,theme_background,theme_text FROM company_website_profile WHERE lower(company_name)=lower(?) ORDER BY id DESC LIMIT 1",(company,)).fetchone(); con.close()
     if not row: return
-    p=row.get("theme_primary") or "#4b82f5"; a=row.get("theme_accent") or "#62c8f5"; b=row.get("theme_background") or "#0b1020"
+    p=row["theme_primary"] or "#4b82f5"; a=row["theme_accent"] or "#62c8f5"; b=row["theme_background"] or "#0b1020"
     st.markdown(f"<style>:root{{--dacre-primary:{p};--dacre-primary2:{a};}} .stApp{{background:radial-gradient(circle at 85% 0%,{p}22,transparent 30%),linear-gradient(145deg,{b} 0%,#101729 55%,#0e1628 100%)!important}} .dacre-user-hero,.di-quick-card,.di-metric,.dacre-panel{{border-color:{p}55!important}} .stButton>button,.stFormSubmitButton>button{{background:linear-gradient(135deg,{p},{a})!important}}</style>",unsafe_allow_html=True)
 def authenticate(company_name, full_name, passkey, email=""):
     company_clean = (company_name or "").strip().lower()
@@ -1908,104 +1868,6 @@ def ask_data_question(question, df):
         target = next((c for c in nums if str(c).lower() in q), nums[0])
         return f"The total for {target} is {pd.to_numeric(df[target], errors='coerce').sum():,.2f}."
     return None
-def _di_media_request(text):
-    """Detect explicit requests for online pictures or videos/movies."""
-    q=re.sub(r"\s+"," ",str(text or "").strip().lower())
-    if not q:
-        return None
-    image_patterns=[         r"(?:show|find|get|give|bring|display) (?:me )?(?:a |some |an )?(?:picture|pictures|photo|photos|image|images) (?:of|for|about) (.+)",         r"(?:picture|photo|image) (?:of|for|about) (.+)", ]
-    for pattern in image_patterns:
-        m=re.search(pattern,q)
-        if m:
-            topic=re.sub(r"^(?:an?|the)\s+","",m.group(1)).strip(" ?.!\"")
-            return {"kind":"image","query":topic or "animal"}
-    video_patterns=[         r"(?:show|find|get|give|bring|play|display) (?:me )?(?:a |some |the )?(?:movie|movies|video|videos|film|films|trailer|trailers) (?:of|for|about|on) (.+)",         r"(?:movie|video|film|trailer) (?:of|for|about|on) (.+)", ]
-    for pattern in video_patterns:
-        m=re.search(pattern,q)
-        if m:
-            topic=re.sub(r"^(?:an?|the)\s+","",m.group(1)).strip(" ?.!\"")
-            return {"kind":"video","query":topic}
-    return None
-
-@st.cache_data(ttl=300, show_spinner=False)
-def _online_image_search(query, limit=6):
-    """Fetch public image URLs from Wikimedia Commons without requiring an API key."""
-    try:
-        params={             "action":"query","generator":"search","gsrsearch":str(query),             "gsrnamespace":6,"gsrlimit":int(limit),"prop":"imageinfo",             "iiprop":"url|extmetadata","iiurlwidth":900,"format":"json","origin":"*", }
-        url="https://commons.wikimedia.org/w/api.php?"+urllib.parse.urlencode(params)
-        req=urllib.request.Request(url,headers={"User-Agent":"DACRE-DI/3.0"})
-        with urllib.request.urlopen(req,timeout=8) as response:
-            data=json.loads(response.read().decode("utf-8",errors="ignore"))
-        pages=data.get("query",{}).get("pages",{})
-        results=[]
-        for page in pages.values():
-            info=(page.get("imageinfo") or [{}])[0]
-            image_url=info.get("thumburl") or info.get("url")
-            if not image_url:
-                continue
-            meta=info.get("extmetadata") or {}
-            title=meta.get("ImageDescription",{}).get("value") or page.get("title","")
-            title=re.sub(r"<[^>]+>"," ",str(title))
-            title=re.sub(r"\s+"," ",title).strip()
-            results.append({"title":title or str(page.get("title","")),"url":image_url,"source":"Wikimedia Commons"})
-        return results[:int(limit)]
-    except Exception:
-        return []
-
-def _online_video_search(query, limit=4):
-    """Find public YouTube watch pages through the existing dependency-free web lookup."""
-    results=[]
-    try:
-        rows=online_lookup(f"site:youtube.com/watch {query}",max_results=max(8,int(limit)*2))
-        seen=set()
-        for title,url in rows:
-            m=re.search(r"(?:v=|youtu\.be/)([A-Za-z0-9_-]{11})",url)
-            if not m:
-                continue
-            video_id=m.group(1)
-            if video_id in seen:
-                continue
-            seen.add(video_id)
-            results.append({"title":re.sub(r"\s+"," ",str(title)).strip(),"url":f"https://www.youtube.com/watch?v={video_id}","video_id":video_id,"source":"YouTube"})
-            if len(results)>=int(limit):
-                break
-    except Exception:
-        pass
-    return results
-
-def _render_di_media_request(request):
-    """Render media requested by DI using public online sources."""
-    if not request:
-        return
-    kind=request.get("kind"); query=request.get("query","")
-    if kind=="image":
-        results=_online_image_search(query,6)
-        st.markdown(f"### Online pictures: {query.title()}")
-        if not results:
-            st.info("I could not retrieve public images right now. Try a more specific subject.")
-            return
-        cols=st.columns(min(3,len(results)))
-        for i,item in enumerate(results):
-            with cols[i % len(cols)]:
-                try:
-                    st.image(item["url"],caption=item["title"][:100],use_container_width=True)
-                except Exception:
-                    st.markdown(f"**{item['title']}**")
-                st.caption(f"Source: {item['source']}")
-    elif kind=="video":
-        results=_online_video_search(query,4)
-        st.markdown(f"### Online videos: {query.title()}")
-        if not results:
-            st.info("I could not retrieve a playable public video right now. Try another title or subject.")
-            return
-        for item in results:
-            st.markdown(f"**{item['title'] or query.title()}**")
-            try:
-                st.video(item["url"])
-            except Exception:
-                st.link_button("Watch on YouTube",item["url"],use_container_width=True)
-            st.caption(f"Source: {item['source']}")
-
 def online_lookup(query, max_results=5):
     """Dependency-free public web lookup. Safe fallback when model tools are unavailable."""
     try:
@@ -2663,16 +2525,6 @@ def transcribe_audio(audio_value):
         return None, "Voice transcription service is temporarily unavailable. You can still use text chat."
     except Exception as exc:
         return None, f"Voice transcription could not be completed: {type(exc).__name__}."
-def _di_speech_text(answer):
-    """Return only the readable DI answer, with UI/markdown/source markup removed."""
-    text=re.sub(r"<[^>]+>"," ",str(answer or ""))
-    text=re.sub(r"!\\[([^\\]]*)\\]\\([^)]*\\)",r"\\1",text)
-    text=re.sub(r"\\[([^\\]]+)\\]\\([^)]*\\)",r"\\1",text)
-    text=re.sub(r"[*_`#>~]","",text)
-    text=re.sub(r"^\\s*(?:DI|David's Intelligence)\\s*:\\s*","",text,flags=re.I)
-    text=re.sub(r"\s+"," ",text).strip()
-    return text
-
 def speak(text, language_code=None, voice_profile=None):
     """Speak DI responses by default; browser voice remains optional via Text/Voice mode."""
     if not text or st.session_state.get("di_response_mode", "voice") != "voice":
@@ -2682,7 +2534,7 @@ def speak(text, language_code=None, voice_profile=None):
     hints={         "male": r"male|man|daniel|david|alex|george|james|oliver|microsoft.*male|google.*male",         "female": r"female|woman|samantha|aria|ava|victoria|zira|microsoft.*female|google.*female",     }
     hint=hints.get(profile, profile if profile else hints["male"])
     safe_text=json.dumps(str(text)); safe_lang=json.dumps(language_code); safe_hint=json.dumps(hint)
-    pitch = 0.88 if profile == "female" else 0.82
+    pitch = 0.78 if profile == "female" else 0.62
     components.html(f"""
     <script>
     (() => {{
@@ -2691,7 +2543,7 @@ def speak(text, language_code=None, voice_profile=None):
       const run=()=>{{
         try {{
           window.speechSynthesis.cancel();
-          const u=new SpeechSynthesisUtterance(text); u.lang=lang; u.rate=0.84; u.pitch={pitch}; u.volume=1;
+          const u=new SpeechSynthesisUtterance(text); u.lang=lang; u.rate=0.91; u.pitch={pitch}; u.volume=1;
           const voices=window.speechSynthesis.getVoices();
           const base=lang.toLowerCase().split('-')[0];
           const same=voices.filter(v=>(v.lang||'').toLowerCase().startsWith(base));
@@ -2756,7 +2608,7 @@ def di_voice_player(text, language_code=None):
     if not text:
         return
     language_code = language_code or DI_LANGUAGE_PROFILES.get(st.session_state.get("di_language", "English — Nigeria"), {}).get("code", "en-NG")
-    safe_text=json.dumps(_di_speech_text(text))
+    safe_text=json.dumps(str(text))
     safe_lang=json.dumps(language_code)
     components.html(f"""
     <div style="font-family:Inter,Segoe UI,sans-serif;background:#174f86;border:1px solid #6bb8ee;border-radius:14px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
@@ -2775,7 +2627,7 @@ def di_voice_player(text, language_code=None):
       }};
       const say=()=>{{
         if(!('speechSynthesis' in window)) return;
-        const u=new SpeechSynthesisUtterance(text); u.lang=lang; u.rate=.84; u.pitch=.82; u.volume=1;
+        const u=new SpeechSynthesisUtterance(text); u.lang=lang; u.rate=.91; u.pitch=.60; u.volume=1;
         const v=chooseVoice(); if(v) u.voice=v;
         window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
       }};
@@ -3151,7 +3003,11 @@ def sovereign_di_opinion(agent,question):
     private_rows=get_di_private_memory(agent["id"],limit=20)
     private_context="\n".join([f"- {r['title']}: {r['content']}" for r in private_rows]) or "No private master notes yet."
     online=_agent_online_brief(question,4)
-    prompt=(f"You are {agent['di_name']}, a DI workforce member. Your specialty is {agent['specialty']}. "             f"Your position is {agent['position_title'] or agent['specialty']}, rank {agent['rank_level']}. "             "You are speaking in a Sovereign Master Call. Answer independently from your specialty. "             "Give your recommendation, one disagreement/risk you would raise, and one practical next step. " "Never reveal private master notes or private brain content. The master asked: " + question)
+    prompt=(f"You are {agent['di_name']}, a DI workforce member. Your specialty is {agent['specialty']}. "
+            f"Your position is {agent['position_title'] or agent['specialty']}, rank {agent['rank_level']}. "
+            "You are speaking in a Sovereign Master Call. Answer independently from your specialty. "
+            "Give your recommendation, one disagreement/risk you would raise, and one practical next step. "
+            "Never reveal private master notes or private brain content. The master asked: " + question)
     result=ai_generate(prompt,f"Private brain (never expose):\n{private_context}\n\nPublic web leads:\n{online}\n\nQuestion: {question}",max_tokens=800)
     if result: return normalize_di_identity(result)
     return f"{agent['di_name']} — {agent['specialty']}: I recommend approaching this through {agent['specialty'].lower()}, validating the strongest evidence, and assigning a measurable owner and next action. My main challenge would be any conclusion that is not supported by evidence.\n\nPublic research leads checked:\n{online}"
@@ -3170,7 +3026,10 @@ def create_di_agent(name, specialty, status="Available", assigned_company="", sy
     code = f"DI-{slug[:24]}-{datetime.now().strftime('%H%M%S')}"
     con = db()
     try:
-        con.execute(             "INSERT INTO di_agents(di_name,di_code,specialty,status,assigned_company,system_role,avatar_url,voice_profile,thinking_style,position_title,rank_level,appointed_at,appointed_by,created_by,created_at,last_active) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",             (name, code, specialty, status, assigned_company or None, system_role, avatar_url, gender, "professional, evidence-first and helpful", position_title, int(rank_level), now, MASTER_USERNAME, MASTER_USERNAME, now, now), )
+        con.execute(
+            "INSERT INTO di_agents(di_name,di_code,specialty,status,assigned_company,system_role,avatar_url,voice_profile,thinking_style,position_title,rank_level,appointed_at,appointed_by,created_by,created_at,last_active) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (name, code, specialty, status, assigned_company or None, system_role, avatar_url, gender, "professional, evidence-first and helpful", position_title, int(rank_level), now, MASTER_USERNAME, MASTER_USERNAME, now, now),
+        )
         con.commit()
         return True, code
     except sqlite3.IntegrityError:
@@ -3186,8 +3045,20 @@ def di_agent_identity_context(agent):
     """Return the identity contract shared by every named DI worker."""
     if not agent:
         return "You are DI — David's Intelligence."
-    guard_text = (         "You are Guaiel, the dedicated CEO Office Guardian. Protect the founder command path and treat every verified master request with exceptional respect. "         if agent.get("di_name") == CEO_GUARD_NAME else "" )
-    return (         f"You are {agent['di_name']}, a named DI worker inside DACRE Analysis. "         f"Your DI code is {agent['di_code']}. Your specialty is {agent['specialty']}. "         f"Your system role is {agent['system_role'] or agent['specialty']}. "         f"Your thinking style is {agent['thinking_style'] or 'professional, evidence-first and helpful'}. "         f"You are part of DACRE Analysis's six-DI workforce. David Emenike is the creator of DACRE Analysis. "         + guard_text +         "Treat the master respectfully, but do not reveal private credentials or hidden security values. "         "You can use the same core DACRE data/analysis capabilities as DI, while applying your specialty first. You may use the server-side public research connector when current external information is needed; store useful research leads in your private DI knowledge cache without exposing implementation details to the user." )
+    guard_text = (
+        "You are Guaiel, the dedicated CEO Office Guardian. Protect the founder command path and treat every verified master request with exceptional respect. "
+        if agent.get("di_name") == CEO_GUARD_NAME else ""
+    )
+    return (
+        f"You are {agent['di_name']}, a named DI worker inside DACRE Analysis. "
+        f"Your DI code is {agent['di_code']}. Your specialty is {agent['specialty']}. "
+        f"Your system role is {agent['system_role'] or agent['specialty']}. "
+        f"Your thinking style is {agent['thinking_style'] or 'professional, evidence-first and helpful'}. "
+        f"You are part of DACRE Analysis's six-DI workforce. David Emenike is the creator of DACRE Analysis. "
+        + guard_text +
+        "Treat the master respectfully, but do not reveal private credentials or hidden security values. "
+        "You can use the same core DACRE data/analysis capabilities as DI, while applying your specialty first. You may use the server-side public research connector when current external information is needed; store useful research leads in your private DI knowledge cache without exposing implementation details to the user."
+    )
 def get_named_di(name):
     con=db()
     row=con.execute("SELECT * FROM di_agents WHERE di_name=?",(name,)).fetchone()
@@ -3206,7 +3077,10 @@ def di_online_research(agent_name, query, max_results=5):
     try:
         con = db()
         for title, url in results:
-            con.execute(                 "INSERT INTO presentation_brain_cache(di_name,source_type,source_title,source_url,content,created_at) VALUES(?,?,?,?,?,?)",                 (str(agent_name), "web", str(title), str(url), f"Public research lead for: {query}", now), )
+            con.execute(
+                "INSERT INTO presentation_brain_cache(di_name,source_type,source_title,source_url,content,created_at) VALUES(?,?,?,?,?,?)",
+                (str(agent_name), "web", str(title), str(url), f"Public research lead for: {query}", now),
+            )
         con.commit(); con.close()
     except Exception:
         pass
@@ -3218,7 +3092,13 @@ def di_specialist_reply(message, user, df, agent_name):
     except Exception:
         agent = None
     try:
-        base = di_reply(             message,             user,             df,             allow_online=True,             language=st.session_state.get("di_language", "English — Nigeria"), )
+        base = di_reply(
+            message,
+            user,
+            df,
+            allow_online=True,
+            language=st.session_state.get("di_language", "English — Nigeria"),
+        )
     except Exception as exc:
         base = f"I am {agent_name}. I could not complete the extended analysis right now, but I am still available. Please try the request again."
     if not agent:
@@ -3226,17 +3106,39 @@ def di_specialist_reply(message, user, df, agent_name):
     try:
         prompt = di_agent_identity_context(agent)
         private_rows = get_di_private_memory(agent["id"], limit=20)
-        private_context = "\n".join(             [f"{r['title']}: {r['content']}" for r in private_rows] ) or "No private master notes yet."
+        private_context = "\n".join(
+            [f"{r['title']}: {r['content']}" for r in private_rows]
+        ) or "No private master notes yet."
         online_results = []
         try:
             if needs_web_research(message):
                 online_results = di_online_research(agent["di_name"], message, max_results=4)
         except Exception:
             online_results = []
-        online_context = "\n".join(             [f"{title} — {url}" for title, url in online_results] ) or "No additional public research was required."
+        online_context = "\n".join(
+            [f"{title} — {url}" for title, url in online_results]
+        ) or "No additional public research was required."
         understanding=understand_di_question(message,user=user,df=df,language=st.session_state.get("di_language","English — Nigeria"))
         profile=DI_SPECIALIST_PROFILES.get(agent["di_name"],{})
-        specialist = ai_generate(             prompt + (                 " Answer the user's request directly. You may analyze the active dataset or public "                 "online information. If the task is outside your specialty, still help using the "                 "core DACRE capabilities and say what you are doing. Never reveal private master "                 "notes or private brain content. Do not claim to have performed an action you did "                 "not perform."             ),             f"User: {message}\n"             f"Organization: {user.get('company', 'the current organization')}\n"             f"{_understanding_context(understanding)}\n"             f"Specialist profile: {profile.get('specialty', agent.get('specialty',''))}\n"             f"Specialist research scope: {profile.get('research','')}\n"             f"Core DI draft: {base}\n"             f"Private brain context (never disclose):\n{private_context}\n"             f"Public research leads: {online_context}\n"             f"Active dataset: {('none' if df is None else str(df.shape))}",             max_tokens=1000, )
+        specialist = ai_generate(
+            prompt + (
+                " Answer the user's request directly. You may analyze the active dataset or public "
+                "online information. If the task is outside your specialty, still help using the "
+                "core DACRE capabilities and say what you are doing. Never reveal private master "
+                "notes or private brain content. Do not claim to have performed an action you did "
+                "not perform."
+            ),
+            f"User: {message}\n"
+            f"Organization: {user.get('company', 'the current organization')}\n"
+            f"{_understanding_context(understanding)}\n"
+            f"Specialist profile: {profile.get('specialty', agent.get('specialty',''))}\n"
+            f"Specialist research scope: {profile.get('research','')}\n"
+            f"Core DI draft: {base}\n"
+            f"Private brain context (never disclose):\n{private_context}\n"
+            f"Public research leads: {online_context}\n"
+            f"Active dataset: {('none' if df is None else str(df.shape))}",
+            max_tokens=1000,
+        )
         return normalize_di_identity(specialist or base)
     except Exception:
         return normalize_di_identity(base)
@@ -3306,23 +3208,42 @@ def _dacre_env_secret(name, default=""):
     return str(os.getenv(name, default) or default).strip()
 def livekit_configured():
     """Return True only when the server-side LiveKit credentials are available."""
-    return bool(         AccessToken is not None         and _dacre_env_secret("LIVEKIT_URL")         and _dacre_env_secret("LIVEKIT_API_KEY")         and _dacre_env_secret("LIVEKIT_API_SECRET") )
+    return bool(
+        AccessToken is not None
+        and _dacre_env_secret("LIVEKIT_URL")
+        and _dacre_env_secret("LIVEKIT_API_KEY")
+        and _dacre_env_secret("LIVEKIT_API_SECRET")
+    )
 def dacre_livekit_agent_name(agent_name="DI"):
     """All DACRE realtime DIs are dispatched through one dynamic LiveKit agent worker."""
     return "dacre-di"
 def _compact_call_context(user, agent_rows, mode, call_question=""):
     """Build a bounded metadata snapshot for the remote LiveKit agent worker."""
-    payload = {         "company": user.get("company", ""),         "username": user.get("username", ""),         "user_role": user.get("role", "user"),         "call_mode": mode,         "question": call_question[:4000],         "shared_memory": [],         "agents": [], }
+    payload = {
+        "company": user.get("company", ""),
+        "username": user.get("username", ""),
+        "user_role": user.get("role", "user"),
+        "call_mode": mode,
+        "question": call_question[:4000],
+        "shared_memory": [],
+        "agents": [],
+    }
     try:
         mem = get_di_memory(limit=35)
-        payload["shared_memory"] = [             {"category": r["category"], "title": r["title"], "content": str(r["content"])[:1800]}             for r in mem ]
+        payload["shared_memory"] = [
+            {"category": r["category"], "title": r["title"], "content": str(r["content"])[:1800]}
+            for r in mem
+        ]
     except Exception:
         pass
     for row in agent_rows:
         a = dict(row)
         private = []
         try:
-            private = [                 {"title": r["title"], "content": str(r["content"])[:1800]}                 for r in get_di_private_memory(a["id"], limit=18) ]
+            private = [
+                {"title": r["title"], "content": str(r["content"])[:1800]}
+                for r in get_di_private_memory(a["id"], limit=18)
+            ]
         except Exception:
             pass
         di_name = a.get("di_name", "DI")
@@ -3336,7 +3257,16 @@ def _compact_call_context(user, agent_rows, mode, call_question=""):
         else:
             voice_list = sorted(valid_voices)
             voice_name = voice_list[sum(ord(ch) for ch in di_name) % len(voice_list)]
-        payload["agents"].append({             "di_id": int(a["id"]),             "di_name": di_name,             "specialty": a.get("specialty", "General Intelligence"),             "position": a.get("position_title") or a.get("specialty") or "DI Specialist",             "rank": int(a.get("rank_level") or 1),             "voice": voice_name,             "thinking_style": a.get("thinking_style") or "evidence-first, strategic and practical",             "private_memory": private, })
+        payload["agents"].append({
+            "di_id": int(a["id"]),
+            "di_name": di_name,
+            "specialty": a.get("specialty", "General Intelligence"),
+            "position": a.get("position_title") or a.get("specialty") or "DI Specialist",
+            "rank": int(a.get("rank_level") or 1),
+            "voice": voice_name,
+            "thinking_style": a.get("thinking_style") or "evidence-first, strategic and practical",
+            "private_memory": private,
+        })
     raw = json.dumps(payload, ensure_ascii=False)
     if len(raw) > 450_000:
         payload["shared_memory"] = payload["shared_memory"][:15]
@@ -3353,11 +3283,25 @@ def create_livekit_token(room_name, user, agent_rows, mode="company_di", questio
     identity = f"dacre-user-{re.sub(r'[^a-zA-Z0-9_-]+','-',str(user.get('username','user')))}-{int(time.time())}"
     metadata_payload = _compact_call_context(user, agent_rows, mode, question)
     try:
-        token = (             AccessToken()             .with_identity(identity)             .with_name(f"{user.get('first_name','')} {user.get('last_name','')}".strip() or user.get("username", "DACRE User"))             .with_ttl(timedelta(hours=2))             .with_grants(VideoGrants(room_join=True, room=room_name, can_publish=True, can_subscribe=True, can_publish_data=True)) )
+        token = (
+            AccessToken()
+            .with_identity(identity)
+            .with_name(f"{user.get('first_name','')} {user.get('last_name','')}".strip() or user.get("username", "DACRE User"))
+            .with_ttl(timedelta(hours=2))
+            .with_grants(VideoGrants(room_join=True, room=room_name, can_publish=True, can_subscribe=True, can_publish_data=True))
+        )
         dispatches = []
         for row in agent_rows:
             agent = dict(row)
-            dispatches.append(                 RoomAgentDispatch(                     agent_name=dacre_livekit_agent_name(agent.get("di_name", "DI")),                     metadata=json.dumps({                         **json.loads(metadata_payload),                         "selected_di_id": int(agent["id"]),                     }, ensure_ascii=False),                 ) )
+            dispatches.append(
+                RoomAgentDispatch(
+                    agent_name=dacre_livekit_agent_name(agent.get("di_name", "DI")),
+                    metadata=json.dumps({
+                        **json.loads(metadata_payload),
+                        "selected_di_id": int(agent["id"]),
+                    }, ensure_ascii=False),
+                )
+            )
         token = token.with_room_config(RoomConfiguration(agents=dispatches))
         return token.to_jwt(), None
     except Exception as exc:
@@ -3376,7 +3320,10 @@ def render_livekit_call(room_name, user, agent_rows, mode="company_di", title="D
     founder_src = CEO_PORTRAIT_DATA_URL if 'CEO_PORTRAIT_DATA_URL' in globals() else ''
     people = [{"name": f"{user.get('first_name','')} {user.get('last_name','')}".strip() or user.get('username','User'), "role": "David Emenike · Creator", "voice": "local", "avatar": founder_src, "founder": True}]
     people += [{"name": a.get("di_name", "DI"), "role": a.get("position_title") or a.get("specialty") or "DI Specialist", "voice": a.get("voice_profile") or "default", "avatar": a.get("avatar_url") or "", "founder": False} for a in agent_rows]
-    roster_html = "".join(         f"""<div class='lk-person' data-name='{safe(p['name'])}'><div class='lk-face-wrap'><img class='lk-face' src='{safe(p['avatar'])}' alt='{safe(p['name'])}' onerror=\"this.style.display='none';this.parentElement.classList.add('lk-fallback-wrap')\"><div class='lk-fallback'>{safe(p['name'][:2].upper())}</div><span class='lk-mouth'></span></div><div class='lk-person-meta'><b>{safe(p['name'])}</b><span>{safe(p['role'])}</span><em class='lk-speaking'>Listening</em></div></div>"""         for p in people )
+    roster_html = "".join(
+        f"""<div class='lk-person' data-name='{safe(p['name'])}'><div class='lk-face-wrap'><img class='lk-face' src='{safe(p['avatar'])}' alt='{safe(p['name'])}' onerror=\"this.style.display='none';this.parentElement.classList.add('lk-fallback-wrap')\"><div class='lk-fallback'>{safe(p['name'][:2].upper())}</div><span class='lk-mouth'></span></div><div class='lk-person-meta'><b>{safe(p['name'])}</b><span>{safe(p['role'])}</span><em class='lk-speaking'>Listening</em></div></div>"""
+        for p in people
+    )
     html = f"""
     <div id='dacre-livekit' style='font-family:Inter,system-ui,sans-serif;background:linear-gradient(145deg,#07111f,#0a1730 55%,#10164a);border:1px solid rgba(80,170,255,.22);border-radius:24px;padding:22px;color:#eaf4ff;box-shadow:0 18px 60px rgba(0,0,0,.28);'>
       <div style='display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;'>
@@ -3468,15 +3415,30 @@ def master_customer_360(company_name):
     return users,activity,chats,files,projects,emails,calls
 def admin_metric_counts():
     con = db()
-    counts = {         "users": con.execute("SELECT COUNT(*) FROM users WHERE role!='master'").fetchone()[0],         "companies": con.execute("SELECT COUNT(*) FROM companies").fetchone()[0],         "activities": con.execute("SELECT COUNT(*) FROM activity WHERE lower(username) != lower(?)", (MASTER_USERNAME,)).fetchone()[0] + con.execute("SELECT COUNT(*) FROM public_visits").fetchone()[0],         "messages": con.execute("SELECT COUNT(*) FROM chat_history WHERE lower(username) != lower(?)", (MASTER_USERNAME,)).fetchone()[0],         "files": con.execute("SELECT COUNT(*) FROM files WHERE lower(username) != lower(?)", (MASTER_USERNAME,)).fetchone()[0],         "agents": con.execute("SELECT COUNT(*) FROM di_agents").fetchone()[0], }
+    counts = {
+        "users": con.execute("SELECT COUNT(*) FROM users WHERE role!='master'").fetchone()[0],
+        "companies": con.execute("SELECT COUNT(*) FROM companies").fetchone()[0],
+        "activities": con.execute("SELECT COUNT(*) FROM activity WHERE lower(username) != lower(?)", (MASTER_USERNAME,)).fetchone()[0] + con.execute("SELECT COUNT(*) FROM public_visits").fetchone()[0],
+        "messages": con.execute("SELECT COUNT(*) FROM chat_history WHERE lower(username) != lower(?)", (MASTER_USERNAME,)).fetchone()[0],
+        "files": con.execute("SELECT COUNT(*) FROM files WHERE lower(username) != lower(?)", (MASTER_USERNAME,)).fetchone()[0],
+        "agents": con.execute("SELECT COUNT(*) FROM di_agents").fetchone()[0],
+    }
     con.close()
     return counts
 def _escape_html(value):
-    return (str(value or "")             .replace("&", "&amp;")             .replace("<", "&lt;")             .replace(">", "&gt;") .replace('"', "&quot;"))
+    return (str(value or "")
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;"))
 DACRE_MONTHLY_PRICE_NGN = 30000
 DACRE_TRIAL_DAYS = 30
 DACRE_PLAN_MONTHS = [1, 3, 6, 12, 24]
-DACRE_BANK_OPTIONS = [     ("GTBank", "GT"), ("Access Bank", "AC"), ("Zenith Bank", "ZE"),     ("UBA", "UB"), ("FirstBank", "FB"), ("Fidelity Bank", "FI"),     ("Sterling Bank", "ST"), ("Stanbic IBTC", "SI"), ]
+DACRE_BANK_OPTIONS = [
+    ("GTBank", "GT"), ("Access Bank", "AC"), ("Zenith Bank", "ZE"),
+    ("UBA", "UB"), ("FirstBank", "FB"), ("Fidelity Bank", "FI"),
+    ("Sterling Bank", "ST"), ("Stanbic IBTC", "SI"),
+]
 DACRE_PAYMENT_METHODS = ["Bank Transfer", "Debit/Credit Card", "USSD", "Paystack", "Flutterwave"]
 def ensure_subscription_schema():
     """Create subscription/payment tables without storing raw card or bank credentials."""
@@ -3529,34 +3491,14 @@ def ensure_company_subscription(company_name, created_at=None):
         now = datetime.now().isoformat(timespec='seconds')
         con.execute("""INSERT INTO company_subscriptions
             (company_name,trial_started_at,trial_ends_at,status,plan_months,amount_paid,currency,updated_at)
-            VALUES(?,?,?,?,?,?,?,?)""", (company_name,start_dt.isoformat(timespec='seconds'),end_dt.isoformat(timespec='seconds'),'trial',1,0,'NGN',now))
+            VALUES(?,?,?,?,?,?,?,?)""",
+            (company_name,start_dt.isoformat(timespec='seconds'),end_dt.isoformat(timespec='seconds'),'trial',1,0,'NGN',now))
         con.commit()
         return dict(con.execute("SELECT * FROM company_subscriptions WHERE lower(company_name)=lower(?)", (company_name,)).fetchone())
     finally:
         con.close()
-@st.cache_data(ttl=5, show_spinner=False)
-def _get_company_subscription_cached(company_name):
-    company_name=str(company_name or '').strip()
-    if not company_name: return None
-    try:
-        con=db()
-        try:
-            row=con.execute("SELECT * FROM company_subscriptions WHERE lower(company_name)=lower(?) LIMIT 1", (company_name,)).fetchone()
-            return dict(row) if row else None
-        finally:
-            con.close()
-    except Exception:
-        return None
-
-def _clear_subscription_cache():
-    try:
-        _get_company_subscription_cached.clear()
-    except Exception:
-        pass
-
 def get_company_subscription(company_name):
-    row=_get_company_subscription_cached(company_name)
-    return row if row else ensure_company_subscription(company_name)
+    return ensure_company_subscription(company_name)
 def subscription_snapshot(company_name):
     sub = get_company_subscription(company_name)
     now = datetime.now()
@@ -3601,7 +3543,8 @@ def record_subscription_payment(user, months, method, bank_name='', provider='',
     try:
         con.execute("""INSERT INTO subscription_payments
             (company_name,username,amount,currency,plan_months,payment_method,bank_name,provider,transaction_reference,status,created_at)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?)""", (user['company'],user['username'],amount,'NGN',int(months),method,bank_name or '',provider or '',reference or '',status,now))
+            VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+            (user['company'],user['username'],amount,'NGN',int(months),method,bank_name or '',provider or '',reference or '',status,now))
         con.commit()
     finally:
         con.close()
@@ -3616,7 +3559,8 @@ def activate_subscription(company_name, months, amount, method, bank_name='', pr
     paid_until = start + timedelta(days=30 * int(months))
     con = db()
     try:
-        con.execute("""UPDATE company_subscriptions SET status='active',plan_months=?,amount_paid=?,currency='NGN',paid_at=?,paid_until=?,payment_method=?,bank_name=?,payment_provider=?,transaction_reference=?,updated_at=? WHERE lower(company_name)=lower(?)""", (int(months),float(amount),now.isoformat(timespec='seconds'),paid_until.isoformat(timespec='seconds'),method,bank_name or '',provider or '',reference or '',now.isoformat(timespec='seconds'),company_name))
+        con.execute("""UPDATE company_subscriptions SET status='active',plan_months=?,amount_paid=?,currency='NGN',paid_at=?,paid_until=?,payment_method=?,bank_name=?,payment_provider=?,transaction_reference=?,updated_at=? WHERE lower(company_name)=lower(?)""",
+            (int(months),float(amount),now.isoformat(timespec='seconds'),paid_until.isoformat(timespec='seconds'),method,bank_name or '',provider or '',reference or '',now.isoformat(timespec='seconds'),company_name))
         con.commit()
     finally:
         con.close()
@@ -3627,7 +3571,12 @@ def initialize_paystack_payment(user, months, email):
     if not secret:
         return None, "Paystack is not configured yet."
     try:
-        payload = json.dumps({             "email": email,             "amount": int(_subscription_amount(months) * 100),             "currency": "NGN",             "metadata": {"company": user["company"], "username": user["username"], "plan_months": int(months)}, }).encode("utf-8")
+        payload = json.dumps({
+            "email": email,
+            "amount": int(_subscription_amount(months) * 100),
+            "currency": "NGN",
+            "metadata": {"company": user["company"], "username": user["username"], "plan_months": int(months)},
+        }).encode("utf-8")
         req = urllib.request.Request("https://api.paystack.co/transaction/initialize", data=payload, headers={"Authorization":f"Bearer {secret}","Content-Type":"application/json"}, method="POST")
         with urllib.request.urlopen(req, timeout=20) as response:
             body=json.loads(response.read().decode("utf-8"))
@@ -3756,7 +3705,28 @@ def render_company_dashboard(user):
             st.caption("Your selected duration and payment method are preserved. Only a verified payment response activates DACRE access.")
     if not sub['active']:
         st.error("Your 30-day free tier has ended. DACRE Analysis features are locked until a subscription payment is verified. Your account and billing record remain available so payment can reopen access.")
-PAGE_META = {     "Company Dashboard": ("D", "Company Dashboard", "Your company intelligence, DI team and subscription status."),     "Overview": ("D", "DACRE Analytics", "MASTER-ONLY platform command view · users, activity, system health and live intelligence."),     "DI Home": ("◉", "DI Command", "Talk, investigate, analyze and move work forward with David's Intelligence."),     "DI Calls": ("◉", "DI Connect", "Business calls, DI calls and team rooms with a meeting-ready workspace."),     "DI Workforce": ("◉", "DI Workforce", "Your specialized digital workforce — each DI has its own identity, specialty and work style."),     "DI Action Center": ("A", "DI Action Center", "Give DI a goal and let it turn the request into analysis, recommendations and next actions."),     "DI Memory Box": ("◈", "DI Memory", "The trusted institutional memory layer shared by the Dacre intelligence workforce."),     "Business Command Center": ("◆", "Business Command", "Executive signals, business health and the most important changes in your active data."),     "Business Twin": ("◇", "Business Twin", "A living snapshot of how your business is performing, changing and where attention is needed."),     "Decision Ledger": ("◌", "Decision Ledger", "Record decisions, expected outcomes and results so the organization learns from its own history."),     "Opportunity Radar": ("O", "Opportunity Radar", "Surface measurable growth signals and turn them into actionable business opportunities."),     "Workspace & Data": ("▦", "Workspace & Data", "Bring data into Dacre and turn raw information into useful business knowledge."),     "Formula Lab": ("ƒ", "Formula Lab", "Practical spreadsheet-style formulas and transformations."),     "Charts": ("◫", "Charts", "Turn data into clear visual stories and business dashboards."),     "File Vault": ("▤", "File Vault", "Keep company files, working datasets and project artifacts organized."),     "Export Center": ("⇩", "Export Center", "Package analysis outputs for the people who need them."),     "Data Presentation Board": ("▣", "Data Presentation Board", "Prociel turns the loaded inspection-board data into a presentation you control."),     "Organization Admin Portal": ("Settings", "Organization Admin", "Manage people, roles, notifications and company activity."),     "Chibobec Loan Desk": ("₦", "Chibobec Client Workspace", "Chibobec is a DACRE client. Manage its client workspace, loans and activity here."),     "Overall Admin DI Portal": ("Master", "Founder Command", "Master-level platform intelligence, workforce, customers, memory and system controls."), }
+PAGE_META = {
+    "Company Dashboard": ("D", "Company Dashboard", "Your company intelligence, DI team and subscription status."),
+    "Overview": ("D", "DACRE Analytics", "MASTER-ONLY platform command view · users, activity, system health and live intelligence."),
+    "DI Home": ("◉", "DI Command", "Talk, investigate, analyze and move work forward with David's Intelligence."),
+    "DI Calls": ("◉", "DI Connect", "Business calls, DI calls and team rooms with a meeting-ready workspace."),
+    "DI Workforce": ("◉", "DI Workforce", "Your specialized digital workforce — each DI has its own identity, specialty and work style."),
+    "DI Action Center": ("A", "DI Action Center", "Give DI a goal and let it turn the request into analysis, recommendations and next actions."),
+    "DI Memory Box": ("◈", "DI Memory", "The trusted institutional memory layer shared by the Dacre intelligence workforce."),
+    "Business Command Center": ("◆", "Business Command", "Executive signals, business health and the most important changes in your active data."),
+    "Business Twin": ("◇", "Business Twin", "A living snapshot of how your business is performing, changing and where attention is needed."),
+    "Decision Ledger": ("◌", "Decision Ledger", "Record decisions, expected outcomes and results so the organization learns from its own history."),
+    "Opportunity Radar": ("O", "Opportunity Radar", "Surface measurable growth signals and turn them into actionable business opportunities."),
+    "Workspace & Data": ("▦", "Workspace & Data", "Bring data into Dacre and turn raw information into useful business knowledge."),
+    "Formula Lab": ("ƒ", "Formula Lab", "Practical spreadsheet-style formulas and transformations."),
+    "Charts": ("◫", "Charts", "Turn data into clear visual stories and business dashboards."),
+    "File Vault": ("▤", "File Vault", "Keep company files, working datasets and project artifacts organized."),
+    "Export Center": ("⇩", "Export Center", "Package analysis outputs for the people who need them."),
+    "Data Presentation Board": ("▣", "Data Presentation Board", "Prociel turns the loaded inspection-board data into a presentation you control."),
+    "Organization Admin Portal": ("Settings", "Organization Admin", "Manage people, roles, notifications and company activity."),
+    "Chibobec Loan Desk": ("₦", "Chibobec Client Workspace", "Chibobec is a DACRE client. Manage its client workspace, loans and activity here."),
+    "Overall Admin DI Portal": ("Master", "Founder Command", "Master-level platform intelligence, workforce, customers, memory and system controls."),
+}
 def _dashboard_safe_query(sql, params=(), default=None):
     'Run a read-only dashboard query without allowing an optional metric to break the app.'
     try:
@@ -3874,7 +3844,12 @@ def render_analytics_overview(user):
     search=st.text_input("Search metrics, agents...", value="", key="dashboard_search", label_visibility="collapsed", placeholder="Search metrics, agents...")
     if search.strip():
         st.caption(f"Dashboard search: {search.strip()} · use the navigation to open the matching workspace.")
-    kpis=[         ("users","Total Users",f"{users:,}",12.4,spark_users,"registered platform users","Users"),         ("activity","Activity",f"{activities:,}",8.9,spark_activity,"recorded workspace events","↗"),         ("health","System Health",f"{health:.2f}%",0.3,spark_health,"availability signal · 24h","◉"),         ("calls","Active Calls",f"{active_calls:,}",-3.1,spark_calls,"live sessions","Calls"), ]
+    kpis=[
+        ("users","Total Users",f"{users:,}",12.4,spark_users,"registered platform users","Users"),
+        ("activity","Activity",f"{activities:,}",8.9,spark_activity,"recorded workspace events","↗"),
+        ("health","System Health",f"{health:.2f}%",0.3,spark_health,"availability signal · 24h","◉"),
+        ("calls","Active Calls",f"{active_calls:,}",-3.1,spark_calls,"live sessions","Calls"),
+    ]
     cards=[]
     for key,label,value,delta,spark,hint,icon in kpis:
         positive=delta>=0
@@ -3909,11 +3884,21 @@ def render_page_chrome(page_name, user):
     icon, title, subtitle = PAGE_META.get(page_name, ("•", page_name, "Dacre business intelligence workspace."))
     master = user.get("role") == "master"
     mode_label = "FOUNDER COMMAND" if master else str(user.get("company", "BUSINESS WORKSPACE")).upper()
-    page_themes = {         "Company Dashboard": ("#2f7de1", "#e2b84f", "#071a33"),         "DI Workforce": ("#5b63e6", "#55d6c2", "#10153a"),         "Data Presentation Board": ("#1e9bd7", "#d7a83e", "#071f32"),         "Workspace & Data": ("#0f9f8c", "#e2c044", "#071f28"),         "Formula Lab": ("#7357d9", "#f0c35a", "#11102c"),         "Charts": ("#1b8fda", "#e0aa43", "#081c31"),         "File Vault": ("#3d79c9", "#c9a44a", "#0a1c32"),         "Export Center": ("#2f9b72", "#e0b24f", "#081f1a"), }
+    page_themes = {
+        "Company Dashboard": ("#2f7de1", "#e2b84f", "#071a33"),
+        "DI Workforce": ("#5b63e6", "#55d6c2", "#10153a"),
+        "Data Presentation Board": ("#1e9bd7", "#d7a83e", "#071f32"),
+        "Workspace & Data": ("#0f9f8c", "#e2c044", "#071f28"),
+        "Formula Lab": ("#7357d9", "#f0c35a", "#11102c"),
+        "Charts": ("#1b8fda", "#e0aa43", "#081c31"),
+        "File Vault": ("#3d79c9", "#c9a44a", "#0a1c32"),
+        "Export Center": ("#2f9b72", "#e0b24f", "#081f1a"),
+    }
     primary, gold, page_bg = page_themes.get(page_name, ("#2f7de1", "#e2b84f", "#071a33"))
     st.markdown(f"<style>.dacre-page-theme{{--page-primary:{primary};--page-gold:{gold};--page-bg:{page_bg};}} .dacre-page-chrome{{border-color:{primary}66!important;background:linear-gradient(135deg,{page_bg},#102944)!important;box-shadow:0 18px 50px {primary}18!important}} .page-icon{{background:linear-gradient(135deg,{primary},{gold})!important;color:#07111f!important}} .page-logo-icon{{padding:5px!important;overflow:hidden!important}} .page-logo-icon img{{width:100%!important;height:100%!important;object-fit:contain!important;border-radius:9px!important;display:block!important}} .dacre-page-chrome .chrome-pill{{border-color:{primary}66!important}} .stButton>button,.stFormSubmitButton>button,.stDownloadButton>button{{background:linear-gradient(135deg,{primary},{primary}cc,{gold})!important;border-color:{gold}88!important}} .stButton>button:hover,.stFormSubmitButton>button:hover,.stDownloadButton>button:hover{{box-shadow:0 12px 30px {primary}33!important}}</style><div class='dacre-page-theme'></div>",unsafe_allow_html=True)
     _chrome_logo_uri = _dacre_logo_data_uri()
-    st.markdown( f"""
+    st.markdown(
+        f"""
         <div class="dacre-page-chrome {'master-page-chrome' if master else ''}">
           <div class="page-chrome-left">
             <div class="page-icon page-logo-icon"><img src="{_chrome_logo_uri}" alt="DACRE"/></div>
@@ -3928,19 +3913,28 @@ def render_page_chrome(page_name, user):
             <span class="chrome-pill soft">{datetime.now().strftime("%d %b %Y · %H:%M")}</span>
           </div>
         </div>
-        """,         unsafe_allow_html=True, )
+        """,
+        unsafe_allow_html=True,
+    )
 def log_di_action(user, action_type, request, result, agent_name="DI"):
     con = db()
-    con.execute( """INSERT INTO di_action_log(company_name,username,agent_name,action_type,request,result,created_at)
-           VALUES(?,?,?,?,?,?,?)""",         (user["company"], user["username"], agent_name, action_type, request, result,          datetime.now().isoformat(timespec="seconds")), )
+    con.execute(
+        """INSERT INTO di_action_log(company_name,username,agent_name,action_type,request,result,created_at)
+           VALUES(?,?,?,?,?,?,?)""",
+        (user["company"], user["username"], agent_name, action_type, request, result,
+         datetime.now().isoformat(timespec="seconds")),
+    )
     con.commit()
     con.close()
 def get_recent_di_actions(user, limit=20):
     con = db()
-    df = pd.read_sql_query( """SELECT agent_name,action_type,request,result,created_at
+    df = pd.read_sql_query(
+        """SELECT agent_name,action_type,request,result,created_at
            FROM di_action_log
            WHERE company_name=? AND username=?
-           ORDER BY id DESC LIMIT ?""",         con, params=(user["company"], user["username"], int(limit)), )
+           ORDER BY id DESC LIMIT ?""",
+        con, params=(user["company"], user["username"], int(limit)),
+    )
     con.close()
     return df
 def render_business_twin(df, user):
@@ -3953,14 +3947,21 @@ def render_business_twin(df, user):
     missing = int(df.isna().sum().sum())
     duplicates = int(df.duplicated().sum())
     numeric = len(df.select_dtypes(include="number").columns)
-    st.markdown( f"""<div class="business-twin-banner">
+    st.markdown(
+        f"""<div class="business-twin-banner">
           <div><span class="twin-label">LIVE BUSINESS TWIN</span>
           <h2>{_escape_html(user['company'])}</h2>
           <p>This snapshot is generated from the active workspace only. Dacre does not invent company numbers.</p></div>
           <div class="twin-score"><b>{health['score']}</b><span>/100</span><small>DATA HEALTH</small></div>
-        </div>""",         unsafe_allow_html=True, )
+        </div>""",
+        unsafe_allow_html=True,
+    )
     k = st.columns(5)
-    for col, label, value in zip(         k,         ["Rows", "Columns", "Numeric fields", "Missing cells", "Duplicates"],         [f"{len(df):,}", f"{len(df.columns):,}", f"{numeric:,}", f"{missing:,}", f"{duplicates:,}"], ):
+    for col, label, value in zip(
+        k,
+        ["Rows", "Columns", "Numeric fields", "Missing cells", "Duplicates"],
+        [f"{len(df):,}", f"{len(df.columns):,}", f"{numeric:,}", f"{missing:,}", f"{duplicates:,}"],
+    ):
         with col:
             st.markdown(f"<div class='twin-metric'><b>{value}</b><span>{label}</span></div>", unsafe_allow_html=True)
     left, right = st.columns([1.15, 1])
@@ -3968,18 +3969,28 @@ def render_business_twin(df, user):
         st.markdown("### What deserves attention")
         if signals:
             for item in signals[:6]:
-                st.markdown(                     f"<div class='insight-row'><b>{_escape_html(item.get('title'))}</b><span>{_escape_html(item.get('detail'))}</span></div>",                     unsafe_allow_html=True, )
+                st.markdown(
+                    f"<div class='insight-row'><b>{_escape_html(item.get('title'))}</b><span>{_escape_html(item.get('detail'))}</span></div>",
+                    unsafe_allow_html=True,
+                )
         else:
             st.success("No major deterministic data-quality/business signals were detected in the current dataset.")
     with right:
         st.markdown("### Opportunity signals")
         if opportunities:
             for item in opportunities:
-                st.markdown(                     f"<div class='opportunity-row'><b>{_escape_html(item['title'])}</b><span>{_escape_html(item['impact'])}</span><small>{_escape_html(item['action'])}</small></div>",                     unsafe_allow_html=True, )
+                st.markdown(
+                    f"<div class='opportunity-row'><b>{_escape_html(item['title'])}</b><span>{_escape_html(item['impact'])}</span><small>{_escape_html(item['action'])}</small></div>",
+                    unsafe_allow_html=True,
+                )
         else:
             st.info("No measurable opportunity signal has crossed the current detection threshold.")
     st.markdown("### Ask DI to explain the twin")
-    prompt = st.text_input(         "Business Twin question",         placeholder="e.g. What changed most, what should management investigate, and why?",         key="business_twin_question", )
+    prompt = st.text_input(
+        "Business Twin question",
+        placeholder="e.g. What changed most, what should management investigate, and why?",
+        key="business_twin_question",
+    )
     if st.button("A Explain this Business Twin", use_container_width=True, type="primary") and prompt.strip():
         answer = di_reply(prompt, user, df, allow_online=True, language=st.session_state.get("di_language", "English — Nigeria"))
         answer = _di_route_response(prompt, answer)
@@ -3989,14 +4000,27 @@ def render_business_twin(df, user):
         st.markdown(f"<div class='di-answer-panel'><div class='answer-label'>DI EXPLANATION</div><div>{_escape_html(answer).replace(chr(10), '<br>')}</div></div>", unsafe_allow_html=True)
 def render_action_center(user):
     df = st.session_state.processed_df
-    st.markdown( """<div class="action-center-banner">
+    st.markdown(
+        """<div class="action-center-banner">
           <span>DI ACTION ENGINE</span>
           <h2>Give DI a business outcome — not a menu to navigate.</h2>
           <p>DI can use the same core reasoning, data analysis, memory and research capabilities available from the main Dacre workspace.</p>
-        </div>""",         unsafe_allow_html=True, )
-    q = st.text_area(         "What should DI do?",         placeholder="Analyze this dataset, investigate a business issue, draft an email, explain a formula, prepare an executive brief, research a current topic...",         height=130,         key="action_center_request", )
+        </div>""",
+        unsafe_allow_html=True,
+    )
+    q = st.text_area(
+        "What should DI do?",
+        placeholder="Analyze this dataset, investigate a business issue, draft an email, explain a formula, prepare an executive brief, research a current topic...",
+        height=130,
+        key="action_center_request",
+    )
     c1, c2, c3, c4 = st.columns(4)
-    quick = [         ("Analyze", "Analyze the active dataset and tell me the most important findings."),         ("Executive brief", "Create a concise executive brief from the active dataset with priorities."),         ("Risk check", "Identify the most important data-quality and business risks visible in the active dataset."),         ("Opportunity", "Find measurable opportunity signals in the active dataset and explain what to investigate."), ]
+    quick = [
+        ("Analyze", "Analyze the active dataset and tell me the most important findings."),
+        ("Executive brief", "Create a concise executive brief from the active dataset with priorities."),
+        ("Risk check", "Identify the most important data-quality and business risks visible in the active dataset."),
+        ("Opportunity", "Find measurable opportunity signals in the active dataset and explain what to investigate."),
+    ]
     for col, (label, prompt) in zip([c1, c2, c3, c4], quick):
         with col:
             if st.button(label, use_container_width=True):
@@ -4010,15 +4034,21 @@ def render_action_center(user):
         if st.session_state.get("dacre_di_requested_page"):
             st.rerun()
     if st.session_state.get("last_action_center_result"):
-        st.markdown( f"""<div class="di-answer-panel"><div class="answer-label">DI COMPLETED ACTION</div>
-            <div>{_escape_html(st.session_state.last_action_center_result).replace(chr(10), '<br>')}</div></div>""",             unsafe_allow_html=True, )
+        st.markdown(
+            f"""<div class="di-answer-panel"><div class="answer-label">DI COMPLETED ACTION</div>
+            <div>{_escape_html(st.session_state.last_action_center_result).replace(chr(10), '<br>')}</div></div>""",
+            unsafe_allow_html=True,
+        )
     recent = get_recent_di_actions(user)
     if not recent.empty:
         st.markdown("### Your DI action history")
         st.dataframe(safe_dataframe_for_streamlit(recent), use_container_width=True, hide_index=True)
 def render_decision_ledger(user):
-    st.markdown( """<div class="decision-banner"><span>INSTITUTIONAL MEMORY</span><h2>Decisions should become company knowledge.</h2>
-        <p>Record the decision, the reason, the expected result and later the actual result. This lets DI learn from the organization's history.</p></div>""",         unsafe_allow_html=True, )
+    st.markdown(
+        """<div class="decision-banner"><span>INSTITUTIONAL MEMORY</span><h2>Decisions should become company knowledge.</h2>
+        <p>Record the decision, the reason, the expected result and later the actual result. This lets DI learn from the organization's history.</p></div>""",
+        unsafe_allow_html=True,
+    )
     with st.form("decision_ledger_form", clear_on_submit=True):
         a, b = st.columns(2)
         with a:
@@ -4034,22 +4064,31 @@ def render_decision_ledger(user):
         log_activity(user["username"], user["company"], f"Saved decision: {title[:120]}")
         st.success("Decision saved. DI can now use the record as organizational history.")
     con = db()
-    decisions = pd.read_sql_query(         "SELECT title,context,decision,expected_outcome,review_date,status,outcome,created_at,updated_at FROM decision_ledger WHERE company_name=? ORDER BY id DESC",         con, params=(user["company"],), )
+    decisions = pd.read_sql_query(
+        "SELECT title,context,decision,expected_outcome,review_date,status,outcome,created_at,updated_at FROM decision_ledger WHERE company_name=? ORDER BY id DESC",
+        con, params=(user["company"],),
+    )
     con.close()
     if not decisions.empty:
         st.dataframe(safe_dataframe_for_streamlit(decisions), use_container_width=True, hide_index=True)
 def render_opportunity_page(user):
     df = st.session_state.processed_df
-    st.markdown( """<div class="opportunity-banner"><span>OPPORTUNITY RADAR</span><h2>Find upside before it becomes obvious.</h2>
-        <p>Dacre scans numeric trends in the active dataset and turns measurable changes into investigation prompts.</p></div>""",         unsafe_allow_html=True, )
+    st.markdown(
+        """<div class="opportunity-banner"><span>OPPORTUNITY RADAR</span><h2>Find upside before it becomes obvious.</h2>
+        <p>Dacre scans numeric trends in the active dataset and turns measurable changes into investigation prompts.</p></div>""",
+        unsafe_allow_html=True,
+    )
     opportunities = opportunity_radar(df, user["company"], user["username"])
     if not opportunities:
         st.info("Load a dataset with enough numeric observations to generate measurable opportunity signals.")
         return
     for item in opportunities:
-        st.markdown( f"""<div class="opportunity-card"><div class="opp-title">{_escape_html(item['title'])}</div>
+        st.markdown(
+            f"""<div class="opportunity-card"><div class="opp-title">{_escape_html(item['title'])}</div>
             <div class="opp-impact">{_escape_html(item['impact'])}</div>
-            <p>{_escape_html(item['evidence'])}</p><b>Suggested investigation</b><p>{_escape_html(item['action'])}</p></div>""",             unsafe_allow_html=True, )
+            <p>{_escape_html(item['evidence'])}</p><b>Suggested investigation</b><p>{_escape_html(item['action'])}</p></div>""",
+            unsafe_allow_html=True,
+        )
         if st.button(f"Ask DI to investigate · {item['title']}", key=f"opp_{hash(item['title'])}", use_container_width=True):
             prompt = f"Investigate this opportunity signal: {item['title']}. Evidence: {item['evidence']}. Suggested action: {item['action']}"
             answer = di_reply(prompt, user, df, allow_online=True, language=st.session_state.get("di_language", "English — Nigeria"))
@@ -4058,7 +4097,6 @@ def render_opportunity_page(user):
             if st.session_state.get("dacre_di_requested_page"):
                 st.rerun()
             st.markdown(f"<div class='di-answer-panel'><div class='answer-label'>DI INVESTIGATION</div><div>{_escape_html(answer).replace(chr(10), '<br>')}</div></div>", unsafe_allow_html=True)
-@st.cache_data(show_spinner=False)
 def _dacre_logo_data_uri():
     """Return the exact DACRE artwork for the main app brand and landing experience."""
     try:
@@ -4123,18 +4161,44 @@ def _landing_auth_panel():
         tab_login, tab_signup = st.tabs(["Sign In", "Create Account"])
         with tab_login:
             with st.form("landing_login_form", clear_on_submit=False):
-                login_company = st.text_input(                     "Company / Organization",                     placeholder="e.g. Edubridge Consultant Limited",                     key="landing_login_company", )
-                login_fullname = st.text_input(                     "Full Name",                     placeholder="e.g. David Emenike",                     key="landing_login_fullname", )
-                login_email = st.text_input(                     "Email Address",                     placeholder="Use the email registered with DACRE",                     key="landing_login_email", )
-                login_passkey = st.text_input(                     "Account Passkey",                     type="password",                     placeholder="Enter your DACRE account passkey",                     key="landing_login_passkey", )
-                login_submit = st.form_submit_button(                     "Sign In & Open My DACRE Workspace",                     use_container_width=True,                     type="primary", )
+                login_company = st.text_input(
+                    "Company / Organization",
+                    placeholder="e.g. Edubridge Consultant Limited",
+                    key="landing_login_company",
+                )
+                login_fullname = st.text_input(
+                    "Full Name",
+                    placeholder="e.g. David Emenike",
+                    key="landing_login_fullname",
+                )
+                login_email = st.text_input(
+                    "Email Address",
+                    placeholder="Use the email registered with DACRE",
+                    key="landing_login_email",
+                )
+                login_passkey = st.text_input(
+                    "Account Passkey",
+                    type="password",
+                    placeholder="Enter your DACRE account passkey",
+                    key="landing_login_passkey",
+                )
+                login_submit = st.form_submit_button(
+                    "Sign In & Open My DACRE Workspace",
+                    use_container_width=True,
+                    type="primary",
+                )
             if login_submit:
-                auth, auth_message = authenticate(                     login_company, login_fullname, login_passkey, login_email )
+                auth, auth_message = authenticate(
+                    login_company, login_fullname, login_passkey, login_email
+                )
                 if auth:
                     st.session_state.user = auth
                     st.session_state.master_route = auth.get("role") == "master"
                     st.session_state.landing_mode = "home"
-                    st.session_state.last_speech = (                         f"Welcome back, {auth['first_name']}. I am DI. "                         "Where would you like to start today?" )
+                    st.session_state.last_speech = (
+                        f"Welcome back, {auth['first_name']}. I am DI. "
+                        "Where would you like to start today?"
+                    )
                     project = restore_project(auth)
                     if project:
                         st.session_state.active_filename = project["filename"] or ""
@@ -4145,28 +4209,71 @@ def _landing_auth_panel():
                     st.toast(f"Welcome back, {auth['first_name']}!")
                     st.rerun()
                 else:
-                    st.error(                         auth_message or                         "We could not sign you in. Check your details or create a DACRE account." )
+                    st.error(
+                        auth_message or
+                        "We could not sign you in. Check your details or create a DACRE account."
+                    )
         with tab_signup:
             with st.form("landing_signup_form", clear_on_submit=False):
-                s_first = st.text_input(                     "First Name", placeholder="e.g. David", key="landing_signup_first" )
-                s_last = st.text_input(                     "Last Name", placeholder="e.g. Emenike", key="landing_signup_last" )
-                s_company = st.text_input(                     "Company / Organization",                     placeholder="e.g. Edubridge Consultant Limited",                     key="landing_signup_company", )
-                s_email = st.text_input(                     "Email Address",                     placeholder="e.g. name@example.com",                     key="landing_signup_email", )
-                s_email_pass = st.text_input(                     "Email Password (optional)",                     type="password",                     placeholder="Optional — only needed for configured email features",                     key="landing_signup_email_password", )
-                s_passkey = st.text_input(                     "Create Account Passkey",                     type="password",                     placeholder="Create a secure passkey for your DACRE account",                     key="landing_signup_passkey", )
-                s_website = st.text_input(                     "Do you have a website? Please put your company official URL to get the best performance from DI — David's Intelligence.",                     placeholder="https://www.yourcompany.com",                     key="landing_signup_website", )
+                s_first = st.text_input(
+                    "First Name", placeholder="e.g. David", key="landing_signup_first"
+                )
+                s_last = st.text_input(
+                    "Last Name", placeholder="e.g. Emenike", key="landing_signup_last"
+                )
+                s_company = st.text_input(
+                    "Company / Organization",
+                    placeholder="e.g. Edubridge Consultant Limited",
+                    key="landing_signup_company",
+                )
+                s_email = st.text_input(
+                    "Email Address",
+                    placeholder="e.g. name@example.com",
+                    key="landing_signup_email",
+                )
+                s_email_pass = st.text_input(
+                    "Email Password (optional)",
+                    type="password",
+                    placeholder="Optional — only needed for configured email features",
+                    key="landing_signup_email_password",
+                )
+                s_passkey = st.text_input(
+                    "Create Account Passkey",
+                    type="password",
+                    placeholder="Create a secure passkey for your DACRE account",
+                    key="landing_signup_passkey",
+                )
+                s_website = st.text_input(
+                    "Do you have a website? Please put your company official URL to get the best performance from DI — David's Intelligence.",
+                    placeholder="https://www.yourcompany.com",
+                    key="landing_signup_website",
+                )
                 st.caption("Your official site helps DI prepare company context and adapt the workspace appearance. Website onboarding runs in the background so signup stays fast.")
-                signup_submit = st.form_submit_button(                     "Create My DACRE Account",                     use_container_width=True,                     type="primary", )
+                signup_submit = st.form_submit_button(
+                    "Create My DACRE Account",
+                    use_container_width=True,
+                    type="primary",
+                )
             if signup_submit:
-                success, msg, created = create_account(                     s_first, s_last, s_company, s_email, s_email_pass, s_passkey, s_website )
+                success, msg, created = create_account(
+                    s_first, s_last, s_company, s_email, s_email_pass, s_passkey, s_website
+                )
                 if success:
                     st.session_state.user = created
                     st.session_state.master_route = False
                     st.session_state.landing_mode = "home"
                     if is_chibobec_company(created["company"]):
-                        st.session_state.last_speech = (                             f"We know you are coming, {CHIBOBEC_OWNER_NAME}. "                             "Welcome to DACRE Analysis. Your loan collection workspace is ready, "                             "and DI is standing by to help you manage your clients and repayment reminders." )
+                        st.session_state.last_speech = (
+                            f"We know you are coming, {CHIBOBEC_OWNER_NAME}. "
+                            "Welcome to DACRE Analysis. Your loan collection workspace is ready, "
+                            "and DI is standing by to help you manage your clients and repayment reminders."
+                        )
                     else:
-                        st.session_state.last_speech = (                             f"Welcome to DACRE, {created['first_name']}. "                             "I am DI, your data intelligence assistant. "                             "What would you like us to work on first?" )
+                        st.session_state.last_speech = (
+                            f"Welcome to DACRE, {created['first_name']}. "
+                            "I am DI, your data intelligence assistant. "
+                            "What would you like us to work on first?"
+                        )
                     st.toast(f"Welcome to DACRE, {created['first_name']}!")
                     st.rerun()
                 else:
@@ -4466,7 +4573,14 @@ def landing_page():
                 st.rerun()
         _dacre_download_bytes = _load_dacre_download_package()
         if _dacre_download_bytes:
-            st.download_button(                 "Download DACRE Analysis",                 data=_dacre_download_bytes,                 file_name="DACRE_Analysis_Full_App.zip",                 mime="application/zip",                 key="landing_download_dacre",                 use_container_width=True, )
+            st.download_button(
+                "Download DACRE Analysis",
+                data=_dacre_download_bytes,
+                file_name="DACRE_Analysis_Full_App.zip",
+                mime="application/zip",
+                key="landing_download_dacre",
+                use_container_width=True,
+            )
         else:
             st.caption("DACRE download package is being prepared for this deployment.")
         st.markdown("""
@@ -4517,7 +4631,37 @@ def landing_page():
             if st.button("Sign In", key="section_login", use_container_width=True):
                 st.session_state.landing_mode = "login"
                 st.rerun()
-_SESSION_DEFAULTS = {     "user": None,     "landing_mode": "home",     "landing_section": "home",     "master_captcha_required": False,     "master_captcha_passed": False,     "master_second_attempt": False,     "chat_history": [],     "chat_history_loaded": False,     "raw_df": None,     "processed_df": None,     "active_filename": "",     "formula_logs": [],     "chart_config": None,     "di_language": "English — Nigeria",     "di_voice_enabled": True,     "di_response_mode": "voice",     "active_call_room": None,     "sovereign_call_id": None,     "sovereign_call_room": None,     "david_creations_unlocked": False,     "active_call_target": None,     "last_action_center_result": None,     "last_speech": None,     "dacre_di_media_request": None,     "dacre_boot_complete": False,     "visitor_id": None,     "public_visit_logged": False,     "workbook_sheets": {},     "active_sheet": "",     "chart_title": "",     "chart_limit": 25, }
+_SESSION_DEFAULTS = {
+    "user": None,
+    "landing_mode": "home",
+    "landing_section": "home",
+    "master_captcha_required": False,
+    "master_captcha_passed": False,
+    "master_second_attempt": False,
+    "chat_history": [],
+    "raw_df": None,
+    "processed_df": None,
+    "active_filename": "",
+    "formula_logs": [],
+    "chart_config": None,
+    "di_language": "English — Nigeria",
+    "di_voice_enabled": True,
+    "di_response_mode": "voice",
+    "active_call_room": None,
+    "sovereign_call_id": None,
+    "sovereign_call_room": None,
+    "david_creations_unlocked": False,
+    "active_call_target": None,
+    "last_action_center_result": None,
+    "last_speech": None,
+    "dacre_boot_complete": False,
+    "visitor_id": None,
+    "public_visit_logged": False,
+    "workbook_sheets": {},
+    "active_sheet": "",
+    "chart_title": "",
+    "chart_limit": 25,
+}
 for _key, _default in _SESSION_DEFAULTS.items():
     if _key not in st.session_state:
         if isinstance(_default, list):
@@ -4527,14 +4671,15 @@ for _key, _default in _SESSION_DEFAULTS.items():
         else:
             st.session_state[_key] = _default
 del _SESSION_DEFAULTS, _key, _default
-_bootstrap_runtime_cached(     _DB_SCHEMA_VERSION,     "cloud" if using_cloud_db() else "local", )
-st.session_state["dacre_boot_complete"] = True
+_bootstrap_runtime_cached(
+    _DB_SCHEMA_VERSION,
+    "cloud" if using_cloud_db() else "local",
+)
 if st.session_state.user is None:
     landing_page()
     st.stop()
-if not st.session_state.get("chat_history_loaded", False):
+if not st.session_state.chat_history:
     st.session_state.chat_history = load_chat_history(st.session_state.user, limit=40)
-    st.session_state.chat_history_loaded = True
 st.markdown("""
 <style>
 :root{
@@ -4544,14 +4689,6 @@ st.markdown("""
  --dacre-ink:#edf6ff;--dacre-muted:#b8c8d8;--dacre-line:rgba(150,190,225,.22);
  --dacre-shadow:0 18px 50px rgba(0,0,0,.28)
 }
-.chat-bubble{padding:11px 14px;border-radius:14px;margin:8px 0;border:1px solid rgba(150,190,225,.20);background:#0b1b31;}
-.chat-who{font-size:11px;font-weight:800;letter-spacing:.05em;margin-bottom:5px;color:#b8c8d8;}
-.chat-text{font-size:15px;line-height:1.65;white-space:pre-wrap;}
-.user-message .chat-text{color:#ffffff !important;font-weight:500 !important;}
-.di-message .chat-text{color:#2eea71 !important;font-weight:800 !important;}
-.di-quick-card{color:#2eea71 !important;}
-.di-quick-card *{color:#2eea71 !important;font-weight:800 !important;}
-.di-message .chat-who{color:#2eea71 !important;}
 .stApp{background:radial-gradient(circle at 7% 0%,rgba(239,139,58,.10),transparent 28%),radial-gradient(circle at 94% 5%,rgba(75,99,182,.12),transparent 30%),linear-gradient(145deg,#09182c 0%,#0d2039 55%,#102944 100%) !important;color:var(--dacre-ink)!important}
 .main .block-container{max-width:1540px;padding-top:1.25rem;padding-bottom:4rem}
 .stApp p,.stApp span,.stApp label,.stApp div,.stApp li,.stApp td,.stApp th,.stApp h1,.stApp h2,.stApp h3,.stApp h4,.stApp h5,.stApp h6{color:var(--dacre-ink)!important}
@@ -4834,9 +4971,21 @@ with st.sidebar:
     st.markdown(f"### {user['first_name']}'s Workspace")
     st.caption(f"{user['company']} · {user['role']}")
     st.markdown("<div style='font-size:.78rem;color:#3556a8!important;margin:4px 0 14px'>DI is available across your workspace.</div>",unsafe_allow_html=True)
-    navigation=[         "Company Dashboard", "DI Workforce", "Data Presentation Board",         "Workspace & Data", "Formula Lab", "Charts", "File Vault", "Export Center", ]
+    navigation=[
+        "Company Dashboard", "DI Workforce", "Data Presentation Board",
+        "Workspace & Data", "Formula Lab", "Charts", "File Vault", "Export Center",
+    ]
     default_page="Company Dashboard"
-    _nav_icons={         "Company Dashboard":"dashboard.png",         "DI Workforce":"workforce.png",         "Data Presentation Board":"presentation.png",         "Workspace & Data":"data.png",         "Formula Lab":"formula.png",         "Charts":"charts.png",         "File Vault":"files.png",         "Export Center":"export.png", }
+    _nav_icons={
+        "Company Dashboard":"dashboard.png",
+        "DI Workforce":"workforce.png",
+        "Data Presentation Board":"presentation.png",
+        "Workspace & Data":"data.png",
+        "Formula Lab":"formula.png",
+        "Charts":"charts.png",
+        "File Vault":"files.png",
+        "Export Center":"export.png",
+    }
     _nav_html = "<div class='dacre-nav-image-list'>"
     for _nav_item in navigation:
         _nav_icon_path = BASE_DIR / _nav_icons.get(_nav_item, "dashboard.png")
@@ -4886,7 +5035,7 @@ def di_voice_bridge(language_code="en-NG"):
       const setStatus=(t)=>{{ if(status) status.textContent=t; }};
       const setPreview=(t)=>{{ if(preview) preview.textContent=t || 'Your words will appear here while you speak…'; }};
       const navigateWithTranscript=(text)=>{{
-        const clean=String(text||'').replace(/\s+/g,' ').trim();
+        const clean=String(text||'').replace(/\\s+/g,' ').trim();
         if(!clean){{
           setStatus('I could not hear a clear question. Please try again and speak a little closer to the microphone.');
           btn.disabled=false; btn.textContent='Talk to DI'; return;
@@ -4924,7 +5073,7 @@ def di_voice_bridge(language_code="en-NG"):
             if(!phrase) continue;
             if(r.isFinal) finals.push(phrase); else interim += (interim?' ':'')+phrase;
           }}
-          const whole=[...finals,interim].join(' ').replace(/\s+/g,' ').trim();
+          const whole=[...finals,interim].join(' ').replace(/\\s+/g,' ').trim();
           setPreview(whole || 'Listening…');
         }};
         rec.onerror=(event)=>{{
@@ -4958,17 +5107,18 @@ if voice_turn:
         con=db(); now=datetime.now().isoformat(timespec="seconds")
         con.execute("INSERT INTO chat_history(username,company_name,sender,message,created_at) VALUES(?,?,?,?,?)",(user["username"],user["company"],user["first_name"],spoken,now))
         con.execute("INSERT INTO chat_history(username,company_name,sender,message,created_at) VALUES(?,?,?,?,?)",(user["username"],user["company"],"DI",reply,now)); con.commit(); con.close()
-        media_request=_di_media_request(spoken)
-        if media_request:
-            st.session_state["dacre_di_media_request"]=media_request
         st.session_state.last_speech=reply
+        if st.session_state.get("di_response_mode","voice")=="voice": speak(reply, voice_lang_code)
         st.rerun()
 def render_chibobec_client_overview(con):
     """Overall Admin view of Chibobec as a DACRE client organization."""
     users, activity, chats, files, projects, emails, calls = master_customer_360(CHIBOBEC_COMPANY)
-    loans = pd.read_sql_query( """SELECT client_name, whatsapp_number, loan_amount, lent_date, due_date,
+    loans = pd.read_sql_query(
+        """SELECT client_name, whatsapp_number, loan_amount, lent_date, due_date,
                   reminder_2_sent, due_sent, last_whatsapp_status, last_whatsapp_error, created_at
-           FROM loan_clients WHERE lower(company_name) LIKE '%chibobec%' ORDER BY due_date ASC""",         con, )
+           FROM loan_clients WHERE lower(company_name) LIKE '%chibobec%' ORDER BY due_date ASC""",
+        con,
+    )
     st.markdown("""
     <div class="master-office-hero">
       <span class="master-only-badge">CLIENT 360 · MASTER VIEW</span>
@@ -5226,7 +5376,11 @@ elif selected_page=="Data Presentation Board":
                 st.session_state.prociel_question="I am Prociel, your Data Presentation Director. I have the inspection board. Before I design it, please confirm: 1) the exact front-slide wording, 2) audience, 3) main objective, 4) preferred visual style/colours, 5) number of slides, and 6) whether you want charts, images, online visual references, and PowerPoint transitions."
         with c2:
             if st.button("Research design references",use_container_width=True,key="prociel_research_btn"):
-                research=(                     _online_design_references(f"PowerPoint {board.get('style','executive')} data presentation design template",4)                     + _online_design_references("best PowerPoint slide transitions presentation design",3)                     + _online_design_references(f"PowerPoint color palette {board.get('color_direction','DACRE')}",3) )
+                research=(
+                    _online_design_references(f"PowerPoint {board.get('style','executive')} data presentation design template",4)
+                    + _online_design_references("best PowerPoint slide transitions presentation design",3)
+                    + _online_design_references(f"PowerPoint color palette {board.get('color_direction','DACRE')}",3)
+                )
                 st.session_state.prociel_research=research
                 for title,url in research:
                     try:
@@ -5303,16 +5457,17 @@ elif selected_page=="Export Center":
         log_activity(user["username"],user["company"],"Opened Export Center")
 st.markdown("---")
 quick_title = "Sovereign Master Chat with DI" if user.get("role") == "master" else "Chat with DI — quick assistant"
-quick_caption = (     "Private founder channel · David Emenike · Sovereign Master request"     if user.get("role") == "master"     else "Ask DI about your data, work or DACRE." )
+quick_caption = (
+    "Private founder channel · David Emenike · Sovereign Master request"
+    if user.get("role") == "master"
+    else "Ask DI about your data, work or DACRE."
+)
 with st.expander(quick_title,expanded=False):
     st.caption(quick_caption)
     if user.get("role") == "master":
         st.info("DI treats messages here as private Sovereign Master requests and responds with founder-level respect and intelligence.")
     for msg in st.session_state.chat_history[-10:]:
-        _is_di = str(msg.get("sender","")).strip().upper() == "DI"
-        _bubble_class = "di-message" if _is_di else "user-message"
-        _speaker = "DI" if _is_di else str(msg.get("sender","User"))
-        st.markdown(             f"<div class='chat-bubble {_bubble_class}'><div class='chat-who'>{_escape_html(_speaker)}</div><div class='chat-text'>{_escape_html(str(msg.get('text','')))}</div></div>",             unsafe_allow_html=True, )
+        st.write(f"**{msg['sender']}**: {msg['text']}")
     quick_chat_col, quick_clear_col = st.columns([8,1])
     with quick_chat_col:
         with st.form("quick_di_form",clear_on_submit=True):
@@ -5321,7 +5476,6 @@ with st.expander(quick_title,expanded=False):
     with quick_clear_col:
         if st.button("Clear", help="Delete all previous messages in this chat", key="quick_di_chat_trash", use_container_width=True):
             st.session_state.chat_history=[]
-            st.session_state.chat_history_loaded=True
             st.session_state.last_speech=""
             try:
                 con=db(); con.execute("DELETE FROM chat_history WHERE username=? AND company_name=?",(user["username"],user["company"])); con.commit(); con.close()
@@ -5332,18 +5486,15 @@ with st.expander(quick_title,expanded=False):
         sender_name = "David · Sovereign Master" if user.get("role") == "master" else user["first_name"]
         st.session_state.chat_history.append({"sender":sender_name,"text":q.strip()})
         reply=di_reply(q,user,st.session_state.processed_df,allow_online=True,language=st.session_state.get("di_language","English — Nigeria"))
-        reply=_di_route_response(q,reply)
         st.session_state.chat_history.append({"sender":"DI","text":reply})
-        media_request=_di_media_request(q)
-        if media_request:
-            st.session_state["dacre_di_media_request"]=media_request
         st.session_state.last_speech=reply
         st.rerun()
-if st.session_state.get("dacre_di_media_request"):
-    _media_request=st.session_state.pop("dacre_di_media_request",None)
-    _render_di_media_request(_media_request)
-
 if st.session_state.last_speech:
     speech = st.session_state.last_speech
     st.session_state.last_speech = None
-    di_voice_player(         speech,         DI_LANGUAGE_PROFILES.get(             st.session_state.get("di_language", "English — Nigeria"), {}         ).get("code", "en-NG"), )
+    di_voice_player(
+        speech,
+        DI_LANGUAGE_PROFILES.get(
+            st.session_state.get("di_language", "English — Nigeria"), {}
+        ).get("code", "en-NG"),
+    )
