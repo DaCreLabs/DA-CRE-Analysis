@@ -10,6 +10,7 @@ import urllib.request
 import smtplib
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import uuid
 import base64
 import zipfile
@@ -24,26 +25,57 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 from PIL import Image
-try:
-    from pptx import Presentation
-    from pptx.util import Inches, Pt
-    from pptx.dml.color import RGBColor
-    from pptx.enum.text import PP_ALIGN
-    from pptx.enum.shapes import MSO_SHAPE
-    from pptx.enum.dml import MSO_THEME_COLOR
-except Exception:
-    Presentation = None
-    Inches = Pt = RGBColor = PP_ALIGN = MSO_SHAPE = MSO_THEME_COLOR = None
-try:
-    import psycopg
-    from psycopg.rows import dict_row
-except Exception:
-    psycopg = None
-    dict_row = None
-try:
-    from livekit.api import AccessToken, RoomAgentDispatch, RoomConfiguration, VideoGrants
-except Exception:
-    AccessToken = RoomAgentDispatch = RoomConfiguration = VideoGrants = None
+# Heavy optional integrations are lazy-loaded so the normal DACRE workspace starts faster.
+Presentation = Inches = Pt = RGBColor = PP_ALIGN = MSO_SHAPE = MSO_THEME_COLOR = None
+psycopg = None
+dict_row = None
+AccessToken = RoomAgentDispatch = RoomConfiguration = VideoGrants = None
+_PPTX_IMPORT_ATTEMPTED = False
+_PG_IMPORT_ATTEMPTED = False
+_LIVEKIT_IMPORT_ATTEMPTED = False
+
+def _ensure_pptx_imports():
+    global Presentation, Inches, Pt, RGBColor, PP_ALIGN, MSO_SHAPE, MSO_THEME_COLOR, _PPTX_IMPORT_ATTEMPTED
+    if _PPTX_IMPORT_ATTEMPTED:
+        return Presentation is not None
+    _PPTX_IMPORT_ATTEMPTED = True
+    try:
+        from pptx import Presentation as _Presentation
+        from pptx.util import Inches as _Inches, Pt as _Pt
+        from pptx.dml.color import RGBColor as _RGBColor
+        from pptx.enum.text import PP_ALIGN as _PP_ALIGN
+        from pptx.enum.shapes import MSO_SHAPE as _MSO_SHAPE
+        from pptx.enum.dml import MSO_THEME_COLOR as _MSO_THEME_COLOR
+        Presentation, Inches, Pt, RGBColor = _Presentation, _Inches, _Pt, _RGBColor
+        PP_ALIGN, MSO_SHAPE, MSO_THEME_COLOR = _PP_ALIGN, _MSO_SHAPE, _MSO_THEME_COLOR
+    except Exception:
+        return False
+    return True
+
+def _ensure_psycopg_imports():
+    global psycopg, dict_row, _PG_IMPORT_ATTEMPTED
+    if _PG_IMPORT_ATTEMPTED:
+        return psycopg is not None and dict_row is not None
+    _PG_IMPORT_ATTEMPTED = True
+    try:
+        import psycopg as _psycopg
+        from psycopg.rows import dict_row as _dict_row
+        psycopg, dict_row = _psycopg, _dict_row
+    except Exception:
+        return False
+    return True
+
+def _ensure_livekit_imports():
+    global AccessToken, RoomAgentDispatch, RoomConfiguration, VideoGrants, _LIVEKIT_IMPORT_ATTEMPTED
+    if _LIVEKIT_IMPORT_ATTEMPTED:
+        return AccessToken is not None
+    _LIVEKIT_IMPORT_ATTEMPTED = True
+    try:
+        from livekit.api import AccessToken as _AccessToken, RoomAgentDispatch as _RoomAgentDispatch, RoomConfiguration as _RoomConfiguration, VideoGrants as _VideoGrants
+        AccessToken, RoomAgentDispatch, RoomConfiguration, VideoGrants = _AccessToken, _RoomAgentDispatch, _RoomConfiguration, _VideoGrants
+    except Exception:
+        return False
+    return True
 sr = None
 APP_NAME = "DACRE Analysis"
 DI_NAME = "DI — David's Intelligence"
@@ -341,6 +373,7 @@ def _db_file_lock(timeout=90):
         handle.close()
 def db():
     if using_cloud_db():
+        _ensure_psycopg_imports()
         if psycopg is None or dict_row is None:
             raise RuntimeError(
                 "Supabase database is configured, but psycopg is not installed. "
@@ -1292,64 +1325,61 @@ def _save_general_knowledge_answer(question, answer, user):
         return False
     finally:
         con.close()
-def _knowledge_acquisition_pipeline(question, user, max_results=6):
-    """
-    DI knowledge pipeline:
-    1) search the exact question online;
-    2) decompose meaningful terms and search those too;
-    3) check the persistent Memory Box;
-    4) save newly acquired public-source knowledge when Memory Box has no match.
-    The answer is generated later by the reasoning layer, not by this collector.
+def _knowledge_acquisition_pipeline(question, user, max_results=3, web_required=False):
+    """Fast DI knowledge pipeline.
+
+    Normal questions do not perform external web requests. Current/research
+    questions are handled by the Groq web-enabled path, while this collector
+    only performs a small parallel fallback search when explicitly requested.
+    Memory lookup remains local and fast.
     """
     q=(question or "").strip()
     if not q:
-        return {"question_results":[],"term_results":[],"memory":[],"new_memory_saved":False}
-    exact_results=online_lookup(q,max_results=max_results)
-    term_results=[]
-    for term in _knowledge_tokens(q):
-        for title,url in online_lookup(term,max_results=2):
-            if (title,url) not in exact_results and (title,url) not in term_results:
-                term_results.append((title,url))
-        if len(term_results)>=10:
-            break
+        return {"question_results":[],"term_results":[],"memory":[],"new_memory_saved":False,"terms":[]}
     company=(user or {}).get("company","")
     memory=get_di_memory(limit=8,query=q,company_name=company)
+    exact_results=[]
+    term_results=[]
+    if web_required:
+        terms=_knowledge_tokens(q, max_terms=3)
+        searches=[q]+terms
+        def _search(item):
+            return item, online_lookup(item,max_results=max_results if item==q else 1)
+        with ThreadPoolExecutor(max_workers=min(4,len(searches))) as pool:
+            futures=[pool.submit(_search,item) for item in searches]
+            for future in as_completed(futures):
+                try:
+                    item, results=future.result()
+                except Exception:
+                    continue
+                if item==q:
+                    exact_results=results
+                else:
+                    for pair in results:
+                        if pair not in exact_results and pair not in term_results:
+                            term_results.append(pair)
     saved=False
-    if not memory and (exact_results or term_results):
+    if web_required and not memory and (exact_results or term_results):
         now=datetime.now().isoformat(timespec="seconds")
-        source_lines=[f"{title} — {url}" for title,url in (exact_results+term_results)[:12]]
-        terms=", ".join(_knowledge_tokens(q)) or q
-        content=(
-            f"Question: {q}\n"
-            f"Meaningful terms identified: {terms}\n"
-            "Public sources discovered during DI knowledge acquisition:\n"
-            + "\n".join(source_lines)
-        )
+        source_lines=[f"{title} — {url}" for title,url in (exact_results+term_results)[:8]]
+        terms=", ".join(_knowledge_tokens(q, max_terms=6)) or q
+        content=(f"Question: {q}\nMeaningful terms identified: {terms}\n"
+                 "Public sources discovered during DI knowledge acquisition:\n"+"\n".join(source_lines))
         title=f"Knowledge acquired: {q[:120]}"
         con=db()
         try:
-            exists=con.execute(
-                "SELECT 1 FROM di_memory WHERE active=1 AND lower(company_name)=lower(?) AND lower(title)=lower(?) LIMIT 1",
-                (company,title),
-            ).fetchone()
+            exists=con.execute("SELECT 1 FROM di_memory WHERE active=1 AND lower(company_name)=lower(?) AND lower(title)=lower(?) LIMIT 1",(company,title)).fetchone()
             if not exists:
-                con.execute(
-                    "INSERT INTO di_memory(company_name,category,title,content,priority,active,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)",
-                    (company,"GENERAL_KNOWLEDGE",title,content,720,1,now,now),
-                )
+                con.execute("INSERT INTO di_memory(company_name,category,title,content,priority,active,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)",
+                    (company,"GENERAL_KNOWLEDGE",title,content,720,1,now,now))
                 con.commit(); saved=True
         except Exception:
             try: con.rollback()
             except Exception: pass
         finally:
             con.close()
-    return {
-        "question_results":exact_results,
-        "term_results":term_results,
-        "memory":memory,
-        "new_memory_saved":saved,
-        "terms":_knowledge_tokens(q),
-    }
+    return {"question_results":exact_results,"term_results":term_results,"memory":memory,"new_memory_saved":saved,"terms":_knowledge_tokens(q)}
+
 def _knowledge_context(acq):
     sources=(acq or {}).get("question_results",[])+(acq or {}).get("term_results",[])
     source_text="\n".join(f"- {t} — {u}" for t,u in sources[:16]) or "No public search result was returned."
@@ -1580,11 +1610,23 @@ def start_website_onboarding(company_name, website_url, di_name):
     if not url: return
     threading.Thread(target=_website_onboarding_worker,args=(company_name,url,di_name),daemon=True).start()
 def record_public_visit(event_type="landing_view", page_name="Landing"):
-    if event_type=="landing_view" and st.session_state.get("public_visit_logged"): return
+    if event_type=="landing_view" and st.session_state.get("public_visit_logged"):
+        return
     visitor_id=st.session_state.get("visitor_id") or uuid.uuid4().hex
     st.session_state.visitor_id=visitor_id
+    if event_type=="landing_view":
+        # Mark immediately; analytics must never hold up the public landing page.
+        st.session_state.public_visit_logged=True
+        def _write_visit():
+            try:
+                con=db()
+                con.execute("INSERT INTO public_visits(visitor_id,event_type,page_name,referrer,created_at) VALUES(?,?,?,?,?)",(visitor_id,event_type,page_name,"",datetime.now().isoformat(timespec="seconds")))
+                con.commit(); con.close()
+            except Exception:
+                pass
+        threading.Thread(target=_write_visit, daemon=True).start()
+        return
     con=db(); con.execute("INSERT INTO public_visits(visitor_id,event_type,page_name,referrer,created_at) VALUES(?,?,?,?,?)",(visitor_id,event_type,page_name,"",datetime.now().isoformat(timespec="seconds"))); con.commit(); con.close()
-    if event_type=="landing_view": st.session_state.public_visit_logged=True
 def apply_company_website_theme(user):
     company=str((user or {}).get("company","")).strip()
     if not company or (user or {}).get("role")=="master": return
@@ -2373,20 +2415,15 @@ def _deterministic_question_understanding(text,df=None):
     ambiguous=intent=="unclear" or (df is None and any(k in low for k in ["this dataset","my data","my file","the spreadsheet"]))
     return {"intent":intent,"subject":(text or "")[:220],"requested_action":actions.get(intent,"answer the user's question"),"specialist":specialist,"research_required":bool(research),"input_type":"dataset" if df is not None and any(k in low for k in ["data","dataset","sales","revenue","column","row"]) else "file" if any(k in low for k in ["file","pdf","excel","spreadsheet","document"]) else "text","ambiguity":bool(ambiguous),"clarification_needed":bool(ambiguous),"desired_output":"direct answer","workflow":workflow,"confidence":round(min(.98,.48+max(scores.values())*.08),2),"reason":"deterministic fallback"}
 def understand_di_question(text,user=None,df=None,language="English — Nigeria"):
-    """Question Understanding Layer: classify every user message before answering."""
+    """Fast Question Understanding Layer. Deterministic classification is the hot path.
+    The reasoning model is reserved for actual answer generation so each user message
+    normally requires only one Groq request instead of two.
+    """
     fallback=_deterministic_question_understanding(text,df)
-    prompt=("You are DACRE's Question Understanding Engine. Do not answer the user. Return ONLY valid JSON with keys intent, subject, requested_action, specialist, research_required, input_type, ambiguity, clarification_needed, desired_output, workflow, confidence. specialist must be one of Prociel, Oriel, Sofiel, Daniel, Graciel, Henriel. Choose based on what the user actually wants. If unclear, set ambiguity and clarification_needed true. Do not invent missing details. Language: "+str(language))
-    try:
-        raw=ai_generate(prompt,f"User message: {text}\nDataset loaded: {'yes' if df is not None else 'no'}\nOrganization: {(user or {}).get('company','')}",max_tokens=700)
-        if raw:
-            cleaned=re.sub(r"^```(?:json)?\s*|\s*```$","",raw.strip(),flags=re.I); data=json.loads(cleaned)
-            if isinstance(data,dict):
-                result=fallback.copy(); result.update({k:data[k] for k in result if k in data})
-                if result.get("specialist") not in DI_SPECIALIST_PROFILES: result["specialist"]=fallback["specialist"]
-                if not isinstance(result.get("workflow"),list) or not result["workflow"]: result["workflow"]=fallback["workflow"]
-                return result
+    try: st.session_state["di_last_understanding"]=fallback
     except Exception: pass
     return fallback
+
 def _understanding_context(u):
     if not u: return "No structured understanding was produced."
     return ("QUESTION UNDERSTANDING:\n"+f"Intent: {u.get('intent')}\nSubject: {u.get('subject')}\nRequested action: {u.get('requested_action')}\nSpecialist: {u.get('specialist')}\nResearch required: {u.get('research_required')}\nInput type: {u.get('input_type')}\nDesired output: {u.get('desired_output')}\nAmbiguity: {u.get('ambiguity')}\nWorkflow: {' -> '.join(u.get('workflow') or [])}\nConfidence: {u.get('confidence')}")
@@ -2499,12 +2536,14 @@ def _gemini_grounded_generate(system_prompt,user_prompt,max_tokens=1200):
         return (answer or None),sources[:8]
     except Exception: return None,[]
 def ai_generate_with_research(system_prompt,user_prompt,max_tokens=1200):
-    if _free_secret("GEMINI_API_KEY"):
-        answer,sources=_gemini_grounded_generate(system_prompt,user_prompt,max_tokens)
-        if answer: return answer,sources
+    # Groq is the configured primary backend. One web-enabled Groq call is faster
+    # than performing multiple local search requests followed by another AI call.
     if _free_secret("GROQ_API_KEY"):
         answer=_groq_generate_research(system_prompt,user_prompt,max_tokens=max_tokens)
         if answer: return answer,[]
+    if _free_secret("GEMINI_API_KEY"):
+        answer,sources=_gemini_grounded_generate(system_prompt,user_prompt,max_tokens)
+        if answer: return answer,sources
     return ai_generate(system_prompt,user_prompt,max_tokens=max_tokens),[]
 def _openai_generate_paid(system_prompt, user_prompt, max_tokens=900):
     """Optional paid provider. NEVER used unless explicitly enabled."""
@@ -2535,12 +2574,12 @@ def _openai_generate_paid(system_prompt, user_prompt, max_tokens=900):
         return ((data.get("choices") or [{}])[0].get("message") or {}).get("content", "").strip() or None
     except Exception:
         return None
-DACRE_BACKEND_VERSION = "7.0-advanced"
+DACRE_BACKEND_VERSION = "7.1-fast-di"
 DACRE_GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
 DACRE_GROQ_MODELS_ENDPOINT = "https://api.groq.com/openai/v1/models"
-DACRE_DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
-DACRE_GROQ_TIMEOUT_SECONDS = 45
-DACRE_GROQ_MAX_RETRIES = 2
+DACRE_DEFAULT_GROQ_MODEL = "openai/gpt-oss-20b"
+DACRE_GROQ_TIMEOUT_SECONDS = 18
+DACRE_GROQ_MAX_RETRIES = 1
 def _safe_int(value, default=0, minimum=0, maximum=100000):
     """Convert a value to a bounded integer without allowing bad config to crash DACRE."""
     try:
@@ -2672,6 +2711,8 @@ def _groq_generate_advanced(system_prompt, user_prompt, max_tokens=900, browser_
         ],
         "temperature": 0.2,
         "max_completion_tokens": token_limit,
+        "include_reasoning": False,
+        "reasoning_effort": "low",
     }
     if browser_search:
         payload["tools"] = [{"type": "browser_search"}]
@@ -2968,6 +3009,15 @@ def di_reply(message, user, df, allow_online=True, language="English — Nigeria
     low=text.lower()
     if not text:
         return "I am ready. Tell me the business result you want to achieve."
+    # Session-local answer cache makes repeated questions effectively instant
+    # without sharing one user's private context with another user.
+    try:
+        _cache=st.session_state.setdefault("dacre_di_answer_cache", {})
+        _cache_key=(str(user.get("company","")),str(user.get("role","")),str(language),text.strip().lower())
+        if _cache_key in _cache:
+            return _cache[_cache_key]
+    except Exception:
+        _cache=None; _cache_key=None
     normalized_question = re.sub(r"[^a-z0-9 ]+", " ", text.lower()).strip()
     if normalized_question in {"wikipedia", "what is wikipedia", "what does wikipedia mean"}:
         answer = (
@@ -2980,9 +3030,6 @@ def di_reply(message, user, df, allow_online=True, language="English — Nigeria
         )
         _save_general_knowledge_answer(text, answer, user)
         return answer
-    understanding=understand_di_question(text,user=user,df=df,language=language)
-    try: st.session_state["di_last_understanding"]=understanding
-    except Exception: pass
     name="Master David" if user["role"]=="master" else user["first_name"]
     greetings=["hello","hi","hey","good morning","good afternoon","good evening","good day","how are you"]
     greeting_hit = any(
@@ -3066,7 +3113,8 @@ def di_reply(message, user, df, allow_online=True, language="English — Nigeria
         return f"Dataset overview: {len(df):,} rows, {len(df.columns):,} columns, {len(df.select_dtypes(include='number').columns)} numeric columns and {int(df.duplicated().sum()):,} duplicate rows."
     if any(k in low for k in ["dacre","file vault","formula lab","export center","admin portal","workspace"]):
         return "DACRE is the business workspace. You can upload and clean data, run formulas, create charts, save project state, use the File Vault, export results and work with DI. Your organization has its own workspace and administration layer."
-    acq=_knowledge_acquisition_pipeline(text,user) if allow_online else {"question_results":[],"term_results":[],"memory":[],"new_memory_saved":False,"terms":_knowledge_tokens(text)}
+    web_required=bool(allow_online and needs_web_research(text))
+    acq=_knowledge_acquisition_pipeline(text,user,max_results=3,web_required=web_required) if allow_online else {"question_results":[],"term_results":[],"memory":[],"new_memory_saved":False,"terms":_knowledge_tokens(text)}
     direct=memory_box_direct_answer(text)
     general_direct=_general_knowledge_direct_answer(text)
     if general_direct:
@@ -3074,6 +3122,7 @@ def di_reply(message, user, df, allow_online=True, language="English — Nigeria
         return normalize_di_identity(general_direct)
     if direct and not acq.get("question_results") and not acq.get("term_results"):
         return direct
+    understanding=understand_di_question(text,user=user,df=df,language=language)
     context=build_di_context(user,df)
     training_context=_di_training_context()
     work_context=_di_work_connection_context(user,df)
@@ -3088,12 +3137,19 @@ Respond in the selected language when practical: {language}.
 DI AUTOMATION ACADEMY CURRICULUM:
 {training_context}""",
         f"DACRE context:\n{context}\n\nUSER WORK CONTEXT:\n{work_context}\n\n{_understanding_context(understanding)}\n\n{_knowledge_context(acq)}\n\nUSER QUESTION:\n{text}",
-        max_tokens=1600,
+        max_tokens=1100,
     )
     if answer:
         sources=grounded_sources or acq.get("question_results",[])+acq.get("term_results",[])
         suffix="\n\nSources checked: "+"; ".join(t for t,_ in sources[:5]) if sources else ""
-        return normalize_di_identity(answer)+suffix
+        final_answer=normalize_di_identity(answer)+suffix
+        try:
+            if _cache is not None and _cache_key is not None:
+                _cache[_cache_key]=final_answer
+                if len(_cache)>40:
+                    _cache.pop(next(iter(_cache)))
+        except Exception: pass
+        return final_answer
     sources=acq.get("question_results",[])+acq.get("term_results",[])
     if sources:
         return normalize_di_identity(
@@ -3166,42 +3222,63 @@ def transcribe_audio(audio_value):
         return None, "Voice transcription service is temporarily unavailable. You can still use text chat."
     except Exception as exc:
         return None, f"Voice transcription could not be completed: {type(exc).__name__}."
-def speak(text, language_code=None, voice_profile=None):
-    """Speak DI responses by default; browser voice remains optional via Text/Voice mode."""
+def _speech_only_answer(text):
+    """Convert DI's rendered answer into clean speech text only."""
+    value = str(text or "")
+    value = re.sub(r"```.*?```", " ", value, flags=re.S)
+    value = re.sub(r"<[^>]+>", " ", value)
+    value = re.sub(r"\[[^\]]*\]\([^)]*\)", " ", value)
+    value = re.sub(r"^\s*(DI(?: ANSWER| INVESTIGATION| RESPONSE)?|ANSWER|RESPONSE)\s*[:\-]?\s*", "", value, flags=re.I|re.M)
+    value = re.sub(r"^\s*[#>*\-]+\s*", "", value, flags=re.M)
+    value = re.sub(r"[*_`]+", "", value)
+    value = re.sub(r"\s+", " ", value).strip()
+    return value
+
+def speak(text, language_code=None, voice_profile="male"):
+    """Speak only DI's main answer in a calm, measured professional male voice."""
     if not text or st.session_state.get("di_response_mode", "voice") != "voice":
         return
-    language_code = language_code or DI_LANGUAGE_PROFILES.get(st.session_state.get("di_language", "English — Nigeria"), {}).get("code", "en-NG")
-    profile=(voice_profile or "").strip().lower()
-    hints={
-        "male": r"male|man|daniel|david|alex|george|james|oliver|microsoft.*male|google.*male",
-        "female": r"female|woman|samantha|aria|ava|victoria|zira|microsoft.*female|google.*female",
-    }
-    hint=hints.get(profile, profile if profile else hints["male"])
-    safe_text=json.dumps(str(text)); safe_lang=json.dumps(language_code); safe_hint=json.dumps(hint)
-    pitch = 0.78 if profile == "female" else 0.62
+    speech_text = _speech_only_answer(text)
+    if not speech_text:
+        return
+    language_code = language_code or DI_LANGUAGE_PROFILES.get(
+        st.session_state.get("di_language", "English — Nigeria"), {}
+    ).get("code", "en-NG")
+    safe_text = json.dumps(speech_text)
+    safe_lang = json.dumps(language_code)
     components.html(f"""
     <script>
     (() => {{
-      const text={safe_text}, lang={safe_lang}, hint={safe_hint};
+      const text={safe_text}, lang={safe_lang};
       if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) return;
-      const run=()=>{{
+      let spoken = false;
+      const say = () => {{
+        if (spoken) return;
+        spoken = true;
         try {{
+          const voices = window.speechSynthesis.getVoices();
+          const base = lang.toLowerCase().split('-')[0];
+          const same = voices.filter(v => (v.lang || '').toLowerCase().startsWith(base));
+          const male = /male|man|daniel|david|alex|george|thomas|james|oliver|aaron|google uk english male|microsoft.*male/i;
+          const preferred = same.find(v => male.test((v.name || '') + ' ' + (v.lang || '')))
+            || same.find(v => (v.lang || '').toLowerCase() === lang.toLowerCase())
+            || same[0] || voices[0];
+          const u = new SpeechSynthesisUtterance(text);
+          u.lang = lang;
+          u.rate = 0.80;
+          u.pitch = 0.70;
+          u.volume = 1.0;
+          if (preferred) u.voice = preferred;
           window.speechSynthesis.cancel();
-          const u=new SpeechSynthesisUtterance(text); u.lang=lang; u.rate=0.91; u.pitch={pitch}; u.volume=1;
-          const voices=window.speechSynthesis.getVoices();
-          const base=lang.toLowerCase().split('-')[0];
-          const same=voices.filter(v=>(v.lang||'').toLowerCase().startsWith(base));
-          const rx=new RegExp(hint,'i');
-          const preferred=same.find(v=>rx.test((v.name||'')+' '+(v.lang||''))) || same.find(v=>(v.lang||'').toLowerCase()===lang.toLowerCase()) || same[0] || voices[0];
-          if(preferred) u.voice=preferred;
           window.speechSynthesis.speak(u);
-        }} catch(e) {{ console.warn('DACRE voice error',e); }}
+        }} catch(e) {{ console.warn('DACRE voice error', e); }}
       }};
-      if(window.speechSynthesis.getVoices().length) run(); else window.speechSynthesis.onvoiceschanged=run;
-      setTimeout(run,250);
+      if (window.speechSynthesis.getVoices().length) setTimeout(say, 80);
+      else window.speechSynthesis.onvoiceschanged = () => {{ window.speechSynthesis.onvoiceschanged = null; setTimeout(say, 80); }};
     }})();
     </script>
-    """,height=1,scrolling=False)
+    """, height=1, scrolling=False)
+
 def master_user_record():
     con = db()
     row = con.execute(
@@ -3528,6 +3605,7 @@ def _presentation_prompt_spec(prompt, board, df):
     slides.append({"title":"Recommended next steps","purpose":"Action","bullets":["Validate the strongest finding against source data","Discuss the decision or action required","Use the exported deck as the presentation record"],"chart_column":""})
     return {"title":board.get("title") or "DACRE Data Presentation","subtitle":board.get("objective") or "Evidence from the active inspection board","narrative":"A data-first presentation generated by Prociel.","slides":slides,"palette":_online_color_palette(),"animation":"Fade between major sections."}
 def generate_dacre_presentation(df, board, prompt):
+    _ensure_pptx_imports()
     if Presentation is None:
         raise RuntimeError("python-pptx is not installed. Add python-pptx to requirements.txt and redeploy DACRE.")
     spec=_presentation_prompt_spec(prompt, board, df)
@@ -4007,6 +4085,7 @@ def _dacre_env_secret(name, default=""):
     return str(os.getenv(name, default) or default).strip()
 def livekit_configured():
     """Return True only when the server-side LiveKit credentials are available."""
+    _ensure_livekit_imports()
     return bool(
         AccessToken is not None
         and _dacre_env_secret("LIVEKIT_URL")
@@ -4075,6 +4154,7 @@ def _compact_call_context(user, agent_rows, mode, call_question=""):
     return raw
 def create_livekit_token(room_name, user, agent_rows, mode="company_di", question=""):
     """Mint a short-lived room token and dispatch the selected dynamic DIs."""
+    _ensure_livekit_imports()
     if not livekit_configured():
         return None, "Realtime calling (reserved for future DGL/controlled infrastructure) is not configured yet."
     if not (user and user.get("role") in ("company_admin", "master")):
@@ -4896,8 +4976,9 @@ def render_opportunity_page(user):
             if st.session_state.get("dacre_di_requested_page"):
                 st.rerun()
             st.markdown(f"<div class='di-answer-panel'><div class='answer-label'>DI INVESTIGATION</div><div>{_escape_html(answer).replace(chr(10), '<br>')}</div></div>", unsafe_allow_html=True)
+@st.cache_data(show_spinner=False)
 def _dacre_logo_data_uri():
-    """Return the exact DACRE artwork for the main app brand and landing experience."""
+    """Return the exact DACRE artwork, cached so every Streamlit rerun does not re-read/base64-encode the PNG."""
     try:
         if LOGO_PATH.exists():
             raw = LOGO_PATH.read_bytes()
@@ -5521,7 +5602,7 @@ st.markdown("""
 .voice-panel{background:linear-gradient(135deg,#112b47,#173b5d 70%,#3d3028);border:1px solid rgba(120,170,210,.25);border-radius:20px;padding:16px 18px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
 .di-video-call{background:linear-gradient(145deg,#071a32,#0c2a4b);border:1px solid rgba(110,202,255,.28);border-radius:26px;padding:22px;margin:18px 0;box-shadow:0 24px 70px rgba(0,35,80,.26)}
 .di-video-call-head{display:flex;justify-content:space-between;gap:18px;align-items:center;margin-bottom:18px}.di-video-call-head h2{color:#f5fbff!important;margin:.2rem 0}.di-video-call-head p{color:#a9c9de!important;margin:0}.di-video-call-head strong{color:#81f5bc;letter-spacing:.12em;font-size:.78rem}.di-video-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}.di-video-person{background:rgba(11,33,55,.8);border:1px solid rgba(132,210,255,.18);border-radius:20px;padding:14px;text-align:center}.di-video-face-wrap{position:relative;width:170px;height:170px;margin:0 auto 12px;border-radius:50%}.di-video-face,.di-video-human{width:170px;height:170px;border-radius:50%;object-fit:cover;border:3px solid rgba(111,213,255,.62);position:relative;z-index:2}.di-video-human{display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#2d79d0,#7951d9);color:#fff;font-weight:900;font-size:4rem}.di-video-ring{position:absolute;inset:-8px;border-radius:50%;border:3px solid rgba(86,202,255,.28);z-index:0}.di-video-person.is-speaking .di-video-face-wrap{animation:diFacePulse 1.05s ease-in-out infinite}.di-video-person.is-speaking .di-video-ring{animation:diRingPulse 1.05s ease-in-out infinite}.di-video-mouth{position:absolute;z-index:4;left:50%;bottom:33px;transform:translateX(-50%);width:22px;height:6px;background:#07121e;border-radius:50%;opacity:.18}.di-video-person.is-speaking .di-video-mouth{animation:diMouth 220ms ease-in-out infinite alternate;opacity:.75}.di-video-name{color:#f3fbff;font-size:1.04rem;font-weight:900}.di-video-role{color:#a8c7db;font-size:.78rem;margin-top:3px}.di-video-status{color:#83f3bd;font-size:.74rem;margin-top:9px;font-weight:800}@keyframes diFacePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}@keyframes diRingPulse{0%,100%{transform:scale(1);opacity:.55}50%{transform:scale(1.06);opacity:1}}@keyframes diMouth{from{width:16px;height:5px}to{width:29px;height:11px}}
-.chat-card{padding:16px 18px;border-radius:18px;border:1px solid rgba(120,170,210,.24);background:#112b47;margin:8px 0}.chat-card.di{border-left:5px solid var(--dacre-orange);background:linear-gradient(135deg,#153654,#193d5f)}.chat-card.user{border-left:5px solid var(--dacre-indigo);background:#102944}
+.chat-card{padding:16px 18px;border-radius:18px;border:1px solid rgba(120,170,210,.24);background:#112b47;margin:8px 0}.chat-card.di{border-left:5px solid var(--dacre-orange);background:linear-gradient(135deg,#153654,#193d5f)}.chat-card.user{border-left:5px solid var(--dacre-indigo);background:#102944}.chat-speaker{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;font-weight:900;margin-bottom:7px;color:#a9c9de!important}.chat-question{color:#fff!important;font-weight:650;line-height:1.65}.chat-answer{color:#55e39a!important;font-weight:900;line-height:1.7}.chat-card.di .chat-speaker{color:#55e39a!important}.chat-card.user .chat-speaker{color:#d5e8f7!important}
 [data-testid="stDataFrame"]{border:1px solid rgba(120,170,210,.28);border-radius:14px;overflow:hidden;box-shadow:0 8px 25px rgba(0,0,0,.18)}
 [data-testid="stDataFrame"] *{color:#17324d!important}
 [data-testid="stMetric"]{background:#112b47!important;border:1px solid rgba(120,170,210,.24)!important;border-radius:16px!important}
@@ -5549,7 +5630,7 @@ st.markdown("""<style>
 [data-baseweb=option]:hover{background:#205b91!important}
 [data-testid=stMetric],.di-quick-card,.di-metric,.voice-panel,.chat-card,.di-command,.dacre-user-hero,.master-office-hero,.feature-card{background:linear-gradient(145deg,#12365b,#174b79)!important;color:#fff!important;border-color:rgba(130,190,230,.42)!important}
 .chat-card.di{background:linear-gradient(135deg,#174b79,#1c5c8e)!important;border-left-color:#f28c28!important}
-.chat-card.user{background:#12365b!important;border-left-color:#66b8ee!important}
+.chat-card.user{background:#12365b!important;border-left-color:#66b8ee!important}.chat-question{color:#fff!important}.chat-answer{color:#55e39a!important;font-weight:900}.chat-card.di .chat-speaker{color:#55e39a!important}.chat-card.user .chat-speaker{color:#d5e8f7!important}
 [data-testid=stExpander]{background:#12365b!important;border-color:#5aa9e6!important}
 [data-testid=stAlert]{background:#163e65!important;color:#fff!important}
 [data-testid=stDataFrame]{background:#fff!important}
@@ -5907,7 +5988,6 @@ if voice_turn:
         con.execute("INSERT INTO chat_history(username,company_name,sender,message,created_at) VALUES(?,?,?,?,?)",(user["username"],user["company"],user["first_name"],spoken,now))
         con.execute("INSERT INTO chat_history(username,company_name,sender,message,created_at) VALUES(?,?,?,?,?)",(user["username"],user["company"],"DI",reply,now)); con.commit(); con.close()
         st.session_state.last_speech=reply
-        if st.session_state.get("di_response_mode","voice")=="voice": speak(reply, voice_lang_code)
         st.rerun()
 def render_chibobec_client_overview(con):
     """Overall Admin view of Chibobec as a DACRE client organization."""
@@ -6266,7 +6346,16 @@ with st.expander(quick_title,expanded=False):
     if user.get("role") == "master":
         st.info("DI treats messages here as private Sovereign Master requests and responds with founder-level respect and intelligence.")
     for msg in st.session_state.chat_history[-10:]:
-        st.write(f"**{msg['sender']}**: {msg['text']}")
+        if msg.get("sender") == "DI":
+            st.markdown(
+                f"<div class='chat-card di'><div class='chat-speaker'>DI</div><div class='chat-answer'>{_escape_html(msg.get('text','')).replace(chr(10), '<br>')}</div></div>",
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                f"<div class='chat-card user'><div class='chat-speaker'>{_escape_html(msg.get('sender','You'))}</div><div class='chat-question'>{_escape_html(msg.get('text','')).replace(chr(10), '<br>')}</div></div>",
+                unsafe_allow_html=True,
+            )
     quick_chat_col, quick_clear_col = st.columns([8,1])
     with quick_chat_col:
         with st.form("quick_di_form",clear_on_submit=True):
