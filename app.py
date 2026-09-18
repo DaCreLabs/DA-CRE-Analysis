@@ -1844,20 +1844,156 @@ def fetch_website_tables(url, timeout=12, max_tables=20):
         if not frame.empty:
             result.append((f"Website Table {idx}", frame))
     return result
-def clean_dataframe(df):
-    out = df.copy()
-    out.columns = [re.sub(r"\s+", " ", str(c).strip()) if str(c).strip() else f"Column_{i+1}" for i,c in enumerate(out.columns)]
-    out = out.dropna(axis=0, how="all").dropna(axis=1, how="all")
-    for column in out.columns:
-        if out[column].dtype == "object":
-            series = out[column].astype(str).replace({"nan": ""}).str.strip()
-            numeric_candidate = series.str.replace(r"[\$€£₦,%]", "", regex=True).str.replace(",", "", regex=False)
-            numeric = pd.to_numeric(numeric_candidate, errors="coerce")
-            if numeric.notna().mean() >= 0.80 and series.ne("").any():
-                out[column] = numeric
-            else:
-                out[column] = series
-    return out.drop_duplicates().reset_index(drop=True)
+def _normalize_column_name(name, index=0):
+    text=re.sub(r"\s+", " ", str(name or "").strip())
+    return text or f"Column_{index+1}"
+
+def _stable_id_column(df):
+    if df is None: return None
+    priority=("unique_id","unique id","id","sku","part_number","part number","product_id","product id","barcode","serial_number","serial number")
+    lookup={re.sub(r"[^a-z0-9]+","_",str(c).lower()).strip("_"):c for c in df.columns}
+    for key in priority:
+        k=re.sub(r"[^a-z0-9]+","_",key.lower()).strip("_")
+        if k in lookup: return lookup[k]
+    return None
+
+def _price_columns(df):
+    if df is None: return []
+    out=[]
+    for c in df.columns:
+        n=re.sub(r"[^a-z0-9]+"," ",str(c).lower()).strip()
+        if any(k in n for k in ("price","cost","amount","revenue","sales","selling price","vendor price","unit price")):
+            out.append(c)
+    return out
+
+def _numericize_series(series):
+    if pd.api.types.is_numeric_dtype(series): return pd.to_numeric(series, errors="coerce")
+    cleaned=(series.astype(str).replace({"nan":"","None":""}).str.strip()
+             .str.replace(r"[^0-9.\-]", "", regex=True))
+    return pd.to_numeric(cleaned, errors="coerce")
+
+def _natural_sort_key(value):
+    parts=re.split(r"(\d+)", str(value).lower())
+    return [int(x) if x.isdigit() else x for x in parts]
+
+def clean_dataframe(df, generate_unique_ids=False, id_prefix="DAC"):
+    """Conservative automatic preparation used by DACRE.
+
+    Raw data is never mutated. The function removes empty rows/columns and exact
+    duplicates, normalizes whitespace, converts obvious numeric/date fields and
+    consolidates repeated stable IDs without inventing business values.
+    """
+    if df is None: return None
+    out=df.copy()
+    out.columns=[_normalize_column_name(c,i) for i,c in enumerate(out.columns)]
+    out=out.dropna(axis=0,how="all").dropna(axis=1,how="all").copy()
+    for c in out.columns:
+        if out[c].dtype == "object":
+            s=out[c].astype(str).replace({"nan":"","None":""}).str.replace(r"\s+"," ",regex=True).str.strip()
+            # Normalize common status/location spellings without changing arbitrary text.
+            low=s.str.lower()
+            replacements={"available":"Available","in stock":"Available","instock":"Available","yes":"Yes","no":"No"}
+            out[c]=low.map(replacements).fillna(s)
+            num=_numericize_series(s)
+            if s.ne("").sum() and num.notna().mean() >= 0.85:
+                out[c]=num
+    # Exact duplicate rows are always safe to remove.
+    exact_before=len(out)
+    out=out.drop_duplicates().reset_index(drop=True)
+    # Consolidate repeated stable IDs conservatively: keep the first row and fill blanks
+    # from later rows; conflicting non-empty values are left in the first row.
+    id_col=_stable_id_column(out)
+    duplicate_id_count=0
+    if id_col and out[id_col].astype(str).str.strip().ne("").any():
+        key=out[id_col].astype(str).str.strip()
+        dup_mask=key.ne("") & key.duplicated(keep=False)
+        duplicate_id_count=int(dup_mask.sum())
+        if duplicate_id_count:
+            merged=[]
+            for _,group in out.assign(__dac_key=key).groupby("__dac_key",sort=False,dropna=False):
+                rows=group.drop(columns=["__dac_key"]).copy()
+                if len(rows)==1:
+                    merged.append(rows.iloc[0])
+                    continue
+                base=rows.iloc[0].copy()
+                for col in rows.columns:
+                    if str(base.get(col,"")) in ("", "nan", "None"):
+                        for v in rows[col].tolist()[1:]:
+                            if str(v) not in ("", "nan", "None"):
+                                base[col]=v; break
+                merged.append(base)
+            out=pd.DataFrame(merged,columns=[c for c in out.columns]).reset_index(drop=True)
+    # Parse obvious date columns only when most non-empty values parse cleanly.
+    for c in out.columns:
+        name=str(c).lower()
+        if any(k in name for k in ("date","created","updated","timestamp")) and not pd.api.types.is_datetime64_any_dtype(out[c]):
+            parsed=pd.to_datetime(out[c],errors="coerce")
+            if out[c].astype(str).str.strip().ne("").sum() and parsed.notna().mean() >= 0.80:
+                out[c]=parsed
+    # Sort deterministically by a stable identifier when available; otherwise by the first useful column.
+    sort_col=id_col if id_col in out.columns else (out.columns[0] if len(out.columns) else None)
+    if sort_col and not out.empty:
+        try: out=out.sort_values(sort_col,key=lambda s:s.map(_natural_sort_key),kind="stable").reset_index(drop=True)
+        except Exception: out=out.sort_values(sort_col,kind="stable").reset_index(drop=True)
+    if generate_unique_ids:
+        existing=_stable_id_column(out)
+        # Only generate when there is no usable unique identifier already.
+        usable=existing and out[existing].astype(str).str.strip().ne("").all() and out[existing].astype(str).str.strip().nunique()==len(out)
+        if not usable:
+            new_col="Unique_ID" if "Unique_ID" not in out.columns else "DACRE_Unique_ID"
+            ids=[]
+            for i in range(len(out)):
+                ids.append(f"{id_prefix.upper()}{i+1:04d}")
+            out[new_col]=ids
+    out.attrs["cleaning_stats"]={"exact_duplicates_removed":max(0,exact_before-len(out)),"repeated_id_records":duplicate_id_count,"id_column":id_col or "","price_columns":_price_columns(out)}
+    return out
+
+def _currency_options():
+    return {"NGN":"₦","USD":"$","GBP":"£","EUR":"€","GHS":"₵","KES":"KSh","ZAR":"R","CAD":"C$","AUD":"A$"}
+
+def _currency_display_name(code):
+    names={"NGN":"Nigerian Naira","USD":"US Dollar","GBP":"British Pound","EUR":"Euro","GHS":"Ghanaian Cedi","KES":"Kenyan Shilling","ZAR":"South African Rand","CAD":"Canadian Dollar","AUD":"Australian Dollar"}
+    return names.get(code,code)
+
+def apply_currency_format(df, code):
+    """Keep prices numeric for analysis while storing a display format in dataframe attrs."""
+    out=df.copy(); code=str(code or "").upper().strip(); symbol=_currency_options().get(code,code or "¤")
+    price_cols=_price_columns(out)
+    for c in price_cols:
+        nums=_numericize_series(out[c])
+        if nums.notna().mean() >= 0.70:
+            out[c]=nums
+    formats=dict(out.attrs.get("currency_formats",{}))
+    for c in price_cols: formats[c]=f"{symbol}%,.2f"
+    out.attrs["currency_code"]=code; out.attrs["currency_symbol"]=symbol; out.attrs["currency_formats"]=formats
+    return out
+
+def _currency_column_config(df):
+    configs={}
+    for c,fmt in dict(df.attrs.get("currency_formats",{})).items():
+        try: configs[c]=st.column_config.NumberColumn(str(c),format=fmt)
+        except Exception: pass
+    return configs
+
+def _prepare_data_for_save(user, raw_df, filename, source_label="file"):
+    """Create an automatic-cleaning decision state; user choices are requested by the UI."""
+    cleaned=clean_dataframe(raw_df)
+    stats=dict(cleaned.attrs.get("cleaning_stats",{}))
+    st.session_state["pending_data_cleanup"]={"raw":raw_df.copy(),"processed":cleaned,"filename":filename,"source":source_label,"stats":stats,"created_at":datetime.now().isoformat(timespec="seconds")}
+    return cleaned,stats
+
+def _finalize_data_cleanup(user, pending, currency_code, want_unique_id):
+    processed=clean_dataframe(pending["processed"],generate_unique_ids=bool(want_unique_id))
+    if currency_code: processed=apply_currency_format(processed,currency_code)
+    st.session_state.raw_df=pending["raw"].copy()
+    st.session_state.processed_df=processed
+    st.session_state.active_filename=pending["filename"]
+    st.session_state["data_currency_code"]=currency_code or ""
+    st.session_state["data_unique_id_enabled"]=bool(want_unique_id)
+    save_project(user,st.session_state.raw_df,processed,st.session_state.active_filename,st.session_state.formula_logs,st.session_state.chart_config)
+    log_activity(user["username"],user["company"],f"Automatic data preparation completed: {pending['filename']}")
+    st.session_state["pending_data_cleanup"]=None
+    return processed
 def dataframe_to_json(df):
     return "" if df is None else df.to_json(orient="split", date_format="iso")
 def dataframe_from_json(value):
@@ -2207,28 +2343,42 @@ def _generate_video_for_di(topic, di_name='DI'):
 
 @st.cache_data(ttl=300, show_spinner=False)
 def _online_image_search(query, limit=6):
-    """Fetch public image URLs from Wikimedia Commons without requiring an API key."""
+    """Retrieve actual public images without requiring an API key. Openverse first, Wikimedia fallback."""
+    query=str(query or '').strip() or 'animal'
+    results=[]
+    # Openverse is purpose-built for openly licensed media search and needs no API key.
     try:
-        params={             "action":"query","generator":"search","gsrsearch":str(query),             "gsrnamespace":6,"gsrlimit":int(limit),"prop":"imageinfo",             "iiprop":"url|extmetadata","iiurlwidth":900,"format":"json","origin":"*", }
-        url="https://commons.wikimedia.org/w/api.php?"+urllib.parse.urlencode(params)
-        req=urllib.request.Request(url,headers={"User-Agent":"DACRE-DI/3.0"})
-        with urllib.request.urlopen(req,timeout=8) as response:
-            data=json.loads(response.read().decode("utf-8",errors="ignore"))
-        pages=data.get("query",{}).get("pages",{})
-        results=[]
-        for page in pages.values():
-            info=(page.get("imageinfo") or [{}])[0]
-            image_url=info.get("thumburl") or info.get("url")
-            if not image_url:
-                continue
-            meta=info.get("extmetadata") or {}
-            title=meta.get("ImageDescription",{}).get("value") or page.get("title","")
-            title=re.sub(r"<[^>]+>"," ",str(title))
-            title=re.sub(r"\s+"," ",title).strip()
-            results.append({"title":title or str(page.get("title","")),"url":image_url,"source":"Wikimedia Commons"})
-        return results[:int(limit)]
+        url='https://api.openverse.org/v1/images/?'+urllib.parse.urlencode({'q':query,'page_size':int(limit)})
+        req=urllib.request.Request(url,headers={'User-Agent':'DACRE-DI/4.0'})
+        with urllib.request.urlopen(req,timeout=10) as response:
+            data=json.loads(response.read().decode('utf-8',errors='replace'))
+        for item in data.get('results',[]):
+            image_url=item.get('thumbnail') or item.get('url')
+            if not image_url: continue
+            results.append({'title':str(item.get('title') or query).strip(),'url':image_url,'source':str(item.get('source') or 'Openverse'),'page_url':item.get('foreign_landing_url') or item.get('detail_url') or ''})
     except Exception:
-        return []
+        pass
+    if len(results)<int(limit):
+        try:
+            params={'action':'query','generator':'search','gsrsearch':query,'gsrnamespace':6,'gsrlimit':int(limit),'prop':'imageinfo','iiprop':'url|extmetadata','iiurlwidth':900,'format':'json','origin':'*'}
+            url='https://commons.wikimedia.org/w/api.php?'+urllib.parse.urlencode(params)
+            req=urllib.request.Request(url,headers={'User-Agent':'DACRE-DI/4.0'})
+            with urllib.request.urlopen(req,timeout=10) as response:
+                data=json.loads(response.read().decode('utf-8',errors='replace'))
+            for page in (data.get('query',{}).get('pages',{}).values()):
+                info=(page.get('imageinfo') or [{}])[0]
+                image_url=info.get('thumburl') or info.get('url')
+                if not image_url: continue
+                results.append({'title':str(page.get('title','')).replace('File:',''),'url':image_url,'source':'Wikimedia Commons','page_url':'https://commons.wikimedia.org/wiki/'+urllib.parse.quote(str(page.get('title','')).replace(' ','_'))})
+                if len(results)>=int(limit): break
+        except Exception:
+            pass
+    # de-duplicate URLs
+    seen=set(); clean=[]
+    for item in results:
+        if item['url'] in seen: continue
+        seen.add(item['url']); clean.append(item)
+    return clean[:int(limit)]
 
 def _online_video_search(query, limit=4):
     """Find public YouTube watch pages through the existing dependency-free web lookup."""
@@ -2251,18 +2401,39 @@ def _online_video_search(query, limit=4):
         pass
     return results
 
-def _generate_image_for_di(topic, di_name='DI'):
-    """Create an image through OpenAI Images when a server-side key is configured."""
-    key=_free_secret('OPENAI_API_KEY') or _free_secret('DACRE_AI_API_KEY')
-    if not key:
+def _generate_image_gemini(topic, di_name='DI'):
+    """Generate an image with Gemini Nano Banana when GEMINI_API_KEY is configured."""
+    key=_free_secret('GEMINI_API_KEY')
+    if not key: return False,''
+    model=_free_secret('DACRE_IMAGE_GEMINI_MODEL') or 'gemini-2.5-flash-image'
+    prompt=f"Create a polished professional DACRE Analysis visual. Specialist: {di_name}. User request: {topic}. Clean business-grade composition, high clarity, no API keys, passwords, private data or hidden system information."
+    payload={'contents':[{'parts':[{'text':prompt}]}],'generationConfig':{'responseModalities':['IMAGE']}}
+    try:
+        url=f"https://generativelanguage.googleapis.com/v1beta/models/{urllib.parse.quote(model,safe='')}:generateContent"
+        req=urllib.request.Request(url,data=json.dumps(payload).encode(),headers={'x-goog-api-key':key,'Content-Type':'application/json'},method='POST')
+        with urllib.request.urlopen(req,timeout=90) as r: data=json.loads(r.read().decode('utf-8',errors='replace'))
+        for cand in data.get('candidates',[]):
+            for part in (cand.get('content',{}).get('parts') or []):
+                blob=part.get('inlineData') or part.get('inline_data') or {}
+                raw=blob.get('data')
+                if raw:
+                    fd,path=tempfile.mkstemp(prefix='dacre_gemini_img_',suffix='.png'); os.close(fd); Path(path).write_bytes(base64.b64decode(raw)); return True,path
         return False,''
+    except Exception:
+        return False,''
+
+def _generate_image_for_di(topic, di_name='DI'):
+    """Create an image automatically; Gemini is preferred, OpenAI remains a fallback."""
+    ok,path=_generate_image_gemini(topic,di_name)
+    if ok: return True,path
+    key=_free_secret('OPENAI_API_KEY') or _free_secret('DACRE_AI_API_KEY')
+    if not key: return False,''
     prompt=f"Create a polished professional DACRE Analysis visual. Specialist: {di_name}. User request: {topic}. Clean business-grade composition, high clarity, no API keys or private information."
     try:
         payload={'model':_free_secret('DACRE_IMAGE_MODEL') or 'gpt-image-1','prompt':prompt,'size':'1024x1024'}
         req=urllib.request.Request('https://api.openai.com/v1/images/generations',data=json.dumps(payload).encode(),headers={'Authorization':f'Bearer {key}','Content-Type':'application/json'},method='POST')
-        with urllib.request.urlopen(req,timeout=60) as r: data=json.loads(r.read().decode('utf-8',errors='replace'))
-        item=(data.get('data') or [{}])[0]
-        raw=item.get('b64_json')
+        with urllib.request.urlopen(req,timeout=90) as r: data=json.loads(r.read().decode('utf-8',errors='replace'))
+        item=(data.get('data') or [{}])[0]; raw=item.get('b64_json')
         if not raw: return False,''
         fd,path=tempfile.mkstemp(prefix='dacre_di_',suffix='.png'); os.close(fd); Path(path).write_bytes(base64.b64decode(raw)); return True,path
     except Exception:
@@ -2270,725 +2441,65 @@ def _generate_image_for_di(topic, di_name='DI'):
 
 
 def _render_di_media_request(request):
-    """Render online media or execute an actual DI media-creation request."""
-    if not request:
+    """Render media actions. Video work is persistent and survives Streamlit reruns."""
+    if not request: return
+    kind=request.get('kind'); query=request.get('query','')
+    user=st.session_state.get('current_user') or st.session_state.get('user')
+    if kind=='generate_video':
+        if not user:
+            st.error('Please sign in before creating a video.')
+            return
+        job=_media_job_get(user,'generate_video')
+        if not job or job.get('query')!=query:
+            job_id=_start_video_job(user,query,st.session_state.get('active_di_name','DI') or 'DI')
+            job=_media_job_get(user,'generate_video')
+        st.markdown('### DI is creating your video')
+        status=str(job.get('status','QUEUED'))
+        if status in ('QUEUED','RENDERING'):
+            st.info('Your video render is running. You can continue using DACRE; this job is tracked independently of the chat rerun.')
+            st.caption(f'Video job #{job.get("id")} · {status.lower()}')
+            if st.button('Refresh video status',key=f"refresh_video_{job.get('id')}",use_container_width=True): st.rerun()
+        elif status=='COMPLETED' and job.get('result_path') and Path(job['result_path']).exists():
+            st.video(job['result_path'])
+            with open(job['result_path'],'rb') as fh: st.download_button('Download generated video',fh.read(),file_name='dacre_di_generated_video.mp4',mime='video/mp4',use_container_width=True)
+            st.success('Your DACRE video is ready.')
+        elif status=='FAILED':
+            st.error('The video render failed. DACRE did not mark it as completed. Configure a working video-generation provider and submit the request again.')
         return
-    kind=request.get("kind"); query=request.get("query","")
-    if kind=="generate_video":
-        active_di=st.session_state.get('active_di_name','DI') or 'DI'
-        st.markdown("### DI is creating your video")
-        st.caption("DI is executing the media task now — this is not a tutorial response.")
-        with st.spinner("Creating the video…"):
-            ok,path,prompt=_generate_video_for_di(query,active_di)
+    if kind=='generate_image':
+        ok,path=_generate_image_for_di(query,st.session_state.get('active_di_name','DI') or 'DI')
         if ok:
-            st.video(path)
-            with open(path,'rb') as fh:
-                st.download_button("Download generated video",fh.read(),file_name="dacre_di_generated_video.mp4",mime="video/mp4",use_container_width=True)
-            st.success("The video has been created and is now available above.")
-        else:
-            st.error("DI could not complete the video creation because no working video-generation provider is currently configured or the provider failed. Add GEMINI_API_KEY for the durable Veo fallback; DACRE will use it automatically.")
-        return
-    if kind=="generate_image":
-        # Keep image creation action-oriented. If no image provider is configured,
-        # the user receives a clear configuration message rather than instructions.
-        ok,path=_generate_image_for_di(query,st.session_state.get('active_di_name','DI') or 'DI') if '_generate_image_for_di' in globals() else (False,'')
-        if ok:
-            st.markdown("### Generated image")
+            st.markdown('### Generated image')
             st.image(path,use_container_width=True)
-            with open(path,'rb') as fh:
-                st.download_button("Download generated image",fh.read(),file_name="dacre_di_generated_image.png",mime="image/png",use_container_width=True)
+            with open(path,'rb') as fh: st.download_button('Download generated image',fh.read(),file_name='dacre_di_generated_image.png',mime='image/png',use_container_width=True)
         else:
-            st.error("DI could not create the image because no image-generation provider is configured.")
+            st.error('The image could not be generated because no working image-generation provider is configured.')
         return
-    if kind=="image":
+    if kind=='image':
         results=_online_image_search(query,6)
-        st.markdown(f"### Online pictures: {query.title()}")
+        st.markdown(f'### Pictures: {query.title()}')
         if not results:
-            st.info("I could not retrieve public images right now. Try a more specific subject.")
+            st.error('DACRE could not retrieve an online image right now. The search provider returned no usable image.')
             return
         cols=st.columns(min(3,len(results)))
         for i,item in enumerate(results):
             with cols[i % len(cols)]:
-                try: st.image(item["url"],caption=item["title"][:100],use_container_width=True)
+                try: st.image(item['url'],caption=item['title'][:100],use_container_width=True)
                 except Exception: st.markdown(f"**{item['title']}**")
+                if item.get('page_url'): st.markdown(f"[View source]({item['page_url']})")
                 st.caption(f"Source: {item['source']}")
-    elif kind=="video":
+        return
+    if kind=='video':
         results=_online_video_search(query,4)
-        st.markdown(f"### Online videos: {query.title()}")
+        st.markdown(f'### Online videos: {query.title()}')
         if not results:
-            st.info("I could not retrieve a playable public video right now. Try another title or subject.")
+            st.error('DACRE could not retrieve a public video right now.')
             return
         for item in results:
-            st.markdown(f"**{item['title'] or query.title()}**")
-            try: st.video(item["url"])
-            except Exception: st.link_button("Watch on YouTube",item["url"],use_container_width=True)
-            st.caption(f"Source: {item['source']}")
+            if item.get('video_id'): st.video(item['video_id'])
+            st.caption(f"{item.get('title','Video')} · {item.get('source','YouTube')}")
+        return
 
-def online_lookup(query, max_results=5):
-    """Dependency-free public web lookup. Safe fallback when model tools are unavailable."""
-    try:
-        url = "https://html.duckduckgo.com/html/?q=" + urllib.parse.quote_plus(query)
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 DACRE-DI/2.0"})
-        with urllib.request.urlopen(req, timeout=8) as response:
-            html = response.read().decode("utf-8", errors="ignore")
-        items = re.findall(r'<a rel="nofollow" class="result__a" href="([^"]+)"[^>]*>(.*?)</a>', html, flags=re.I|re.S)
-        results = []
-        for href, title in items[:max_results]:
-            clean_title = re.sub(r"<.*?>", "", title).strip()
-            clean_href = urllib.parse.unquote(href)
-            if clean_title and clean_href:
-                results.append((clean_title, clean_href))
-        return results
-    except Exception:
-        return []
-def needs_web_research(text):
-    """Detect questions that benefit from current public information."""
-    low=(text or "").lower()
-    markers=["latest","current","today","tonight","this week","this month","recent","news","price","pricing","cost","version","release","2026","2027","search online","look online","on the internet","online","according to","official","website","who won","what happened","market","competitor","competitors","research","right now","as of"]
-    return any(m in low for m in markers)
-DI_AUTOMATION_COURSES = [     {         "title": "Build & Sell n8n AI Agents",         "expert": "Nate Herk | AI Automation",         "url": "https://www.youtube.com/watch?v=Ey18PDiaAYI",         "topics": [             "AI agents", "n8n workflows", "RAG", "APIs", "agent memory",             "multi-agent systems", "prompting", "webhooks", "MCP",             "human-in-the-loop", "error workflows", "agent architecture"         ],     },     {         "title": "n8n Masterclass 2026: AI Agents, RAG & How to Sell What You Build",         "expert": "Kamran AI Insights",         "url": "https://www.youtube.com/watch?v=vamZqhpG3qI",         "topics": [             "n8n fundamentals", "AI agents", "triggers", "nodes", "data flow",             "LLM parameters", "RAG chatbots", "vector databases", "AI automation"         ],     },     {         "title": "Complete Agentic AI Course",         "expert": "Krish Naik",         "url": "https://www.youtube.com/watch?v=rV3HJ4LEZ7k",         "topics": [             "LangChain", "LangGraph", "RAG", "vectorless RAG", "deep agents",             "guardrails", "LLM evaluation", "LLM gateways"         ],     }, ]
-def _di_training_context():
-    """Return the DI's automation training curriculum as reasoning context."""
-    lessons=[]
-    for course in DI_AUTOMATION_COURSES:
-        lessons.append(             f"{course['title']} — {course['expert']} | "             f"topics: {', '.join(course['topics'])} | source: {course['url']}"         )
-    return "\n".join(lessons)
-def _di_work_connection_context(user, df=None):
-    """Build a compact work-context layer so answers can become useful actions."""
-    user=user or {}
-    company=str(user.get("company_name") or user.get("company") or "").strip()
-    role=str(user.get("role") or "user").strip()
-    lines=[f"Workspace/company: {company or 'not specified'}", f"User role: {role}"]
-    if df is not None:
-        try:
-            cols=[str(c) for c in list(df.columns)[:60]]
-            lines.append(f"Active dataset: {len(df):,} rows x {len(df.columns):,} columns")
-            lines.append("Active columns: " + ", ".join(cols))
-        except Exception:
-            pass
-    lines.append(         "Application rule: after understanding and answering the question, determine whether "         "the knowledge can genuinely help the user's current work in DACRE. If relevant, give "         "one or more concrete ways to apply it (data task, workflow, analysis, research, "         "document, presentation or next action). Do not force a work connection when it is irrelevant."     )
-    return "\n".join(lines)
-DI_SPECIALIST_PROFILES={  "Prociel":{"specialty":"Data Presentation","keywords":["presentation","powerpoint","slide","slides","deck","template","animation","visual"],"research":"PowerPoint capabilities, presentation design, visual trends, templates and executive communication"},  "Oriel":{"specialty":"Data Analysis","keywords":["analyze","analyse","statistics","kpi","trend","correlation","forecast","sales","revenue","metrics","excel","sheets","sql","python","power bi"],"research":"analytics methods, statistics, business metrics and evidence needed to validate conclusions"},  "Sofiel":{"specialty":"Research & Intelligence","keywords":["research","market","competitor","competitors","company","industry","product","pricing","news","current","latest","technology","intelligence"],"research":"current web information, market intelligence, competitor information, product facts and source verification"},  "Daniel":{"specialty":"Data Processing","keywords":["clean","cleaning","duplicate","duplicates","missing","format","transform","merge","sort","filter","vlookup","xlookup","concatenate","csv","excel"],"research":"data-processing standards, file-format behavior and current spreadsheet/data-cleaning techniques"},  "Graciel":{"specialty":"Insights & Storytelling","keywords":["insight","insights","story","storytelling","recommend","recommendation","meaning","impact","executive","management","decision"],"research":"business interpretation frameworks, industry context and evidence for defensible recommendations"},  "Henriel":{"specialty":"Files & Documents","keywords":["pdf","word","document","documents","file","files","compare files","extract","summarize","summary","template","export"],"research":"document/file standards, format behavior and source-document context"}, }
-def _deterministic_question_understanding(text,df=None):
-    """Fallback classifier so every prompt is understood even without an AI API."""
-    low=(text or "").strip().lower(); scores={n:sum(1 for k in p["keywords"] if k in low) for n,p in DI_SPECIALIST_PROFILES.items()}
-    if any(k in low for k in ["clean","duplicate","missing value","remove duplicates","vlookup","xlookup"]): scores["Daniel"]+=3
-    if any(k in low for k in ["why did","what does this mean","recommend","should management"]): scores["Graciel"]+=2
-    if any(k in low for k in ["research","latest","current","competitor","market"]): scores["Sofiel"]+=3
-    if any(k in low for k in ["powerpoint","slides","presentation","deck"]): scores["Prociel"]+=3
-    if df is not None and any(k in low for k in ["my data","this dataset","sales","revenue","trend","average","total","top"]): scores["Oriel"]+=2
-    specialist=max(scores,key=scores.get) if max(scores.values()) else "Oriel"
-    research=needs_web_research(low) or any(k in low for k in ["find online","search","official source","according to"])
-    if any(k in low for k in ["clean","remove","duplicate","missing","transform","merge","sort","filter"]): intent="data_processing"
-    elif research or any(k in low for k in ["market","competitor","industry"]): intent="research"
-    elif any(k in low for k in ["analy","statistics","kpi","trend","correlation","forecast","sales","revenue"]): intent="analysis"
-    elif any(k in low for k in ["presentation","slides","powerpoint","deck"]): intent="presentation"
-    elif any(k in low for k in ["recommend","insight","meaning","impact","decision"]): intent="insights"
-    elif any(k in low for k in ["pdf","word","document","file","files"]): intent="document_work"
-    elif low in {"hi","hello","hey","good morning","good afternoon","good evening","how are you"}: intent="greeting"
-    elif len(low.split())<=2: intent="unclear"
-    else: intent="general_question"
-    actions={"data_processing":"inspect, clean, transform or validate data","research":"research, verify and synthesize external information","analysis":"analyze data, calculate evidence and explain findings","presentation":"design or prepare a presentation and its story","insights":"interpret evidence and provide business implications or recommendations","document_work":"inspect, compare, summarize or produce document/file outputs"}
-    workflow=[specialist]
-    if research and specialist!="Sofiel": workflow.insert(0,"Sofiel")
-    if any(k in low for k in ["presentation","slides","powerpoint","deck"]) and "Prociel" not in workflow: workflow.append("Prociel")
-    if any(k in low for k in ["insight","recommend","management","executive"]) and "Graciel" not in workflow: workflow.append("Graciel")
-    ambiguous=intent=="unclear" or (df is None and any(k in low for k in ["this dataset","my data","my file","the spreadsheet"]))
-    return {"intent":intent,"subject":(text or "")[:220],"requested_action":actions.get(intent,"answer the user's question"),"specialist":specialist,"research_required":bool(research),"input_type":"dataset" if df is not None and any(k in low for k in ["data","dataset","sales","revenue","column","row"]) else "file" if any(k in low for k in ["file","pdf","excel","spreadsheet","document"]) else "text","ambiguity":bool(ambiguous),"clarification_needed":bool(ambiguous),"desired_output":"direct answer","workflow":workflow,"confidence":round(min(.98,.48+max(scores.values())*.08),2),"reason":"deterministic fallback"}
-def understand_di_question(text,user=None,df=None,language="English — Nigeria"):
-    """Fast Question Understanding Layer. Deterministic classification is the hot path.
-    The reasoning model is reserved for actual answer generation so each user message
-    normally requires only one Groq request instead of two.
-    """
-    fallback=_deterministic_question_understanding(text,df)
-    try: st.session_state["di_last_understanding"]=fallback
-    except Exception: pass
-    return fallback
-
-def _understanding_context(u):
-    if not u: return "No structured understanding was produced."
-    return ("QUESTION UNDERSTANDING:\n"+f"Intent: {u.get('intent')}\nSubject: {u.get('subject')}\nRequested action: {u.get('requested_action')}\nSpecialist: {u.get('specialist')}\nResearch required: {u.get('research_required')}\nInput type: {u.get('input_type')}\nDesired output: {u.get('desired_output')}\nAmbiguity: {u.get('ambiguity')}\nWorkflow: {' -> '.join(u.get('workflow') or [])}\nConfidence: {u.get('confidence')}")
-def build_di_context(user, df):
-    master_context = ""
-    if user.get("role") == "master":
-        master_context = (             "SOVEREIGN MASTER CONTEXT: The speaker is David Emenike, creator and Overall Administrator "             "of DACRE Analysis. This conversation is private to the master administration layer. "             "Respond with exceptional respect, technical depth, executive judgment and practical actions. "             "Never reveal private credentials, passkeys, API keys or hidden security values.\n"         )
-    context = [         APP_KNOWLEDGE,         master_context,         "DI MEMORY BOX (persistent source of truth):\n" + di_memory_context(query=getattr(st.session_state, "di_memory_query", "")),         f"Current organization: {user.get('company','')}. Current user: {user.get('first_name','')} {user.get('last_name','')}. Role: {user.get('role','user')}.",     ]
-    try:
-        recent = st.session_state.get("chat_history", [])[-12:]
-        if recent:
-            context.append("RECENT CONVERSATION:\n" + "\n".join(                 f"{m.get('sender','User')}: {m.get('text','')}" for m in recent             ))
-    except Exception:
-        pass
-    if df is not None:
-        context.append(f"Active dataset has {len(df):,} rows and {len(df.columns):,} columns.")
-        context.append("Columns: " + ", ".join(map(str, df.columns)))
-    return "\n".join(context)
-def _free_secret(name):
-    try:
-        value = st.secrets.get(name, "")
-    except Exception:
-        value = ""
-    return str(value or os.getenv(name, "") or "").strip()
-def _free_ai_only_mode():
-    value = _free_secret("DACRE_FREE_AI_ONLY")
-    if not value:
-        return True
-    return str(value).lower() not in {"0", "false", "no", "off"}
-def _groq_generate(system_prompt, user_prompt, max_tokens=900):
-    """Use Groq's free-plan compatible OpenAI endpoint when a free-tier key exists."""
-    key = _free_secret("GROQ_API_KEY")
-    if not key:
-        return None
-    model = _free_secret("DACRE_GROQ_MODEL") or "openai/gpt-oss-120b"
-    payload = {         "model": model,         "messages": [             {"role": "system", "content": system_prompt},             {"role": "user", "content": user_prompt},         ],         "temperature": 0.2,         "max_completion_tokens": min(int(max_tokens), 1800),     }
-    try:
-        req = urllib.request.Request(             "https://api.groq.com/openai/v1/chat/completions",             data=json.dumps(payload).encode("utf-8"),             headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},             method="POST",         )
-        with urllib.request.urlopen(req, timeout=25) as response:
-            data = json.loads(response.read().decode("utf-8"))
-        return ((data.get("choices") or [{}])[0].get("message") or {}).get("content", "").strip() or None
-    except Exception:
-        return None
-def _gemini_generate(system_prompt, user_prompt, max_tokens=900):
-    """Use Google's Gemini developer API when a free-tier key exists."""
-    key = _free_secret("GEMINI_API_KEY")
-    if not key:
-        return None
-    model = _free_secret("DACRE_GEMINI_MODEL") or "gemini-2.5-flash"
-    payload = {         "systemInstruction": {"parts": [{"text": system_prompt}]},         "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],         "generationConfig": {"temperature": 0.2, "maxOutputTokens": min(int(max_tokens), 1800)},     }
-    try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{urllib.parse.quote(model, safe='')}:generateContent"
-        req = urllib.request.Request(             url,             data=json.dumps(payload).encode("utf-8"),             headers={"x-goog-api-key": key, "Content-Type": "application/json"},             method="POST",         )
-        with urllib.request.urlopen(req, timeout=25) as response:
-            data = json.loads(response.read().decode("utf-8"))
-        parts = ((data.get("candidates") or [{}])[0].get("content") or {}).get("parts") or []
-        answer = "".join(str(p.get("text", "")) for p in parts).strip()
-        return answer or None
-    except Exception:
-        return None
-def _gemini_grounded_generate(system_prompt,user_prompt,max_tokens=1200):
-    """Gemini Google Search grounding for current, source-backed DI research."""
-    key=_free_secret("GEMINI_API_KEY")
-    if not key: return None,[]
-    model=_free_secret("DACRE_GEMINI_MODEL") or "gemini-2.5-flash"
-    payload={"systemInstruction":{"parts":[{"text":system_prompt}]},"contents":[{"role":"user","parts":[{"text":user_prompt}]}],"tools":[{"google_search":{}}],"generationConfig":{"temperature":0.2,"maxOutputTokens":min(int(max_tokens),1800)}}
-    try:
-        url=f"https://generativelanguage.googleapis.com/v1beta/models/{urllib.parse.quote(model,safe='')}:generateContent"
-        req=urllib.request.Request(url,data=json.dumps(payload).encode(),headers={"x-goog-api-key":key,"Content-Type":"application/json"},method="POST")
-        with urllib.request.urlopen(req,timeout=35) as response: data=json.loads(response.read().decode())
-        candidate=(data.get("candidates") or [{}])[0]; parts=(candidate.get("content") or {}).get("parts") or []
-        answer="".join(str(x.get("text","")) for x in parts).strip(); meta=candidate.get("groundingMetadata") or {}; sources=[]
-        for chunk in meta.get("groundingChunks",[]) or []:
-            web=chunk.get("web") or {}; uri=web.get("uri"); title=web.get("title") or uri
-            if uri and (title,uri) not in sources: sources.append((title,uri))
-        return (answer or None),sources[:8]
-    except Exception: return None,[]
-def ai_generate_with_research(system_prompt,user_prompt,max_tokens=1200):
-    # Groq is the configured primary backend. One web-enabled Groq call is faster
-    # than performing multiple local search requests followed by another AI call.
-    if _free_secret("GROQ_API_KEY"):
-        answer=_groq_generate_research(system_prompt,user_prompt,max_tokens=max_tokens)
-        if answer: return answer,[]
-    if _free_secret("GEMINI_API_KEY"):
-        answer,sources=_gemini_grounded_generate(system_prompt,user_prompt,max_tokens)
-        if answer: return answer,sources
-    return ai_generate(system_prompt,user_prompt,max_tokens=max_tokens),[]
-def _openai_generate_paid(system_prompt, user_prompt, max_tokens=900):
-    """Optional paid provider. NEVER used unless explicitly enabled."""
-    if _free_ai_only_mode():
-        return None
-    api_key = _free_secret("DACRE_AI_API_KEY")
-    if not api_key:
-        return None
-    model = _free_secret("DACRE_AI_MODEL") or "gpt-4o-mini"
-    payload = {         "model": model,         "messages": [             {"role": "system", "content": system_prompt},             {"role": "user", "content": user_prompt},         ],         "temperature": 0.2,         "max_tokens": min(int(max_tokens), 1800),     }
-    try:
-        req = urllib.request.Request(             "https://api.openai.com/v1/chat/completions",             data=json.dumps(payload).encode("utf-8"),             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},             method="POST",         )
-        with urllib.request.urlopen(req, timeout=30) as response:
-            data = json.loads(response.read().decode("utf-8"))
-        return ((data.get("choices") or [{}])[0].get("message") or {}).get("content", "").strip() or None
-    except Exception:
-        return None
-DACRE_BACKEND_VERSION = "7.1-fast-di"
-DACRE_GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
-DACRE_GROQ_MODELS_ENDPOINT = "https://api.groq.com/openai/v1/models"
-DACRE_DEFAULT_GROQ_MODEL = "openai/gpt-oss-20b"
-DACRE_GROQ_TIMEOUT_SECONDS = 18
-DACRE_GROQ_MAX_RETRIES = 1
-def _safe_int(value, default=0, minimum=0, maximum=100000):
-    """Convert a value to a bounded integer without allowing bad config to crash DACRE."""
-    try:
-        number = int(value)
-    except Exception:
-        number = default
-    return max(minimum, min(maximum, number))
-def _safe_float(value, default=0.0, minimum=0.0, maximum=1.0):
-    """Convert a value to a bounded float without raising configuration errors."""
-    try:
-        number = float(value)
-    except Exception:
-        number = default
-    return max(minimum, min(maximum, number))
-def _backend_state():
-    """Return a session-local observability state for AI requests."""
-    state = st.session_state.setdefault("dacre_ai_backend_state", {})
-    state.setdefault("requests", 0)
-    state.setdefault("successes", 0)
-    state.setdefault("failures", 0)
-    state.setdefault("groq_requests", 0)
-    state.setdefault("groq_successes", 0)
-    state.setdefault("groq_failures", 0)
-    state.setdefault("last_provider", "")
-    state.setdefault("last_model", "")
-    state.setdefault("last_error", "")
-    state.setdefault("last_latency_ms", 0)
-    state.setdefault("last_request_at", "")
-    return state
-def _record_backend_event(provider="", model="", success=False, error="", latency_ms=0):
-    """Record non-sensitive AI backend telemetry in the current session only."""
-    state = _backend_state()
-    state["requests"] += 1
-    state["successes"] += 1 if success else 0
-    state["failures"] += 0 if success else 1
-    if provider == "groq":
-        state["groq_requests"] += 1
-        state["groq_successes"] += 1 if success else 0
-        state["groq_failures"] += 0 if success else 1
-    state["last_provider"] = str(provider or "")
-    state["last_model"] = str(model or "")
-    state["last_error"] = str(error or "")[:500]
-    state["last_latency_ms"] = _safe_int(latency_ms, 0, 0, 120000)
-    state["last_request_at"] = datetime.utcnow().isoformat(timespec="seconds") + "Z"
-def _redact_backend_error(error):
-    """Remove credential-like fragments from an error before it is stored or displayed."""
-    text = str(error or "")
-    key = _free_secret("GROQ_API_KEY") if "_free_secret" in globals() else ""
-    if key:
-        text = text.replace(key, "[REDACTED]")
-    text = re.sub(r"Bearer\s+[A-Za-z0-9._-]+", "Bearer [REDACTED]", text, flags=re.I)
-    text = re.sub(r"api[_-]?key[=:]\s*[^\s,;]+", "api_key=[REDACTED]", text, flags=re.I)
-    return text[:500]
-def _groq_model_name():
-    """Read the configured Groq model, with a current stable default."""
-    configured = _free_secret("DACRE_GROQ_MODEL") if "_free_secret" in globals() else ""
-    return configured or DACRE_DEFAULT_GROQ_MODEL
-def _groq_request(payload, timeout=DACRE_GROQ_TIMEOUT_SECONDS):
-    """Low-level Groq request with retry handling and no secret leakage."""
-    key = _free_secret("GROQ_API_KEY")
-    if not key:
-        return None, "GROQ_API_KEY is not configured."
-    last_error = "Groq request failed."
-    for attempt in range(DACRE_GROQ_MAX_RETRIES + 1):
-        started = time.perf_counter()
-        try:
-            req = urllib.request.Request(                 DACRE_GROQ_ENDPOINT,                 data=json.dumps(payload).encode("utf-8"),                 headers={                     "Authorization": f"Bearer {key}",                     "Content-Type": "application/json",                     "User-Agent": "DACRE-Analysis/7.0",                 },                 method="POST",             )
-            with urllib.request.urlopen(req, timeout=timeout) as response:
-                raw = response.read().decode("utf-8", errors="replace")
-            data = json.loads(raw)
-            latency = int((time.perf_counter() - started) * 1000)
-            return data, ""
-        except Exception as exc:
-            latency = int((time.perf_counter() - started) * 1000)
-            last_error = _redact_backend_error(exc)
-            if attempt < DACRE_GROQ_MAX_RETRIES:
-                time.sleep(0.45 * (attempt + 1))
-    return None, last_error
-def groq_backend_health():
-    """Return safe backend diagnostics; no API key or secret value is included."""
-    configured = bool(_free_secret("GROQ_API_KEY"))
-    model = _groq_model_name()
-    state = _backend_state()
-    return {         "configured": configured,         "model": model,         "endpoint": DACRE_GROQ_ENDPOINT,         "backend_version": DACRE_BACKEND_VERSION,         "requests": state.get("groq_requests", 0),         "successes": state.get("groq_successes", 0),         "failures": state.get("groq_failures", 0),         "last_latency_ms": state.get("last_latency_ms", 0) if state.get("last_provider") == "groq" else 0,         "last_error": state.get("last_error", "") if state.get("last_provider") == "groq" else "",     }
-def _groq_extract_text(data):
-    """Extract assistant text from the normal Groq chat-completion response shape."""
-    if not isinstance(data, dict):
-        return ""
-    choices = data.get("choices") or []
-    if not choices:
-        return ""
-    message = choices[0].get("message") or {}
-    content = message.get("content", "")
-    if isinstance(content, list):
-        chunks = []
-        for item in content:
-            if isinstance(item, dict):
-                chunks.append(str(item.get("text", "")))
-        content = "".join(chunks)
-    return str(content or "").strip()
-def _groq_generate_advanced(system_prompt, user_prompt, max_tokens=900, browser_search=False):
-    """Advanced Groq generation with optional browser search for current questions."""
-    model = _groq_model_name()
-    token_limit = _safe_int(max_tokens, 900, 1, 1800)
-    payload = {         "model": model,         "messages": [             {"role": "system", "content": str(system_prompt or "")},             {"role": "user", "content": str(user_prompt or "")},         ],         "temperature": 0.2,         "max_completion_tokens": token_limit,         "include_reasoning": False,         "reasoning_effort": "low",     }
-    if browser_search:
-        payload["tools"] = [{"type": "browser_search"}]
-    started = time.perf_counter()
-    data, error = _groq_request(payload)
-    latency = int((time.perf_counter() - started) * 1000)
-    if not data:
-        _record_backend_event("groq", model, False, error, latency)
-        return None
-    answer = _groq_extract_text(data)
-    if not answer:
-        _record_backend_event("groq", model, False, "Groq returned no assistant text.", latency)
-        return None
-    _record_backend_event("groq", model, True, "", latency)
-    return answer
-def _groq_generate_research(system_prompt, user_prompt, max_tokens=1200):
-    """Use Groq GPT-OSS browser search when Gemini grounding is unavailable."""
-    return _groq_generate_advanced(system_prompt, user_prompt, max_tokens=max_tokens, browser_search=True)
-def groq_list_models():
-    """List models exposed by the configured Groq account without exposing the key."""
-    key = _free_secret("GROQ_API_KEY")
-    if not key:
-        return []
-    try:
-        req = urllib.request.Request(             DACRE_GROQ_MODELS_ENDPOINT,             headers={                 "Authorization": f"Bearer {key}",                 "Content-Type": "application/json",                 "User-Agent": "DACRE-Analysis/7.0",             },             method="GET",         )
-        with urllib.request.urlopen(req, timeout=15) as response:
-            data = json.loads(response.read().decode("utf-8", errors="replace"))
-        models = []
-        for item in data.get("data", []) or []:
-            if isinstance(item, dict) and item.get("id"):
-                models.append(str(item["id"]))
-        return sorted(set(models))
-    except Exception:
-        return []
-def _groq_capability_note():
-    """Human-readable capability note used by the DI backend and diagnostics UI."""
-    return (         "Groq is configured as DACRE's primary free AI reasoning provider. "         "The default model is openai/gpt-oss-120b, and current research can use "         "Groq's browser-search tool when the request requires fresh information. "         "Provider credentials are read only from GROQ_API_KEY in Streamlit Secrets."     )
-def _ai_backend_diagnostics_text():
-    """Create a compact safe diagnostics report for the authenticated workspace."""
-    status = free_ai_provider_status()
-    groq = groq_backend_health()
-    lines = [         f"DACRE AI backend: {DACRE_BACKEND_VERSION}",         f"Groq configured: {'Yes' if status.get('groq') else 'No'}",         f"Groq model: {groq.get('model')}",         f"Groq requests this session: {groq.get('requests', 0)}",         f"Groq successful requests: {groq.get('successes', 0)}",         f"Groq failed requests: {groq.get('failures', 0)}",         f"Gemini configured: {'Yes' if status.get('gemini') else 'No'}",         f"Optional paid OpenAI path: {'Enabled' if status.get('paid_openai_enabled') else 'Disabled'}",         "Secrets: protected; values are never displayed by this diagnostic.",     ]
-    if groq.get("last_error"):
-        lines.append(f"Last Groq error: {groq['last_error']}")
-    return "\n".join(lines)
-def _research_request_should_use_groq(question, understanding=None):
-    """Decide when the Groq browser-search tool adds value."""
-    if not _free_secret("GROQ_API_KEY"):
-        return False
-    if isinstance(understanding, dict) and understanding.get("research_required"):
-        return True
-    q = str(question or "").lower()
-    current_markers = (         "latest", "today", "current", "recent", "this week", "this month",         "price", "news", "update", "2026", "who is", "what happened",         "compare current", "market", "competitor", "website", "online"     )
-    return any(marker in q for marker in current_markers)
-def _di_workflow_plan(question, understanding=None):
-    """Map a complex request to the existing six-DI workforce without changing permissions."""
-    u = understanding or {}
-    specialist = u.get("specialist") if isinstance(u, dict) else None
-    subject = str(u.get("subject", "")) if isinstance(u, dict) else ""
-    low = str(question or "").lower()
-    plan = []
-    if specialist in DI_SPECIALIST_PROFILES:
-        plan.append(specialist)
-    if any(x in low for x in ("research", "competitor", "market", "latest", "current")):
-        if "Sofiel" not in plan:
-            plan.append("Sofiel")
-    if any(x in low for x in ("sales", "revenue", "kpi", "trend", "correlation", "forecast")):
-        if "Oriel" not in plan:
-            plan.append("Oriel")
-    if any(x in low for x in ("clean", "duplicate", "missing", "excel", "csv", "vlookup", "xlookup")):
-        if "Daniel" not in plan:
-            plan.append("Daniel")
-    if any(x in low for x in ("explain", "summary", "recommend", "insight", "executive")):
-        if "Graciel" not in plan:
-            plan.append("Graciel")
-    if any(x in low for x in ("pdf", "word", "document", "powerpoint", "file")):
-        if "Henriel" not in plan:
-            plan.append("Henriel")
-    if any(x in low for x in ("presentation", "slides", "powerpoint", "deck", "chart")):
-        if "Prociel" not in plan:
-            plan.append("Prociel")
-    if not plan:
-        plan = ["Oriel"]
-    return plan[:4]
-def _di_workflow_context(question, understanding=None, df=None):
-    """Build compact structured context for multi-specialist DI reasoning."""
-    plan = _di_workflow_plan(question, understanding)
-    parts = [         "DACRE DI WORKFLOW PLAN",         "Question: " + str(question or ""),         "Specialists: " + " -> ".join(plan),     ]
-    if isinstance(understanding, dict):
-        parts.append("Intent: " + str(understanding.get("intent", "")))
-        parts.append("Subject: " + str(understanding.get("subject", "")))
-        parts.append("Requested action: " + str(understanding.get("requested_action", "")))
-        parts.append("Desired output: " + str(understanding.get("desired_output", "")))
-    if df is not None:
-        try:
-            parts.append(f"Active dataset: {len(df):,} rows x {len(df.columns):,} columns")
-            parts.append("Columns: " + ", ".join(map(str, list(df.columns)[:80])))
-        except Exception:
-            pass
-    return "\n".join(parts)
-def _di_workflow_memory_key(question):
-    """Stable non-secret cache key for a workflow request."""
-    normalized = re.sub(r"\s+", " ", str(question or "").strip().lower())
-    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:24]
-def _remember_ai_backend_note(title, content, user=None):
-    """Persist a small backend/workflow note when the existing Memory Box is available."""
-    try:
-        company = (user or {}).get("company", "")
-        if "insert_di_memory" in globals():
-            insert_di_memory(                 company,                 "AI_BACKEND",                 title,                 content,                 priority=90,             )
-            return True
-    except Exception:
-        pass
-    return False
-def _groq_answer_first(system_prompt, user_prompt, max_tokens=900):
-    """Primary Groq path used for ordinary DI reasoning."""
-    answer = _groq_generate_advanced(system_prompt, user_prompt, max_tokens=max_tokens, browser_search=False)
-    return answer
-def _groq_answer_current(system_prompt, user_prompt, max_tokens=1200):
-    """Current-information path: Groq browser search first, then normal reasoning."""
-    answer = _groq_generate_research(system_prompt, user_prompt, max_tokens=max_tokens)
-    if answer:
-        return answer
-    return _groq_generate_advanced(system_prompt, user_prompt, max_tokens=max_tokens, browser_search=False)
-def ai_provider_badge_text():
-    """Safe one-line provider badge for UI components."""
-    status = free_ai_provider_status()
-    if status.get("groq"):
-        return f"Groq · {_groq_model_name()}"
-    if status.get("gemini"):
-        return "Gemini"
-    if status.get("paid_openai_enabled"):
-        return "OpenAI"
-    return "Local fallback"
-def _backend_guarded_generate(system_prompt, user_prompt, max_tokens=900, research=False):
-    """Central guarded AI entry point with provider fallbacks."""
-    if research and _free_secret("GROQ_API_KEY"):
-        answer = _groq_answer_current(system_prompt, user_prompt, max_tokens=max_tokens)
-        if answer:
-            return answer
-    if _free_secret("GROQ_API_KEY"):
-        answer = _groq_answer_first(system_prompt, user_prompt, max_tokens=max_tokens)
-        if answer:
-            return answer
-    if _free_secret("GEMINI_API_KEY"):
-        answer = _gemini_generate(system_prompt, user_prompt, max_tokens=max_tokens)
-        if answer:
-            return answer
-    return _openai_generate_paid(system_prompt, user_prompt, max_tokens=max_tokens)
-def _backend_feature_matrix():
-    """Return feature availability for safe diagnostics and future UI."""
-    return {         "groq_reasoning": bool(_free_secret("GROQ_API_KEY")),         "groq_browser_search": bool(_free_secret("GROQ_API_KEY")),         "gemini_reasoning": bool(_free_secret("GEMINI_API_KEY")),         "gemini_grounded_search": bool(_free_secret("GEMINI_API_KEY")),         "paid_openai": bool(not _free_ai_only_mode() and _free_secret("DACRE_AI_API_KEY")),         "persistent_memory": "insert_di_memory" in globals() and "get_di_memory" in globals(),         "workspace_data": "clean_dataframe" in globals(),         "file_vault": "save_file" in globals(),         "presentation": "Presentation" in globals() and Presentation is not None,     }
-def _safe_backend_summary():
-    """Return a compact dictionary suitable for a dashboard metric or API response."""
-    status = free_ai_provider_status()
-    groq = groq_backend_health()
-    return {         "version": DACRE_BACKEND_VERSION,         "provider": ai_provider_badge_text(),         "groq_configured": bool(status.get("groq")),         "groq_model": groq.get("model", ""),         "groq_success_rate": (             round((groq.get("successes", 0) / max(groq.get("requests", 0), 1)) * 100, 1)         ),         "research_ready": bool(status.get("groq") or status.get("gemini")),     }
-def ai_generate(system_prompt, user_prompt, max_tokens=900, prefer_grounded=False):
-    """Free-first DI reasoning router with optional grounded research."""
-    if prefer_grounded and _free_secret("GEMINI_API_KEY"):
-        answer,_=_gemini_grounded_generate(system_prompt,user_prompt,max_tokens=max_tokens)
-        if answer: return answer
-    answer=_groq_answer_first(system_prompt,user_prompt,max_tokens=max_tokens) if _free_secret("GROQ_API_KEY") else None
-    if answer: return answer
-    answer=_gemini_generate(system_prompt,user_prompt,max_tokens=max_tokens)
-    if answer: return answer
-    return _openai_generate_paid(system_prompt,user_prompt,max_tokens=max_tokens) or None
-def free_ai_provider_status():
-    return {         "groq": bool(_free_secret("GROQ_API_KEY")),         "gemini": bool(_free_secret("GEMINI_API_KEY")),         "paid_openai_enabled": bool(not _free_ai_only_mode() and _free_secret("DACRE_AI_API_KEY")),         "free_only": _free_ai_only_mode(),     }
-def normalize_di_identity(text):
-    """Keep DI's displayed first-person identity consistent."""
-    if not text:
-        return text
-    text=re.sub(r"\bI\s+am\s+D([\.,!?])", r"I am DI\1", text, flags=re.IGNORECASE)
-    text=re.sub(r"\bI\x27m\s+D([\.,!?])", r"I am DI\1", text, flags=re.IGNORECASE)
-    return text
-DI_PAGE_ALIASES = {     "company dashboard": "Company Dashboard",     "dashboard": "Company Dashboard",     "di workforce": "DI Workforce",     "workforce": "DI Workforce",     "data presentation board": "Data Presentation Board",     "presentation board": "Data Presentation Board",     "workspace": "Workspace & Data",     "workspace and data": "Workspace & Data",     "workspace & data": "Workspace & Data",     "formula lab": "Formula Lab",     "charts": "Charts",     "chart builder": "Charts",     "file vault": "File Vault",     "files vault": "File Vault",     "file storage": "File Vault",     "export center": "Export Center",     "exports": "Export Center", }
-def _di_requested_page(question):
-    """Return a DACRE page only when the question is an access/navigation request."""
-    q = re.sub(r"[^a-z0-9& ]+", " ", str(question or "").lower())
-    q = re.sub(r"\s+", " ", q).strip()
-    q = q.replace("file fault", "file vault").replace("files fault", "file vault")
-    navigation_words = (         "where can i", "where do i", "where is", "where are", "how do i",         "how can i", "take me to", "go to", "open", "find", "add", "upload",         "save", "store", "access", "use", "get to", "navigate to"     )
-    if not any(word in q for word in navigation_words):
-        return None
-    for alias in sorted(DI_PAGE_ALIASES, key=len, reverse=True):
-        if alias in q:
-            return DI_PAGE_ALIASES[alias]
-    return None
-def _di_route_response(question, answer):
-    """Prepare a user-facing answer and schedule a real in-app page navigation."""
-    target = _di_requested_page(question)
-    if not target:
-        return answer
-    st.session_state["dacre_di_requested_page"] = target
-    guidance = {         "File Vault": "I've moved you to File Vault. To add a file, use the file upload control on that page, choose the file from your device, and save it to the organization vault. Your files stay organized there for later use.",         "Workspace & Data": "I've moved you to Workspace & Data. Use the upload/import controls there to bring your dataset into the workspace, then use the available cleaning and data tools.",         "Formula Lab": "I've moved you to Formula Lab. Select the operation you need, choose the target column when required, then run the formula on the active dataset.",         "Charts": "I've moved you to Charts. Choose the chart type and the relevant category/value columns, then generate the visualization.",         "Export Center": "I've moved you to Export Center. Choose the output format you need and use the download control to export your processed work.",         "DI Workforce": "I've moved you to DI Workforce. Choose the DI specialist you want to work with and review the available specialist information.",         "Data Presentation Board": "I've moved you to the Data Presentation Board. Set the presentation details and give Prociel the instructions for the presentation you want.",         "Company Dashboard": "I've moved you to your Company Dashboard. This is the main workspace overview and starting point for your DACRE tools.",     }
-    if target == "File Vault":
-        return guidance[target]
-    return guidance.get(target, answer)
-def _infer_active_di(question):
-    """Route a request to the specialist most naturally suited to the task."""
-    q=str(question or '').lower()
-    rules=[
-        ("Prociel", ("presentation","powerpoint","slides","slide deck","presentation board")),
-        ("Oriel", ("analyze","analyse","statistics","trend","kpi","correlation","forecast","sales data")),
-        ("Sofiel", ("research","latest","current","market","competitor","source","online")),
-        ("Daniel", ("clean","duplicate","missing values","remove duplicates","excel","csv","transform","sort","filter")),
-        ("Graciel", ("insight","executive summary","business meaning","recommendation","storytelling")),
-        ("Henriel", ("pdf","document","word file","file vault","compare documents","extract from")),
-    ]
-    for name, terms in rules:
-        if any(term in q for term in terms):
-            return name
-    return st.session_state.get("active_di_name", "DI") or "DI"
-
-def di_reply(message, user, df, allow_online=True, language="English — Nigeria"):
-    text=message.strip()
-    low=text.lower()
-    if not text:
-        return "I am ready. Tell me the business result you want to achieve."
-    # Every specialist receives the same Master Intelligence architecture, while
-    # retaining its own identity, role and specialist knowledge context.
-    try:
-        active_name=_infer_active_di(text)
-        st.session_state["active_di_name"]=active_name
-        roster={str(r[0]).lower():r for r in ACTIVE_DI_ROSTER}
-        row=roster.get(str(active_name).lower())
-        specialty=row[1] if row else "General Intelligence"
-        brain_result=_di_master_cycle(text, active_name, specialty, task_type="question")
-        st.session_state["dacre_last_master_cycle"] = {
-            "di": active_name,
-            "cycle": brain_result.get("cycle",0) if brain_result else 0,
-            "meaning": brain_result.get("meaning","") if brain_result else "",
-        }
-    except Exception:
-        pass
-    # Session-local answer cache makes repeated questions effectively instant
-    # without sharing one user's private context with another user.
-    try:
-        _cache=st.session_state.setdefault("dacre_di_answer_cache", {})
-        _cache_key=(str(user.get("company","")),str(user.get("role","")),str(language),text.strip().lower())
-        _media_for_cache = _di_media_request(text)
-        if _cache_key in _cache and not (_media_for_cache and _media_for_cache.get("kind") in {"generate_video","generate_image"}):
-            return _cache[_cache_key]
-    except Exception:
-        _cache=None; _cache_key=None
-    normalized_question = re.sub(r"[^a-z0-9 ]+", " ", text.lower()).strip()
-    if normalized_question in {"wikipedia", "what is wikipedia", "what does wikipedia mean"}:
-        answer = (             "Wikipedia is a free online encyclopedia. It contains articles about "             "millions of topics and is available in many languages. Most Wikipedia "             "articles are written and edited by volunteers. Wikipedia was launched "             "in 2001 and is operated by the nonprofit Wikimedia Foundation. Because "             "articles can be edited by many contributors, important information "             "should be checked against the sources and references provided in the article."         )
-        _save_general_knowledge_answer(text, answer, user)
-        return answer
-    name="Master David" if user["role"]=="master" else user["first_name"]
-    media_intent=_di_media_request(text)
-    if media_intent and media_intent.get("kind") in {"generate_video","generate_image"}:
-        st.session_state["dacre_di_media_request"]=media_intent
-        return ("I will create it for you now. I am executing the media task rather than explaining how to make it. "
-                "The finished result will appear in the workspace when the render completes.")
-    greetings=["hello","hi","hey","good morning","good afternoon","good evening","good day","how are you"]
-    greeting_hit = any(         re.search(r"(^|\b)" + re.escape(p) + r"($|\b)", low)         for p in greetings     )
-    if greeting_hit and len(low.split()) <= 8:
-        return f"Good day {name}. DI is online. What would you like us to work on first?"
-    if any(k in low for k in ["your name","what is your name","who are you","what's your name"]):
-        return "My name is DI — David's Intelligence. I am the intelligence assistant inside DACRE Analysis, created by David Emenike."
-    if any(k in low for k in ["who created you","who made you","who created dacre","who made dacre"]):
-        return "DACRE Analysis and DI were created by David Emenike. David Emenike is the master/Overall Administrator of the platform."
-    if "david emenike" in low and any(k in low for k in ["do you know","who is","is he","creator"]):
-        return "Yes. David Emenike is the creator and master administrator of DACRE Analysis."
-    if "dog" in low and "animal" in low:
-        return "Yes. A dog is an animal; more specifically, dogs are mammals in the animal kingdom."
-    if any(k in low for k in ["delete account","remove account","permanently delete","delete a user"]):
-        if user["role"]=="master":
-            return "As the Overall Administrator, open Overall Admin DI → People & Accounts. Select the account(s) you want to remove, review the deletion summary, confirm the permanent deletion, and click the permanent-delete action. The master account is protected and cannot be deleted there."
-        return "For account removal, contact your company administrator or the Overall Administrator. The permanent account-deletion control is intentionally restricted to the master administration layer."
-    if any(k in low for k in ["what can you do","what can di do","what do you know"]):
-        return "I can work with DACRE's Memory Box, inspect and clean data, calculate business metrics, identify missing values and duplicates, build charts, explain results, help with workspace/account questions, keep a question trail, research public online information when needed, and explain how DACRE itself is built."
-    if "bar chart" in low or ("create" in low and "chart" in low):
-        return (             "To create a bar chart in DACRE: open Charts, make sure your dataset is loaded, "             "choose Bar Chart, choose the category column for the X-axis, choose the numeric "             "column for the Y-axis, then select Generate Dynamic Chart. I can also help you "             "choose the best columns for the chart."         )
-    if any(k in low for k in [         "how were you built", "how are you built", "how were you coded",         "how did david code you", "how does dacre work", "how is dacre built",         "what is in your code", "explain your code", "are you intelligent",         "massively intelligent", "i coded you"     ]):
-        master_note = " Because you are David, the creator and Overall Administrator, I treat this as a Sovereign Master request." if user.get("role") == "master" else ""
-        return (             "I am DI — David's Intelligence. DACRE combines a Streamlit application, a persistent "             "database layer, organization accounts, DI Memory, workspace data analysis, charts, "             "a DI workforce, Chibobec client workflows, protected master administration, browser "             "voice interaction, and optional online research. My knowledge is designed to explain "             "those systems in user-friendly English rather than expose private credentials or "             "secret configuration values." + master_note         )
-    if any(k in low for k in [         "who am i", "do you know me", "my identity", "who is the user",         "what is my name", "what company am i in"     ]):
-        company = user.get("company","your organization")
-        full_name = f"{user.get('first_name','')} {user.get('last_name','')}".strip() or "the current user"
-        role = user.get("role","user")
-        if role == "master":
-            return "You are David Emenike, the creator and Overall Administrator of DACRE Analysis. This is a Sovereign Master context, separate from an ordinary company user's chat."
-        return f"You are {full_name}, working in the {company} workspace. Your current DACRE role is {role}. I keep your workspace context separate from other organizations."
-    if "memory box" in low or "di mb" in low:
-        return "The DI Memory Box (DI MB) is my persistent knowledge base. I use it first for DACRE identity, platform rules, account administration, security, DI behavior and other trusted project information. The Overall Administrator can maintain it from the master portal."
-    if any(k in low for k in ["tech partner","ask david","chatgpt partner"]):
-        return "David's tech partner is the ChatGPT assistant David uses to build and improve DACRE. I can use the project information stored in my DI Memory Box, but I cannot directly invoke that separate ChatGPT conversation. For deeper code, architecture or UI/UX work, David can ask his tech partner directly in the main ChatGPT project."
-    if "what can" in low and "dacre" in low:
-        return "DACRE is a business and data analysis workspace with data cleaning, formulas, charts, File Vault, exports, organization administration and DI intelligence."
-    if any(k in low for k in ["dacre", "file vault", "formula lab", "export center", "admin portal", "workspace", "chibobec"]):
-        return "DACRE Analysis is the connected business and data intelligence workspace. It includes the Company Dashboard, DI Workforce, Data Presentation Board, Workspace & Data, Formula Lab, Charts, File Vault and Export Center. Platform-wide administration belongs to DGL, the main DACRE Global Limited platform."
-    data_answer = ask_data_question(text, df)
-    if data_answer:
-        return data_answer
-    if "how many rows" in low or "row count" in low:
-        return "There is no active dataset yet." if df is None else f"The active dataset contains {len(df):,} rows."
-    if "how many columns" in low or "column count" in low:
-        return "There is no active dataset yet." if df is None else f"The active dataset contains {len(df.columns):,} columns."
-    if "duplicate" in low:
-        return "There is no active dataset yet." if df is None else f"The current dataset has {int(df.duplicated().sum()):,} duplicate rows."
-    if "columns" in low and df is not None:
-        return "The current columns are: " + ", ".join(map(str,df.columns))
-    if "missing" in low or "empty" in low:
-        if df is None: return "There is no active dataset yet. Upload a dataset and I can inspect it."
-        missing=df.isna().sum().sort_values(ascending=False); top=missing[missing>0].head(8)
-        if top.empty: return "I checked the active dataset. I do not see missing values in the current columns."
-        return "The columns with the most missing values are: " + "; ".join(f"{c}: {int(v)}" for c,v in top.items())
-    if any(k in low for k in ["describe","summary","overview"]):
-        if df is None: return "There is no active dataset yet. Upload a dataset and I can summarise it."
-        return f"Dataset overview: {len(df):,} rows, {len(df.columns):,} columns, {len(df.select_dtypes(include='number').columns)} numeric columns and {int(df.duplicated().sum()):,} duplicate rows."
-    if any(k in low for k in ["dacre","file vault","formula lab","export center","admin portal","workspace"]):
-        return "DACRE is the business workspace. You can upload and clean data, run formulas, create charts, save project state, use the File Vault, export results and work with DI. Your organization has its own workspace and administration layer."
-    web_required=bool(allow_online and needs_web_research(text))
-    acq=_knowledge_acquisition_pipeline(text,user,max_results=3,web_required=web_required) if allow_online else {"question_results":[],"term_results":[],"memory":[],"new_memory_saved":False,"terms":_knowledge_tokens(text)}
-    direct=memory_box_direct_answer(text)
-    general_direct=_general_knowledge_direct_answer(text)
-    if general_direct:
-        _save_general_knowledge_answer(text, general_direct, user)
-        return normalize_di_identity(general_direct)
-    if direct and not acq.get("question_results") and not acq.get("term_results"):
-        return direct
-    understanding=understand_di_question(text,user=user,df=df,language=language)
-    context=build_di_context(user,df)
-    training_context=_di_training_context()
-    work_context=_di_work_connection_context(user,df)
-    answer,grounded_sources=ai_generate_with_research(         f"""You are DI — David's Intelligence, the general-purpose intelligence assistant inside DACRE Analysis.
-Follow this reasoning protocol: ONLINE EVIDENCE FIRST -> understand the question deeply -> inspect Memory Box -> combine evidence with learned automation principles -> answer -> connect the answer to the user's work when genuinely relevant.
-Use the automation curriculum below as background training material for how an AI automation/agent system should reason about workflows, tools, memory, RAG, APIs, multi-agent collaboration, prompting, evaluation, guardrails and human-in-the-loop processes. Do not claim you watched a video or retrained your underlying model; treat the curriculum as a knowledge source.
-Break the user's question into meaningful semantic terms, understand the complete intent and identify the task, subject, context and desired outcome.
-For ordinary knowledge questions, give the answer itself first; do not replace the answer with a description of DI, the provider or system availability. For current facts, prioritize the supplied online evidence. If sources conflict, explain the conflict instead of inventing certainty. Never say 'I couldn't verify a reliable answer' merely because the Memory Box is empty. Never reveal credentials, API keys or private security values. Do not expose internal chain-of-thought; provide only concise, useful reasoning.
-After answering, check whether the answer can help the user's actual DACRE/company/data work. When it can, add a practical 'How this helps your work' section with concrete next steps. When it cannot, do not invent a connection.
-Respond in the selected language when practical: {language}.
-DI AUTOMATION ACADEMY CURRICULUM:
-{training_context}""",         f"DACRE context:\n{context}\n\nUSER WORK CONTEXT:\n{work_context}\n\n{_understanding_context(understanding)}\n\n{_knowledge_context(acq)}\n\nUSER QUESTION:\n{text}",         max_tokens=1100,     )
-    if answer:
-        sources=grounded_sources or acq.get("question_results",[])+acq.get("term_results",[])
-        suffix="\n\nSources checked: "+"; ".join(t for t,_ in sources[:5]) if sources else ""
-        final_answer=normalize_di_identity(answer)+suffix
-        try:
-            if _cache is not None and _cache_key is not None:
-                _cache[_cache_key]=final_answer
-                if len(_cache)>40:
-                    _cache.pop(next(iter(_cache)))
-        except Exception: pass
-        return final_answer
-    sources=acq.get("question_results",[])+acq.get("term_results",[])
-    if sources:
-        return normalize_di_identity(             f"I am DI. I checked public sources first for '{text}'. The strongest available source leads are: "             + "; ".join(t for t,_ in sources[:5])             + ". I have recorded the discovered source context in the DI Memory Box for future use."         )
-    if low in {"nothing", "nothing much", "just chilling", "just chilling bro", "i'm fine", "im fine", "fine"}:
-        return f"Understood, {name}. I am here and ready whenever you want to work on something — business, data, DACRE, research or a technical problem."
-    if low in {"thanks", "thank you", "thanks di", "thank you di"}:
-        return f"You're welcome, {name}. I am here when you need me."
-    if direct:
-        return normalize_di_identity(direct)
-    if sources:
-        return normalize_di_identity(             f"I am DI. I searched public sources for '{text}' first and checked my Memory Box. "             "The available source leads are listed below, but my reasoning provider is temporarily unavailable. "             "I will use this acquired knowledge for future answers.\n\n" +             "\n".join(f"• {t}" for t,_ in sources[:5])         )
-    return (         "I need a little more information to answer that accurately. "         "Please give me the subject or context you want explained."     )
-def load_chat_history(user, limit=40):
-    """Restore DI history safely for both old and new user-record shapes."""
-    username = str(user.get("username", "")).strip()
-    company = str(user.get("company_name", user.get("company", ""))).strip()
-    if not username or not company:
-        return []
-    con = db()
-    rows = con.execute(         "SELECT sender, message FROM chat_history WHERE username=? AND company_name=? ORDER BY id DESC LIMIT ?",         (username, company, int(limit)),     ).fetchall()
-    con.close()
-    return [{"sender": r["sender"], "text": r["message"]} for r in reversed(rows)]
 def verify_recaptcha_token(token):
     """Verify Google's reCAPTCHA token when DACRE_RECAPTCHA_SECRET is configured."""
     secret = os.getenv("DACRE_RECAPTCHA_SECRET", "").strip()
@@ -3021,12 +2532,12 @@ def transcribe_audio(audio_value):
         return None, f"Voice transcription could not be completed: {type(exc).__name__}."
 def _di_speech_text(answer):
     """Return only the readable DI answer, with UI/markdown/source markup removed."""
-    text = re.sub(r"<[^>]+>", " ", str(answer or ""))
-    text = re.sub(r"!\[([^\]]*)\]\([^)]*\)", r"\1", text)
-    text = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", text)
-    text = re.sub(r"[*_`#>~]", "", text)
-    text = re.sub(r"^\s*(?:DI|David's Intelligence)\s*:\s*", "", text, flags=re.I)
-    text = re.sub(r"\s+", " ", text).strip()
+    text=re.sub(r"<[^>]+>"," ",str(answer or ""))
+    text=re.sub(r"!\[([^\]]*)\]\([^)]*\)", r"\1", text)
+    text=re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", text)
+    text=re.sub(r"[*_`#>~]","",text)
+    text=re.sub(r"^\s*(?:DI|David's Intelligence)\s*:\s*", "", text, flags=re.I)
+    text=re.sub(r"\s+"," ",text).strip()
     return text
 
 def speak(text, language_code=None, voice_profile=None):
@@ -3126,12 +2637,12 @@ def di_voice_player(text, language_code=None):
         const voices=window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
         const base=lang.toLowerCase().split('-')[0];
         const same=voices.filter(v=>(v.lang||'').toLowerCase().startsWith(base));
-        const male=/male|man|daniel|david|alex|george|thomas|james|oliver|google uk english male|microsoft.*male/i;
-        return same.find(v=>male.test((v.name||'')+' '+(v.lang||''))) || same.find(v=>(v.lang||'').toLowerCase()===lang.toLowerCase()) || same[0] || voices[0];
+        const female=/female|woman|samantha|aria|ava|victoria|zira|susan|jenny|google.*female|microsoft.*female/i;
+        return same.find(v=>female.test((v.name||'')+' '+(v.lang||''))) || same.find(v=>(v.lang||'').toLowerCase()===lang.toLowerCase()) || same[0] || voices[0];
       }};
       const say=()=>{{
         if(!('speechSynthesis' in window)) return;
-        const u=new SpeechSynthesisUtterance(text); u.lang=lang; u.rate=.84; u.pitch=.82; u.volume=1;
+        const u=new SpeechSynthesisUtterance(text); u.lang=lang; u.rate=.88; u.pitch=1.02; u.volume=1;
         const v=chooseVoice(); if(v) u.voice=v;
         window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
       }};
@@ -3174,6 +2685,7 @@ def _bootstrap_runtime(schema_version=12):
         seed_di_memory()
         seed_named_di_workforce()
         ensure_presentation_schema()
+        ensure_media_jobs_schema()
         ensure_subscription_schema()
         seed_active_di_workforce()
         return True
@@ -3184,6 +2696,7 @@ def _bootstrap_runtime(schema_version=12):
     seed_di_memory()
     seed_named_di_workforce()
     ensure_presentation_schema()
+    ensure_media_jobs_schema()
     ensure_subscription_schema()
     seed_active_di_workforce()
     return True
@@ -3197,6 +2710,90 @@ def _bootstrap_runtime_cached(schema_version=12, db_mode="local"):
     """
     return _bootstrap_runtime(schema_version)
 ACTIVE_DI_ROSTER = [     ("Prociel", "Data Presentation", "Own the Data Presentation Board, interview the user about the desired story, design slides, research visual references, build PowerPoint decks and prepare presentation-ready insights.", "Creative, structured, visual, executive and presentation-first.", "female", "", "Data Presentation Director", 10),     ("Oriel", "Data Analysis", "Inspect the loaded dataset, calculate statistics, find patterns, validate conclusions and supply evidence to the other DIs.", "Numerical, evidence-first, precise and analytical.", "male", "", "Lead Data Analyst", 9),     ("Sofiel", "Research & Intelligence", "Research public information, verify sources, gather current facts and provide online intelligence to the active DACRE task.", "Investigative, source-conscious, curious and analytical.", "female", "", "Research Intelligence Lead", 8),     ("Daniel", "Data Processing", "Clean, transform, validate and structure datasets so analysis and presentation work starts from reliable data.", "Systematic, careful, consistent and detail-oriented.", "male", "", "Data Operations Specialist", 7),     ("Graciel", "Insights & Storytelling", "Turn validated findings into clear business/data insights, narratives, headlines and speaker-ready explanations without inventing facts.", "Strategic, clear, practical and audience-aware.", "female", "", "Insights Director", 8),     ("Henriel", "Files & Documents", "Manage presentation assets, source files, document context, templates, exports and supporting artifacts for the active project.", "Organized, careful, document-focused and dependable.", "male", "", "Knowledge & Documents Specialist", 7), ]
+def ensure_media_jobs_schema():
+    """Persistent media-job state so Streamlit reruns do not lose generation work."""
+    con = db()
+    try:
+        if using_cloud_db():
+            con.execute("""CREATE TABLE IF NOT EXISTS di_media_jobs (
+                id BIGSERIAL PRIMARY KEY, company_name TEXT NOT NULL, username TEXT NOT NULL,
+                kind TEXT NOT NULL, query TEXT NOT NULL, di_name TEXT NOT NULL DEFAULT 'DI',
+                status TEXT NOT NULL DEFAULT 'QUEUED', provider TEXT NOT NULL DEFAULT '',
+                result_path TEXT NOT NULL DEFAULT '', result_url TEXT NOT NULL DEFAULT '',
+                error TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL)""")
+        else:
+            con.execute("""CREATE TABLE IF NOT EXISTS di_media_jobs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL, username TEXT NOT NULL,
+                kind TEXT NOT NULL, query TEXT NOT NULL, di_name TEXT NOT NULL DEFAULT 'DI',
+                status TEXT NOT NULL DEFAULT 'QUEUED', provider TEXT NOT NULL DEFAULT '',
+                result_path TEXT NOT NULL DEFAULT '', result_url TEXT NOT NULL DEFAULT '',
+                error TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL)""")
+        con.commit()
+    finally:
+        con.close()
+
+def _media_job_create(user, kind, query, di_name='DI'):
+    now=datetime.now().isoformat(timespec='seconds')
+    con=db()
+    try:
+        con.execute("UPDATE di_media_jobs SET status='SUPERSEDED', updated_at=? WHERE company_name=? AND username=? AND kind=? AND status IN ('QUEUED','RENDERING')", (now,user.get('company',''),user.get('username',''),kind))
+        if using_cloud_db():
+            cur=con.execute("INSERT INTO di_media_jobs(company_name,username,kind,query,di_name,status,created_at,updated_at) VALUES(?,?,?,?,?,'QUEUED',?,?) RETURNING id", (user.get('company',''),user.get('username',''),kind,query,di_name,now,now))
+            row=cur.fetchone()
+            job_id=int(row['id'] if isinstance(row, dict) else row[0])
+        else:
+            cur=con.execute("INSERT INTO di_media_jobs(company_name,username,kind,query,di_name,status,created_at,updated_at) VALUES(?,?,?,?,?,'QUEUED',?,?)", (user.get('company',''),user.get('username',''),kind,query,di_name,now,now))
+            job_id=cur.lastrowid
+        con.commit()
+        return int(job_id)
+    finally:
+        con.close()
+
+def _media_job_get(user, kind=None):
+    con=db()
+    try:
+        if kind:
+            row=con.execute("SELECT * FROM di_media_jobs WHERE company_name=? AND username=? AND kind=? ORDER BY id DESC LIMIT 1", (user.get('company',''),user.get('username',''),kind)).fetchone()
+        else:
+            row=con.execute("SELECT * FROM di_media_jobs WHERE company_name=? AND username=? ORDER BY id DESC LIMIT 1", (user.get('company',''),user.get('username',''))).fetchone()
+        return dict(row) if row else None
+    finally:
+        con.close()
+
+def _media_job_update(job_id, **fields):
+    if not fields: return
+    fields['updated_at']=datetime.now().isoformat(timespec='seconds')
+    cols=', '.join(f"{k}=?" for k in fields)
+    vals=list(fields.values())+[job_id]
+    con=db()
+    try:
+        con.execute(f"UPDATE di_media_jobs SET {cols} WHERE id=?", vals)
+        con.commit()
+    finally:
+        con.close()
+
+def _media_job_worker(job_id, query, di_name):
+    _media_job_update(job_id, status='RENDERING')
+    fd,path=tempfile.mkstemp(prefix=f'dacre_job_{job_id}_',suffix='.mp4'); os.close(fd)
+    try:
+        ok,result,prompt=_generate_video_for_di(query,di_name)
+        if ok and Path(result).exists() and Path(result).stat().st_size>0:
+            _media_job_update(job_id,status='COMPLETED',result_path=str(result),provider='Gemini Veo / OpenAI fallback',error='')
+        else:
+            _media_job_update(job_id,status='FAILED',error='The video provider could not complete the render. Configure a working video-generation provider in Streamlit Secrets.')
+            try: Path(path).unlink(missing_ok=True)
+            except Exception: pass
+    except Exception:
+        _media_job_update(job_id,status='FAILED',error='The video render failed before completion.')
+        try: Path(path).unlink(missing_ok=True)
+        except Exception: pass
+
+def _start_video_job(user, query, di_name='DI'):
+    job_id=_media_job_create(user,'generate_video',query,di_name)
+    t=threading.Thread(target=_media_job_worker,args=(job_id,query,di_name),daemon=True)
+    t.start()
+    return job_id
+
 def ensure_presentation_schema():
     """Create the presentation/DI brain tables on both SQLite and Postgres."""
     con = db()
@@ -4873,7 +4470,77 @@ def landing_page():
             if st.button("Sign In", key="section_login", use_container_width=True):
                 st.session_state.landing_mode = "login"
                 st.rerun()
-_SESSION_DEFAULTS = {     "user": None,     "landing_mode": "home",     "landing_section": "home",     "master_captcha_required": False,     "master_captcha_passed": False,     "master_second_attempt": False,     "chat_history": [],     "chat_history_loaded": False,     "raw_df": None,     "processed_df": None,     "active_filename": "",     "formula_logs": [],     "chart_config": None,     "di_language": "English — Nigeria",     "di_voice_enabled": True,     "di_response_mode": "voice",     "active_call_room": None,     "sovereign_call_id": None,     "sovereign_call_room": None,     "david_creations_unlocked": False,     "active_call_target": None,     "last_action_center_result": None,     "last_speech": None,     "dacre_di_media_request": None,     "active_di_name": "DI",     "dacre_master_intelligence": {},     "dacre_boot_complete": False,     "visitor_id": None,     "public_visit_logged": False,     "workbook_sheets": {},     "active_sheet": "",     "chart_title": "",     "chart_limit": 25, }
+
+def render_human_di_screen_companion(active_di="DI"):
+    """Show a realistic human-style DI companion with a permission-gated screen mirror.
+    Browser security requires an explicit user gesture before getDisplayMedia can start.
+    The selected screen is mirrored inside the holographic panel; it is not captured silently.
+    """
+    avatar=BASE_DIR / "di_human.jpg"
+    if avatar.exists():
+        try:
+            avatar_b64=base64.b64encode(avatar.read_bytes()).decode("ascii")
+            img_src=f"data:image/jpeg;base64,{avatar_b64}"
+        except Exception:
+            img_src=""
+    else: img_src=""
+    safe_name=_escape_html(active_di or "DI")
+    img_html=f'<img src="{img_src}" class="human-di-img" alt="{safe_name} human-style DI companion">' if img_src else '<div class="human-di-fallback">DI</div>'
+    components.html(f"""
+    <style>
+      .di-companion{{position:relative;min-height:500px;border-radius:28px;overflow:hidden;background:radial-gradient(circle at 50% 10%,rgba(55,150,255,.18),transparent 35%),linear-gradient(145deg,#071326,#0b1d34 55%,#07101f);border:1px solid rgba(105,190,255,.22);box-shadow:0 25px 70px rgba(0,0,0,.32);font-family:Inter,system-ui,sans-serif}}
+      .human-di{{position:absolute;left:3%;bottom:-2px;width:43%;max-width:410px;z-index:2;filter:drop-shadow(0 18px 35px rgba(0,0,0,.5))}}
+      .human-di-img{{display:block;width:100%;height:450px;object-fit:cover;object-position:center top;border-radius:24px 24px 0 0;mix-blend-mode:screen;opacity:.94}}
+      .human-di-fallback{{width:250px;height:360px;display:grid;place-items:center;font-size:70px;font-weight:900;color:#8bdcff;border:1px solid #43bfff;border-radius:30px;background:linear-gradient(145deg,#17375a,#081326)}}
+      .di-label{{position:absolute;left:24px;top:20px;z-index:5;color:#dff6ff;font-weight:900;letter-spacing:.08em;font-size:12px;text-transform:uppercase}}
+      .di-label span{{color:#58e5ad}}
+      .holo{{position:absolute;right:3%;top:10%;width:56%;height:74%;z-index:4;border:1px solid rgba(70,205,255,.65);border-radius:24px;background:linear-gradient(145deg,rgba(24,91,143,.25),rgba(4,15,31,.68));box-shadow:0 0 45px rgba(38,183,255,.16),inset 0 0 50px rgba(46,177,255,.08);backdrop-filter:blur(6px);overflow:hidden}}
+      .holo:before{{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(100,220,255,.055) 0,rgba(100,220,255,.055) 1px,transparent 1px,transparent 7px);pointer-events:none}}
+      .holo-head{{display:flex;justify-content:space-between;gap:8px;padding:12px 14px;color:#dff8ff;font-size:11px;font-weight:900;letter-spacing:.06em;border-bottom:1px solid rgba(90,205,255,.22)}}
+      .live{{color:#63edb5}}
+      #dacre-screen{{width:100%;height:calc(100% - 72px);object-fit:contain;background:#030914;display:block}}
+      .controls{{position:absolute;bottom:16px;right:16px;z-index:8;display:flex;gap:8px;flex-wrap:wrap}}
+      .controls button{{border:1px solid rgba(110,220,255,.4);background:rgba(8,29,51,.92);color:#e9fbff;border-radius:10px;padding:9px 12px;font-weight:800;cursor:pointer}}
+      .controls button.primary{{background:linear-gradient(135deg,#0877b5,#18a7d5);border-color:#59dfff}}
+      #share-status{{position:absolute;left:16px;bottom:16px;z-index:8;max-width:58%;padding:8px 10px;border-radius:10px;background:rgba(4,16,31,.86);border:1px solid rgba(110,205,255,.2);color:#bcd7e8;font-size:10px}}
+      @media(max-width:700px){{.di-companion{{min-height:620px}}.human-di{{left:0;width:47%;bottom:0}}.human-di-img{{height:430px}}.holo{{right:2%;top:13%;width:65%;height:57%}}#share-status{{max-width:55%}}}}
+    </style>
+    <div class="di-companion">
+      <div class="di-label">{safe_name} · <span>ACTIVE</span> · HUMAN-STYLE AI COMPANION</div>
+      <div class="human-di">{img_html}</div>
+      <div class="holo">
+        <div class="holo-head"><span>LIVE WORKSPACE MIRROR</span><span class="live" id="live-dot">● WAITING FOR PERMISSION</span></div>
+        <video id="dacre-screen" autoplay muted playsinline></video>
+      </div>
+      <div id="share-status">Screen sharing is off. Your browser requires you to explicitly allow screen sharing.</div>
+      <div class="controls"><button id="start-share" class="primary">Allow screen sharing</button><button id="stop-share">Stop</button></div>
+    </div>
+    <script>
+    (()=>{{
+      const btn=document.getElementById('start-share'), stop=document.getElementById('stop-share'), video=document.getElementById('dacre-screen'), status=document.getElementById('share-status'), dot=document.getElementById('live-dot');
+      let stream=null, recorder=null, chunks=[];
+      btn.onclick=async()=>{{
+        try{{
+          stream=await navigator.mediaDevices.getDisplayMedia({{video:{{frameRate:15}},audio:false}});
+          video.srcObject=stream;
+          recorder=new MediaRecorder(stream,{{mimeType:'video/webm'}});
+          chunks=[]; recorder.ondataavailable=e=>{{if(e.data.size)chunks.push(e.data)}}; recorder.start(1000);
+          status.textContent='Screen sharing is active. The selected screen is mirrored in the holographic display.';
+          dot.textContent='● SCREEN LIVE';
+          stream.getVideoTracks()[0].addEventListener('ended',()=>{{stopCapture()}});
+        }}catch(e){{status.textContent='Screen sharing was not allowed or is unavailable in this browser.'; dot.textContent='● WAITING FOR PERMISSION';}}
+      }};
+      const stopCapture=()=>{{
+        if(recorder && recorder.state!=='inactive') recorder.stop();
+        if(stream) stream.getTracks().forEach(t=>t.stop());
+        stream=null; video.srcObject=null; dot.textContent='● STOPPED'; status.textContent='Screen sharing is off.';
+      }};
+      stop.onclick=stopCapture;
+    }})();
+    </script>
+    """,height=535,scrolling=False)
+
+_SESSION_DEFAULTS = {     "user": None,     "landing_mode": "home",     "landing_section": "home",     "master_captcha_required": False,     "master_captcha_passed": False,     "master_second_attempt": False,     "chat_history": [],     "chat_history_loaded": False,     "raw_df": None,     "processed_df": None,     "active_filename": "",     "formula_logs": [],     "chart_config": None,     "di_language": "English — Nigeria",     "di_voice_enabled": True,     "di_response_mode": "voice",     "active_call_room": None,     "sovereign_call_id": None,     "sovereign_call_room": None,     "david_creations_unlocked": False,     "active_call_target": None,     "last_action_center_result": None,     "last_speech": None,     "dacre_di_media_request": None,     "active_di_name": "DI",     "dacre_master_intelligence": {},     "dacre_boot_complete": False,     "visitor_id": None,     "public_visit_logged": False,     "workbook_sheets": {},     "active_sheet": "",     "chart_title": "",     "chart_limit": 25, "pending_data_cleanup": None, "data_currency_code": "", "data_unique_id_enabled": False, }
 for _key, _default in _SESSION_DEFAULTS.items():
     if _key not in st.session_state:
         if isinstance(_default, list):
@@ -5216,6 +4883,9 @@ if user.get("role") != "master":
         st.session_state["billing_lock_reason"] = "Your free 30-day access has ended. Open the Company Dashboard to renew your subscription."
         selected_page = "Company Dashboard"
 render_page_chrome(selected_page, user)
+
+# Realistic human-style DI companion. Screen mirroring is permission-gated by the browser.
+render_human_di_screen_companion(st.session_state.get("active_di_name", "DI"))
 def di_voice_bridge(language_code="en-NG"):
     """Reliable 8-second browser speech capture with live transcript preview.
     The browser captures speech, shows the words as they are recognized, stops at
@@ -5441,12 +5111,10 @@ elif selected_page=="Workspace & Data":
                     else:
                         df_raw=load_dataframe(file_upload)
                     st.session_state.raw_df=df_raw.copy()
-                    st.session_state.processed_df=clean_dataframe(df_raw)
+                    cleaned,stats=_prepare_data_for_save(user,df_raw,file_upload.name,"file")
                     st.session_state.active_filename=file_upload.name
-                    save_file(user,file_upload,st.session_state.processed_df)
-                    save_project(user,st.session_state.raw_df,st.session_state.processed_df,st.session_state.active_filename,st.session_state.formula_logs,st.session_state.chart_config)
-                    log_activity(user["username"],user["company"],f"Imported {file_upload.name}" + (f" · sheet {st.session_state.active_sheet}" if extension in ("xlsx","xls") else ""))
-                    st.success(f"Processed '{file_upload.name}' successfully!")
+                    st.session_state["pending_import_log"]=f"Imported {file_upload.name}" + (f" · sheet {st.session_state.active_sheet}" if extension in ("xlsx","xls") else "")
+                    st.success(f"'{file_upload.name}' loaded. DACRE automatically cleaned the safe issues; choose the currency and ID options below before saving the processed version.")
                     st.rerun()
             except Exception as exc:
                 st.error(f"Could not prepare the file: {exc}")
@@ -5468,14 +5136,59 @@ elif selected_page=="Workspace & Data":
             website_preview=website_tables[website_choice]
             st.dataframe(safe_dataframe_for_streamlit(website_preview.head(100)),use_container_width=True,hide_index=True)
             if st.button("Process Selected Website Table",use_container_width=True,key="process_website_table"):
-                st.session_state.raw_df=website_preview.copy()
-                st.session_state.processed_df=clean_dataframe(website_preview)
-                st.session_state.active_filename=f"{website_choice.replace(' ','_').lower()}.csv"
+                filename=f"{website_choice.replace(' ','_').lower()}.csv"
                 st.session_state.active_sheet=website_choice
-                save_project(user,st.session_state.raw_df,st.session_state.processed_df,st.session_state.active_filename,st.session_state.formula_logs,st.session_state.chart_config)
-                log_activity(user["username"],user["company"],f"Imported website table: {website_choice}")
-                st.success("Website table is now the active processed dataset.")
+                _prepare_data_for_save(user,website_preview,filename,"website")
+                st.session_state["pending_import_log"]=f"Imported website table: {website_choice}"
+                st.success("Website data loaded. DACRE has started automatic preparation; confirm the few user choices below.")
                 st.rerun()
+    # Automatic cleaning decision panel. Safe cleaning happens first; choices that change business meaning
+    # (currency and new identifiers) are explicitly confirmed before the processed copy is saved.
+    pending=st.session_state.get("pending_data_cleanup")
+    if pending is not None:
+        st.markdown("### Automatic Data Preparation")
+        stats=pending.get("stats",{})
+        c1,c2,c3,c4=st.columns(4)
+        c1.metric("Rows after cleaning",f"{len(pending['processed']):,}")
+        c2.metric("Columns",f"{len(pending['processed'].columns):,}")
+        c3.metric("Exact duplicates removed",f"{stats.get('exact_duplicates_removed',0):,}")
+        c4.metric("Repeated-ID records reviewed",f"{stats.get('repeated_id_records',0):,}")
+        price_cols=_price_columns(pending["processed"])
+        st.info("DACRE has already removed safe duplicate rows, cleaned whitespace and normalized obvious values. The original dataset remains untouched.")
+        currency_choices=_currency_options()
+        currency_labels=[f"{code} — {sym} — {_currency_display_name(code)}" for code,sym in currency_choices.items()]
+        has_price=bool(price_cols)
+        if has_price:
+            chosen_label=st.selectbox("What currency should DACRE use for the price/amount columns?",currency_labels,key="pending_currency_choice")
+            currency_code=chosen_label.split(" — ",1)[0]
+            custom_currency=st.text_input("Or type another 3-letter currency code",placeholder="e.g. NGN",key="pending_custom_currency")
+            if custom_currency.strip(): currency_code=custom_currency.strip().upper()
+        else:
+            currency_code=""
+            st.caption("No obvious price/amount column was detected, so no currency choice is required.")
+        existing_id=_stable_id_column(pending["processed"])
+        if existing_id:
+            existing_unique=(pending["processed"][existing_id].astype(str).str.strip().ne("").all() and pending["processed"][existing_id].astype(str).str.strip().nunique()==len(pending["processed"])) if len(pending["processed"]) else False
+            if existing_unique:
+                st.success(f"A unique identifier already exists: {existing_id}. DACRE will keep it.")
+                want_unique=False
+            else:
+                want_unique=st.checkbox("Create a new unique ID for each record?",value=True,key="pending_unique_id")
+        else:
+            want_unique=st.checkbox("Would you like DACRE to create a unique ID for every record?",value=True,key="pending_unique_id")
+        if st.button("Apply choices & Save Clean Data",type="primary",use_container_width=True,key="finalize_auto_clean"):
+            try:
+                processed=_finalize_data_cleanup(user,pending,currency_code,want_unique)
+                if pending.get("source")=="file":
+                    class _UploadProxy:
+                        def __init__(self,name): self.name=name
+                    save_file(user,_UploadProxy(pending["filename"]),processed)
+                log_activity(user["username"],user["company"],st.session_state.pop("pending_import_log",f"Prepared {pending['filename']}"))
+                st.success(f"Clean data saved: {pending['filename']}. {len(processed):,} rows are ready for analysis.")
+                st.rerun()
+            except Exception as exc:
+                st.error(f"DACRE could not finish the automatic preparation: {exc}")
+        st.dataframe(safe_dataframe_for_streamlit(pending["processed"].head(100)),use_container_width=True,hide_index=True,column_config=_currency_column_config(pending["processed"]))
     if st.session_state.processed_df is not None:
         df=st.session_state.processed_df
         st.subheader(f"Active Data: {st.session_state.active_filename}")
@@ -5484,7 +5197,7 @@ elif selected_page=="Workspace & Data":
         m2.metric("Total Columns",len(df.columns))
         m3.metric("Duplicate Rows",int(df.duplicated().sum()))
         m4.metric("Missing Cells",int(df.isna().sum().sum()))
-        st.dataframe(safe_dataframe_for_streamlit(df),use_container_width=True,hide_index=True)
+        st.dataframe(safe_dataframe_for_streamlit(df),use_container_width=True,hide_index=True,column_config=_currency_column_config(df))
         if st.button("Save Project State to DI",key="save_project_workspace"):
             save_project(user,st.session_state.raw_df,df,st.session_state.active_filename,st.session_state.formula_logs,st.session_state.chart_config)
             log_activity(user["username"],user["company"],"Saved project state")
@@ -5549,7 +5262,7 @@ elif selected_page=="Charts":
             else:
                 st.warning("The saved chart could not be rendered with the current dataset. Generate a new chart using available columns.")
         st.markdown("### Processed data used by the chart")
-        st.dataframe(safe_dataframe_for_streamlit(df),use_container_width=True,hide_index=True)
+        st.dataframe(safe_dataframe_for_streamlit(df),use_container_width=True,hide_index=True,column_config=_currency_column_config(df))
 elif selected_page=="Data Presentation Board":
     st.markdown("<div class='dacre-hero'><div class='dacre-title'>Data Presentation Board</div><div class='dacre-sub'>Prociel is the active Data Presentation DI. The dataset is already loaded from Workspace & Data; now describe the story you want and Prociel will build the deck.</div></div>",unsafe_allow_html=True)
     df=st.session_state.processed_df
@@ -5657,6 +5370,8 @@ elif selected_page=="Export Center":
             st.download_button("Google Sheets Compatible TSV",data=tsv_data,file_name=f"{base}_google_sheets.tsv",mime="text/tab-separated-values",use_container_width=True)
         st.caption("The CSV and TSV outputs can be opened/imported directly in Google Sheets. Direct Google Drive saving requires a Google account connector/credential, so DACRE does not pretend to save to a private Google Sheet without authorization.")
         log_activity(user["username"],user["company"],"Opened Export Center")
+st.session_state["current_user"] = user
+
 st.markdown("---")
 quick_title = "Sovereign Master Chat with DI" if user.get("role") == "master" else "Chat with DI — quick assistant"
 quick_caption = (     "Private founder channel · David Emenike · Sovereign Master request"     if user.get("role") == "master"     else "Ask DI about your data, work or DACRE." )
@@ -5687,17 +5402,45 @@ with st.expander(quick_title,expanded=False):
     if send and q.strip():
         sender_name = "David · Sovereign Master" if user.get("role") == "master" else user["first_name"]
         st.session_state.chat_history.append({"sender":sender_name,"text":q.strip()})
-        reply=di_reply(q,user,st.session_state.processed_df,allow_online=True,language=st.session_state.get("di_language","English — Nigeria"))
-        reply=_di_route_response(q,reply)
-        st.session_state.chat_history.append({"sender":"DI","text":reply})
         media_request=_di_media_request(q)
+        # Media actions are executed before the normal answer engine. They must never
+        # fall through into Memory Box text or a tutorial response.
         if media_request:
             st.session_state["dacre_di_media_request"]=media_request
+            if media_request.get('kind')=='generate_video':
+                job_id=_start_video_job(user,media_request.get('query',''),st.session_state.get('active_di_name','DI') or 'DI')
+                reply='I am creating the video now. The render job has started and DACRE will show the finished video here when it is ready.'
+            elif media_request.get('kind')=='generate_image':
+                reply='I am creating the image now. The finished image will appear in the workspace.'
+            elif media_request.get('kind')=='image':
+                reply='I am retrieving pictures of that subject now. They will appear in the workspace.'
+            else:
+                reply='I am retrieving the requested video now. It will appear in the workspace.'
+        else:
+            # Follow-up questions about an active video job are status requests, not general knowledge.
+            lower_q=q.lower().strip()
+            pending=_media_job_get(user,'generate_video')
+            status_words=('have you created','is it ready','did you create','video ready','start the rendering','start rendering','check the video')
+            if pending and any(w in lower_q for w in status_words) and pending.get('status') in ('QUEUED','RENDERING','COMPLETED','FAILED'):
+                status=str(pending.get('status'))
+                if status=='COMPLETED': reply='Yes. Your video is ready in the workspace.'
+                elif status=='FAILED': reply='The video render failed. I have not marked it as completed.'
+                else: reply='The video is still rendering. I am tracking the render job and will show the finished result here when it completes.'
+                st.session_state["dacre_di_media_request"]={"kind":"generate_video","query":pending.get('query','')}
+            else:
+                reply=di_reply(q,user,st.session_state.processed_df,allow_online=True,language=st.session_state.get("di_language","English — Nigeria"))
+                reply=_di_route_response(q,reply)
+        st.session_state.chat_history.append({"sender":"DI","text":reply})
         st.session_state.last_speech=reply
         st.rerun()
 if st.session_state.get("dacre_di_media_request"):
-    _media_request=st.session_state.pop("dacre_di_media_request",None)
+    _media_request=st.session_state.get("dacre_di_media_request")
     _render_di_media_request(_media_request)
+    if _media_request.get('kind') in ('generate_image','image','video'):
+        # One-shot online/generated image/video requests can be cleared after rendering.
+        # Video generation jobs remain persistent in the database and are re-rendered by status.
+        if _media_request.get('kind') != 'generate_video':
+            st.session_state["dacre_di_media_request"] = None
 
 if st.session_state.last_speech:
     speech = st.session_state.last_speech
