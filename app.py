@@ -309,7 +309,7 @@ def _load_page_icon():
 _PAGE_ICON_IMAGE = _load_page_icon()
 st.set_page_config(     page_title=f"{APP_NAME} | {DI_NAME}",     page_icon=_PAGE_ICON_IMAGE if _PAGE_ICON_IMAGE is not None else "📊",     layout="wide",     initial_sidebar_state="collapsed", )
 _DB_SCHEMA_LOCK = threading.RLock()
-_DB_SCHEMA_VERSION = 12
+_DB_SCHEMA_VERSION = 13
 @contextmanager
 def _db_file_lock(timeout=90):
     """Serialize SQLite schema migrations across Streamlit processes."""
@@ -2701,7 +2701,7 @@ def _bootstrap_runtime(schema_version=12):
     seed_active_di_workforce()
     return True
 @st.cache_resource(show_spinner=False)
-def _bootstrap_runtime_cached(schema_version=12, db_mode="local"):
+def _bootstrap_runtime_cached(schema_version=13, db_mode="local"):
     """Run schema/seed bootstrap once per deployed Streamlit process.
     The cache is keyed by schema version and database mode, and Streamlit invalidates
     cached resources when this function's source changes. This prevents expensive
@@ -2732,7 +2732,24 @@ def ensure_media_jobs_schema():
     finally:
         con.close()
 
+def _media_job_table_ready():
+    """Self-heal the media-job table before every media DB operation.
+
+    This is intentionally defensive: Streamlit cache_resource can preserve an older
+    bootstrap result while application code has already been updated. Media requests
+    must never assume the table exists just because bootstrap ran previously.
+    """
+    try:
+        ensure_media_jobs_schema()
+        return True
+    except Exception as exc:
+        raise RuntimeError(
+            "DACRE could not initialize the media-job database table. "
+            "Please restart/redeploy the app after the schema update."
+        ) from exc
+
 def _media_job_create(user, kind, query, di_name='DI'):
+    _media_job_table_ready()
     now=datetime.now().isoformat(timespec='seconds')
     con=db()
     try:
@@ -2750,6 +2767,7 @@ def _media_job_create(user, kind, query, di_name='DI'):
         con.close()
 
 def _media_job_get(user, kind=None):
+    _media_job_table_ready()
     con=db()
     try:
         if kind:
@@ -2762,6 +2780,7 @@ def _media_job_get(user, kind=None):
 
 def _media_job_update(job_id, **fields):
     if not fields: return
+    _media_job_table_ready()
     fields['updated_at']=datetime.now().isoformat(timespec='seconds')
     cols=', '.join(f"{k}=?" for k in fields)
     vals=list(fields.values())+[job_id]
@@ -4472,73 +4491,185 @@ def landing_page():
                 st.rerun()
 
 def render_human_di_screen_companion(active_di="DI"):
-    """Show a realistic human-style DI companion with a permission-gated screen mirror.
-    Browser security requires an explicit user gesture before getDisplayMedia can start.
-    The selected screen is mirrored inside the holographic panel; it is not captured silently.
+    """Render a fixed, realistic human DI companion with a permission-gated screen mirror.
+
+    The companion is intentionally STATIC: the human DI and holographic screen keep fixed
+    positions so the user can continue seeing the surrounding DACRE context. Screen capture
+    is browser-side only and starts only after the user explicitly clicks Allow screen sharing.
+    No screen frames are uploaded or stored by this component.
     """
-    avatar=BASE_DIR / "di_human.jpg"
+    avatar = BASE_DIR / "di_human.jpg"
     if avatar.exists():
         try:
-            avatar_b64=base64.b64encode(avatar.read_bytes()).decode("ascii")
-            img_src=f"data:image/jpeg;base64,{avatar_b64}"
+            avatar_b64 = base64.b64encode(avatar.read_bytes()).decode("ascii")
+            img_src = f"data:image/jpeg;base64,{avatar_b64}"
         except Exception:
-            img_src=""
-    else: img_src=""
-    safe_name=_escape_html(active_di or "DI")
-    img_html=f'<img src="{img_src}" class="human-di-img" alt="{safe_name} human-style DI companion">' if img_src else '<div class="human-di-fallback">DI</div>'
+            img_src = ""
+    else:
+        img_src = ""
+
+    safe_name = _escape_html(active_di or "DI")
+    img_html = (
+        f'<img src="{img_src}" class="human-di-img" alt="{safe_name} realistic human DI companion">'
+        if img_src else
+        '<div class="human-di-missing">Human DI image unavailable</div>'
+    )
+
     components.html(f"""
     <style>
-      .di-companion{{position:relative;min-height:500px;border-radius:28px;overflow:hidden;background:radial-gradient(circle at 50% 10%,rgba(55,150,255,.18),transparent 35%),linear-gradient(145deg,#071326,#0b1d34 55%,#07101f);border:1px solid rgba(105,190,255,.22);box-shadow:0 25px 70px rgba(0,0,0,.32);font-family:Inter,system-ui,sans-serif}}
-      .human-di{{position:absolute;left:3%;bottom:-2px;width:43%;max-width:410px;z-index:2;filter:drop-shadow(0 18px 35px rgba(0,0,0,.5))}}
-      .human-di-img{{display:block;width:100%;height:450px;object-fit:cover;object-position:center top;border-radius:24px 24px 0 0;mix-blend-mode:screen;opacity:.94}}
-      .human-di-fallback{{width:250px;height:360px;display:grid;place-items:center;font-size:70px;font-weight:900;color:#8bdcff;border:1px solid #43bfff;border-radius:30px;background:linear-gradient(145deg,#17375a,#081326)}}
-      .di-label{{position:absolute;left:24px;top:20px;z-index:5;color:#dff6ff;font-weight:900;letter-spacing:.08em;font-size:12px;text-transform:uppercase}}
-      .di-label span{{color:#58e5ad}}
-      .holo{{position:absolute;right:3%;top:10%;width:56%;height:74%;z-index:4;border:1px solid rgba(70,205,255,.65);border-radius:24px;background:linear-gradient(145deg,rgba(24,91,143,.25),rgba(4,15,31,.68));box-shadow:0 0 45px rgba(38,183,255,.16),inset 0 0 50px rgba(46,177,255,.08);backdrop-filter:blur(6px);overflow:hidden}}
-      .holo:before{{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(100,220,255,.055) 0,rgba(100,220,255,.055) 1px,transparent 1px,transparent 7px);pointer-events:none}}
-      .holo-head{{display:flex;justify-content:space-between;gap:8px;padding:12px 14px;color:#dff8ff;font-size:11px;font-weight:900;letter-spacing:.06em;border-bottom:1px solid rgba(90,205,255,.22)}}
+      *{{box-sizing:border-box}}
+      .di-companion{{
+        position:relative;width:100%;height:560px;min-height:560px;overflow:hidden;
+        border-radius:26px;background:#061323;
+        border:1px solid rgba(80,180,255,.32);
+        box-shadow:0 20px 60px rgba(0,0,0,.32);
+        font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      }}
+      /* STATIC HUMAN DI: no drifting/floating animation. */
+      .human-di{{
+        position:absolute;left:18px;bottom:0;width:41%;height:500px;z-index:3;
+        display:flex;align-items:flex-end;justify-content:center;pointer-events:none;
+      }}
+      .human-di-img{{
+        display:block;width:100%;height:100%;object-fit:cover;object-position:center top;
+        border-radius:22px 22px 0 0;opacity:1;mix-blend-mode:normal;
+        filter:drop-shadow(0 18px 30px rgba(0,0,0,.5));
+      }}
+      .human-di-missing{{
+        width:280px;height:420px;border-radius:22px 22px 0 0;
+        display:grid;place-items:center;text-align:center;padding:25px;
+        background:#0b2037;color:#d9f5ff;border:1px solid #43bfff;font-weight:800;
+      }}
+      .di-label{{
+        position:absolute;left:22px;top:18px;z-index:8;color:#eefaff;font-weight:900;
+        letter-spacing:.08em;font-size:11px;text-transform:uppercase;
+        background:rgba(3,14,28,.92);border:1px solid rgba(100,210,255,.24);
+        border-radius:10px;padding:8px 10px;
+      }}
+      .di-label span{{color:#65efb6}}
+
+      /* STATIC, OPAQUE HOLOGRAPHIC SCREEN. It occupies a fixed portion of the panel,
+         leaving the rest of the DACRE context visible around it. */
+      .holo{{
+        position:absolute;right:18px;top:58px;width:57%;height:410px;z-index:6;
+        border:1px solid rgba(82,210,255,.78);border-radius:20px;
+        background:rgba(5,18,34,.94);
+        box-shadow:0 0 35px rgba(38,183,255,.16),inset 0 0 35px rgba(46,177,255,.07);
+        overflow:hidden;
+      }}
+      .holo-head{{
+        height:42px;display:flex;align-items:center;justify-content:space-between;gap:8px;
+        padding:0 13px;color:#e4f9ff;font-size:10px;font-weight:900;letter-spacing:.06em;
+        background:#091d33;border-bottom:1px solid rgba(90,205,255,.30);
+      }}
       .live{{color:#63edb5}}
-      #dacre-screen{{width:100%;height:calc(100% - 72px);object-fit:contain;background:#030914;display:block}}
-      .controls{{position:absolute;bottom:16px;right:16px;z-index:8;display:flex;gap:8px;flex-wrap:wrap}}
-      .controls button{{border:1px solid rgba(110,220,255,.4);background:rgba(8,29,51,.92);color:#e9fbff;border-radius:10px;padding:9px 12px;font-weight:800;cursor:pointer}}
-      .controls button.primary{{background:linear-gradient(135deg,#0877b5,#18a7d5);border-color:#59dfff}}
-      #share-status{{position:absolute;left:16px;bottom:16px;z-index:8;max-width:58%;padding:8px 10px;border-radius:10px;background:rgba(4,16,31,.86);border:1px solid rgba(110,205,255,.2);color:#bcd7e8;font-size:10px}}
-      @media(max-width:700px){{.di-companion{{min-height:620px}}.human-di{{left:0;width:47%;bottom:0}}.human-di-img{{height:430px}}.holo{{right:2%;top:13%;width:65%;height:57%}}#share-status{{max-width:55%}}}}
+      #dacre-screen{{
+        width:100%;height:calc(100% - 42px);object-fit:contain;
+        background:#02070e;display:block;
+      }}
+      #screen-overlay{{
+        position:absolute;right:10px;bottom:10px;z-index:10;padding:7px 9px;
+        border-radius:8px;background:rgba(2,10,19,.94);border:1px solid rgba(90,205,255,.25);
+        color:#bfe4f4;font-size:9px;font-weight:700;pointer-events:none;
+      }}
+      .controls{{
+        position:absolute;right:18px;bottom:16px;z-index:12;display:flex;gap:8px;
+      }}
+      .controls button{{
+        border:1px solid rgba(110,220,255,.48);background:#09223a;color:#e9fbff;
+        border-radius:9px;padding:8px 11px;font-weight:800;cursor:pointer;
+      }}
+      .controls button.primary{{background:#0877b5;border-color:#59dfff}}
+      #share-status{{
+        position:absolute;left:18px;bottom:17px;z-index:12;max-width:40%;padding:8px 10px;
+        border-radius:9px;background:rgba(3,14,27,.94);border:1px solid rgba(110,205,255,.24);
+        color:#c8dfeb;font-size:9px;line-height:1.35;
+      }}
+      .di-activity{{
+        position:absolute;left:25px;top:510px;z-index:9;color:#9ec8db;font-size:9px;
+        background:rgba(3,14,27,.90);border:1px solid rgba(100,210,255,.20);
+        border-radius:8px;padding:6px 9px;
+      }}
+      .typing-dot{{display:inline-block;width:6px;height:6px;border-radius:50%;background:#63edb5;
+        margin-right:5px;animation:typingPulse 1s infinite ease-in-out}}
+      @keyframes typingPulse{{0%,100%{{opacity:.35}}50%{{opacity:1}}}}
+
+      @media(max-width:700px){{
+        .di-companion{{height:620px;min-height:620px}}
+        .human-di{{left:8px;width:43%;height:470px}}
+        .holo{{right:10px;top:72px;width:61%;height:390px}}
+        #share-status{{left:10px;bottom:12px;max-width:43%}}
+        .controls{{right:10px;bottom:12px}}
+        .di-activity{{left:12px;top:535px}}
+      }}
     </style>
+
     <div class="di-companion">
-      <div class="di-label">{safe_name} · <span>ACTIVE</span> · HUMAN-STYLE AI COMPANION</div>
+      <div class="di-label">{safe_name} · <span>ACTIVE</span> · REALISTIC HUMAN DI</div>
       <div class="human-di">{img_html}</div>
+
       <div class="holo">
-        <div class="holo-head"><span>LIVE WORKSPACE MIRROR</span><span class="live" id="live-dot">● WAITING FOR PERMISSION</span></div>
+        <div class="holo-head">
+          <span>LIVE HOLOGRAPHIC WORKSPACE MIRROR</span>
+          <span class="live" id="live-dot">● WAITING</span>
+        </div>
         <video id="dacre-screen" autoplay muted playsinline></video>
+        <div id="screen-overlay">Fixed display · context remains visible</div>
       </div>
-      <div id="share-status">Screen sharing is off. Your browser requires you to explicitly allow screen sharing.</div>
-      <div class="controls"><button id="start-share" class="primary">Allow screen sharing</button><button id="stop-share">Stop</button></div>
+
+      <div class="di-activity"><span class="typing-dot"></span><span id="activity-text">DI is observing the workspace</span></div>
+      <div id="share-status">Screen sharing is off. Click Allow screen sharing to choose the screen or window to mirror.</div>
+      <div class="controls">
+        <button id="start-share" class="primary">Allow screen sharing</button>
+        <button id="stop-share">Stop</button>
+      </div>
     </div>
+
     <script>
     (()=>{{
-      const btn=document.getElementById('start-share'), stop=document.getElementById('stop-share'), video=document.getElementById('dacre-screen'), status=document.getElementById('share-status'), dot=document.getElementById('live-dot');
-      let stream=null, recorder=null, chunks=[];
+      const btn=document.getElementById('start-share');
+      const stop=document.getElementById('stop-share');
+      const video=document.getElementById('dacre-screen');
+      const status=document.getElementById('share-status');
+      const dot=document.getElementById('live-dot');
+      const activity=document.getElementById('activity-text');
+      let stream=null;
+
+      const stopCapture=()=>{{
+        if(stream) stream.getTracks().forEach(t=>t.stop());
+        stream=null;
+        video.srcObject=null;
+        dot.textContent='● STOPPED';
+        status.textContent='Screen sharing is off.';
+        activity.textContent='DI is waiting for the workspace';
+      }};
+
       btn.onclick=async()=>{{
         try{{
-          stream=await navigator.mediaDevices.getDisplayMedia({{video:{{frameRate:15}},audio:false}});
+          if(!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia){{
+            throw new Error('Screen capture is unavailable in this browser');
+          }}
+          stream=await navigator.mediaDevices.getDisplayMedia({{
+            video:{{frameRate:{{ideal:12,max:15}},width:{{ideal:1280,max:1920}},height:{{ideal:720,max:1080}}}},
+            audio:false
+          }});
           video.srcObject=stream;
-          recorder=new MediaRecorder(stream,{{mimeType:'video/webm'}});
-          chunks=[]; recorder.ondataavailable=e=>{{if(e.data.size)chunks.push(e.data)}}; recorder.start(1000);
-          status.textContent='Screen sharing is active. The selected screen is mirrored in the holographic display.';
           dot.textContent='● SCREEN LIVE';
-          stream.getVideoTracks()[0].addEventListener('ended',()=>{{stopCapture()}});
-        }}catch(e){{status.textContent='Screen sharing was not allowed or is unavailable in this browser.'; dot.textContent='● WAITING FOR PERMISSION';}}
+          status.textContent='Screen mirror active. The DI panel stays fixed while the selected screen appears in the holographic display.';
+          activity.textContent='DI is watching the active workspace';
+          const track=stream.getVideoTracks()[0];
+          if(track) track.addEventListener('ended',stopCapture);
+        }}catch(e){{
+          dot.textContent='● WAITING';
+          status.textContent='Screen sharing was not allowed or is unavailable in this browser.';
+          activity.textContent='DI is waiting for permission';
+        }}
       }};
-      const stopCapture=()=>{{
-        if(recorder && recorder.state!=='inactive') recorder.stop();
-        if(stream) stream.getTracks().forEach(t=>t.stop());
-        stream=null; video.srcObject=null; dot.textContent='● STOPPED'; status.textContent='Screen sharing is off.';
-      }};
+
       stop.onclick=stopCapture;
     }})();
     </script>
-    """,height=535,scrolling=False)
+    """,height=585,scrolling=False)
 
 _SESSION_DEFAULTS = {     "user": None,     "landing_mode": "home",     "landing_section": "home",     "master_captcha_required": False,     "master_captcha_passed": False,     "master_second_attempt": False,     "chat_history": [],     "chat_history_loaded": False,     "raw_df": None,     "processed_df": None,     "active_filename": "",     "formula_logs": [],     "chart_config": None,     "di_language": "English — Nigeria",     "di_voice_enabled": True,     "di_response_mode": "voice",     "active_call_room": None,     "sovereign_call_id": None,     "sovereign_call_room": None,     "david_creations_unlocked": False,     "active_call_target": None,     "last_action_center_result": None,     "last_speech": None,     "dacre_di_media_request": None,     "active_di_name": "DI",     "dacre_master_intelligence": {},     "dacre_boot_complete": False,     "visitor_id": None,     "public_visit_logged": False,     "workbook_sheets": {},     "active_sheet": "",     "chart_title": "",     "chart_limit": 25, "pending_data_cleanup": None, "data_currency_code": "", "data_unique_id_enabled": False, }
 for _key, _default in _SESSION_DEFAULTS.items():
