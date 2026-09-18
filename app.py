@@ -3021,12 +3021,12 @@ def transcribe_audio(audio_value):
         return None, f"Voice transcription could not be completed: {type(exc).__name__}."
 def _di_speech_text(answer):
     """Return only the readable DI answer, with UI/markdown/source markup removed."""
-    text=re.sub(r"<[^>]+>"," ",str(answer or ""))
-    text=re.sub(r"!\\[([^\\]]*)\\]\\([^)]*\\)",r"\\1",text)
-    text=re.sub(r"\\[([^\\]]+)\\]\\([^)]*\\)",r"\\1",text)
-    text=re.sub(r"[*_`#>~]","",text)
-    text=re.sub(r"^\\s*(?:DI|David's Intelligence)\\s*:\\s*","",text,flags=re.I)
-    text=re.sub(r"\s+"," ",text).strip()
+    text = re.sub(r"<[^>]+>", " ", str(answer or ""))
+    text = re.sub(r"!\[([^\]]*)\]\([^)]*\)", r"\1", text)
+    text = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", text)
+    text = re.sub(r"[*_`#>~]", "", text)
+    text = re.sub(r"^\s*(?:DI|David's Intelligence)\s*:\s*", "", text, flags=re.I)
+    text = re.sub(r"\s+", " ", text).strip()
     return text
 
 def speak(text, language_code=None, voice_profile=None):
