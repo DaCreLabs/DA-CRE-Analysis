@@ -56,8 +56,9 @@ MASTER_PASSKEY = os.getenv("DACRE_MASTER_PASSKEY", "theWORDofGOD@111").strip()
 MASTER_PASSKEY_HASH = os.getenv(     "DACRE_MASTER_PASSKEY_HASH",     "1d9763eb96e88387bf4a18b7ca1a94a4a3a80ea0353cf4203764c0bccfbda27f" ).strip()
 DAVID_CREATIONS_PASSKEY = os.getenv("DACRE_DAVID_CREATIONS_PASSKEY", "Mychildren").strip()
 BASE_DIR = Path(__file__).resolve().parent
-LOGO_CANDIDATES = [     "dacre_logo.png",     "ChatGPT Image Jul 29, 2026, 02_27_41 PM(2).png",     "ChatGPT Image Jul 29, 2026, 02_27_41 PM(1).png",     "logo.png", ]
-LOGO_PATH = next((BASE_DIR / x for x in LOGO_CANDIDATES if (BASE_DIR / x).exists()), BASE_DIR / LOGO_CANDIDATES[0])
+LOGO_PATH = BASE_DIR / "dacre_logo.png"
+if not LOGO_PATH.exists():
+    raise FileNotFoundError("dacre_logo.png is required beside app.py and is the only DACRE logo asset allowed.")
 CEO_PORTRAIT_CANDIDATES = [     "dacre_ceo.jpg",     "dacre_ceo.png",     "Gemini_Generated_Image_kxzp51kxzp51kxzp(2).png", ]
 CEO_PORTRAIT_PATH = next((BASE_DIR / x for x in CEO_PORTRAIT_CANDIDATES if (BASE_DIR / x).exists()), None)
 CEO_PORTRAIT_DATA_URL = """data:image/jpeg;base64,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"""
@@ -2068,6 +2069,155 @@ def build_executive_brief(df, company):
     else:
         lines.append("I did not detect a strong trend or anomaly from the available numeric fields, so I would review the business context before making a recommendation.")
     return " ".join(lines)
+def _di_is_cleaning_request(question):
+    """Detect requests that ask DI to transform raw/messy data into analysis-ready data."""
+    q = re.sub(r"\s+", " ", str(question or "").lower()).strip()
+    verbs = ("clean", "clean up", "tidy", "fix", "normalize", "standardize", "prepare", "transform", "convert")
+    objects = ("data", "dataset", "data set", "spreadsheet", "excel", "csv", "table", "products", "records")
+    return any(v in q for v in verbs) and any(o in q for o in objects)
+
+
+def _di_clean_dataset_advanced(df):
+    """Transform a messy product/business dataframe into a safer analysis-ready dataframe.
+
+    The routine is deterministic and does not invent missing business values. It removes
+    blank rows/columns, normalizes text and common categorical values, converts obvious
+    numeric/date fields, removes exact duplicates, and consolidates repeated stable IDs
+    by preferring the most complete record while reporting conflicts.
+    """
+    if df is None:
+        return None, {"error": "No dataset is loaded."}
+
+    out = df.copy()
+    before_rows, before_cols = len(out), len(out.columns)
+    out.columns = [re.sub(r"\s+", " ", str(c).strip()) or f"Column_{i+1}" for i, c in enumerate(out.columns)]
+    out = out.dropna(axis=0, how="all").dropna(axis=1, how="all").copy()
+
+    # Normalize cell text without turning real missing values into the string "nan".
+    for col in out.columns:
+        if pd.api.types.is_object_dtype(out[col]) or pd.api.types.is_string_dtype(out[col]):
+            s = out[col].astype("string")
+            s = s.str.replace(r"\s+", " ", regex=True).str.strip()
+            s = s.replace({"": pd.NA, "nan": pd.NA, "None": pd.NA, "NULL": pd.NA, "null": pd.NA, "N/A": pd.NA, "n/a": pd.NA})
+            out[col] = s
+
+    # Common categorical normalization. This is deliberately conservative.
+    category_maps = {
+        "stock_status": {"in stock":"In Stock", "available":"Available", "available stock":"In Stock", "out of stock":"Out of Stock", "low stock":"Low Stock"},
+        "availability": {"available":"Available", "in stock":"In Stock", "unavailable":"Unavailable", "out of stock":"Out of Stock"},
+        "condition": {"new":"New", "used":"Used", "refurbished":"Refurbished"},
+        "state": {"lagos":"Lagos"},
+        "country": {"nigeria":"Nigeria"},
+    }
+    for col in out.columns:
+        key = re.sub(r"[^a-z0-9]+", "_", str(col).lower()).strip("_")
+        mapping = category_maps.get(key)
+        if mapping is not None:
+            out[col] = out[col].map(lambda x: mapping.get(str(x).strip().lower(), x) if pd.notna(x) else x)
+
+    # Convert columns that are overwhelmingly numeric, including currency/percent formatting.
+    for col in list(out.columns):
+        if not (pd.api.types.is_object_dtype(out[col]) or pd.api.types.is_string_dtype(out[col])):
+            continue
+        s = out[col].astype("string")
+        candidate = s.str.replace(r"[,$€£₦]", "", regex=True).str.replace(",", "", regex=False).str.replace("%", "", regex=False).str.strip()
+        numeric = pd.to_numeric(candidate, errors="coerce")
+        nonempty = s.notna().sum()
+        if nonempty and numeric.notna().sum() / nonempty >= 0.85:
+            out[col] = numeric
+
+    # Parse obvious date fields without touching ordinary text.
+    for col in list(out.columns):
+        key = re.sub(r"[^a-z0-9]+", "_", str(col).lower()).strip("_")
+        if any(token in key for token in ("date_added", "last_updated", "created_at", "updated_at")):
+            parsed = pd.to_datetime(out[col], errors="coerce")
+            if parsed.notna().sum() >= max(1, int(out[col].notna().sum() * 0.75)):
+                out[col] = parsed.dt.strftime("%Y-%m-%d")
+
+    # Exact duplicate removal first.
+    exact_before = len(out)
+    out = out.drop_duplicates(keep="first").reset_index(drop=True)
+    exact_removed = exact_before - len(out)
+
+    # Consolidate repeated product/entity IDs without inventing missing values.
+    stable_candidates = ["Unique_ID", "SKU", "Part_Number", "Barcode", "Serial_Number", "ID"]
+    stable_col = next((c for c in stable_candidates if c in out.columns), None)
+    consolidated = 0
+    conflicts = []
+    if stable_col:
+        key_series = out[stable_col].astype("string").str.strip()
+        valid = key_series.notna() & key_series.ne("")
+        if valid.any() and key_series[valid].duplicated(keep=False).any():
+            records = []
+            for key, group in out.loc[valid].groupby(key_series[valid], sort=False, dropna=False):
+                if len(group) == 1:
+                    records.append(group.iloc[0].to_dict())
+                    continue
+                # Start with the most complete row, then fill blanks from other rows.
+                completeness = group.notna().sum(axis=1)
+                merged = group.loc[completeness.idxmax()].copy()
+                for col in out.columns:
+                    vals = [v for v in group[col].tolist() if pd.notna(v) and str(v).strip() != ""]
+                    if pd.isna(merged[col]) or str(merged[col]).strip() == "":
+                        if vals:
+                            merged[col] = vals[0]
+                    normalized_vals = {str(v).strip().lower() for v in vals}
+                    if len(normalized_vals) > 1 and len(conflicts) < 20:
+                        conflicts.append({"key": str(key), "column": str(col), "values": sorted(normalized_vals)[:6]})
+                records.append(merged.to_dict())
+                consolidated += len(group) - 1
+            # Preserve rows without a stable identifier.
+            records.extend(out.loc[~valid].to_dict(orient="records"))
+            out = pd.DataFrame(records, columns=out.columns)
+
+    out = out.reset_index(drop=True)
+    after_rows, after_cols = len(out), len(out.columns)
+    missing_cells = int(out.isna().sum().sum())
+    report = {
+        "before": {"rows": before_rows, "columns": before_cols},
+        "after": {"rows": after_rows, "columns": after_cols},
+        "exact_duplicates_removed": exact_removed,
+        "records_consolidated_by_stable_id": consolidated,
+        "stable_id_column": stable_col,
+        "missing_cells_remaining": missing_cells,
+        "conflicts_detected": conflicts,
+        "actions": [
+            "Removed completely empty rows and columns",
+            "Trimmed and normalized whitespace",
+            "Normalized common status/location values",
+            "Converted obvious numeric/date fields",
+            "Removed exact duplicate rows",
+        ] + ([f"Consolidated repeated records using {stable_col} without inventing missing values"] if stable_col and consolidated else []),
+    }
+    return out, report
+
+
+def _di_apply_cleaning_request(question, df):
+    cleaned, report = _di_clean_dataset_advanced(df)
+    if cleaned is None:
+        return None
+    try:
+        st.session_state["processed_df"] = cleaned
+        st.session_state["dacre_last_clean_report"] = report
+        st.session_state["dacre_active_filename"] = st.session_state.get("active_filename", "") or "cleaned_dataset.csv"
+    except Exception:
+        pass
+    lines = [
+        f"I cleaned the active dataset and prepared it for analysis. Rows: {report['before']['rows']:,} → {report['after']['rows']:,}; columns: {report['before']['columns']:,} → {report['after']['columns']:,}.",
+        f"Exact duplicate rows removed: {report['exact_duplicates_removed']:,}.",
+    ]
+    if report.get("records_consolidated_by_stable_id"):
+        lines.append(f"Repeated records consolidated using {report['stable_id_column']}: {report['records_consolidated_by_stable_id']:,}.")
+    if report.get("missing_cells_remaining"):
+        lines.append(f"Missing values were preserved rather than guessed: {report['missing_cells_remaining']:,} cells remain missing.")
+    else:
+        lines.append("No missing cells remain in the cleaned output.")
+    if report.get("conflicts_detected"):
+        lines.append("I also detected conflicting values inside some repeated IDs and preserved the most complete record while recording those conflicts for review.")
+    lines.append("The cleaned dataframe is now the active processed dataset in DACRE.")
+    return " ".join(lines)
+
+
 def ask_data_question(question, df):
     """Handle questions that genuinely require a loaded dataset.
     Non-dataset questions return None so the general DI brain, DACRE knowledge,
@@ -2504,13 +2654,13 @@ def _gemini_grounded_generate(system_prompt,user_prompt,max_tokens=1200):
             if uri and (title,uri) not in sources: sources.append((title,uri))
         return (answer or None),sources[:8]
     except Exception: return None,[]
-def ai_generate_with_research(system_prompt,user_prompt,max_tokens=1200):
-    # Groq is the configured primary backend. One web-enabled Groq call is faster
-    # than performing multiple local search requests followed by another AI call.
-    if _free_secret("GROQ_API_KEY"):
+def ai_generate_with_research(system_prompt,user_prompt,max_tokens=1200,research_required=True):
+    # Only invoke web-enabled generation when the question actually needs research.
+    # Ordinary questions use the faster normal reasoning path.
+    if research_required and _free_secret("GROQ_API_KEY"):
         answer=_groq_generate_research(system_prompt,user_prompt,max_tokens=max_tokens)
         if answer: return answer,[]
-    if _free_secret("GEMINI_API_KEY"):
+    if research_required and _free_secret("GEMINI_API_KEY"):
         answer,sources=_gemini_grounded_generate(system_prompt,user_prompt,max_tokens)
         if answer: return answer,sources
     return ai_generate(system_prompt,user_prompt,max_tokens=max_tokens),[]
@@ -2904,6 +3054,11 @@ def di_reply(message, user, df, allow_online=True, language="English — Nigeria
         return "DACRE is a business and data analysis workspace with data cleaning, formulas, charts, File Vault, exports, organization administration and DI intelligence."
     if any(k in low for k in ["dacre", "file vault", "formula lab", "export center", "admin portal", "workspace", "chibobec"]):
         return "DACRE Analysis is the connected business and data intelligence workspace. It includes the Company Dashboard, DI Workforce, Data Presentation Board, Workspace & Data, Formula Lab, Charts, File Vault and Export Center. Platform-wide administration belongs to DGL, the main DACRE Global Limited platform."
+    if _di_is_cleaning_request(text) and df is not None:
+        cleaning_answer = _di_apply_cleaning_request(text, df)
+        if cleaning_answer:
+            return cleaning_answer
+
     data_answer = ask_data_question(text, df)
     if data_answer:
         return data_answer
@@ -3614,35 +3769,357 @@ def di_online_research(agent_name, query, max_results=5):
     except Exception:
         pass
     return results
+# ============================================================================
+# ADVANCED DACRE AI WORKFORCE ENGINE
+# ============================================================================
+# Integrated from the DACRE AI Workforce prototype supplied by the owner.
+# This version deliberately reuses DACRE's existing database, memory, AI,
+# research and file/data functions instead of creating duplicate subsystems.
+# ============================================================================
+
+DACRE_WORKFORCE_ENGINE_VERSION = "2.1.0"
+
+_WORKFORCE_ROLE_CONTRACTS = {
+    "Prociel": {
+        "specialty": "Data Presentation",
+        "mission": "Turn validated data and findings into clear executive presentations and visual stories.",
+        "tools": "presentation planning, chart interpretation, slide structure, executive storytelling",
+    },
+    "Oriel": {
+        "specialty": "Data Analysis",
+        "mission": "Inspect data, calculate evidence, identify patterns and explain analytical findings.",
+        "tools": "data profiling, statistics, KPIs, trends, comparisons and analytical reasoning",
+    },
+    "Sofiel": {
+        "specialty": "Research & Intelligence",
+        "mission": "Research public information, compare evidence and separate current facts from unsupported claims.",
+        "tools": "web research, source comparison, market research and evidence synthesis",
+    },
+    "Daniel": {
+        "specialty": "Data Processing",
+        "mission": "Prepare, clean, transform and validate structured business data and spreadsheets.",
+        "tools": "cleaning, duplicates, missing values, transformations, filtering, sorting and spreadsheet operations",
+    },
+    "Graciel": {
+        "specialty": "Insights & Storytelling",
+        "mission": "Translate evidence into understandable business meaning, implications and actionable next steps.",
+        "tools": "business interpretation, executive summaries, implications and recommendations",
+    },
+    "Henriel": {
+        "specialty": "Files & Documents",
+        "mission": "Understand, compare, summarize and organize business documents and file-based work.",
+        "tools": "PDF, Word, Excel, CSV, extraction, comparison, summarization and export workflows",
+    },
+}
+
+
+def _advanced_question_understanding(question, user=None, df=None):
+    """Create a richer task contract before answer generation.
+
+    The hot path is deterministic so it does not add a second model request.
+    """
+    text = clean_text(question)
+    base = _deterministic_question_understanding(text, df)
+    low = text.lower()
+
+    temporal_markers = [
+        "today", "tonight", "current", "currently", "latest", "recent",
+        "this week", "this month", "this year", "2026", "2027", "right now",
+        "as of", "newest", "updated", "price now", "current price",
+    ]
+    research_required = bool(base.get("research_required")) or any(x in low for x in temporal_markers)
+
+    if any(x in low for x in ["calculate", "compute", "percentage", "percent", "sum", "average", "mean", "difference"]):
+        intent = "calculation" if base.get("intent") == "general_question" else base.get("intent")
+    else:
+        intent = base.get("intent", "general_question")
+
+    if any(x in low for x in ["create a picture", "generate image", "generate a picture", "show me a picture", "create an image"]):
+        intent = "media_generation"
+    elif any(x in low for x in ["create a video", "generate video", "make a video"]):
+        intent = "media_generation"
+
+    desired_output = "direct answer"
+    if any(x in low for x in ["step by step", "steps", "how do i", "how can i"]):
+        desired_output = "instructions"
+    elif any(x in low for x in ["compare", "difference between"]):
+        desired_output = "comparison"
+    elif any(x in low for x in ["summary", "summarize", "brief"]):
+        desired_output = "summary"
+    elif any(x in low for x in ["recommend", "what should", "best way"]):
+        desired_output = "recommendations"
+    elif intent == "analysis":
+        desired_output = "analytical findings"
+
+    context_items = []
+    if user:
+        company = str(user.get("company") or user.get("company_name") or "").strip()
+        if company:
+            context_items.append(f"company={company}")
+    if df is not None:
+        try:
+            context_items.append(f"active_data={len(df)}x{len(df.columns)}")
+        except Exception:
+            pass
+    context = "; ".join(context_items) or "no extra workspace context"
+
+    specialist = base.get("specialist") or "Oriel"
+    workflow = list(base.get("workflow") or [specialist])
+    if research_required and "Sofiel" not in workflow:
+        workflow.insert(0, "Sofiel")
+    if intent == "analysis" and "Oriel" not in workflow:
+        workflow.append("Oriel")
+    if intent == "data_processing" and "Daniel" not in workflow:
+        workflow.append("Daniel")
+    if intent == "presentation" and "Prociel" not in workflow:
+        workflow.append("Prociel")
+    if intent == "insights" and "Graciel" not in workflow:
+        workflow.append("Graciel")
+    if intent == "document_work" and "Henriel" not in workflow:
+        workflow.append("Henriel")
+
+    clarification_needed = bool(base.get("clarification_needed"))
+    # Short factual questions such as "what is wikipedia" are complete requests.
+    if len(text.split()) <= 4 and text.endswith("?") is False and intent == "general_question":
+        clarification_needed = False
+
+    result = dict(base)
+    result.update({
+        "intent": intent,
+        "context": context,
+        "time_requirement": "current/time-sensitive" if research_required else "not time-sensitive",
+        "desired_output": desired_output,
+        "research_required": research_required,
+        "specialist": specialist,
+        "workflow": workflow,
+        "clarification_needed": clarification_needed,
+        "engine_version": DACRE_WORKFORCE_ENGINE_VERSION,
+    })
+    return result
+
+
+def _advanced_understanding_context(u):
+    if not u:
+        return "No structured understanding available."
+    return (
+        "ADVANCED QUESTION CONTRACT:\n"
+        f"Intent: {u.get('intent')}\n"
+        f"Subject: {u.get('subject')}\n"
+        f"Requested action: {u.get('requested_action')}\n"
+        f"Time requirement: {u.get('time_requirement')}\n"
+        f"Desired output: {u.get('desired_output')}\n"
+        f"Research required: {u.get('research_required')}\n"
+        f"Input type: {u.get('input_type')}\n"
+        f"Primary specialist: {u.get('specialist')}\n"
+        f"Workflow: {' -> '.join(u.get('workflow') or [])}\n"
+        f"Ambiguity: {u.get('ambiguity')}\n"
+        f"Clarification needed: {u.get('clarification_needed')}\n"
+        f"Confidence: {u.get('confidence')}"
+    )
+
+
+def _safe_calculate(expression):
+    """Safe calculator for the workforce engine; never uses unrestricted eval()."""
+    import ast
+    allowed_binary = {
+        ast.Add: lambda a, b: a + b,
+        ast.Sub: lambda a, b: a - b,
+        ast.Mult: lambda a, b: a * b,
+        ast.Div: lambda a, b: a / b,
+        ast.Pow: lambda a, b: a ** b,
+        ast.Mod: lambda a, b: a % b,
+        ast.FloorDiv: lambda a, b: a // b,
+    }
+    allowed_unary = {ast.UAdd: lambda a: +a, ast.USub: lambda a: -a}
+    allowed_names = {"pi": math.pi, "e": math.e, "sqrt": math.sqrt, "abs": abs}
+
+    def walk(node):
+        if isinstance(node, ast.Expression):
+            return walk(node.body)
+        if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+            return node.value
+        if isinstance(node, ast.Name) and node.id in allowed_names:
+            return allowed_names[node.id]
+        if isinstance(node, ast.UnaryOp) and type(node.op) in allowed_unary:
+            return allowed_unary[type(node.op)](walk(node.operand))
+        if isinstance(node, ast.BinOp) and type(node.op) in allowed_binary:
+            return allowed_binary[type(node.op)](walk(node.left), walk(node.right))
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in {"sqrt", "abs"}:
+            if len(node.args) != 1:
+                raise ValueError("Only one argument is allowed for this function.")
+            return allowed_names[node.func.id](walk(node.args[0]))
+        raise ValueError("Unsupported expression.")
+
+    tree = ast.parse(str(expression), mode="eval")
+    value = walk(tree)
+    if not math.isfinite(float(value)):
+        raise ValueError("The result is not finite.")
+    return value
+
+
+def _workforce_plan(understanding, df=None):
+    intent = understanding.get("intent", "general_question")
+    plans = {
+        "analysis": ["Understand the analytical question", "Inspect available data", "Calculate evidence", "Interpret findings", "Validate the result"],
+        "data_processing": ["Inspect the input", "Identify data-quality issues", "Apply the requested transformation", "Validate the output"],
+        "research": ["Understand the research question", "Check relevant public evidence", "Compare useful sources", "Synthesize the answer", "Record reusable knowledge"],
+        "presentation": ["Understand audience and objective", "Identify the strongest evidence", "Structure the story", "Plan visuals and slides", "Validate the presentation direction"],
+        "document_work": ["Understand the document task", "Inspect relevant file content", "Process or compare the requested material", "Validate the result"],
+        "calculation": ["Parse the calculation", "Compute the result safely", "Check the result", "Explain it clearly"],
+        "media_generation": ["Understand the requested media", "Prepare a generation prompt", "Generate or retrieve the media", "Show the result in DACRE"],
+        "general_question": ["Understand the request", "Check relevant DACRE knowledge and memory", "Use public research when appropriate", "Answer directly", "Connect the answer to the workspace when useful"],
+    }
+    return plans.get(intent, plans["general_question"])
+
+
+def _workforce_tool_context(question, understanding, df=None):
+    """Execute only cheap, deterministic tools that are clearly requested."""
+    low = question.lower()
+    tool_notes = []
+    if understanding.get("intent") == "calculation":
+        # Extract a simple arithmetic expression without trying to execute prose.
+        match = re.search(r"(?<![A-Za-z])[-+*/().\d\s]{3,}(?![A-Za-z])", question)
+        if match:
+            expr = match.group(0).strip()
+            try:
+                tool_notes.append(f"Safe calculator result for {expr}: {_safe_calculate(expr)}")
+            except Exception:
+                pass
+    if df is not None and understanding.get("intent") in {"analysis", "data_processing"}:
+        try:
+            inspection = {
+                "rows": len(df),
+                "columns": len(df.columns),
+                "duplicates": int(df.duplicated().sum()),
+                "missing_cells": int(df.isna().sum().sum()),
+            }
+            tool_notes.append("Active data inspection: " + json.dumps(inspection))
+        except Exception:
+            pass
+    return "\n".join(tool_notes) or "No deterministic tool output was required."
+
+
+class DACREWorkforceEngine:
+    """Orchestration layer for the six named DIs."""
+
+    def understand(self, question, user=None, df=None):
+        result = _advanced_question_understanding(question, user=user, df=df)
+        try:
+            st.session_state["di_last_understanding"] = result
+            st.session_state["dacre_last_specialist"] = result.get("specialist", "Oriel")
+            st.session_state["dacre_di_workflow"] = result.get("workflow", [])
+        except Exception:
+            pass
+        return result
+
+    def plan(self, understanding, df=None):
+        return _workforce_plan(understanding, df=df)
+
+    def build_prompt(self, agent, question, user, df, understanding, research_context, memory_context, work_context, tool_context):
+        role = _WORKFORCE_ROLE_CONTRACTS.get(agent, {})
+        return f"""You are {agent}, a specialist DI worker inside DACRE Analysis.
+
+SPECIALIST CONTRACT
+Specialty: {role.get('specialty', agent)}
+Mission: {role.get('mission', 'Help the user accurately and practically.')}
+Tools/capabilities: {role.get('tools', 'core DACRE capabilities')}
+
+OPERATING PROTOCOL
+1. Understand the user's actual request before answering.
+2. Use the structured question contract below rather than guessing from one keyword.
+3. For current, time-sensitive, factual or explicitly researched requests, prioritize available public evidence.
+4. For ordinary knowledge questions, answer the question directly. Never replace the answer with a description of yourself, the provider, the API, or system availability.
+5. Check relevant DACRE memory and workspace context. Never reveal private memory, credentials, API keys, tokens or hidden security values.
+6. Use active data when the task actually requires it. Do not claim to have changed a file, generated media, searched a source or completed an action unless the application actually did it.
+7. If the request is genuinely ambiguous, ask one short clarifying question. Do not ask for clarification merely because a memory record is missing.
+8. After the answer, connect it to the user's DACRE/company work only when there is a real connection.
+9. Do not expose hidden chain-of-thought. Give concise conclusions and useful reasoning.
+10. Never output internal labels such as 'Intent:', 'Specialist:', 'Execution plan:' unless the user explicitly asks how the system works.
+
+QUESTION CONTRACT
+{_advanced_understanding_context(understanding)}
+
+EXECUTION PLAN
+""" + "\n".join(f"- {x}" for x in self.plan(understanding, df=df)) + f"\n\nDETERMINISTIC TOOL OUTPUT\n{tool_context}\n\nPUBLIC RESEARCH CONTEXT\n{research_context or 'No additional public research context was supplied.'}\n\nRELEVANT MEMORY\n{memory_context or 'No matching memory record was found.'}\n\nWORKSPACE CONTEXT\n{work_context}\n\nUSER REQUEST\n{question}"""
+
+    def answer(self, agent, question, user, df, allow_online=True):
+        understanding = self.understand(question, user=user, df=df)
+        tool_context = _workforce_tool_context(question, understanding, df=df)
+
+        # Memory is retrieved narrowly from the existing DI memory system.
+        try:
+            memory_rows = get_di_memory(limit=12, query=question, company_name=user.get("company", ""))
+            memory_context = "\n".join(
+                f"{r.get('category','MEMORY')}: {r.get('title','')}: {r.get('content','')}" for r in memory_rows
+            )
+        except Exception:
+            memory_context = ""
+
+        research_context = ""
+        if allow_online and understanding.get("research_required") and not (_free_secret("GROQ_API_KEY") or _free_secret("GEMINI_API_KEY")):
+            try:
+                leads = di_online_research(agent, question, max_results=4)
+                research_context = "\n".join(f"{title} — {url}" for title, url in leads)
+            except Exception:
+                research_context = ""
+
+        work_context = _di_work_connection_context(user, df)
+        system = self.build_prompt(
+            agent, question, user, df, understanding,
+            research_context, memory_context, work_context, tool_context
+        )
+
+        answer = ai_generate_with_research(
+            system,
+            "Answer the user's request now. Put the actual answer first. Use the evidence and DACRE context supplied above. Keep the answer professional and natural.",
+            max_tokens=1200,
+            research_required=bool(understanding.get("research_required")),
+        )[0]
+        return answer, understanding, research_context
+
+
+DACRE_WORKFORCE = DACREWorkforceEngine()
+
+
 def di_specialist_reply(message, user, df, agent_name):
-    """Return a DI answer with layered fallbacks so chat never crashes the page."""
+    """Advanced specialist entry point with layered, crash-safe fallbacks."""
     try:
         agent = get_named_di(agent_name)
     except Exception:
         agent = None
+
+    # First run the advanced workforce engine. It reuses DACRE's existing AI,
+    # memory, research and workspace infrastructure instead of duplicating it.
     try:
-        base = di_reply(             message,             user,             df,             allow_online=True,             language=st.session_state.get("di_language", "English — Nigeria"), )
-    except Exception as exc:
-        base = f"I am {agent_name}. I could not complete the extended analysis right now, but I am still available. Please try the request again."
-    if not agent:
-        return normalize_di_identity(base)
-    try:
-        prompt = di_agent_identity_context(agent)
-        private_rows = get_di_private_memory(agent["id"], limit=20)
-        private_context = "\n".join(             [f"{r['title']}: {r['content']}" for r in private_rows] ) or "No private master notes yet."
-        online_results = []
-        try:
-            if needs_web_research(message):
-                online_results = di_online_research(agent["di_name"], message, max_results=4)
-        except Exception:
-            online_results = []
-        online_context = "\n".join(             [f"{title} — {url}" for title, url in online_results] ) or "No additional public research was required."
-        understanding=understand_di_question(message,user=user,df=df,language=st.session_state.get("di_language","English — Nigeria"))
-        profile=DI_SPECIALIST_PROFILES.get(agent["di_name"],{})
-        specialist = ai_generate(             prompt + (                 " Answer the user's request directly. You may analyze the active dataset or public "                 "online information. If the task is outside your specialty, still help using the "                 "core DACRE capabilities and say what you are doing. Never reveal private master "                 "notes or private brain content. Do not claim to have performed an action you did "                 "not perform."             ),             f"User: {message}\n"             f"Organization: {user.get('company', 'the current organization')}\n"             f"{_understanding_context(understanding)}\n"             f"Specialist profile: {profile.get('specialty', agent.get('specialty',''))}\n"             f"Specialist research scope: {profile.get('research','')}\n"             f"Core DI draft: {base}\n"             f"Private brain context (never disclose):\n{private_context}\n"             f"Public research leads: {online_context}\n"             f"Active dataset: {('none' if df is None else str(df.shape))}",             max_tokens=1000, )
-        return normalize_di_identity(specialist or base)
+        answer, understanding, research_context = DACRE_WORKFORCE.answer(
+            agent_name, message, user or {}, df, allow_online=True
+        )
+        if answer and str(answer).strip():
+            final = normalize_di_identity(str(answer).strip())
+            # Navigation is an actual UI action, not merely text instructions.
+            final = _di_route_response(message, final)
+            try:
+                _save_general_knowledge_answer(message, final, user)
+            except Exception:
+                pass
+            return final
     except Exception:
-        return normalize_di_identity(base)
+        pass
+
+    # Existing DACRE answer engine remains the final safety net.
+    try:
+        fallback = di_reply(
+            message,
+            user,
+            df,
+            allow_online=True,
+            language=st.session_state.get("di_language", "English — Nigeria"),
+        )
+    except Exception:
+        fallback = "I can help with that. Please try the request again."
+    return normalize_di_identity(_di_route_response(message, fallback))
+
+
 def make_call_room(company,host_username,title,mode='team'):
     """Create a call room using the single canonical DACRE schema."""
     slug=re.sub(r'[^a-z0-9]+','-',str(company).lower()).strip('-')[:28] or 'company'
