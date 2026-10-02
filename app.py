@@ -22,6 +22,7 @@ from html.parser import HTMLParser
 from urllib.parse import urlparse
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Tuple
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
@@ -29,6 +30,14 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 from PIL import Image
+try:
+    from pypdf import PdfReader
+except Exception:
+    PdfReader = None
+try:
+    from pptx.oxml.xmlchemy import OxmlElement
+except Exception:
+    OxmlElement = None
 try:
     from pptx import Presentation
     from pptx.util import Inches, Pt
@@ -309,7 +318,7 @@ def _load_page_icon():
 _PAGE_ICON_IMAGE = _load_page_icon()
 st.set_page_config(     page_title=f"{APP_NAME} | {DI_NAME}",     page_icon=_PAGE_ICON_IMAGE if _PAGE_ICON_IMAGE is not None else "📊",     layout="wide",     initial_sidebar_state="collapsed", )
 _DB_SCHEMA_LOCK = threading.RLock()
-_DB_SCHEMA_VERSION = 13
+_DB_SCHEMA_VERSION = 14
 @contextmanager
 def _db_file_lock(timeout=90):
     """Serialize SQLite schema migrations across Streamlit processes."""
@@ -1258,6 +1267,241 @@ def _knowledge_context(acq):
     memory=(acq or {}).get("memory",[])
     memory_text="\n".join(f"- {m['title']}: {m['content']}" for m in memory[:8]) or "No prior matching Memory Box record."
     return f"MEANINGFUL TERMS: {terms}\nMEMORY BOX MATCHES: {memory_text}\nONLINE SOURCES CHECKED FIRST:\n{source_text}\nNEW MEMORY SAVED: {(acq or {}).get('new_memory_saved',False)}"
+
+# =============================================================================
+# PERMANENT DI ENTITY / BRAIN ARCHITECTURE
+# =============================================================================
+# Every named DI is a persistent software agent: one shared model/API gateway,
+# separate identity, specialty, private memory, task history and working state.
+# This is a software architecture; it does not claim consciousness or sentience.
+DI_SPECIALIST_PROFILES = {
+    "Emiel": {"specialty":"Communications & Messaging", "research":"email, business communication, meeting coordination", "tools":["email","calls","research","tasks"]},
+    "Oriel": {"specialty":"Data Analysis", "research":"statistics, trends, validation, datasets", "tools":["data","charts","research","tasks"]},
+    "Sofiel": {"specialty":"Research & Intelligence", "research":"public research, source checking, market intelligence", "tools":["research","memory","tasks"]},
+    "Daniel": {"specialty":"Data Entry & Processing", "research":"cleaning, validation, transformation, structured data", "tools":["data","files","tasks"]},
+    "Graciel": {"specialty":"Business Intelligence", "research":"KPIs, business health, opportunities, executive insight", "tools":["data","charts","tasks"]},
+    "Henriel": {"specialty":"Files & Documents", "research":"documents, files, project artifacts, exports", "tools":["files","presentation","tasks"]},
+    "Jamiel": {"specialty":"Security & Administration", "research":"accounts, permissions, audit and administration", "tools":["admin","memory","tasks"]},
+    "Ameliel": {"specialty":"Client Success & Communication", "research":"customer communication, onboarding and support", "tools":["email","research","tasks"]},
+    "Guaiel": {"specialty":"CEO Office Security", "research":"founder command security and protected workflows", "tools":["admin","calls","tasks"]},
+    "Nathaniel": {"specialty":"Financial Intelligence", "research":"finance, budgets, profitability, cash flow and forecasts", "tools":["data","charts","tasks"]},
+    "Gabriel": {"specialty":"Sales Intelligence", "research":"pipeline, conversion, customers and sales opportunities", "tools":["data","research","tasks"]},
+    "Raphaiel": {"specialty":"Marketing Intelligence", "research":"campaigns, audiences, attribution and marketing ROI", "tools":["data","research","tasks"]},
+    "Uriel": {"specialty":"Operations Intelligence", "research":"workflows, capacity, throughput and efficiency", "tools":["data","tasks"]},
+    "Ariel": {"specialty":"Strategy & Planning", "research":"strategy, scenarios, priorities and execution plans", "tools":["research","data","tasks"]},
+    "Muriel": {"specialty":"HR & Workforce", "research":"workforce planning and people operations", "tools":["data","tasks"]},
+    "Azriel": {"specialty":"Risk & Compliance", "research":"risk, controls, compliance and exposure", "tools":["research","data","tasks"]},
+    "Adriel": {"specialty":"Technology Intelligence", "research":"Python, software architecture, automation and technical work", "tools":["files","research","tasks"]},
+    "Haniel": {"specialty":"Knowledge & Learning", "research":"learning, explanations and training materials", "tools":["research","files","tasks"]},
+    "Gadiel": {"specialty":"Customer & Market Insights", "research":"customers, markets, demand and positioning", "tools":["research","data","tasks"]},
+    "Raziel": {"specialty":"Executive Intelligence", "research":"multi-domain synthesis, executive briefs and options", "tools":["data","research","presentation","tasks"]},
+}
+
+def _free_secret(name, default=""):
+    try:
+        value=st.secrets.get(name, "")
+    except Exception:
+        value=""
+    return str(value or os.getenv(name, default) or default).strip()
+
+def _safe_int(value, default=0):
+    try: return int(value)
+    except Exception: return default
+
+def normalize_di_identity(text, agent_name="DI"):
+    value=str(text or "").strip()
+    if not value: return f"I am {agent_name}. I am ready to work on your request."
+    return value
+
+def _understanding_context(understanding):
+    u=understanding or {}
+    return (f"Task: {u.get('task','general assistance')}\n"
+            f"Subject: {u.get('subject','general')}\n"
+            f"Industry: {u.get('industry','general')}\n"
+            f"Time sensitivity: {u.get('time','not specified')}\n"
+            f"Output: {u.get('output','answer')}\n"
+            f"Needs research: {u.get('needs_research',False)}")
+
+def understand_di_question(message, user=None, df=None, language="English — Nigeria"):
+    text=str(message or "").strip()
+    low=text.lower()
+    research_terms=("latest","today","current","recent","news","research","verify","source","2026","2025")
+    task="answer"
+    if any(x in low for x in ("analy", "dataset", "sales", "revenue", "rows", "columns", "trend")): task="data analysis"
+    elif any(x in low for x in ("email", "mail", "message", "send")): task="communication"
+    elif any(x in low for x in ("file", "document", "excel", "csv", "pdf")): task="file/document work"
+    elif any(x in low for x in ("presentation", "powerpoint", "slides")): task="presentation"
+    elif any(x in low for x in ("call", "meeting")): task="communication/call"
+    elif any(x in low for x in ("business", "company", "profit", "customer", "market")): task="business intelligence"
+    subject=(re.findall(r"[A-Za-z][A-Za-z0-9_-]{3,}", text)[:12])
+    return {"raw":text,"task":task,"subject":", ".join(subject[:6]) or "general","industry":(user or {}).get("company", "general business"),"time":"current" if any(x in low for x in research_terms) else "not specified","output":"presentation" if "presentation" in task else "answer","needs_research":any(x in low for x in research_terms),"language":language,"has_dataset":df is not None}
+
+def needs_web_research(message):
+    low=str(message or "").lower()
+    return any(k in low for k in ("latest","today","current","recent","news","research","verify","source","price now","as of"))
+
+def online_lookup(query, max_results=5):
+    """Small server-side public lookup fallback. It fails closed when blocked."""
+    q=str(query or "").strip()
+    if not q: return []
+    try:
+        url="https://html.duckduckgo.com/html/?q="+urllib.parse.quote(q)
+        req=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0 DACRE/1.0"})
+        with urllib.request.urlopen(req,timeout=8) as response:
+            html=response.read().decode("utf-8","ignore")
+        pairs=[]
+        for m in re.finditer(r'class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)</a>',html,re.I|re.S):
+            href=urllib.parse.unquote(m.group(1)); title=re.sub(r"<[^>]+>","",m.group(2)); title=re.sub(r"\s+"," ",title).strip()
+            if href.startswith("//"): href="https:"+href
+            if href and title and (title,href) not in pairs: pairs.append((title,href))
+            if len(pairs)>=max_results: break
+        return pairs
+    except Exception:
+        return []
+
+def _shared_ai_system(agent_name="DI", specialty="General Intelligence"):
+    profile=DI_SPECIALIST_PROFILES.get(agent_name,{})
+    role=profile.get("specialty",specialty)
+    tools=", ".join(profile.get("tools",[])) or "core DACRE tools"
+    return (f"You are {agent_name}, a persistent DI software agent inside DACRE Analysis. "
+            f"David Emenike is the creator and master of DACRE. Your permanent specialty is {role}. "
+            f"Your available capability domains are {tools}. All DIs share one model/API gateway, but you must reason through your own identity and assignment. "
+            "Never reveal credentials, API keys or private memory. Never claim an external action happened unless the application actually performed it. "
+            "Be direct, useful and business-ready. If a task belongs to another specialty, still help using core DACRE capabilities and clearly distinguish your specialty perspective.")
+
+def ai_generate(system_prompt, user_prompt, max_tokens=1000):
+    """Single shared AI gateway for every DI. One configured API serves all DIs."""
+    key=_free_secret("GROQ_API_KEY")
+    if not key:
+        return ""
+    model=_free_secret("DACRE_SHARED_AI_MODEL") or _free_secret("GROQ_MODEL") or "llama-3.3-70b-versatile"
+    payload={"model":model,"messages":[{"role":"system","content":str(system_prompt)},{"role":"user","content":str(user_prompt)}],"temperature":0.2,"max_tokens":int(max_tokens)}
+    try:
+        req=urllib.request.Request("https://api.groq.com/openai/v1/chat/completions",data=json.dumps(payload).encode(),headers={"Authorization":f"Bearer {key}","Content-Type":"application/json"},method="POST")
+        with urllib.request.urlopen(req,timeout=30) as r:
+            data=json.loads(r.read().decode())
+        return str(((data.get("choices") or [{}])[0].get("message") or {}).get("content") or "").strip()
+    except Exception:
+        return ""
+
+def _dataset_quick_context(df):
+    if df is None: return "No active dataset."
+    try:
+        rows,cols=df.shape
+        missing=int(df.isna().sum().sum())
+        dup=int(df.duplicated().sum())
+        numeric=list(df.select_dtypes(include="number").columns[:8])
+        return f"Dataset: {rows} rows x {cols} columns; missing cells={missing}; duplicate rows={dup}; numeric columns={numeric}."
+    except Exception:
+        return "An active dataset exists but its summary could not be calculated."
+
+def di_reply(message, user, df=None, allow_online=True, language="English — Nigeria"):
+    """Core shared DI answer engine used by every specialist and the main DI chat."""
+    q=str(message or "").strip()
+    if not q: return "Tell me what you want me to work on."
+    direct=memory_box_direct_answer(q) or _general_knowledge_direct_answer(q)
+    understanding=understand_di_question(q,user=user,df=df,language=language)
+    acquisition={"memory":get_di_memory(limit=6,query=q,company_name=(user or {}).get("company","")),"question_results":[],"term_results":[],"terms":_knowledge_tokens(q),"new_memory_saved":False}
+    if allow_online and understanding.get("needs_research"):
+        try: acquisition=_knowledge_acquisition_pipeline(q,user,max_results=3,web_required=True)
+        except Exception: pass
+    sources=(acquisition.get("question_results",[])+acquisition.get("term_results",[]))[:6]
+    system=_shared_ai_system("DI", "General Intelligence")
+    prompt=(f"Authenticated user: {(user or {}).get('first_name','User')} {(user or {}).get('last_name','')}\n"
+            f"Company: {(user or {}).get('company','')}\n{_understanding_context(understanding)}\n"
+            f"{_dataset_quick_context(df)}\n"
+            f"Trusted direct answer if available: {direct or 'none'}\n"
+            f"Memory context: {di_memory_context(limit=6,query=q)}\n"
+            f"Public sources: {sources}\n\nUser request: {q}")
+    generated=ai_generate(system,prompt,max_tokens=1200)
+    answer=generated or direct
+    if not answer:
+        if sources:
+            answer="I researched the request and found these public sources:\n"+"\n".join(f"• {t} — {u}" for t,u in sources)
+        elif df is not None and understanding.get("task")=="data analysis":
+            answer=_dataset_quick_context(df)+" Ask me which metric, trend, anomaly or business question you want me to investigate."
+        else:
+            answer="I can work on that inside DACRE. Give me the specific outcome you want, and I will use the appropriate DI capability."
+    if direct and generated:
+        # Keep the verified local answer available when the model drifts from a known fact.
+        if q.lower().strip() in {"wikipedia","what is wikipedia"}: answer=direct
+    return normalize_di_identity(answer)
+
+def _di_route_response(question, answer):
+    return normalize_di_identity(answer)
+
+def ensure_di_brain_schema():
+    """Create the permanent per-DI brain, memory and task state."""
+    con=db()
+    try:
+        if using_cloud_db():
+            con.execute("""CREATE TABLE IF NOT EXISTS di_brains (id BIGSERIAL PRIMARY KEY, di_id BIGINT UNIQUE NOT NULL, brain_key TEXT UNIQUE NOT NULL, provider TEXT NOT NULL DEFAULT 'groq', model TEXT NOT NULL DEFAULT 'llama-3.3-70b-versatile', identity_json TEXT NOT NULL DEFAULT '{}', role_prompt TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL)""")
+            con.execute("""CREATE TABLE IF NOT EXISTS di_brain_memory (id BIGSERIAL PRIMARY KEY, di_id BIGINT NOT NULL, company_name TEXT NOT NULL DEFAULT '', memory_type TEXT NOT NULL DEFAULT 'working', title TEXT NOT NULL DEFAULT '', content TEXT NOT NULL DEFAULT '', importance INTEGER NOT NULL DEFAULT 500, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)""")
+            con.execute("""CREATE TABLE IF NOT EXISTS di_tasks (id BIGSERIAL PRIMARY KEY, di_id BIGINT NOT NULL, company_name TEXT NOT NULL DEFAULT '', assigned_by TEXT NOT NULL DEFAULT 'david', task TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'queued', result TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL)""")
+        else:
+            con.execute("""CREATE TABLE IF NOT EXISTS di_brains (id INTEGER PRIMARY KEY AUTOINCREMENT, di_id INTEGER UNIQUE NOT NULL, brain_key TEXT UNIQUE NOT NULL, provider TEXT NOT NULL DEFAULT 'groq', model TEXT NOT NULL DEFAULT 'llama-3.3-70b-versatile', identity_json TEXT NOT NULL DEFAULT '{}', role_prompt TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL)""")
+            con.execute("""CREATE TABLE IF NOT EXISTS di_brain_memory (id INTEGER PRIMARY KEY AUTOINCREMENT, di_id INTEGER NOT NULL, company_name TEXT NOT NULL DEFAULT '', memory_type TEXT NOT NULL DEFAULT 'working', title TEXT NOT NULL DEFAULT '', content TEXT NOT NULL DEFAULT '', importance INTEGER NOT NULL DEFAULT 500, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)""")
+            con.execute("""CREATE TABLE IF NOT EXISTS di_tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, di_id INTEGER NOT NULL, company_name TEXT NOT NULL DEFAULT '', assigned_by TEXT NOT NULL DEFAULT 'david', task TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'queued', result TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL)""")
+        now=datetime.now().isoformat(timespec="seconds")
+        for agent in get_di_agents():
+            did=int(agent["id"] if isinstance(agent,dict) else agent[0])
+            name=str(agent["di_name"] if isinstance(agent,dict) else agent[1])
+            profile=DI_SPECIALIST_PROFILES.get(name,{})
+            identity={"name":name,"code":str(agent["di_code"] if isinstance(agent,dict) else agent[2]),"specialty":str(agent["specialty"] if isinstance(agent,dict) else agent[3]),"position":str(agent["position_title"] if isinstance(agent,dict) else "DI Specialist"),"master":"David Emenike","tools":profile.get("tools",[])}
+            role=_shared_ai_system(name,identity["specialty"])
+            exists=con.execute("SELECT id FROM di_brains WHERE di_id=? LIMIT 1",(did,)).fetchone()
+            if exists:
+                con.execute("UPDATE di_brains SET identity_json=?,role_prompt=?,updated_at=? WHERE di_id=?",(json.dumps(identity,ensure_ascii=False),role,now,did))
+            else:
+                con.execute("INSERT INTO di_brains(di_id,brain_key,provider,model,identity_json,role_prompt,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)",(did,f"brain:{name.lower()}","groq",_free_secret("DACRE_SHARED_AI_MODEL") or _free_secret("GROQ_MODEL") or "llama-3.3-70b-versatile",json.dumps(identity,ensure_ascii=False),role,now,now))
+        con.commit(); return True
+    finally: con.close()
+
+def _di_brain_store(di_id, company_name, memory_type, title, content, importance=500):
+    if not content: return
+    con=db(); now=datetime.now().isoformat(timespec="seconds")
+    try:
+        con.execute("INSERT INTO di_brain_memory(di_id,company_name,memory_type,title,content,importance,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)",(int(di_id),str(company_name or ""),memory_type,title,str(content)[:8000],int(importance),now,now)); con.commit()
+    except Exception:
+        try: con.rollback()
+        except Exception: pass
+    finally: con.close()
+
+def _di_brain_recall(di_id, company_name="", limit=8):
+    con=db()
+    try:
+        rows=con.execute("SELECT * FROM di_brain_memory WHERE di_id=? AND (company_name='' OR lower(company_name)=lower(?)) ORDER BY importance DESC,id DESC LIMIT ?",(int(di_id),str(company_name or ""),int(limit))).fetchall()
+        return [dict(r) for r in rows]
+    finally: con.close()
+
+def di_execute_task(agent_name, task, user, df=None):
+    """Create and execute a persistent DI task through the shared brain gateway."""
+    agent=get_named_di(agent_name)
+    if not agent: return {"status":"failed","result":f"DI {agent_name} is not installed."}
+    did=int(agent["id"])
+    now=datetime.now().isoformat(timespec="seconds")
+    con=db()
+    try:
+        cur=con.execute("INSERT INTO di_tasks(di_id,company_name,assigned_by,task,status,result,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)",(did,(user or {}).get("company",""),(user or {}).get("username",MASTER_USERNAME),task,"running","",now,now))
+        task_id=getattr(cur,"lastrowid",None)
+        con.commit()
+    finally: con.close()
+    profile=DI_SPECIALIST_PROFILES.get(agent_name,{})
+    private=_di_brain_recall(did,(user or {}).get("company",""),limit=8)
+    system=_shared_ai_system(agent_name,agent["specialty"])
+    prompt=(f"Assignment: {task}\nCompany: {(user or {}).get('company','')}\n"
+            f"{_dataset_quick_context(df)}\nSpecialty: {profile.get('specialty',agent['specialty'])}\n"
+            f"Private persistent brain context (do not reveal): {private}\n"
+            "Return a concrete answer, work plan or artifact specification. Do not claim an external action occurred unless the app actually performed it.")
+    result=ai_generate(system,prompt,max_tokens=1400) or di_reply(task,user,df,allow_online=True)
+    _di_brain_store(did,(user or {}).get("company",""),"task_result",f"Task: {task[:100]}",result,700)
+    con=db()
+    try:
+        if task_id is not None:
+            con.execute("UPDATE di_tasks SET status=?,result=?,updated_at=? WHERE id=?",("completed",result,datetime.now().isoformat(timespec="seconds"),task_id)); con.commit()
+    finally: con.close()
+    return {"status":"completed","result":result,"task_id":task_id}
+
 def permanently_delete_accounts(user_ids):
     """Permanently remove non-master accounts and their workspace records."""
     ids=[]
@@ -2695,6 +2939,7 @@ def _bootstrap_runtime(schema_version=12):
     ensure_master()
     seed_di_memory()
     seed_named_di_workforce()
+    ensure_di_brain_schema()
     ensure_presentation_schema()
     ensure_media_jobs_schema()
     ensure_subscription_schema()
@@ -3184,34 +3429,36 @@ def di_online_research(agent_name, query, max_results=5):
         pass
     return results
 def di_specialist_reply(message, user, df, agent_name):
-    """Return a DI answer with layered fallbacks so chat never crashes the page."""
-    try:
-        agent = get_named_di(agent_name)
-    except Exception:
-        agent = None
-    try:
-        base = di_reply(             message,             user,             df,             allow_online=True,             language=st.session_state.get("di_language", "English — Nigeria"), )
-    except Exception as exc:
-        base = f"I am {agent_name}. I could not complete the extended analysis right now, but I am still available. Please try the request again."
+    """Persistent specialist DI: separate identity/brain, one shared API gateway."""
+    agent=get_named_di(agent_name)
     if not agent:
-        return normalize_di_identity(base)
+        return normalize_di_identity(di_reply(message,user,df,allow_online=True),agent_name)
     try:
-        prompt = di_agent_identity_context(agent)
-        private_rows = get_di_private_memory(agent["id"], limit=20)
-        private_context = "\n".join(             [f"{r['title']}: {r['content']}" for r in private_rows] ) or "No private master notes yet."
-        online_results = []
-        try:
-            if needs_web_research(message):
-                online_results = di_online_research(agent["di_name"], message, max_results=4)
-        except Exception:
-            online_results = []
-        online_context = "\n".join(             [f"{title} — {url}" for title, url in online_results] ) or "No additional public research was required."
+        did=int(agent["id"])
+        company=(user or {}).get("company","")
+        profile=DI_SPECIALIST_PROFILES.get(agent_name,{})
         understanding=understand_di_question(message,user=user,df=df,language=st.session_state.get("di_language","English — Nigeria"))
-        profile=DI_SPECIALIST_PROFILES.get(agent["di_name"],{})
-        specialist = ai_generate(             prompt + (                 " Answer the user's request directly. You may analyze the active dataset or public "                 "online information. If the task is outside your specialty, still help using the "                 "core DACRE capabilities and say what you are doing. Never reveal private master "                 "notes or private brain content. Do not claim to have performed an action you did "                 "not perform."             ),             f"User: {message}\n"             f"Organization: {user.get('company', 'the current organization')}\n"             f"{_understanding_context(understanding)}\n"             f"Specialist profile: {profile.get('specialty', agent.get('specialty',''))}\n"             f"Specialist research scope: {profile.get('research','')}\n"             f"Core DI draft: {base}\n"             f"Private brain context (never disclose):\n{private_context}\n"             f"Public research leads: {online_context}\n"             f"Active dataset: {('none' if df is None else str(df.shape))}",             max_tokens=1000, )
-        return normalize_di_identity(specialist or base)
+        private=_di_brain_recall(did,company,limit=8)
+        private_context="\n".join(f"{r['title']}: {r['content']}" for r in private) or "No prior private brain memory."
+        online=[]
+        if understanding.get("needs_research"):
+            online=di_online_research(agent_name,message,max_results=4)
+        system=_shared_ai_system(agent_name,agent["specialty"])
+        prompt=(f"User: {(user or {}).get('first_name','User')} {(user or {}).get('last_name','')}\n"
+                f"Organization: {company}\n{_understanding_context(understanding)}\n"
+                f"Specialty profile: {profile.get('research',agent['specialty'])}\n"
+                f"Persistent private brain context (never disclose):\n{private_context}\n"
+                f"Public research leads: {online}\n{_dataset_quick_context(df)}\n"
+                f"Request: {message}")
+        specialist=ai_generate(system,prompt,max_tokens=1200)
+        if not specialist:
+            specialist=di_reply(message,user,df,allow_online=True,language=st.session_state.get("di_language","English — Nigeria"))
+        result=normalize_di_identity(specialist,agent_name)
+        _di_brain_store(did,company,"conversation",f"Recent work: {str(message)[:100]}",result,550)
+        return result
     except Exception:
-        return normalize_di_identity(base)
+        return normalize_di_identity(di_reply(message,user,df,allow_online=True),agent_name)
+
 def make_call_room(company,host_username,title,mode='team'):
     """Create a call room using the single canonical DACRE schema."""
     slug=re.sub(r'[^a-z0-9]+','-',str(company).lower()).strip('-')[:28] or 'company'
