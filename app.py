@@ -1430,6 +1430,45 @@ def di_reply(message, user, df=None, allow_online=True, language="English — Ni
 def _di_route_response(question, answer):
     return normalize_di_identity(answer)
 
+def load_chat_history(user, limit=40):
+    """Load the authenticated user's recent DI conversation safely.
+
+    The current UI stores messages in chat_history as sender/message columns,
+    while the browser session expects sender/text dictionaries.  Keep this
+    adapter in one place so old databases and both local/cloud DB backends
+    continue to work.
+    """
+    if not user:
+        return []
+    username = str(user.get("username", "") or "").strip()
+    company = str(user.get("company", user.get("company_name", "")) or "").strip()
+    if not username:
+        return []
+    try:
+        con = db()
+        try:
+            rows = con.execute(
+                "SELECT sender, message, created_at FROM chat_history "
+                "WHERE username=? AND company_name=? ORDER BY id DESC LIMIT ?",
+                (username, company, max(1, int(limit))),
+            ).fetchall()
+            rows = list(reversed(rows))
+            return [
+                {
+                    "sender": str(r["sender"] if isinstance(r, dict) or hasattr(r, "keys") else r[0]),
+                    "text": str(r["message"] if isinstance(r, dict) or hasattr(r, "keys") else r[1]),
+                    "created_at": str(r["created_at"] if isinstance(r, dict) or hasattr(r, "keys") else r[2]),
+                }
+                for r in rows
+            ]
+        finally:
+            con.close()
+    except Exception:
+        # A missing/legacy chat table must never prevent the whole application
+        # from loading. The schema bootstrap normally creates this table first.
+        return []
+
+
 def ensure_di_brain_schema():
     """Create the permanent per-DI brain, memory and task state."""
     con=db()
