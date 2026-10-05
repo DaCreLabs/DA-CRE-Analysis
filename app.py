@@ -23,6 +23,39 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
 import pandas as pd
+
+# Google Drive/Sheets is loaded lazily. The integration is built directly into DACRE,
+# but its Google libraries are imported only when the user opens the Google export flow.
+# This keeps normal DACRE startup lighter.
+GoogleCredentials = None
+GoogleOAuthFlow = None
+google_build = None
+google_google_request = None
+GOOGLE_SHEETS_AVAILABLE = None
+
+def _load_google_packages():
+    """Lazy-load Google OAuth/Drive/Sheets packages only when they are needed."""
+    global GoogleCredentials, GoogleOAuthFlow, google_build, google_google_request, GOOGLE_SHEETS_AVAILABLE
+    if GOOGLE_SHEETS_AVAILABLE is not None:
+        return bool(GOOGLE_SHEETS_AVAILABLE)
+    try:
+        from google.oauth2.credentials import Credentials as _Credentials
+        from google_auth_oauthlib.flow import Flow as _Flow
+        from googleapiclient.discovery import build as _build
+        from google.auth.transport.requests import Request as _GoogleRequest
+        GoogleCredentials = _Credentials
+        GoogleOAuthFlow = _Flow
+        google_build = _build
+        google_google_request = _GoogleRequest
+        GOOGLE_SHEETS_AVAILABLE = True
+    except Exception:
+        GoogleCredentials = None
+        GoogleOAuthFlow = None
+        google_build = None
+        google_google_request = None
+        GOOGLE_SHEETS_AVAILABLE = False
+    return bool(GOOGLE_SHEETS_AVAILABLE)
+
 import streamlit as st
 import streamlit.components.v1 as components
 from PIL import Image
@@ -6468,6 +6501,12 @@ st.markdown("""
 """,unsafe_allow_html=True)
 st.markdown(r"""
 <style>
+/* ===== DACRE CUSTOM CHAT SURFACE =====
+   DACRE does not use Streamlit's fixed white bottom chat dock. */
+[data-testid="stChatInput"],
+[data-testid="stBottomBlockContainer"] { display:none !important; }
+.dacre-chat-shell{margin-top:24px;padding:16px 18px;border:1px solid rgba(96,178,255,.24);border-radius:18px;background:linear-gradient(145deg,#0b2038,#0a1729);box-shadow:0 16px 38px rgba(0,0,0,.18)}
+.dacre-chat-title{font-size:14px;font-weight:900;color:#f2f7ff}.dacre-chat-sub{font-size:11px;color:#8fa8c2;margin-top:3px;margin-bottom:10px}
 /* ===== DACRE STRICT GOLD CONTROL VISIBILITY ===== */
 :root{--dacre-strict-gold:#e2b84f;--dacre-strict-gold-2:#f5d77a;--dacre-placeholder:#8f9baa;--dacre-control:#10243b;--dacre-control-2:#173453}
 /* Text fields / text areas / number & date inputs */
@@ -6796,6 +6835,223 @@ def render_chibobec_client_overview(con):
             view["due-date reminder"]=view["due_sent"].map({0:"Pending",1:"Sent"})
             view=view.drop(columns=["reminder_2_sent","due_sent"])
             st.dataframe(safe_dataframe_for_streamlit(view),use_container_width=True,hide_index=True)
+# =============================================================================
+# GOOGLE DRIVE + GOOGLE SHEETS EXPORT
+# =============================================================================
+GOOGLE_DRIVE_SCOPES = [
+    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/spreadsheets",
+]
+
+def _google_oauth_config():
+    """Read Google OAuth web-client configuration from DACRE's server-side secrets.
+
+    Both a flat Streamlit secret and the original Google downloaded JSON format
+    are accepted, so users do not have to edit Google's JSON structure by hand.
+    """
+    if not _load_google_packages():
+        return None
+    cfg = None
+    try:
+        raw_cfg = st.secrets.get("GOOGLE_OAUTH_CLIENT", None)
+        if raw_cfg:
+            cfg = raw_cfg.to_dict() if hasattr(raw_cfg, "to_dict") else dict(raw_cfg)
+    except Exception:
+        cfg = None
+    if cfg is None:
+        try:
+            raw = st.secrets.get("GOOGLE_OAUTH_CLIENT_JSON", "")
+            if raw:
+                cfg = json.loads(str(raw))
+        except Exception:
+            cfg = None
+    if not isinstance(cfg, dict):
+        return None
+    # Google Cloud downloads normally contain {"web": {...}}. Accept that
+    # structure as-is, while also accepting DACRE's flat {client_id: ...} form.
+    web_cfg = cfg.get("web") or cfg.get("installed")
+    if isinstance(web_cfg, dict):
+        cfg = web_cfg
+    required = ("client_id", "client_secret", "auth_uri", "token_uri")
+    return cfg if all(str(cfg.get(k, "")).strip() for k in required) else None
+
+def _google_redirect_uri():
+    try:
+        uri = str(st.secrets.get("GOOGLE_REDIRECT_URI", "")).strip()
+        if uri:
+            return uri
+    except Exception:
+        pass
+    try:
+        return str(st.context.url).split("?", 1)[0]
+    except Exception:
+        return ""
+
+def _google_credentials_from_session():
+    if not _load_google_packages():
+        return None
+    data = st.session_state.get("google_drive_token")
+    if not data:
+        return None
+    try:
+        creds = GoogleCredentials.from_authorized_user_info(data, GOOGLE_DRIVE_SCOPES)
+        # Refresh an expired access token using the OAuth refresh token instead of
+        # forcing the user through Google's consent screen again.
+        if not creds.valid and creds.expired and creds.refresh_token and google_google_request is not None:
+            creds.refresh(google_google_request())
+            st.session_state["google_drive_token"] = json.loads(creds.to_json())
+        return creds if creds.valid else None
+    except Exception:
+        return None
+
+def _google_drive_service():
+    creds = _google_credentials_from_session()
+    if not creds or not creds.valid:
+        return None
+    return google_build("drive", "v3", credentials=creds, cache_discovery=False)
+
+def _google_sheets_service():
+    creds = _google_credentials_from_session()
+    if not creds or not creds.valid:
+        return None
+    return google_build("sheets", "v4", credentials=creds, cache_discovery=False)
+
+def _google_authorization_url():
+    cfg = _google_oauth_config()
+    redirect_uri = _google_redirect_uri()
+    if not cfg or not redirect_uri or not _load_google_packages():
+        return None
+    try:
+        flow = GoogleOAuthFlow.from_client_config({"web": cfg}, scopes=GOOGLE_DRIVE_SCOPES, redirect_uri=redirect_uri)
+        url, state = flow.authorization_url(access_type="offline", include_granted_scopes="true", prompt="consent")
+        st.session_state["google_oauth_state"] = state
+        return url
+    except Exception:
+        return None
+
+def _google_finish_oauth():
+    """Consume Google's OAuth callback inside DACRE and store the session token."""
+    cfg = _google_oauth_config()
+    if not cfg:
+        return False
+    try:
+        params = st.query_params
+        code = params.get("code")
+        state = params.get("state")
+        error = params.get("error")
+        expected = st.session_state.get("google_oauth_state")
+        if error:
+            st.session_state["google_oauth_error"] = str(error)
+            return False
+        # Always validate the OAuth state generated by DACRE.
+        if not code or not expected or state != expected:
+            return False
+        flow = GoogleOAuthFlow.from_client_config({"web": cfg}, scopes=GOOGLE_DRIVE_SCOPES, redirect_uri=_google_redirect_uri())
+        flow.fetch_token(code=code)
+        creds = flow.credentials
+        st.session_state["google_drive_token"] = json.loads(creds.to_json())
+        st.session_state["google_oauth_state"] = None
+        st.session_state["google_oauth_error"] = None
+        try:
+            st.query_params.clear()
+        except Exception:
+            pass
+        return True
+    except Exception as exc:
+        st.session_state["google_oauth_error"] = str(exc)
+        return False
+
+def _google_connected():
+    return _google_credentials_from_session() is not None
+
+def _google_get_or_create_folder(drive, folder_name):
+    safe_name = str(folder_name or "DACRE Exports").strip() or "DACRE Exports"
+    # Drive API query values need quoted/escaped strings. JSON quoting gives
+    # Drive a correctly escaped string literal.
+    query = f"name = {json.dumps(safe_name)} and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
+    result = drive.files().list(q=query, spaces="drive", fields="files(id,name,webViewLink)", pageSize=10).execute()
+    files = result.get("files", [])
+    if files:
+        return files[0]
+    created = drive.files().create(
+        body={"name": safe_name, "mimeType": "application/vnd.google-apps.folder"},
+        fields="id,name,webViewLink"
+    ).execute()
+    return created
+
+def _google_create_sheet_in_folder(df, folder_name, sheet_name):
+    """Create a real Google Sheet inside a Drive folder and populate it."""
+    drive = _google_drive_service()
+    sheets = _google_sheets_service()
+    if not drive or not sheets:
+        return None, "Google Drive is not connected yet."
+    folder = _google_get_or_create_folder(drive, folder_name)
+    spreadsheet = sheets.spreadsheets().create(
+        body={"properties": {"title": sheet_name}}, fields="spreadsheetId,spreadsheetUrl,properties(title)"
+    ).execute()
+    spreadsheet_id = spreadsheet["spreadsheetId"]
+    drive.files().update(
+        fileId=spreadsheet_id,
+        addParents=folder["id"],
+        fields="id,parents,webViewLink"
+    ).execute()
+    values = [list(map(lambda x: "" if pd.isna(x) else str(x), df.columns.tolist()))]
+    for row in df.itertuples(index=False, name=None):
+        values.append(["" if pd.isna(v) else str(v) for v in row])
+    sheets.spreadsheets().values().update(
+        spreadsheetId=spreadsheet_id,
+        range="Sheet1!A1",
+        valueInputOption="USER_ENTERED",
+        body={"values": values}
+    ).execute()
+    return {
+        "folder_id": folder["id"],
+        "folder_name": folder["name"],
+        "folder_url": folder.get("webViewLink") or f"https://drive.google.com/drive/folders/{folder['id']}",
+        "sheet_id": spreadsheet_id,
+        "sheet_url": spreadsheet.get("spreadsheetUrl") or f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit",
+    }, None
+
+def _google_open_url_script(url):
+    safe = json.dumps(str(url))
+    components.html(f"<script>window.open({safe}, '_blank');</script>", height=0)
+
+
+def render_google_sheets_export(df, base, user):
+    st.markdown("### Google Sheets")
+    if not _load_google_packages():
+        st.info("Google Sheets is not available in this deployment yet. Add the Google integration packages from requirements.txt and redeploy DACRE.")
+        return
+    if not _google_connected():
+        auth_url = _google_authorization_url()
+        if auth_url:
+            st.link_button("Connect Google Drive & Sheets", auth_url, use_container_width=True)
+            st.caption("After Google authorization, return here and choose Save to Google Sheets.")
+        else:
+            st.warning("Google Drive connection is not configured yet. Add the Google OAuth web-client settings to DACRE, then reconnect.")
+        return
+    folder_name = f"DACRE — {user.get('company','Organization')} — Exports"
+    sheet_name = f"{base}_processed"
+    if st.button("Save to Google Sheets & Open Folder", type="primary", use_container_width=True, key="save_to_google_sheets"):
+        with st.spinner("Creating the Google Drive folder and Google Sheet…"):
+            result, error = _google_create_sheet_in_folder(df, folder_name, sheet_name)
+        if error:
+            st.error(error)
+        else:
+            st.session_state["last_google_export"] = result
+            st.success(f"Saved '{sheet_name}' inside '{folder_name}'.")
+            st.link_button("Open Google Sheet", result["sheet_url"], use_container_width=True)
+            st.link_button("Open Google Drive Folder", result["folder_url"], use_container_width=True)
+            _google_open_url_script(result["folder_url"])
+            log_activity(user["username"], user["company"], f"Created Google Sheet export: {sheet_name}")
+
+
+# Finish Google OAuth callback early so the connected state is ready for this run.
+try:
+    _google_finish_oauth()
+except Exception:
+    pass
+
 if selected_page=="Company Dashboard":
     render_company_dashboard(user)
 elif selected_page=="DI Workforce":
@@ -7178,6 +7434,7 @@ elif selected_page=="Export Center":
             with e2: st.download_button("Download Excel Workbook",data=excel_data,file_name=f"{base}_processed.xlsx",mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",use_container_width=True)
             with e3: st.download_button("Google Sheets Compatible TSV",data=tsv_data,file_name=f"{base}_google_sheets.tsv",mime="text/tab-separated-values",use_container_width=True)
             st.caption("CSV and TSV outputs can be opened/imported directly in Google Sheets.")
+            render_google_sheets_export(df, base, user)
             log_activity(user["username"],user["company"],"Opened Export Center")
 st.markdown("---")
 st.caption("Attach a picture or any other file directly in the chat bar. DI keeps the attachment and uses the strongest available parser or vision provider.")
@@ -7189,9 +7446,17 @@ for msg in st.session_state.chat_history[-10:]:
         st.write(_plain_di_text(msg.get("text","")))
         if msg.get("attachment_name") and msg.get("attachment_bytes") and str(msg.get("attachment_mime","")).startswith("image/"):
             st.image(msg["attachment_bytes"],caption=msg["attachment_name"],use_container_width=True)
-chat_value=st.chat_input("Ask DI anything — attach a picture, spreadsheet, document or any other file",accept_file=True,file_type=None,max_upload_size=200,key="dacre_main_chat_input")
-if chat_value:
-    q=str(getattr(chat_value,"text","") or "").strip(); files=list(getattr(chat_value,"files",[]) or []); attachment_context=[]; attachment_for_history=None
+st.markdown("""<div class='dacre-chat-shell'><div class='dacre-chat-title'>DI Workspace Assistant</div><div class='dacre-chat-sub'>Ask DI a question or attach a file. This chat stays inside the DACRE workspace instead of using Streamlit's fixed bottom bar.</div></div>""",unsafe_allow_html=True)
+with st.form("dacre_main_chat_form", clear_on_submit=True):
+    chat_col, file_col, send_col = st.columns([5.2, 2.2, 1.2])
+    with chat_col:
+        chat_text = st.text_input("Ask DI", placeholder="Ask DI anything about your data, business or current question…", label_visibility="collapsed", key="dacre_main_chat_text")
+    with file_col:
+        chat_files = st.file_uploader("Attach", label_visibility="collapsed", accept_multiple_files=True, type=None, key="dacre_main_chat_files")
+    with send_col:
+        chat_send = st.form_submit_button("Send", type="primary", use_container_width=True)
+if chat_send:
+    q=str(chat_text or "").strip(); files=list(chat_files or []); attachment_context=[]; attachment_for_history=None
     for uploaded in files[:5]:
         raw=uploaded.getvalue(); mime=_file_mime(uploaded); kind=_file_kind(uploaded.name,mime); st.session_state.chat_attachment_meta.append({"name":uploaded.name,"mime":mime,"kind":kind,"size":len(raw)}); attachment_context.append(f"Attachment: {uploaded.name} ({mime}, {len(raw):,} bytes, kind={kind})"); attachment_for_history={"attachment_name":uploaded.name,"attachment_bytes":raw if len(raw)<=8*1024*1024 else None,"attachment_mime":mime}
         if kind=="image":
@@ -7211,6 +7476,7 @@ if chat_value:
             reply=_gemini_vision_generate(q,files[0].getvalue(),_file_mime(files[0]))
         if not reply: reply=di_reply(display_q,user,st.session_state.processed_df,allow_online=True,language=st.session_state.get("di_language","English — Nigeria"))
         reply=_plain_di_text(reply); st.session_state.chat_history.append({"sender":"DI","text":reply}); st.session_state.last_speech=reply; st.rerun()
+
 if st.session_state.last_speech:
     speech = st.session_state.last_speech
     st.session_state.last_speech = None
