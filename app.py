@@ -3637,41 +3637,56 @@ DI_PAGE_ALIASES = {
     "exports": "Export Center",
 }
 def _di_requested_page(question):
-    """Return a DACRE page only when the question is an access/navigation request."""
+    """Understand whether DI is being asked to navigate the user to a DACRE page."""
     q = re.sub(r"[^a-z0-9& ]+", " ", str(question or "").lower())
     q = re.sub(r"\s+", " ", q).strip()
     q = q.replace("file fault", "file vault").replace("files fault", "file vault")
     navigation_words = (
         "where can i", "where do i", "where is", "where are", "how do i",
         "how can i", "take me to", "go to", "open", "find", "add", "upload",
-        "save", "store", "access", "use", "get to", "navigate to"
+        "save", "store", "access", "use", "get to", "navigate to", "move me",
+        "show me where", "bring me to"
     )
     if not any(word in q for word in navigation_words):
         return None
+
+    # Human-friendly intent shortcuts. In particular, a picture/photo upload request
+    # belongs in File Vault, where the organization keeps original files.
+    if any(word in q for word in ("picture", "pic", "photo", "image")) and any(word in q for word in ("upload", "add", "put", "store", "save")):
+        return "File Vault"
+    if any(word in q for word in ("dataset", "spreadsheet", "csv", "excel")) and any(word in q for word in ("upload", "import", "bring", "add")):
+        return "Workspace & Data"
+
     for alias in sorted(DI_PAGE_ALIASES, key=len, reverse=True):
         if alias in q:
             return DI_PAGE_ALIASES[alias]
     return None
+
 def _di_route_response(question, answer):
-    """Prepare a user-facing answer and schedule a real in-app page navigation."""
+    """Ask for explicit user permission before DI changes the visible DACRE page."""
     target = _di_requested_page(question)
     if not target:
         return answer
-    st.session_state["dacre_di_requested_page"] = target
-    _set_di_guided_navigation(target, question)
-    guidance = {
-        "File Vault": "I've moved you to File Vault. To add a file, use the file upload control on that page, choose the file from your device, and save it to the organization vault. Your files stay organized there for later use.",
-        "Workspace & Data": "I've moved you to Workspace & Data. Use the upload/import controls there to bring your dataset into the workspace, then use the available cleaning and data tools.",
-        "Formula Lab": "I've moved you to Formula Lab. Select the operation you need, choose the target column when required, then run the formula on the active dataset.",
-        "Charts": "I've moved you to Charts. Choose the chart type and the relevant category/value columns, then generate the visualization.",
-        "Export Center": "I've moved you to Export Center. Choose the output format you need and use the download control to export your processed work.",
-        "DI Workforce": "I've moved you to DI Workforce. Choose the DI specialist you want to work with and review the available specialist information.",
-        "DI Academy": "I've moved you to DI Academy. Train the DIs, open their learning resources, run competency exams and review certification status.",
-        "Data Presentation Board": "I've moved you to the Data Presentation Board. Set the presentation details and give Prociel the instructions for the presentation you want.",
-        "Company Dashboard": "I've moved you to your Company Dashboard. This is the main workspace overview and starting point for your DACRE tools.",
+
+    # DI must never move the screen silently. It prepares a navigation request,
+    # explains the destination, and waits for the user's Grant approval.
+    st.session_state["dacre_di_pending_navigation"] = {
+        "target": target,
+        "question": str(question or ""),
     }
-    if target == "File Vault":
-        return guidance[target]
+    _set_di_guided_navigation(target, question)
+
+    guidance = {
+        "File Vault": "I can take you to File Vault, where you can upload and store your picture or other files. Grant permission and I will move your screen there.",
+        "Workspace & Data": "I can take you to Workspace & Data, where you can upload or import datasets. Grant permission and I will move your screen there.",
+        "Formula Lab": "I can take you to Formula Lab for calculations and spreadsheet formulas. Grant permission and I will move your screen there.",
+        "Charts": "I can take you to Charts to build and review visualizations. Grant permission and I will move your screen there.",
+        "Export Center": "I can take you to Export Center to save or export your work. Grant permission and I will move your screen there.",
+        "DI Workforce": "I can take you to DI Workforce to choose and work with a specialist DI. Grant permission and I will move your screen there.",
+        "DI Academy": "I can take you to DI Academy to train and review the DI workforce. Grant permission and I will move your screen there.",
+        "Data Presentation Board": "I can take you to the Data Presentation Board to prepare your presentation. Grant permission and I will move your screen there.",
+        "Company Dashboard": "I can take you to your Company Dashboard. Grant permission and I will move your screen there.",
+    }
     return guidance.get(target, answer)
 
 def _set_di_guided_navigation(target, question=""):
@@ -6538,7 +6553,9 @@ div[data-testid="stBottomBlockContainer"],
   margin:0 !important;
 }
 
-.dacre-chat-shell{margin-top:24px;padding:16px 18px;border:1px solid rgba(96,178,255,.24);border-radius:18px;background:linear-gradient(145deg,#0b2038,#0a1729);box-shadow:0 16px 38px rgba(0,0,0,.18)}
+.dacre-chat-shell{position:static!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;z-index:auto!important;margin-top:24px;padding:16px 18px;border:1px solid rgba(96,178,255,.24);border-radius:18px;background:linear-gradient(145deg,#0b2038,#0a1729);box-shadow:0 16px 38px rgba(0,0,0,.18)}
+.dacre-generated-image-card{position:static!important;margin-top:18px;padding:12px 16px;border:1px solid rgba(226,184,79,.35);border-radius:14px;background:#0b2038}
+.dacre-generated-image-title{font-weight:900;color:#f5d77a;font-size:13px}
 .dacre-chat-title{font-size:14px;font-weight:900;color:#f2f7ff}.dacre-chat-sub{font-size:11px;color:#8fa8c2;margin-top:3px;margin-bottom:10px}
 /* ===== DACRE STRICT GOLD CONTROL VISIBILITY ===== */
 :root{--dacre-strict-gold:#e2b84f;--dacre-strict-gold-2:#f5d77a;--dacre-placeholder:#8f9baa;--dacre-control:#10243b;--dacre-control-2:#173453}
@@ -6663,6 +6680,9 @@ div[data-baseweb="select"] > div { background:#111a2d !important; color:#f3f7ff 
 .dacre-nav-image-list { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin:0 0 10px; }
 .dacre-nav-image-item { display:flex; align-items:center; gap:8px; min-width:0; min-height:42px; padding:8px 9px; border:1px solid rgba(123,161,214,.18); border-radius:10px; background:rgba(17,31,53,.72); color:#cbd9ed; font-size:11px; font-weight:700; }
 .dacre-nav-image-item img { width:24px; height:24px; object-fit:contain; flex:0 0 24px; border-radius:6px; }
+
+.di-navigation-permission{margin:16px 0 18px;padding:18px 20px;border:1px solid rgba(216,169,58,.42);border-radius:18px;background:linear-gradient(135deg,rgba(18,35,59,.98),rgba(8,18,32,.98));box-shadow:0 14px 35px rgba(0,0,0,.18)}
+.di-navigation-permission-kicker{font-size:10px;letter-spacing:.14em;font-weight:900;color:#e2c86b}.di-navigation-permission-title{font-size:18px;font-weight:900;color:#f4f8ff;margin-top:5px}.di-navigation-permission-copy{font-size:12px;line-height:1.55;color:#aabbd0;margin-top:7px}.di-navigation-permission-question{margin-top:10px;padding:9px 11px;border-radius:10px;background:rgba(255,255,255,.045);color:#dbe7f5;font-size:11px}
 </style>
 """, unsafe_allow_html=True)
 with st.sidebar:
@@ -6712,6 +6732,33 @@ if user.get("role") != "master":
         selected_page = "Company Dashboard"
 render_page_chrome(selected_page, user)
 render_di_navigation_guide(user)
+
+# DI navigation is permission-based: it can propose a destination, but it cannot
+# change the visible page until the user explicitly grants permission.
+_pending_nav = st.session_state.get("dacre_di_pending_navigation")
+if isinstance(_pending_nav, dict) and _pending_nav.get("target") in navigation:
+    _pending_target = _pending_nav.get("target")
+    _pending_question = _pending_nav.get("question", "")
+    st.markdown(
+        f"""<div class='di-navigation-permission'>
+          <div class='di-navigation-permission-kicker'>DI NAVIGATION REQUEST</div>
+          <div class='di-navigation-permission-title'>Move your screen to {_escape_html(_pending_target)}?</div>
+          <div class='di-navigation-permission-copy'>DI understood your request and is ready to take you to this page. Your screen will not move until you grant permission.</div>
+          <div class='di-navigation-permission-question'>{_escape_html(_pending_question)}</div>
+        </div>""",
+        unsafe_allow_html=True,
+    )
+    _grant_col, _stay_col = st.columns([1, 1])
+    with _grant_col:
+        if st.button(f"Grant — Move to {_pending_target}", type="primary", use_container_width=True, key="di_grant_navigation"):
+            st.session_state["dacre_di_requested_page"] = _pending_target
+            st.session_state.pop("dacre_di_pending_navigation", None)
+            st.rerun()
+    with _stay_col:
+        if st.button("Stay Here", use_container_width=True, key="di_cancel_navigation"):
+            st.session_state.pop("dacre_di_pending_navigation", None)
+            st.rerun()
+
 def di_voice_bridge(language_code="en-NG"):
     """Reliable 8-second browser speech capture with live transcript preview.
     The browser captures speech, shows the words as they are recognized, stops at
@@ -7493,45 +7540,65 @@ html body div[data-testid="stBottomBlockContainer"] {
 </style>
 """,unsafe_allow_html=True)
 st.markdown("---")
-st.caption("Attach a picture or any other file directly in the chat bar. DI keeps the attachment and uses the strongest available parser or vision provider.")
 voice_on=st.toggle("DI speech",value=st.session_state.get("di_response_mode","voice")=="voice",key="di_speech_toggle")
 st.session_state.di_response_mode="voice" if voice_on else "text"
+
+# Main DI conversation is deliberately a normal document-flow element.
+# It never uses Streamlit's fixed bottom chat dock and never asks the user to attach files.
 for msg in st.session_state.chat_history[-10:]:
     role="user" if msg.get("sender") not in {"DI","David · Sovereign Master"} else "assistant"
     with st.chat_message(role):
         st.write(_plain_di_text(msg.get("text","")))
-        if msg.get("attachment_name") and msg.get("attachment_bytes") and str(msg.get("attachment_mime","")).startswith("image/"):
-            st.image(msg["attachment_bytes"],caption=msg["attachment_name"],use_container_width=True)
-st.markdown("""<div class='dacre-chat-shell'><div class='dacre-chat-title'>DI Workspace Assistant</div><div class='dacre-chat-sub'>Ask DI a question or attach a file. This chat stays inside the DACRE workspace instead of using Streamlit's fixed bottom bar.</div></div>""",unsafe_allow_html=True)
+
+st.markdown("""<div class='dacre-chat-shell'>
+<div class='dacre-chat-title'>DI Workspace Assistant</div>
+<div class='dacre-chat-sub'>Ask DI to answer, analyse, research, execute a workspace task, or create a picture. The assistant stays in the page and moves with the screen.</div>
+</div>""",unsafe_allow_html=True)
+
 with st.form("dacre_main_chat_form", clear_on_submit=True):
-    chat_col, file_col, send_col = st.columns([5.2, 2.2, 1.2])
+    chat_col, create_col, send_col = st.columns([6.0, 1.7, 1.2])
     with chat_col:
-        chat_text = st.text_input("Ask DI", placeholder="Ask DI anything about your data, business or current question…", label_visibility="collapsed", key="dacre_main_chat_text")
-    with file_col:
-        chat_files = st.file_uploader("Attach", label_visibility="collapsed", accept_multiple_files=True, type=None, key="dacre_main_chat_files")
+        chat_text = st.text_input("Ask DI", placeholder="Ask DI anything about your data, business, research or a picture you want created…", label_visibility="collapsed", key="dacre_main_chat_text")
+    with create_col:
+        create_picture = st.form_submit_button("Create Picture", use_container_width=True)
     with send_col:
         chat_send = st.form_submit_button("Send", type="primary", use_container_width=True)
-if chat_send:
-    q=str(chat_text or "").strip(); files=list(chat_files or []); attachment_context=[]; attachment_for_history=None
-    for uploaded in files[:5]:
-        raw=uploaded.getvalue(); mime=_file_mime(uploaded); kind=_file_kind(uploaded.name,mime); st.session_state.chat_attachment_meta.append({"name":uploaded.name,"mime":mime,"kind":kind,"size":len(raw)}); attachment_context.append(f"Attachment: {uploaded.name} ({mime}, {len(raw):,} bytes, kind={kind})"); attachment_for_history={"attachment_name":uploaded.name,"attachment_bytes":raw if len(raw)<=8*1024*1024 else None,"attachment_mime":mime}
-        if kind=="image":
-            st.session_state.active_file_bytes=raw; st.session_state.active_file_mime=mime; st.session_state.active_file_kind="image"; st.session_state.active_filename=uploaded.name; q=q or "Please inspect this image and tell me what it contains and what useful work I can do with it."
-        else:
-            try:
-                info=inspect_uploaded_file(uploaded)
-                if info.get("dataframe") is not None:
-                    st.session_state.raw_df=info["dataframe"].copy(); st.session_state.processed_df=clean_dataframe(info["dataframe"]); st.session_state.active_filename=uploaded.name; attachment_context.append("The file was automatically scanned and cleaned into the active workspace dataset.")
-                elif info.get("text_preview"): attachment_context.append("Text preview:\n"+info["text_preview"][:6000])
-            except Exception as exc: attachment_context.append(f"Attachment parsing note: {type(exc).__name__}")
-    if q or files:
-        q=q or "Please work with the attached file using the appropriate DACRE specialist."; display_q=q+(("\n\n"+"\n".join(attachment_context[:4])) if attachment_context else ""); sender_name="David · Sovereign Master" if user.get("role")=="master" else user["first_name"]; user_msg={"sender":sender_name,"text":display_q}
-        if attachment_for_history: user_msg.update(attachment_for_history)
-        st.session_state.chat_history.append(user_msg); reply=None
-        if files and _file_kind(files[0].name,_file_mime(files[0]))=="image" and _free_secret("GEMINI_API_KEY"):
-            reply=_gemini_vision_generate(q,files[0].getvalue(),_file_mime(files[0]))
-        if not reply: reply=di_reply(display_q,user,st.session_state.processed_df,allow_online=True,language=st.session_state.get("di_language","English — Nigeria"))
-        reply=_plain_di_text(reply); st.session_state.chat_history.append({"sender":"DI","text":reply}); st.session_state.last_speech=reply; st.rerun()
+
+if chat_send or create_picture:
+    q=str(chat_text or "").strip()
+    if create_picture and not q:
+        q="Create a professional futuristic DACRE business image."
+    if q:
+        sender_name="David · Sovereign Master" if user.get("role")=="master" else user["first_name"]
+        st.session_state.chat_history.append({"sender":sender_name,"text":q})
+        reply=None
+
+        # DI owns image creation. Users do not upload an image into the chat.
+        image_words=("create image","create a picture","create picture","generate image","generate a picture",
+                     "make an image","make a picture","draw an image","draw a picture","design an image",
+                     "visualize","poster","banner","illustration")
+        wants_picture=create_picture or any(term in q.lower() for term in image_words)
+        if wants_picture:
+            with st.spinner("DI is creating the picture…"):
+                image_bytes,image_error=_generate_image_optional(q)
+            if image_bytes:
+                st.session_state.generated_image_bytes=image_bytes
+                reply="I created the picture. It is ready below and can also be saved from Export Center."
+                st.session_state.last_generated_chat_image=image_bytes
+            else:
+                reply=image_error
+
+        if not reply:
+            reply=di_reply(q,user,st.session_state.processed_df,allow_online=True,language=st.session_state.get("di_language","English — Nigeria"))
+        reply=_plain_di_text(reply)
+        st.session_state.chat_history.append({"sender":"DI","text":reply})
+        st.session_state.last_speech=reply
+        st.rerun()
+
+if st.session_state.get("last_generated_chat_image"):
+    st.markdown("<div class='dacre-generated-image-card'><div class='dacre-generated-image-title'>DI Generated Picture</div></div>",unsafe_allow_html=True)
+    st.image(st.session_state.last_generated_chat_image,use_container_width=True)
+    st.download_button("Save DI Picture",data=st.session_state.last_generated_chat_image,file_name="dacre_di_generated.png",mime="image/png",use_container_width=True,key="save_di_chat_picture")
 
 if st.session_state.last_speech:
     speech = st.session_state.last_speech
