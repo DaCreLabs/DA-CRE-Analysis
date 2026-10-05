@@ -1403,6 +1403,19 @@ def create_monitoring_token(user, viewer=False):
         return None, f"Could not create monitoring access: {type(exc).__name__}."
 
 
+def create_public_monitoring_token():
+    """Create a short-lived publish-only token for an explicitly consenting landing visitor."""
+    if not livekit_configured():
+        return None, "Live monitoring is not configured yet."
+    identity = "dacre-public-" + uuid.uuid4().hex[:12]
+    try:
+        grants = VideoGrants(room_join=True, room=DI_MONITORING_ROOM, can_publish=True, can_subscribe=False, can_publish_data=True, can_publish_sources=["screen_share"], can_update_own_metadata=True)
+        token = (AccessToken().with_identity(identity).with_name("Public DACRE Visitor").with_ttl(timedelta(hours=2)).with_grants(grants))
+        return token.to_jwt(), None
+    except Exception as exc:
+        return None, f"Could not create public monitoring access: {type(exc).__name__}."
+
+
 def render_dacre_screen_station(user):
     """Consent-based screen-share station for a computer running DACRE.
 
@@ -1521,8 +1534,8 @@ def render_dacre_all_views(user):
     """,unsafe_allow_html=True)
     html=f"""
     <div id="dacre-all-views" style="font-family:Inter,system-ui,sans-serif;background:#050b14;color:#eaf4ff;border:1px solid rgba(80,160,255,.18);border-radius:24px;padding:18px;">
-      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;"><div><b style="font-size:15px;">MONITORING MATRIX</b><div id="views-count" style="font-size:11px;color:#8097b5;margin-top:4px;">Waiting for authorized screen sources…</div></div><button id="views-connect" style="border:0;border-radius:11px;padding:10px 15px;background:#176fff;color:#fff;font-weight:850;cursor:pointer;">Connect to All Views</button></div>
-      <div id="views-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:14px;"><div style="min-height:250px;display:flex;align-items:center;justify-content:center;border:1px dashed rgba(130,160,200,.2);border-radius:18px;color:#7890ad;grid-column:1/-1;">Click Connect to receive live screen streams.</div></div>
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;"><div><b style="font-size:15px;">MONITORING MATRIX</b><div id="views-count" style="font-size:11px;color:#8097b5;margin-top:4px;">Waiting for authorized screen sources…</div></div><button id="views-connect" style="border:0;border-radius:11px;padding:10px 15px;background:#176fff;color:#fff;font-weight:850;cursor:pointer;">Reconnect</button></div>
+      <div id="views-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:14px;"><div style="min-height:250px;display:flex;align-items:center;justify-content:center;border:1px dashed rgba(130,160,200,.2);border-radius:18px;color:#7890ad;grid-column:1/-1;">Connecting automatically to authorized live screen sources…</div></div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
     <script>
@@ -1537,7 +1550,7 @@ def render_dacre_all_views(user):
         count.textContent=document.querySelectorAll('#views-grid > div').length+' live source(s) connected';
       }};
       const removeCard=p=>{{const el=document.getElementById('view-'+p.identity.replace(/[^a-zA-Z0-9_-]/g,'-')); if(el)el.remove(); count.textContent=document.querySelectorAll('#views-grid > div').length+' live source(s) connected';}};
-      btn.onclick=async()=>{{
+      const connect=async()=>{{
         try{{
           if(!window.LivekitClient) throw new Error('LiveKit client failed to load.');
           room=new LivekitClient.Room({{adaptiveStream:true,dynacast:true}});
@@ -1546,23 +1559,105 @@ def render_dacre_all_views(user):
           room.on(LivekitClient.RoomEvent.ParticipantDisconnected,p=>removeCard(p));
           await room.connect(wsUrl,token);
           room.remoteParticipants.forEach(p=>p.trackPublications.forEach(pub=>{{ if(pub.isSubscribed && pub.track && pub.source===LivekitClient.Track.Source.ScreenShare) addCard(p,pub.track); }}));
-          btn.textContent='ALL VIEWS CONNECTED'; btn.disabled=true; btn.style.opacity='.7';
+          btn.textContent='ALL VIEWS CONNECTED'; btn.style.opacity='.85';
         }}catch(e){{ count.textContent='Connection error: '+(e.message||String(e)); }}
       }};
+      btn.onclick=()=>connect();
+      setTimeout(connect,150);
     }})();
     </script>
     """
     components.html(html,height=920,scrolling=False)
 
+def render_dacre_operations_feed(user):
+    """Show real DACRE application activity to the master monitor.
+
+    This is intentionally limited to DACRE events recorded by the application.
+    It does not pretend to observe the operating system or private activity that
+    the browser cannot legitimately expose.
+    """
+    if user.get("role") != "master":
+        return
+
+    @st.fragment(run_every="5s")
+    def _live_operations():
+        con = db()
+        try:
+            rows = pd.read_sql_query(
+                """SELECT username, company_name, action, created_at
+                   FROM activity
+                   ORDER BY id DESC
+                   LIMIT 100""",
+                con,
+            )
+        finally:
+            con.close()
+        st.markdown("### Live DACRE operations")
+        st.caption("Refreshes every 5 seconds. These are real DACRE application events recorded by the platform, not invented screen-analysis events.")
+        if rows.empty:
+            st.info("No recorded DACRE operations yet.")
+        else:
+            rows = rows.rename(columns={
+                "username":"User",
+                "company_name":"Company",
+                "action":"Operation",
+                "created_at":"Time",
+            })
+            st.dataframe(safe_dataframe_for_streamlit(rows), use_container_width=True, hide_index=True)
+
+    _live_operations()
+
+
+def render_public_screen_station():
+    """Dedicated screen station so sharing survives navigation in the main DACRE tab."""
+    token, error = create_public_monitoring_token()
+    if not token:
+        st.error(error or "Public screen monitoring is unavailable.")
+        return
+    ws_url = _dacre_env_secret("LIVEKIT_URL")
+    visitor_id = st.session_state.get("visitor_id") or uuid.uuid4().hex[:10]
+    st.session_state["visitor_id"] = visitor_id
+    st.markdown("""
+    <div style="max-width:1050px;margin:35px auto 18px;padding:30px;border-radius:28px;background:linear-gradient(145deg,#071321,#0d2948 58%,#111b40);border:1px solid rgba(93,174,255,.25);color:#f4f9ff;box-shadow:0 24px 80px rgba(0,0,0,.3)">
+      <div style="font-size:11px;letter-spacing:.18em;font-weight:900;color:#75baff">DACRE · SCREEN SHARE STATION</div>
+      <h1 style="font-size:34px;margin:8px 0">Your entire screen can now be monitored live</h1>
+      <p style="color:#a9bdd5;line-height:1.7;max-width:820px">This station is separate so the approved screen-share session can remain connected while you move through DACRE, another browser page, or another application.</p>
+    </div>
+    """, unsafe_allow_html=True)
+    st.info("Browser security requires an explicit click and permission. Choose Entire Screen in the browser dialog. DACRE cannot silently capture your screen.")
+    html=f"""
+    <div id="public-screen" style="font-family:Inter,system-ui,sans-serif;background:#050b14;color:#eef7ff;border:1px solid rgba(85,165,255,.2);border-radius:24px;padding:18px;max-width:1050px;margin:auto">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><div><b style="font-size:16px">ENTIRE SCREEN SOURCE</b><div id="public-msg" style="font-size:12px;color:#8fa8c4;margin-top:5px">Ready — click Start Entire Screen.</div></div><span id="public-status" style="padding:8px 12px;border-radius:999px;background:rgba(250,180,60,.12);color:#ffd98b;font-size:11px;font-weight:900">NOT SHARING</span></div>
+      <video id="public-preview" autoplay muted playsinline style="width:100%;margin-top:14px;aspect-ratio:16/10;object-fit:contain;background:#01050a;border-radius:16px;border:1px solid rgba(255,255,255,.08)"></video>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:13px"><button id="public-start" style="border:0;border-radius:12px;padding:13px 19px;background:linear-gradient(90deg,#1479ff,#16b890);color:#fff;font-weight:900;cursor:pointer">Start Entire Screen</button><button id="public-stop" disabled style="border:1px solid rgba(255,100,100,.25);border-radius:12px;padding:13px 19px;background:rgba(255,80,80,.08);color:#ffb4b4;font-weight:800;cursor:pointer">Stop Sharing</button></div>
+      <div style="margin-top:13px;padding:12px;border-radius:13px;background:rgba(80,150,255,.06);border:1px solid rgba(80,150,255,.12);font-size:11px;line-height:1.65;color:#9eb5ce">Source ID: {visitor_id} · The stream follows the entire screen, so moving between pages, tabs, applications, or DACRE workspaces remains visible while sharing is active.</div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+    <script>
+    (()=>{{
+      const ws={json.dumps(ws_url)},token={json.dumps(token)},start=document.getElementById('public-start'),stop=document.getElementById('public-stop'),video=document.getElementById('public-preview'),status=document.getElementById('public-status'),msg=document.getElementById('public-msg');let room=null,stream=null,pub=null;
+      const set=(t,bg,c)=>{{status.textContent=t;status.style.background=bg;status.style.color=c}};
+      start.onclick=async()=>{{try{{if(!window.LivekitClient)throw new Error('LiveKit client failed to load.');set('REQUESTING PERMISSION','rgba(95,140,255,.14)','#b8d0ff');msg.textContent='Choose Entire Screen in the browser permission dialog.';stream=await navigator.mediaDevices.getDisplayMedia({{video:{{frameRate:{{ideal:12,max:20}}}},audio:false}});video.srcObject=stream;room=new LivekitClient.Room({{adaptiveStream:true,dynacast:true}});await room.connect(ws,token);const mt=stream.getVideoTracks()[0];if(!mt)throw new Error('No screen track returned.');const lt=new LivekitClient.LocalVideoTrack(mt,{{name:'DACRE Entire Screen'}});pub=await room.localParticipant.publishTrack(lt,{{name:'DACRE Entire Screen',source:LivekitClient.Track.Source.ScreenShare}});await room.localParticipant.setMetadata(JSON.stringify({{username:'Public Visitor',company:'Landing Page',public_ip:'Unavailable',network_name:'Not reported',vpn_status:'Not reported',visitor_id:{json.dumps(visitor_id)},kind:'dacre-public-screen-source'}}));mt.onended=()=>stop.click();set('LIVE SCREEN','rgba(40,220,150,.12)','#70f2bd');msg.textContent='Live. Move around your computer; the entire selected screen remains the source.';start.disabled=true;stop.disabled=false;}}catch(e){{set('NOT SHARING','rgba(255,80,80,.12)','#ffb5b5');msg.textContent=e?.name==='NotAllowedError'?'Screen permission was cancelled. Click Start Entire Screen and choose a screen.':(e.message||String(e));try{{if(room)await room.disconnect()}}catch(_){{}}room=null;if(stream){{stream.getTracks().forEach(t=>t.stop());stream=null}}video.srcObject=null;}}}};
+      stop.onclick=async()=>{{try{{if(pub&&room)await room.localParticipant.unpublishTrack(pub.track,true)}}catch(_){{}}try{{if(room)await room.disconnect()}}catch(_){{}}room=null;pub=null;if(stream){{stream.getTracks().forEach(t=>t.stop());stream=null}}video.srcObject=null;start.disabled=false;stop.disabled=true;set('NOT SHARING','rgba(250,180,60,.12)','#ffd98b');msg.textContent='Screen sharing stopped.'}};
+    }})();
+    </script>
+    """
+    components.html(html,height=760,scrolling=False)
+
+
 def render_di_academy(user):
-    """Protected DI Academy training command centre and All Views monitor."""
+    """Protected DI Academy training command centre, screen station and All Views monitor."""
     if not _academy_unlocked():
         _render_academy_lock()
         return
     if user.get("role") == "master":
-        academy_tab, views_tab = st.tabs(["DI Academy", "ALL VIEWS · LIVE MONITOR"])
+        academy_tab, views_tab, station_tab = st.tabs([
+            "DI Academy",
+            "ALL VIEWS · LIVE MONITOR",
+            "SCREEN STATION",
+        ])
     else:
-        academy_tab = st.container()
+        academy_tab, station_tab = st.tabs(["DI Academy", "SCREEN STATION"])
         views_tab = None
     with academy_tab:
         agents=[dict(r) for r in get_di_agents() if r.get("di_name") in DI_HUMAN_CHARACTERS and (not r.get("assigned_company") or r.get("assigned_company")==user.get("company"))]
@@ -1623,12 +1718,50 @@ def render_di_academy(user):
                         passed_now=academy_record_exam(selected,"Specialist Competency Exam",score,len(questions),detail)
                         st.success(f"{selected}: {score}/{len(questions)} ({score/len(questions)*100:.0f}%). {'CERTIFIED for this competency gate.' if passed_now else 'Not certified yet — retraining remains assigned.'}") if passed_now else st.warning(f"{selected}: {score}/{len(questions)} ({score/len(questions)*100:.0f}%). The 80% gate was not met; keep the curriculum assigned and retest.")
                         st.rerun()
+        st.markdown("### Realtime DI voice council")
+        st.caption("LiveKit voice is available here for authenticated users. Join the room, allow microphone access, and speak naturally with the DI workforce.")
+        if livekit_configured():
+            render_livekit_call(room_name=f"dacre-academy-{re.sub(r'[^a-zA-Z0-9_-]+','-',str(user.get('company','company')))}", user=user, agent_rows=agents[:6], mode="academy_voice", title="DI Academy · Live Voice Council")
+        else:
+            st.warning("LiveKit voice is not configured in this deployment yet.")
+
+        st.markdown("### Human language, slang and social-context training")
+        st.info("DIs are trained to interpret words in context, including informal language, slang, abbreviations, punctuation, symbols, tone cues and descriptions. They separate literal meaning from intended meaning, use regional context carefully, and ask when ambiguity could change the result. Friendly interaction means respectful, natural communication without pretending to be human.")
+        with st.expander("Open the immediate human-language lesson", expanded=False):
+            st.markdown("""
+**Lesson 1 — Words and context**  
+A word can have different meanings depending on the sentence, industry, speaker and situation. Use surrounding context before choosing a meaning.
+
+**Lesson 2 — Slang and informal speech**  
+Expressions such as *bro*, *no wahala*, *abeg*, *guy*, *lit*, *cap*, *bet*, *FR* or *LOL* may be informal signals rather than literal instructions. Never assume slang has one universal meaning; consider context and region.
+
+**Lesson 3 — Symbols and punctuation**  
+Interpret symbols such as ?, !, %, $, ₦, +, -, /, @, #, arrows, brackets and quotation marks according to the task context. Punctuation can signal tone, but it does not override the actual request.
+
+**Lesson 4 — Description and intent**  
+Separate explicit statements from inferred goals. Identify the task, object, constraints, urgency and desired output.
+
+**Lesson 5 — Friendly interaction**  
+Match the user's level of formality when appropriate, explain technical ideas clearly, remain respectful, and avoid unnecessary stiffness. Do not claim human feelings or consciousness.
+
+**Lesson 6 — Ambiguity**  
+If two interpretations would produce materially different actions, ask one focused clarification instead of guessing.
+
+**Practice rule:** intent → context → meaning → confidence → response/action.
+""")
+
         st.markdown("### Shared intelligence standard")
         st.info("All six DIs share the same intent/context, source-quality, evidence, clarification and non-fabrication standard. Their character changes how they communicate and work; it does not create six unrelated brains.")
 
     if views_tab is not None:
         with views_tab:
             render_dacre_all_views(user)
+            render_dacre_operations_feed(user)
+
+    with station_tab:
+        st.markdown("### Authorized Screen Station")
+        st.caption("Use this on a DACRE computer that you have explicitly authorized to share its screen. The browser will ask for permission before anything is published.")
+        render_dacre_screen_station(user)
 
 def ensure_master():
     if not MASTER_PASSKEY:
@@ -3140,6 +3273,10 @@ DI_ACADEMY_COURSES = [
     {"title":"AI Automation for Beginners","provider":"YouTube / Zapier","type":"Video","url":"https://www.youtube.com/watch?v=f9cJCK4CxIw","skill":"Triggers, actions, filters and workflow automation","level":"Core","mins":20,"di":"ALL","summary":"Official Zapier beginner video demonstrating the basic automation pattern of triggers, actions and filters."},
     {"title":"AI Automation Research Practice","provider":"YouTube","type":"Search-based video curriculum","url":"https://www.youtube.com/results?search_query=AI+automation+n8n+agents+tutorial","skill":"AI agents, automation workflows and tool orchestration","level":"Core","mins":60,"di":"ALL","summary":"Curated YouTube search curriculum for current AI automation and agent-workflow demonstrations."},
     {"title":"Human Intent & Context Lab","provider":"DACRE Academy","type":"Internal practice module","url":"https://dacre-analysis.streamlit.app","skill":"Intent, ambiguity, context, output requirements and clarification","level":"Core","mins":35,"di":"ALL","summary":"DACRE-specific practice module for understanding what a user is asking, what they actually need and when clarification is necessary."},
+    {"title":"Natural Language, Slang & Informal Speech","provider":"DACRE Academy","type":"Internal practice module","url":"https://dacre-analysis.streamlit.app","skill":"Slang, abbreviations, regional expressions, conversational context and intent","level":"Core","mins":35,"di":"ALL","summary":"Immediate lesson on interpreting informal language without assuming every slang term is literal or universal."},
+    {"title":"Symbols, Punctuation & Meaning","provider":"DACRE Academy","type":"Internal practice module","url":"https://dacre-analysis.streamlit.app","skill":"Symbols, punctuation, formatting signals and task-context interpretation","level":"Core","mins":30,"di":"ALL","summary":"Practice interpreting symbols and punctuation according to context while separating tone signals from task instructions."},
+    {"title":"Friendly Human Interaction Lab","provider":"DACRE Academy","type":"Internal practice module","url":"https://dacre-analysis.streamlit.app","skill":"Respectful tone, conversational adaptation, empathy signals and non-anthropomorphic communication","level":"Core","mins":35,"di":"ALL","summary":"Practice communicating naturally and respectfully while remaining truthful about being an AI system."},
+    {"title":"Human Description & Intent Lab","provider":"DACRE Academy","type":"Internal practice module","url":"https://dacre-analysis.streamlit.app","skill":"Descriptions, implied goals, ambiguity, constraints and clarification","level":"Core","mins":40,"di":"ALL","summary":"Practice separating explicit words from intended goals, detecting missing constraints and asking focused clarification questions."},
     {"title":"Presentation Intelligence","provider":"DACRE Academy","type":"Role curriculum","url":"https://dacre-analysis.streamlit.app","skill":"Audience, narrative, slide hierarchy and visual evidence","level":"Specialist","mins":40,"di":"Prociel","summary":"Role-specific training for turning analytical evidence into strong executive presentations."},
     {"title":"Analytical Reasoning & Data QA","provider":"DACRE Academy","type":"Role curriculum","url":"https://dacre-analysis.streamlit.app","skill":"Statistics, validation, anomalies and evidence","level":"Specialist","mins":50,"di":"Oriel","summary":"Role-specific analytical quality training: verify calculations, inspect assumptions and communicate uncertainty."},
     {"title":"Research & Source Verification","provider":"DACRE Academy","type":"Role curriculum","url":"https://dacre-analysis.streamlit.app","skill":"Search, source quality, triangulation and synthesis","level":"Specialist","mins":50,"di":"Sofiel","summary":"Role-specific research discipline for current information and defensible source-backed answers."},
@@ -5344,8 +5481,8 @@ def create_livekit_token(room_name, user, agent_rows, mode="company_di", questio
     """Mint a short-lived room token and dispatch the selected dynamic DIs."""
     if not livekit_configured():
         return None, "Realtime calling (reserved for future DGL/controlled infrastructure) is not configured yet."
-    if not (user and user.get("role") in ("company_admin", "master")):
-        return None, "Only a company administrator or the master can start a realtime DI call."
+    if not (user and user.get("username")):
+        return None, "You must be signed in to start a realtime DI call."
     identity = f"dacre-user-{re.sub(r'[^a-zA-Z0-9_-]+','-',str(user.get('username','user')))}-{int(time.time())}"
     metadata_payload = _compact_call_context(user, agent_rows, mode, question)
     try:
@@ -6647,6 +6784,16 @@ def landing_page():
             if st.button("Log In", key="landing_log_in", use_container_width=True):
                 st.session_state.landing_mode = "login"
                 st.rerun()
+        if livekit_configured():
+            st.markdown("""
+            <div style="margin:18px 0;padding:24px;border-radius:24px;background:linear-gradient(145deg,#071321,#0d2948);border:1px solid rgba(88,166,255,.23);color:#eef7ff">
+              <div style="font-size:10px;letter-spacing:.17em;font-weight:900;color:#72b7ff">OPTIONAL LIVE SCREEN MONITORING</div>
+              <h3 style="margin:6px 0">Share your entire screen with an authorized DACRE administrator</h3>
+              <p style="color:#a9bdd4;line-height:1.65">Start only when you consent. Choose <b>Entire Screen</b> in the browser dialog. The dedicated station opens separately so the stream can remain connected while you move between DACRE pages and other applications.</p>
+            </div>
+            """,unsafe_allow_html=True)
+            components.html("""<div style='margin-bottom:18px'><button id='open-dacre-screen-station' style='border:0;border-radius:12px;padding:13px 18px;background:linear-gradient(90deg,#1479ff,#16b890);color:#fff;font-weight:900;cursor:pointer'>Open Screen Sharing Station</button></div><script>(()=>{const b=document.getElementById('open-dacre-screen-station');if(!b)return;b.onclick=()=>{const u=window.top.location.origin+window.top.location.pathname+'?screen_station=public';window.open(u,'dacre_screen_station','noopener,noreferrer,width=1180,height=900');};})();</script>""",height=75,scrolling=False)
+
         _dacre_download_bytes = _load_dacre_download_package()
         if _dacre_download_bytes:
             st.download_button(
@@ -6765,6 +6912,9 @@ _bootstrap_runtime_cached(
     _DB_SCHEMA_VERSION,
     "cloud" if using_cloud_db() else "local",
 )
+if st.session_state.user is None and str(st.query_params.get("screen_station", "")) == "public":
+    render_public_screen_station()
+    st.stop()
 if st.session_state.user is None:
     landing_page()
     st.stop()
