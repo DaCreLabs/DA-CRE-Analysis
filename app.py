@@ -6503,8 +6503,41 @@ st.markdown(r"""
 <style>
 /* ===== DACRE CUSTOM CHAT SURFACE =====
    DACRE does not use Streamlit's fixed white bottom chat dock. */
+/* Streamlit can render the native chat surface under several DOM wrappers.
+   DACRE deliberately does not use that fixed bottom surface. */
 [data-testid="stChatInput"],
-[data-testid="stBottomBlockContainer"] { display:none !important; }
+[data-testid="stBottomBlockContainer"],
+section[data-testid="stBottomBlockContainer"],
+div[data-testid="stBottomBlockContainer"],
+[data-testid="stBottom"],
+.stChatInput,
+.stBottomBlockContainer,
+[class*="stChatInput"],
+[class*="stBottomBlockContainer"] {
+  display:none !important;
+  visibility:hidden !important;
+  opacity:0 !important;
+  height:0 !important;
+  min-height:0 !important;
+  max-height:0 !important;
+  padding:0 !important;
+  margin:0 !important;
+  border:0 !important;
+  overflow:hidden !important;
+  pointer-events:none !important;
+}
+/* Prevent a hidden native bottom dock from reserving a white block. */
+[data-testid="stBottomBlockContainer"] > div,
+[data-testid="stBottomBlockContainer"] > section,
+[data-testid="stBottom"] > div,
+[data-testid="stBottom"] section {
+  display:none !important;
+  height:0 !important;
+  min-height:0 !important;
+  padding:0 !important;
+  margin:0 !important;
+}
+
 .dacre-chat-shell{margin-top:24px;padding:16px 18px;border:1px solid rgba(96,178,255,.24);border-radius:18px;background:linear-gradient(145deg,#0b2038,#0a1729);box-shadow:0 16px 38px rgba(0,0,0,.18)}
 .dacre-chat-title{font-size:14px;font-weight:900;color:#f2f7ff}.dacre-chat-sub{font-size:11px;color:#8fa8c2;margin-top:3px;margin-bottom:10px}
 /* ===== DACRE STRICT GOLD CONTROL VISIBILITY ===== */
@@ -7436,6 +7469,29 @@ elif selected_page=="Export Center":
             st.caption("CSV and TSV outputs can be opened/imported directly in Google Sheets.")
             render_google_sheets_export(df, base, user)
             log_activity(user["username"],user["company"],"Opened Export Center")
+# Final DOM guard: this is intentionally emitted immediately before the custom DACRE chat UI.
+# It prevents Streamlit's native fixed bottom chat surface from surviving theme/layout overrides.
+st.markdown(r"""
+<style>
+html body [data-testid="stChatInput"],
+html body [data-testid="stBottomBlockContainer"],
+html body [data-testid="stBottom"],
+html body section[data-testid="stBottomBlockContainer"],
+html body div[data-testid="stBottomBlockContainer"] {
+  display:none !important;
+  visibility:hidden !important;
+  opacity:0 !important;
+  height:0 !important;
+  min-height:0 !important;
+  max-height:0 !important;
+  width:0 !important;
+  padding:0 !important;
+  margin:0 !important;
+  overflow:hidden !important;
+  pointer-events:none !important;
+}
+</style>
+""",unsafe_allow_html=True)
 st.markdown("---")
 st.caption("Attach a picture or any other file directly in the chat bar. DI keeps the attachment and uses the strongest available parser or vision provider.")
 voice_on=st.toggle("DI speech",value=st.session_state.get("di_response_mode","voice")=="voice",key="di_speech_toggle")
