@@ -244,24 +244,62 @@ def _secret_or_env(name, default=""):
         value = ""
     return str(value or os.getenv(name, default) or default).strip()
 def database_url():
-    return (
+    """Read and normalize the PostgreSQL URI supplied through Streamlit Secrets.
+
+    Supabase accepts postgres:// and postgresql:// URIs. Streamlit secrets should
+    contain the full URI under SUPABASE_DB_URL or DACRE_DATABASE_URL. Never log it.
+    """
+    raw = (
         _secret_or_env("SUPABASE_DB_URL")
         or _secret_or_env("DACRE_DATABASE_URL")
         or _secret_or_env("DATABASE_URL")
     )
+    raw = str(raw or "").strip().strip("\"'")
+    if not raw:
+        return ""
+    if raw.startswith("postgres://"):
+        raw = "postgresql://" + raw[len("postgres://"):]
+    # Supabase requires TLS. Add sslmode=require only when the URI has no SSL mode.
+    try:
+        parts = urllib.parse.urlsplit(raw)
+        if parts.scheme not in ("postgres", "postgresql") or not parts.hostname:
+            raise ValueError("The configured database value is not a complete PostgreSQL URI.")
+        query = urllib.parse.parse_qsl(parts.query, keep_blank_values=True)
+        if not any(k.lower() == "sslmode" for k, _ in query):
+            query.append(("sslmode", "require"))
+        raw = urllib.parse.urlunsplit((parts.scheme, parts.netloc, parts.path or "/postgres", urllib.parse.urlencode(query), parts.fragment))
+    except Exception as exc:
+        # Return a non-secret diagnostic to the caller; do not echo the URI/password.
+        raise RuntimeError(
+            "DACRE_DATABASE_URL/SUPABASE_DB_URL is invalid. In Streamlit Secrets, paste the complete Supabase PostgreSQL URI beginning with postgresql:// (or postgres://), including host, port, database, username and password."
+        ) from exc
+    return raw
+
 def using_cloud_db():
     return bool(database_url())
 def cloud_persistence_configured():
     return bool(using_cloud_db() and psycopg is not None)
+
+def database_backend_label():
+    if cloud_persistence_configured(): return "PostgreSQL · persistent production database"
+    if using_cloud_db() and psycopg is None: return "PostgreSQL configured · driver missing"
+    return "Local SQLite · development fallback"
 def _qmark_to_pg(sql):
     return str(sql).replace("?", "%s")
+
+def _pg_sql(sql):
+    text = _qmark_to_pg(sql)
+    text = re.sub(r"\bINTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT\b", "BIGSERIAL PRIMARY KEY", text, flags=re.I)
+    text = re.sub(r"\bINT\s+PRIMARY\s+KEY\s+AUTOINCREMENT\b", "BIGSERIAL PRIMARY KEY", text, flags=re.I)
+    return text
+
 class _PGCursorCompat:
     def __init__(self, cur):
         self._cur = cur
     def execute(self, sql, params=None):
-        return self._cur.execute(_qmark_to_pg(sql), params)
+        return self._cur.execute(_pg_sql(sql), params)
     def executemany(self, sql, params_seq):
-        return self._cur.executemany(_qmark_to_pg(sql), params_seq)
+        return self._cur.executemany(_pg_sql(sql), params_seq)
     def fetchone(self):
         return self._cur.fetchone()
     def fetchall(self):
@@ -382,7 +420,24 @@ def db():
                 "Supabase database is configured, but psycopg is not installed. "
                 "Add psycopg[binary]>=3.2,<4 to requirements.txt and redeploy DACRE."
             )
-        conn = psycopg.connect(database_url(), row_factory=dict_row, connect_timeout=15)
+        uri = database_url()
+        try:
+            conn = psycopg.connect(uri, row_factory=dict_row, connect_timeout=20, application_name="DACRE-Analysis")
+        except Exception as exc:
+            # Keep secrets out of the displayed message while distinguishing common
+            # configuration failures so the owner can fix the Supabase dashboard value.
+            raw_message = str(exc).lower()
+            if any(x in raw_message for x in ("name or service not known", "could not translate host", "nodename nor servname", "temporary failure in name resolution")):
+                hint = "The Supabase database host could not be resolved. Re-copy the URI from Supabase Connect; check that the hostname is complete and that you selected the Session Pooler URI if direct connections are unavailable."
+            elif any(x in raw_message for x in ("password authentication failed", "authentication failed", "invalid password")):
+                hint = "Supabase rejected the database credentials. Re-copy the URI and reset/check the database password in Supabase if needed. URL-encode special characters in the password."
+            elif any(x in raw_message for x in ("timeout", "timed out", "could not connect", "connection refused", "network is unreachable")):
+                hint = "Supabase could not be reached from Streamlit. Re-copy the Session Pooler URI and verify the host, port and database shown in Supabase Connect."
+            elif "ssl" in raw_message or "certificate" in raw_message:
+                hint = "The TLS connection failed. Use the Supabase-provided PostgreSQL URI and keep sslmode=require."
+            else:
+                hint = "Check the complete Supabase URI in Streamlit Secrets: username, URL-encoded password, host, port, database name and SSL mode. The database URI is not printed for security."
+            raise RuntimeError("DACRE PostgreSQL connection failed. " + hint) from exc
         return _PGConnectionCompat(conn)
     con = sqlite3.connect(DB_PATH, timeout=60, check_same_thread=False)
     con.row_factory = sqlite3.Row
@@ -561,6 +616,29 @@ def init_db():
         )
     """)
     cur.execute("""
+        CREATE TABLE IF NOT EXISTS auth_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            token_hash TEXT UNIQUE NOT NULL,
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            revoked_at TEXT,
+            last_seen_at TEXT NOT NULL,
+            user_agent TEXT,
+            ip_address TEXT
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            token_hash TEXT UNIQUE NOT NULL,
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            used_at TEXT
+        )
+    """)
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS files (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL,
@@ -596,8 +674,9 @@ def init_db():
     """)
     try:
         cur.execute("ALTER TABLE companies ADD COLUMN website_url TEXT")
-    except sqlite3.OperationalError:
-        pass
+    except Exception as exc:
+        if not using_cloud_db() or "duplicate column" not in str(exc).lower():
+            raise
     cur.execute("""
         CREATE TABLE IF NOT EXISTS company_website_profile (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -687,8 +766,9 @@ def init_db():
     ]:
         try:
             cur.execute(f"ALTER TABLE loan_clients ADD COLUMN {_column} {_dtype}")
-        except sqlite3.OperationalError:
-            pass
+        except Exception as exc:
+            if not using_cloud_db() or "duplicate column" not in str(exc).lower():
+                raise
     cur.execute("""
         CREATE TABLE IF NOT EXISTS whatsapp_delivery_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2203,6 +2283,55 @@ def apply_company_website_theme(user):
     if not row: return
     p=row["theme_primary"] or "#4b82f5"; a=row["theme_accent"] or "#62c8f5"; b=row["theme_background"] or "#0b1020"
     st.markdown(f"<style>:root{{--dacre-primary:{p};--dacre-primary2:{a};}} .stApp{{background:radial-gradient(circle at 85% 0%,{p}22,transparent 30%),linear-gradient(145deg,{b} 0%,#101729 55%,#0e1628 100%)!important}} .dacre-user-hero,.di-quick-card,.di-metric,.dacre-panel{{border-color:{p}55!important}} .stButton>button,.stFormSubmitButton>button{{background:linear-gradient(135deg,{p},{a})!important}}</style>",unsafe_allow_html=True)
+EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+AUTH_SESSION_DAYS = 30
+
+def _normalise_email(email):
+    return str(email or "").strip().lower()
+
+def _valid_email(email):
+    return bool(EMAIL_RE.match(_normalise_email(email)))
+
+def sanitize_legacy_credentials():
+    """Remove any legacy plaintext email-password values from older DACRE accounts."""
+    con = db()
+    try:
+        con.execute("UPDATE users SET email_password='' WHERE email_password IS NOT NULL AND email_password <> ''")
+        con.commit()
+    finally:
+        con.close()
+
+def _new_auth_session(user, user_agent="", ip_address=""):
+    raw_token = base64.urlsafe_b64encode(os.urandom(48)).decode("ascii").rstrip("=")
+    token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+    now = datetime.now(); expires = now + timedelta(days=AUTH_SESSION_DAYS)
+    con = db()
+    try:
+        con.execute("INSERT INTO auth_sessions(user_id,token_hash,created_at,expires_at,last_seen_at,user_agent,ip_address) VALUES(?,?,?,?,?,?,?)", (int(user.get("id") or 0), token_hash, now.isoformat(timespec="seconds"), expires.isoformat(timespec="seconds"), now.isoformat(timespec="seconds"), str(user_agent or "")[:500], str(ip_address or "")[:120]))
+        con.commit()
+    finally:
+        con.close()
+    return raw_token, expires
+
+def _revoke_auth_session(raw_token):
+    if not raw_token: return
+    token_hash = hashlib.sha256(str(raw_token).encode("utf-8")).hexdigest()
+    con=db()
+    try:
+        con.execute("UPDATE auth_sessions SET revoked_at=? WHERE token_hash=? AND revoked_at IS NULL", (datetime.now().isoformat(timespec="seconds"), token_hash)); con.commit()
+    finally: con.close()
+
+def _create_authenticated_session(user):
+    token, expires = _new_auth_session(user)
+    st.session_state.dacre_auth_token = token
+    st.session_state.dacre_auth_expires = expires.isoformat(timespec="seconds")
+    return token
+
+def _clear_authenticated_session():
+    _revoke_auth_session(str(st.session_state.get("dacre_auth_token") or ""))
+    st.session_state.pop("dacre_auth_token", None)
+    st.session_state.pop("dacre_auth_expires", None)
+
 def authenticate(company_name, full_name, passkey, email=""):
     company_clean = (company_name or "").strip().lower()
     full_name_clean = (full_name or "").strip().lower()
@@ -2224,12 +2353,12 @@ def authenticate(company_name, full_name, passkey, email=""):
                 log_activity(MASTER_USERNAME, result.get("company_name", "DACRE MASTER"), "Signed in", notify_admin=False)
                 return result, None
         if email_clean:
-            rows = con.execute("SELECT first_name,last_name,username,company_name,email,passkey_hash,role FROM users WHERE lower(email)=?", (email_clean,)).fetchall()
+            rows = con.execute("SELECT id,first_name,last_name,username,company_name,email,password_hash,passkey_hash,role FROM users WHERE lower(email)=?", (email_clean,)).fetchall()
         else:
-            rows = con.execute("SELECT first_name,last_name,username,company_name,email,passkey_hash,role FROM users WHERE lower(company_name)=?", (company_clean,)).fetchall()
+            rows = con.execute("SELECT id,first_name,last_name,username,company_name,email,password_hash,passkey_hash,role FROM users WHERE lower(company_name)=?", (company_clean,)).fetchall()
         valid_rows = []
         for candidate_row in rows:
-            if maybe_upgrade_password_hash(con, candidate_row["username"], passkey_clean, candidate_row["passkey_hash"]):
+            if maybe_upgrade_password_hash(con, candidate_row["username"], passkey_clean, candidate_row["password_hash"] or candidate_row["passkey_hash"], column="password_hash"):
                 valid_rows.append(candidate_row)
         rows = valid_rows
         if not rows:
@@ -2251,12 +2380,14 @@ def authenticate(company_name, full_name, passkey, email=""):
         now = datetime.now().isoformat(timespec="seconds")
         con.execute("UPDATE users SET login_count=login_count+1,last_login=? WHERE username=?", (now, matched["username"]))
         con.commit()
-        result = {"first_name":matched["first_name"],"last_name":matched["last_name"],"username":matched["username"],"company":matched["company_name"],"email":matched["email"],"role":matched["role"]}
+        result = {"id":matched["id"],"first_name":matched["first_name"],"last_name":matched["last_name"],"username":matched["username"],"company":matched["company_name"],"email":matched["email"],"role":matched["role"]}
     finally:
         con.close()
     log_activity(result["username"], result["company"], "Signed in", notify_admin=result["role"] != "master")
+    try: _create_authenticated_session(result)
+    except Exception: pass
     return result, None
-def create_account(first, last, company, email, email_password, passkey, website_url=""):
+def create_account(first, last, company, email, email_password, passkey, website_url="", confirm_passkey=""):
     company_clean = canonical_company_name(company)
     email_clean = email.strip().lower()
     passkey_clean = passkey.strip()
@@ -2265,7 +2396,10 @@ def create_account(first, last, company, email, email_password, passkey, website
     if website_raw and not normalized_website:
         return False, "Please enter a valid company website URL, for example https://www.example.com.", None
     if not company_clean or not email_clean or not passkey_clean:
-        return False, "Please fill in Company Name, Email Address, and Account Passkey.", None
+        return False, "Please fill in Company Name, Email Address, and Password.", None
+    if not _valid_email(email_clean): return False, "Please enter a valid email address.", None
+    if len(passkey_clean) < 10: return False, "Your DACRE password must be at least 10 characters long.", None
+    if confirm_passkey and passkey_clean != confirm_passkey.strip(): return False, "The two passwords do not match.", None
     if "@" not in email_clean or "." not in email_clean.split("@")[-1]:
         return False, "Please enter a valid email address.", None
     email_prefix = email_clean.split("@")[0].replace(".", " ").replace("_", " ").title()
@@ -2299,7 +2433,7 @@ def create_account(first, last, company, email, email_password, passkey, website
             (first_name,last_name,username,company_name,email,email_password,password_hash,passkey_hash,role,login_count,created_at,last_login)
             VALUES (?,?,?,?,?,?,?,?,?,1,?,?)
         """, (
-            first_clean, last_clean, username_clean, company_clean, email_clean, email_password.strip(),
+            first_clean, last_clean, username_clean, company_clean, email_clean, "",
             hash_password(passkey_clean), hash_password(passkey_clean), role, now, now,
         ))
         con.commit()
@@ -2309,16 +2443,19 @@ def create_account(first, last, company, email, email_password, passkey, website
         if clean_url:
             con.execute("UPDATE companies SET website_url=? WHERE lower(name)=lower(?)",(clean_url,company_clean)); con.commit()
             start_website_onboarding(company_clean,clean_url,di_name or ("DI — "+company_clean[:32]))
-        threading.Thread(target=send_di_welcome_email,args=(first_clean,last_clean,company_clean,email_clean,email_password.strip()),daemon=True).start()
+        threading.Thread(target=send_di_welcome_email,args=(first_clean,last_clean,company_clean,email_clean),daemon=True).start()
         log_activity(username_clean, company_clean, "Created account & signed in", notify_admin=(role == "user"))
         if role == "company_admin":
             notify_company_admin(company_clean, f"New organization created by {first_clean} {last_clean}. You are the organization admin.", "new_company")
         return True, "Account created successfully. DI is preparing your company intelligence in the background.", {
+            "id": int(cur.execute("SELECT id FROM users WHERE username=?", (username_clean,)).fetchone()["id"]),
             "first_name": first_clean, "last_name": last_clean, "username": username_clean,
             "company": company_clean, "email": email_clean, "role": role,
         }
-    except sqlite3.IntegrityError:
-        return False, "An account with this email address is already registered.", None
+    except Exception as exc:
+        if "unique" in str(exc).lower() or "duplicate" in str(exc).lower():
+            return False, "An account with this email address or username is already registered. Please sign in instead.", None
+        raise
     finally:
         con.close()
 def is_chibobec_company(company_name):
@@ -4749,7 +4886,9 @@ def seed_named_di_workforce():
 def _bootstrap_runtime(schema_version=12):
     """Bootstrap DACRE on either legacy SQLite or persistent Supabase PostgreSQL."""
     if using_cloud_db():
+        init_db()
         _migrate_sqlite_to_supabase_once()
+        sanitize_legacy_credentials()
         ensure_di_agent_columns()
         ensure_di_academy_schema()
         ensure_master()
@@ -4760,6 +4899,7 @@ def _bootstrap_runtime(schema_version=12):
         seed_active_di_workforce()
         return True
     init_db()
+    sanitize_legacy_credentials()
     ensure_runtime_schema()
     ensure_di_agent_columns()
     ensure_di_academy_schema()
@@ -6374,27 +6514,19 @@ def _landing_auth_panel():
         tab_login, tab_signup = st.tabs(["Sign In", "Create Account"])
         with tab_login:
             with st.form("landing_login_form", clear_on_submit=False):
-                login_company = st.text_input(
-                    "Company / Organization",
-                    placeholder="e.g. Edubridge Consultant Limited",
-                    key="landing_login_company",
-                )
-                login_fullname = st.text_input(
-                    "Full Name",
-                    placeholder="e.g. David Emenike",
-                    key="landing_login_fullname",
-                )
+                st.markdown("**Welcome back**")
                 login_email = st.text_input(
                     "Email Address",
-                    placeholder="Use the email registered with DACRE",
+                    placeholder="name@example.com",
                     key="landing_login_email",
                 )
                 login_passkey = st.text_input(
-                    "Account Passkey",
+                    "DACRE Password",
                     type="password",
-                    placeholder="Enter your DACRE account passkey",
+                    placeholder="Enter your DACRE account password",
                     key="landing_login_passkey",
                 )
+                st.caption("Your email identifies your account. Your password is verified against the secure hash stored in DACRE's database.")
                 login_submit = st.form_submit_button(
                     "Sign In & Open My DACRE Workspace",
                     use_container_width=True,
@@ -6402,7 +6534,7 @@ def _landing_auth_panel():
                 )
             if login_submit:
                 auth, auth_message = authenticate(
-                    login_company, login_fullname, login_passkey, login_email
+                    "", "", login_passkey, login_email
                 )
                 if auth:
                     st.session_state.user = auth
@@ -6444,17 +6576,14 @@ def _landing_auth_panel():
                     placeholder="e.g. name@example.com",
                     key="landing_signup_email",
                 )
-                s_email_pass = st.text_input(
-                    "Email Password (optional)",
-                    type="password",
-                    placeholder="Optional — only needed for configured email features",
-                    key="landing_signup_email_password",
-                )
                 s_passkey = st.text_input(
-                    "Create Account Passkey",
-                    type="password",
-                    placeholder="Create a secure passkey for your DACRE account",
-                    key="landing_signup_passkey",
+                    "Create DACRE Password", type="password",
+                    placeholder="At least 10 characters", key="landing_signup_passkey",
+                    help="DACRE stores a secure password hash, not your password itself.",
+                )
+                s_confirm_passkey = st.text_input(
+                    "Confirm DACRE Password", type="password",
+                    placeholder="Enter the same password again", key="landing_signup_confirm_passkey",
                 )
                 s_website = st.text_input(
                     "Do you have a website? Please put your company official URL to get the best performance from DI — David's Intelligence.",
@@ -6469,10 +6598,12 @@ def _landing_auth_panel():
                 )
             if signup_submit:
                 success, msg, created = create_account(
-                    s_first, s_last, s_company, s_email, s_email_pass, s_passkey, s_website
+                    s_first, s_last, s_company, s_email, "", s_passkey, s_website, s_confirm_passkey
                 )
                 if success:
                     st.session_state.user = created
+                    try: _create_authenticated_session(created)
+                    except Exception: pass
                     st.session_state.master_route = False
                     st.session_state.landing_mode = "home"
                     if is_chibobec_company(created["company"]):
