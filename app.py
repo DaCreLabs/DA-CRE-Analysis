@@ -5868,6 +5868,13 @@ def ensure_subscription_schema():
                 amount REAL NOT NULL, currency TEXT NOT NULL DEFAULT 'NGN', plan_months INTEGER NOT NULL,
                 payment_method TEXT NOT NULL, bank_name TEXT, provider TEXT, transaction_reference TEXT,
                 status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL)""")
+            con.execute("""CREATE TABLE IF NOT EXISTS subscription_receipts (
+                id BIGSERIAL PRIMARY KEY, company_name TEXT NOT NULL, username TEXT NOT NULL,
+                amount REAL NOT NULL, currency TEXT NOT NULL DEFAULT 'NGN', plan_months INTEGER NOT NULL,
+                payment_method TEXT NOT NULL DEFAULT 'OPay Bank Transfer', receipt_filename TEXT NOT NULL,
+                receipt_mime TEXT NOT NULL, receipt_data BYTEA NOT NULL, transaction_reference TEXT,
+                status TEXT NOT NULL DEFAULT 'pending', review_note TEXT, reviewed_by TEXT,
+                reviewed_at TEXT, created_at TEXT NOT NULL)""")
         else:
             con.execute("""CREATE TABLE IF NOT EXISTS company_subscriptions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT UNIQUE NOT NULL,
@@ -5881,6 +5888,20 @@ def ensure_subscription_schema():
                 amount REAL NOT NULL, currency TEXT NOT NULL DEFAULT 'NGN', plan_months INTEGER NOT NULL,
                 payment_method TEXT NOT NULL, bank_name TEXT, provider TEXT, transaction_reference TEXT,
                 status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL)""")
+            con.execute("""CREATE TABLE IF NOT EXISTS subscription_receipts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL, username TEXT NOT NULL,
+                amount REAL NOT NULL, currency TEXT NOT NULL DEFAULT 'NGN', plan_months INTEGER NOT NULL,
+                payment_method TEXT NOT NULL DEFAULT 'OPay Bank Transfer', receipt_filename TEXT NOT NULL,
+                receipt_mime TEXT NOT NULL, receipt_data BLOB NOT NULL, transaction_reference TEXT,
+                status TEXT NOT NULL DEFAULT 'pending', review_note TEXT, reviewed_by TEXT,
+                reviewed_at TEXT, created_at TEXT NOT NULL)""")
+        # Safe, idempotent migration for installations that created the receipt table earlier.
+        if using_cloud_db():
+            for col, decl in {
+                'transaction_reference': 'TEXT', 'status': "TEXT NOT NULL DEFAULT 'pending'",
+                'review_note': 'TEXT', 'reviewed_by': 'TEXT', 'reviewed_at': 'TEXT'
+            }.items():
+                con.execute(f"ALTER TABLE subscription_receipts ADD COLUMN IF NOT EXISTS {col} {decl}")
         con.commit()
     finally:
         con.close()
@@ -6023,6 +6044,134 @@ def verify_paystack_reference(user, reference):
         return True
     except Exception:
         return False
+def submit_subscription_receipt(user, months, uploaded_file, transaction_reference=""):
+    """Store a user-submitted transfer receipt for manual verification; never auto-unlock on upload."""
+    if uploaded_file is None:
+        return False, "Choose a receipt file first."
+    filename = str(getattr(uploaded_file, "name", "receipt"))[:255]
+    mime = str(getattr(uploaded_file, "type", "application/octet-stream"))
+    allowed = {"image/png", "image/jpeg", "image/webp", "application/pdf"}
+    if mime not in allowed:
+        return False, "Upload a PNG, JPG, WEBP or PDF receipt."
+    data = uploaded_file.getvalue()
+    if not data:
+        return False, "The selected file is empty."
+    if len(data) > 8 * 1024 * 1024:
+        return False, "Receipt is too large. Maximum size is 8 MB."
+    now = datetime.now().isoformat(timespec="seconds")
+    con = db()
+    try:
+        con.execute("""INSERT INTO subscription_receipts
+            (company_name,username,amount,currency,plan_months,payment_method,receipt_filename,receipt_mime,receipt_data,transaction_reference,status,created_at)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (str(user.get('company') or ''), str(user.get('username') or ''), _subscription_amount(months), 'NGN', int(months),
+             'OPay Bank Transfer', filename, mime, data, str(transaction_reference or '').strip()[:200], 'pending', now))
+        con.commit()
+        return True, "Receipt submitted. Your subscription remains pending until an administrator verifies the transfer."
+    except Exception as exc:
+        return False, f"Receipt could not be saved: {exc}"
+    finally:
+        con.close()
+
+def render_transaction_receipt_board(user, sub):
+    """Receipt upload board visible to the company, including when its trial has expired."""
+    st.markdown("### Transaction Receipt Board")
+    st.markdown("Transfer the selected subscription amount to the OPay account below, then upload your receipt. Your workspace and files remain saved while payment is reviewed.")
+    p1, p2 = st.columns([1, 1.2])
+    with p1:
+        st.markdown("<div class='payment-summary'><div>Transfer to</div><strong>OPay</strong><b style='font-size:25px'>7078857179</b><small>Account number · verify the recipient name in OPay before sending money.</small></div>", unsafe_allow_html=True)
+        if st.button("Copy OPay account number", key="copy_opay_receipt_account", use_container_width=True):
+            st.code("7078857179")
+            st.caption("Select and copy the account number above if clipboard copying is unavailable.")
+    with p2:
+        receipt_months = st.selectbox("Subscription plan for this receipt", DACRE_PLAN_MONTHS,
+            format_func=lambda m: f"{m} month{'s' if m != 1 else ''} — ₦{_subscription_amount(m):,.0f}",
+            key="receipt_plan_months")
+        st.caption("Drag a receipt into the upload area on desktop, or tap Browse files on your phone.")
+        with st.form("subscription_receipt_upload_form", clear_on_submit=False):
+            receipt_file = st.file_uploader("Drop receipt here or choose a file", type=["png", "jpg", "jpeg", "webp", "pdf"], key="subscription_receipt_file", help="PNG, JPG, WEBP or PDF · maximum 8 MB")
+            transaction_ref = st.text_input("Transfer reference (optional)", key="receipt_transaction_reference", max_chars=200)
+            submitted = st.form_submit_button("Submit receipt for verification", type="primary", use_container_width=True)
+            if submitted:
+                ok, message = submit_subscription_receipt(user, receipt_months, receipt_file, transaction_ref)
+                (st.success if ok else st.error)(message)
+    con = db()
+    try:
+        rows = con.execute("SELECT id,amount,plan_months,receipt_filename,transaction_reference,status,review_note,created_at FROM subscription_receipts WHERE lower(company_name)=lower(?) ORDER BY id DESC LIMIT 10", (str(user.get('company') or ''),)).fetchall()
+    finally:
+        con.close()
+    if rows:
+        st.markdown("#### Your receipt submissions")
+        view = []
+        for r in rows:
+            d = dict(r)
+            view.append({"Submitted": d.get("created_at", ""), "Plan": f"{d.get('plan_months', 1)} month(s)", "Amount": f"₦{float(d.get('amount') or 0):,.0f}", "Receipt": d.get("receipt_filename", ""), "Status": str(d.get("status", "pending")).title(), "Review note": d.get("review_note") or ""})
+        st.dataframe(pd.DataFrame(view), use_container_width=True, hide_index=True)
+    st.info("Security: uploading a receipt does not automatically activate the account. DACRE restores access after the transfer is verified, preventing edited or reused receipts from unlocking paid features.")
+
+def render_subscription_receipt_admin_board():
+    """Master-only queue for reviewing submitted bank-transfer receipts."""
+    st.markdown("### Subscription receipt verification board")
+    con = db()
+    try:
+        rows = con.execute("SELECT id,company_name,username,amount,plan_months,receipt_filename,receipt_mime,transaction_reference,status,created_at,review_note FROM subscription_receipts ORDER BY CASE WHEN status='pending' THEN 0 ELSE 1 END, id DESC LIMIT 300").fetchall()
+    finally:
+        con.close()
+    if not rows:
+        st.caption("No receipt submissions yet.")
+        return
+    records = [dict(r) for r in rows]
+    st.dataframe(pd.DataFrame([{k: r.get(k) for k in ("id","company_name","username","amount","plan_months","receipt_filename","transaction_reference","status","created_at","review_note")} for r in records]), use_container_width=True, hide_index=True)
+    choices = [r for r in records if str(r.get("status", "")).lower() == "pending"]
+    if not choices:
+        st.caption("There are no pending receipts to review.")
+        return
+    selected_id = st.selectbox("Select a pending receipt", [int(r["id"]) for r in choices], format_func=lambda rid: next(f"#{r['id']} · {r['company_name']} · ₦{float(r['amount'] or 0):,.0f}" for r in choices if int(r['id']) == rid), key="admin_receipt_selected")
+    con = db()
+    try:
+        selected = con.execute("SELECT * FROM subscription_receipts WHERE id=?", (int(selected_id),)).fetchone()
+    finally:
+        con.close()
+    if selected:
+        receipt = dict(selected)
+        blob = receipt.get("receipt_data")
+        if blob:
+            st.download_button("Download selected receipt", data=bytes(blob), file_name=receipt.get("receipt_filename") or f"receipt-{selected_id}", mime=receipt.get("receipt_mime") or "application/octet-stream", key=f"admin_download_receipt_{selected_id}")
+        note = st.text_input("Verification note", key=f"admin_receipt_note_{selected_id}", max_chars=500)
+        a, b = st.columns(2)
+        with a:
+            if st.button("Approve verified payment and restore account", type="primary", use_container_width=True, key=f"approve_receipt_{selected_id}"):
+                now = datetime.now().isoformat(timespec="seconds")
+                try:
+                    activate_subscription(receipt["company_name"], int(receipt["plan_months"]), float(receipt["amount"]), "OPay Bank Transfer", provider="Manual receipt verification", reference=str(receipt.get("transaction_reference") or f"receipt-{selected_id}"))
+                    con = db()
+                    review_cur = con.execute("UPDATE subscription_receipts SET status='verified',review_note=?,reviewed_by=?,reviewed_at=? WHERE id=? AND status='pending'", (note, MASTER_USERNAME, now, int(selected_id)))
+                    if getattr(review_cur, "rowcount", 1) == 0:
+                        con.rollback()
+                        st.warning("This receipt has already been reviewed. Refresh the board before taking another action.")
+                        con.close()
+                        st.stop()
+                    con.execute("""INSERT INTO subscription_payments
+                        (company_name,username,amount,currency,plan_months,payment_method,bank_name,provider,transaction_reference,status,created_at)
+                        VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+                        (receipt["company_name"], receipt["username"], float(receipt["amount"]), "NGN", int(receipt["plan_months"]),
+                         "OPay Bank Transfer", "OPay", "Manual receipt verification", str(receipt.get("transaction_reference") or f"receipt-{selected_id}"), "verified", now))
+                    con.commit(); con.close()
+                    st.success("Payment marked verified and company subscription activated.")
+                    st.rerun()
+                except Exception as exc:
+                    st.error(f"Could not approve receipt: {exc}")
+        with b:
+            if st.button("Reject receipt", use_container_width=True, key=f"reject_receipt_{selected_id}"):
+                con = db()
+                try:
+                    con.execute("UPDATE subscription_receipts SET status='rejected',review_note=?,reviewed_by=?,reviewed_at=? WHERE id=? AND status='pending'", (note or "Receipt rejected; please contact DACRE support.", MASTER_USERNAME, datetime.now().isoformat(timespec="seconds"), int(selected_id)))
+                    con.commit()
+                    st.warning("Receipt rejected. The company account remains paused until a valid payment is verified.")
+                    st.rerun()
+                finally:
+                    con.close()
+
 def render_company_dashboard(user):
     company = str(user.get('company') or 'Your Company').strip()
     if user.get('role') != 'master':
@@ -6051,7 +6200,8 @@ def render_company_dashboard(user):
     </div>
     """, unsafe_allow_html=True)
     if not sub['active']:
-        st.markdown("<div class='billing-lock'><b>DACRE ACCESS LOCKED</b><span>Your 30-day free tier has ended. Your company account and billing record remain available. Complete a verified subscription payment to reopen the analysis workspace.</span></div>", unsafe_allow_html=True)
+        st.markdown("<div class='billing-lock'><b>DACRE ACCOUNT PAUSED</b><span>Your 30-day free trial has ended. This workspace is paused until your subscription payment is verified. Your projects, files and DI discussions are preserved. Submit your transfer receipt below for review.</span></div>", unsafe_allow_html=True)
+        render_transaction_receipt_board(user, sub)
     st.markdown("### Your DACRE Intelligence Team")
     roster = ACTIVE_DI_ROSTER
     cols = st.columns(3)
@@ -6067,6 +6217,12 @@ def render_company_dashboard(user):
     else:
         st.markdown("<div class='dashboard-empty'><b>No inspection board loaded yet.</b><br>Open the hamburger menu → Workspace & Data to load your first dataset.</div>",unsafe_allow_html=True)
     st.markdown("### Subscription & Payment")
+    if sub['active']:
+        with st.expander("Transaction Receipt Board · Bank transfer", expanded=False):
+            render_transaction_receipt_board(user, sub)
+    if str(user.get('role') or '').lower() == 'master':
+        with st.expander("Admin · Receipt verification queue", expanded=True):
+            render_subscription_receipt_admin_board()
     price_cols=st.columns(5)
     for col,months in zip(price_cols,DACRE_PLAN_MONTHS):
         amount=_subscription_amount(months)
