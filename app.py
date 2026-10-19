@@ -607,11 +607,15 @@ def ensure_di_memory_schema():
         if using_cloud_db():
             for name, decl in required.items():
                 con.execute(f"ALTER TABLE di_memory ADD COLUMN IF NOT EXISTS {name} {decl}")
+            # Seed checks repeatedly look up the same company/title pair. This
+            # non-unique index speeds those checks without changing user data.
+            con.execute("CREATE INDEX IF NOT EXISTS idx_di_memory_company_title ON di_memory(company_name, title)")
         else:
             cols = {str(r[1]) for r in con.execute("PRAGMA table_info(di_memory)").fetchall()}
             for name, decl in required.items():
                 if name not in cols:
                     con.execute(f"ALTER TABLE di_memory ADD COLUMN {name} {decl}")
+            con.execute("CREATE INDEX IF NOT EXISTS idx_di_memory_company_title ON di_memory(company_name, title)")
         con.commit()
     finally:
         con.close()
