@@ -288,9 +288,24 @@ def _qmark_to_pg(sql):
     return str(sql).replace("?", "%s")
 
 def _pg_sql(sql):
+    """Translate the small SQLite SQL dialect used by DACRE to PostgreSQL.
+
+    Schema migrations must be safe to run on every Streamlit rerun. PostgreSQL
+    supports ADD COLUMN IF NOT EXISTS; adding it here makes legacy migration
+    statements idempotent and prevents DuplicateColumn from aborting startup.
+    """
     text = _qmark_to_pg(sql)
     text = re.sub(r"\bINTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT\b", "BIGSERIAL PRIMARY KEY", text, flags=re.I)
     text = re.sub(r"\bINT\s+PRIMARY\s+KEY\s+AUTOINCREMENT\b", "BIGSERIAL PRIMARY KEY", text, flags=re.I)
+    # Convert ALTER TABLE ... ADD COLUMN statements to idempotent PostgreSQL
+    # migrations. Keep this limited to a single SQL statement, including
+    # optional schema-qualified or quoted table names.
+    text = re.sub(
+        r"(\bALTER\s+TABLE\s+(?:[\w.]+|\"[^\"]+\")(?:\s+ONLY)?\s+ADD\s+COLUMN)\s+(?!IF\s+NOT\s+EXISTS\b)",
+        r"\1 IF NOT EXISTS ",
+        text,
+        flags=re.I,
+    )
     return text
 
 class _PGCursorCompat:
@@ -672,10 +687,21 @@ def init_db():
             created_at TEXT NOT NULL
         )
     """)
+    # Kept for SQLite compatibility; PostgreSQL statements are rewritten by
+    # _pg_sql() to ADD COLUMN IF NOT EXISTS and are safe across reruns.
+    # Idempotent migration: Supabase projects may already contain this column.
+    # Check the schema explicitly so both SQLite and PostgreSQL behave safely.
     try:
-        cur.execute("ALTER TABLE companies ADD COLUMN website_url TEXT")
-    except Exception as exc:
-        if not using_cloud_db() or "duplicate column" not in str(exc).lower():
+        if using_cloud_db():
+            cur.execute("ALTER TABLE companies ADD COLUMN IF NOT EXISTS website_url TEXT")
+        else:
+            cur.execute("PRAGMA table_info(companies)")
+            _company_cols = {str(row["name"] if isinstance(row, dict) else row[1]) for row in cur.fetchall()}
+            if "website_url" not in _company_cols:
+                cur.execute("ALTER TABLE companies ADD COLUMN website_url TEXT")
+    except Exception as _migration_exc:
+        # Duplicate-column races are harmless; all other migration failures remain visible.
+        if getattr(_migration_exc, "sqlstate", None) != "42701" and "duplicate column" not in str(_migration_exc).lower():
             raise
     cur.execute("""
         CREATE TABLE IF NOT EXISTS company_website_profile (
@@ -6057,6 +6083,161 @@ def render_company_dashboard(user):
             st.caption("Your selected duration and payment method are preserved. Only a verified payment response activates DACRE access.")
     if not sub['active']:
         st.error("Your 30-day free tier has ended. DACRE Analysis features are locked until a subscription payment is verified. Your account and billing record remain available so payment can reopen access.")
+ANALYTICS_COMMANDS = {
+    "1 · Give me a data health report": "health",
+    "2 · Remove duplicate rows": "dedupe",
+    "3 · Clean text spacing and blank strings": "clean_text",
+    "4 · Standardize column names": "columns",
+    "5 · Show missing values by column": "missing",
+    "6 · Fill missing numeric values with the median": "fill_median",
+    "7 · Profile every numeric column": "numeric_profile",
+    "8 · Rank the highest values": "top",
+    "9 · Rank the lowest values": "bottom",
+    "10 · Show category frequency": "frequency",
+    "11 · Summarize numbers by category": "group_summary",
+    "12 · Build a pivot table": "pivot",
+    "13 · Find numeric correlations": "correlation",
+    "14 · Flag statistical outliers": "outliers",
+    "15 · Calculate row-by-row percentage change": "pct_change",
+    "16 · Create a cumulative Pareto view": "pareto",
+    "17 · Segment values into low / medium / high": "segment",
+    "18 · Sort records by a chosen column": "sort",
+}
+
+def run_analytics_command(df, command, column=None, group_column=None, value_column=None, ascending=False, new_column="Analysis Result"):
+    """Run one of DACRE's deterministic, previewable analytics commands."""
+    if df is None or not isinstance(df, pd.DataFrame) or df.empty:
+        raise ValueError("Load a non-empty dataset first.")
+    out = df.copy()
+    numeric = list(out.select_dtypes(include="number").columns)
+    if command == "health":
+        report = pd.DataFrame([
+            {"Metric":"Rows", "Value":len(out)}, {"Metric":"Columns", "Value":len(out.columns)},
+            {"Metric":"Duplicate rows", "Value":int(out.duplicated().sum())},
+            {"Metric":"Missing cells", "Value":int(out.isna().sum().sum())},
+            {"Metric":"Complete rows", "Value":int(out.notna().all(axis=1).sum())},
+            {"Metric":"Memory estimate (KB)", "Value":round(float(out.memory_usage(deep=True).sum())/1024, 2)},
+        ])
+        missing = out.isna().sum().rename("Missing values").to_frame(); missing["Missing %"]=(missing["Missing values"]/max(len(out),1)*100).round(2)
+        return report, "Data health report created.", missing.reset_index(names="Column")
+    if command == "dedupe":
+        before=len(out); out=out.drop_duplicates().reset_index(drop=True)
+        return out, f"Removed {before-len(out):,} duplicate row(s).", None
+    if command == "clean_text":
+        for c in out.select_dtypes(include=["object", "string"]).columns:
+            out[c]=out[c].astype("string").str.strip().replace(r"^\s*$", pd.NA, regex=True)
+        return out, "Trimmed text and converted blank-only cells to missing values.", None
+    if command == "columns":
+        cols=[]; used={}
+        for c in out.columns:
+            base=re.sub(r"[^0-9a-zA-Z]+", "_", str(c).strip()).strip("_").lower() or "column"
+            used[base]=used.get(base,0)+1; cols.append(base if used[base]==1 else f"{base}_{used[base]}")
+        out.columns=cols
+        return out, "Standardized column names to unique snake_case names.", None
+    if command == "missing":
+        result=pd.DataFrame({"Column":out.columns.astype(str),"Missing values":out.isna().sum().values})
+        result["Missing %"]=(result["Missing values"]/max(len(out),1)*100).round(2)
+        return result.sort_values("Missing %",ascending=False), "Missing-value report created.", None
+    if command == "fill_median":
+        if not numeric: raise ValueError("No numeric columns are available to fill.")
+        for c in numeric:
+            med=out[c].median()
+            if pd.notna(med): out[c]=out[c].fillna(med)
+        return out, f"Filled missing numeric values using each column's median ({len(numeric)} column(s)).", None
+    if command == "numeric_profile":
+        if not numeric: raise ValueError("No numeric columns were detected.")
+        return out[numeric].describe().T.reset_index(names="Column"), "Numeric profile generated.", None
+    if command in ("top", "bottom", "sort"):
+        if not column: raise ValueError("Choose a column to rank or sort.")
+        asc = True if command=="bottom" else (ascending if command=="sort" else False)
+        return out.sort_values(column,ascending=asc,na_position="last").reset_index(drop=True), ("Sorted records." if command=="sort" else ("Lowest values ranked first." if asc else "Highest values ranked first.")), None
+    if command == "frequency":
+        if not column: raise ValueError("Choose a category column.")
+        res=out[column].fillna("(missing)").astype(str).value_counts(dropna=False).rename_axis("Category").reset_index(name="Count")
+        res["Share %"]=(res["Count"]/max(len(out),1)*100).round(2)
+        return res, f"Frequency distribution created for {column}.", None
+    if command == "group_summary":
+        if not group_column or not value_column: raise ValueError("Choose a category and a numeric value column.")
+        if not pd.api.types.is_numeric_dtype(out[value_column]): raise ValueError("The value column must be numeric.")
+        res=out.groupby(group_column,dropna=False)[value_column].agg(Count="count",Total="sum",Average="mean",Minimum="min",Maximum="max").reset_index()
+        return res.sort_values("Total",ascending=False), f"Grouped summary of {value_column} by {group_column} created.", None
+    if command == "pivot":
+        if not group_column or not value_column: raise ValueError("Choose a row/category field and a numeric value column.")
+        if not pd.api.types.is_numeric_dtype(out[value_column]): raise ValueError("The pivot value column must be numeric.")
+        res=pd.pivot_table(out,index=group_column,values=value_column,aggfunc="sum",fill_value=0,margins=True).reset_index()
+        return res, f"Pivot table created: sum of {value_column} by {group_column}.", None
+    if command == "correlation":
+        if len(numeric)<2: raise ValueError("At least two numeric columns are needed for correlation.")
+        return out[numeric].corr(numeric_only=True).round(3).reset_index(names="Column"), "Correlation matrix created. Correlation shows association, not causation.", None
+    if command == "outliers":
+        if not column: raise ValueError("Choose a numeric column to check.")
+        if not pd.api.types.is_numeric_dtype(out[column]): raise ValueError("Choose a numeric column.")
+        q1=out[column].quantile(.25); q3=out[column].quantile(.75); iqr=q3-q1
+        mask=(out[column] < q1-1.5*iqr) | (out[column] > q3+1.5*iqr)
+        out["DACRE_Outlier_Flag"]=mask.fillna(False)
+        return out, f"Flagged {int(mask.sum())} possible outlier(s) using the 1.5×IQR rule; review before acting.", None
+    if command == "pct_change":
+        if not column: raise ValueError("Choose a numeric column.")
+        if not pd.api.types.is_numeric_dtype(out[column]): raise ValueError("Choose a numeric column.")
+        out[new_column or "Percent Change"] = out[column].pct_change().mul(100).round(2)
+        return out, f"Created percentage change from one row to the next in '{new_column}'. Row order matters.", None
+    if command == "pareto":
+        if not column: raise ValueError("Choose a numeric value column.")
+        if not pd.api.types.is_numeric_dtype(out[column]): raise ValueError("Choose a numeric value column.")
+        out=out.sort_values(column,ascending=False).reset_index(drop=True)
+        total=out[column].sum()
+        out["Cumulative Total"]=out[column].cumsum()
+        out["Cumulative Share %"]=(out["Cumulative Total"]/total*100).round(2) if total else 0
+        return out, "Pareto-style cumulative contribution view created.", None
+    if command == "segment":
+        if not column: raise ValueError("Choose a numeric column to segment.")
+        if not pd.api.types.is_numeric_dtype(out[column]): raise ValueError("Choose a numeric column.")
+        try: out[new_column or "Value Segment"]=pd.qcut(out[column],q=3,labels=["Low","Medium","High"],duplicates="drop")
+        except Exception: out[new_column or "Value Segment"]=pd.cut(out[column],bins=3,labels=["Low","Medium","High"],duplicates="drop")
+        return out, f"Created low/medium/high segments from '{column}'.", None
+    raise ValueError("That analytics command is not supported.")
+
+def render_analytics_command_deck(user, df):
+    st.markdown("### Analytics Command Deck")
+    st.caption("Choose a plain-English goal. DACRE builds a preview first; your active dataset changes only when you approve it.")
+    with st.container(border=True):
+        selected_label=st.selectbox("What should DACRE do?",list(ANALYTICS_COMMANDS.keys()),key="analytics_command_choice")
+        command=ANALYTICS_COMMANDS[selected_label]
+        cols=list(df.columns) if df is not None else []
+        numeric=list(df.select_dtypes(include="number").columns) if df is not None else []
+        col=None; group=None; value=None; ascending=False; new_name="Analysis Result"
+        if command in ("top","bottom","sort","frequency","outliers","pct_change","pareto","segment") and cols:
+            options=numeric if command in ("outliers","pct_change","pareto","segment") and numeric else cols
+            col=st.selectbox("Column",options,key="analytics_command_column")
+        if command in ("group_summary","pivot") and cols:
+            group=st.selectbox("Group / row field",cols,key="analytics_command_group")
+            value=st.selectbox("Numeric value field",numeric if numeric else cols,key="analytics_command_value")
+        if command=="sort": ascending=st.checkbox("Sort ascending",value=True,key="analytics_command_ascending")
+        if command in ("pct_change","segment"): new_name=st.text_input("New column name",value="Percent Change" if command=="pct_change" else "Value Segment",key="analytics_command_newname")
+        if st.button("Run command and preview",type="primary",use_container_width=True,key="run_analytics_command"):
+            try:
+                result,summary,extra=run_analytics_command(df,command,column=col,group_column=group,value_column=value,ascending=ascending,new_column=new_name)
+                st.session_state.analytics_command_preview=result.copy()
+                st.session_state.analytics_command_summary=summary
+                st.session_state.analytics_command_extra=extra
+                st.session_state.analytics_command_source=command
+            except Exception as exc: st.error(str(exc))
+        preview=st.session_state.get("analytics_command_preview")
+        if preview is not None:
+            st.success(st.session_state.get("analytics_command_summary","Preview ready."))
+            extra=st.session_state.get("analytics_command_extra")
+            if extra is not None: st.markdown("**Additional diagnostics**"); st.dataframe(safe_dataframe_for_streamlit(extra),use_container_width=True,hide_index=True)
+            st.dataframe(safe_dataframe_for_streamlit(preview.head(300)),use_container_width=True,hide_index=True)
+            left,right=st.columns(2)
+            with left:
+                if st.button("Apply preview to active dataset",type="primary",use_container_width=True,key="apply_analytics_command"):
+                    st.session_state.processed_df=preview.copy(); st.session_state.export_preview=preview.copy()
+                    save_project(user,st.session_state.raw_df,preview,st.session_state.get("active_filename","analytics.csv"),st.session_state.get("formula_logs",[]),st.session_state.get("chart_config",{}))
+                    log_activity(user.get("username","user"),user.get("company","company"),f"Analytics command applied: {selected_label}")
+                    st.session_state.analytics_command_preview=None; st.success("Applied and saved to the workspace."); st.rerun()
+            with right:
+                st.download_button("Download preview as CSV",data=preview.to_csv(index=False).encode("utf-8-sig"),file_name="dacre_analytics_result.csv",mime="text/csv",use_container_width=True,key="download_analytics_preview")
+
 PAGE_META = {
     "Company Dashboard": ("D", "Company Dashboard", "Your company intelligence, DI team and subscription status."),
     "Overview": ("D", "DACRE Analytics", "MASTER-ONLY platform command view · users, activity, system health and live intelligence."),
@@ -7954,6 +8135,7 @@ elif selected_page=="Workspace & Data":
     if st.session_state.processed_df is not None:
         df=st.session_state.processed_df
         st.subheader(f"Active Data: {st.session_state.active_filename}")
+        render_analytics_command_deck(user, df)
         m1,m2,m3,m4=st.columns(4)
         m1.metric("Total Rows",f"{len(df):,}")
         m2.metric("Total Columns",len(df.columns))
