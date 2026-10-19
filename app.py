@@ -589,7 +589,35 @@ def _migrate_sqlite_to_supabase_once():
         raise
     finally:
         con.close()
+def ensure_di_memory_schema():
+    """Ensure every column used by shared DI memory exists on SQLite and PostgreSQL."""
+    con = db()
+    try:
+        required = {
+            "company_name": "TEXT NOT NULL DEFAULT ''",
+            "category": "TEXT NOT NULL DEFAULT 'GENERAL'",
+            "title": "TEXT NOT NULL DEFAULT ''",
+            "content": "TEXT NOT NULL DEFAULT ''",
+            "priority": "INTEGER NOT NULL DEFAULT 500",
+            "active": "INTEGER NOT NULL DEFAULT 1",
+            "created_by": "TEXT NOT NULL DEFAULT ''",
+            "created_at": "TEXT NOT NULL DEFAULT ''",
+            "updated_at": "TEXT NOT NULL DEFAULT ''",
+        }
+        if using_cloud_db():
+            for name, decl in required.items():
+                con.execute(f"ALTER TABLE di_memory ADD COLUMN IF NOT EXISTS {name} {decl}")
+        else:
+            cols = {str(r[1]) for r in con.execute("PRAGMA table_info(di_memory)").fetchall()}
+            for name, decl in required.items():
+                if name not in cols:
+                    con.execute(f"ALTER TABLE di_memory ADD COLUMN {name} {decl}")
+        con.commit()
+    finally:
+        con.close()
+
 def seed_di_memory_postgres():
+    ensure_di_memory_schema()
     con = db(); now = datetime.now().isoformat(timespec="seconds")
     try:
         rows = [("",c,t,x,p,MASTER_USERNAME,now,now) for c,t,x,p in DI_MEMORY_SEED]
@@ -1890,6 +1918,7 @@ def ensure_master():
     con.close()
 def seed_di_memory():
     """Seed the shared DI Memory Box without overwriting user-created memory."""
+    ensure_di_memory_schema()
     if using_cloud_db():
         return seed_di_memory_postgres()
     con=db(); now=datetime.now().isoformat(timespec="seconds")
