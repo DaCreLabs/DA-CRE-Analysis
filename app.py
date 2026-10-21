@@ -85,12 +85,21 @@ DI_NAME = "DI — David's Intelligence"
 CEO_GUARD_NAME = "Guaiel"
 MASTER_USERNAME = "david"
 MASTER_FULL_NAME = "David Emenike"
-MASTER_PASSKEY = os.getenv("DACRE_MASTER_PASSKEY", "theWORDofGOD@111").strip()
-MASTER_PASSKEY_HASH = os.getenv(
-    "DACRE_MASTER_PASSKEY_HASH",
-    "1d9763eb96e88387bf4a18b7ca1a94a4a3a80ea0353cf4203764c0bccfbda27f"
-).strip()
-DAVID_CREATIONS_PASSKEY = os.getenv("DACRE_DAVID_CREATIONS_PASSKEY", "Mychildren").strip()
+def _early_secret(name):
+    """Read a deployment secret before the rest of the app has initialized."""
+    try:
+        value = st.secrets.get(name, "")
+        if value:
+            return str(value).strip()
+    except Exception:
+        pass
+    return str(os.getenv(name, "") or "").strip()
+
+# Never ship working owner credentials in source code. Configure these in
+# Streamlit Secrets or environment variables before enabling master features.
+MASTER_PASSKEY = _early_secret("DACRE_MASTER_PASSKEY")
+MASTER_PASSKEY_HASH = _early_secret("DACRE_MASTER_PASSKEY_HASH")
+DAVID_CREATIONS_PASSKEY = _early_secret("DACRE_DAVID_CREATIONS_PASSKEY")
 BASE_DIR = Path(__file__).resolve().parent
 LOGO_CANDIDATES = [
     "dacre_logo.png",
@@ -399,7 +408,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 _DB_SCHEMA_LOCK = threading.RLock()
-_DB_SCHEMA_VERSION = 13
+_DB_SCHEMA_VERSION = 16
 @contextmanager
 def _db_file_lock(timeout=90):
     """Serialize SQLite schema migrations across Streamlit processes."""
@@ -478,14 +487,36 @@ def verify_password(value, stored):
         return False, False
     if stored.startswith("pbkdf2_sha256$"):
         try:
-            _, iterations, salt_hex, digest_hex = stored.split("$", 3)
+            _, iterations_text, salt_hex, digest_hex = stored.split("$", 3)
+            iterations = int(iterations_text)
+            # Reject weak or unreasonable stored parameters. This avoids accepting
+            # downgrade hashes and prevents a corrupt DB row from forcing huge CPU work.
+            if iterations < PBKDF2_ITERATIONS or iterations > 2_000_000:
+                return False, False
             salt = bytes.fromhex(salt_hex)
-            candidate = hashlib.pbkdf2_hmac("sha256", str(value).encode("utf-8"), salt, int(iterations)).hex()
-            return hmac.compare_digest(candidate, digest_hex), False
+            expected = bytes.fromhex(digest_hex)
+            if len(salt) < 16 or len(expected) != 32:
+                return False, False
+            candidate = hashlib.pbkdf2_hmac("sha256", str(value).encode("utf-8"), salt, iterations)
+            return hmac.compare_digest(candidate, expected), False
         except Exception:
             return False, False
     legacy = hashlib.sha256(str(value).encode("utf-8")).hexdigest()
     return hmac.compare_digest(legacy, stored), True
+def _valid_pbkdf2_hash(stored):
+    """Validate the configured PBKDF2 hash structure without attempting a password guess."""
+    try:
+        prefix, iterations_text, salt_hex, digest_hex = str(stored or "").split("$", 3)
+        iterations = int(iterations_text)
+        salt = bytes.fromhex(salt_hex); digest = bytes.fromhex(digest_hex)
+        return prefix == "pbkdf2_sha256" and PBKDF2_ITERATIONS <= iterations <= 2_000_000 and len(salt) >= 16 and len(digest) == 32
+    except Exception:
+        return False
+
+def _master_credential_configured():
+    """Require a long deployment passphrase or a structurally valid PBKDF2 hash."""
+    return len(MASTER_PASSKEY) >= 16 or _valid_pbkdf2_hash(MASTER_PASSKEY_HASH)
+
 def _pg_table_columns(con, table_name):
     rows = con.execute(
         "SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name=? ORDER BY ordinal_position",
@@ -673,6 +704,14 @@ def init_db():
             last_seen_at TEXT NOT NULL,
             user_agent TEXT,
             ip_address TEXT
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS auth_login_attempts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            identity_hash TEXT NOT NULL,
+            attempted_at TEXT NOT NULL,
+            succeeded INTEGER NOT NULL DEFAULT 0
         )
     """)
     cur.execute("""
@@ -1901,9 +1940,141 @@ If two interpretations would produce materially different actions, ask one focus
         st.caption("Use this on a DACRE computer that you have explicitly authorized to share its screen. The browser will ask for permission before anything is published.")
         render_dacre_screen_station(user)
 
-def ensure_master():
-    if not MASTER_PASSKEY:
+def ensure_company_invite_schema():
+    """Create an organization-scoped invitation ledger on SQLite or PostgreSQL."""
+    con = db()
+    try:
+        if using_cloud_db():
+            con.execute("""CREATE TABLE IF NOT EXISTS company_invites (
+                id BIGSERIAL PRIMARY KEY, company_name TEXT NOT NULL, token_hash TEXT UNIQUE NOT NULL,
+                created_by TEXT NOT NULL, created_at TEXT NOT NULL, expires_at TEXT NOT NULL,
+                max_uses INTEGER NOT NULL DEFAULT 1, used_count INTEGER NOT NULL DEFAULT 0,
+                revoked_at TEXT)""")
+        else:
+            con.execute("""CREATE TABLE IF NOT EXISTS company_invites (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL, token_hash TEXT UNIQUE NOT NULL,
+                created_by TEXT NOT NULL, created_at TEXT NOT NULL, expires_at TEXT NOT NULL,
+                max_uses INTEGER NOT NULL DEFAULT 1, used_count INTEGER NOT NULL DEFAULT 0,
+                revoked_at TEXT)""")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_company_invites_company_expiry ON company_invites(company_name, expires_at, revoked_at)")
+        con.commit()
+    finally:
+        con.close()
+
+def create_company_invite(user, expires_hours=72, max_uses=1):
+    """Issue a one-time or limited-use join code; only company admins can create it."""
+    if not user or user.get("role") != "company_admin":
+        return False, "Only your organization's administrator can create invitation codes."
+    company = str(user.get("company") or "").strip()
+    if not company or company.casefold() == "dacre master":
+        return False, "A valid company workspace is required."
+    try:
+        expires_hours = max(1, min(int(expires_hours), 720))
+        max_uses = max(1, min(int(max_uses), 50))
+    except Exception:
+        return False, "Choose a valid expiry and usage limit."
+    code = base64.urlsafe_b64encode(os.urandom(24)).decode("ascii").rstrip("=")
+    token_hash = hashlib.sha256(code.encode("utf-8")).hexdigest()
+    now_dt = datetime.now(); now = now_dt.isoformat(timespec="seconds")
+    expires = (now_dt + timedelta(hours=expires_hours)).isoformat(timespec="seconds")
+    con = db()
+    try:
+        con.execute("INSERT INTO company_invites(company_name,token_hash,created_by,created_at,expires_at,max_uses,used_count) VALUES(?,?,?,?,?,?,0)", (company, token_hash, str(user.get("username") or "")[:320], now, expires, max_uses))
+        con.commit()
+        return True, code
+    except Exception:
+        try: con.rollback()
+        except Exception: pass
+        return False, "The invitation code could not be created. Please retry."
+    finally:
+        con.close()
+
+def _save_member_role(member_id, company, role, actor):
+    """Update only a non-master account inside the actor's own organization."""
+    if not actor or actor.get("role") != "company_admin" or role not in ("user", "company_admin"):
+        st.error("You are not authorized to change this role.")
         return
+    con = db()
+    try:
+        cur = con.execute("UPDATE users SET role=? WHERE id=? AND lower(company_name)=lower(?) AND role!='master'", (role, int(member_id), str(company)))
+        if getattr(cur, "rowcount", 0) != 1:
+            con.rollback(); st.error("The selected member could not be updated. Refresh the portal and retry."); return
+        con.commit()
+        log_activity(actor["username"], company, f"Updated organization member role for user ID {int(member_id)} to {role}", notify_admin=False)
+        st.success("Member role updated.")
+        st.rerun()
+    except Exception:
+        try: con.rollback()
+        except Exception: pass
+        st.error("Member role could not be updated. Please retry.")
+    finally:
+        con.close()
+
+def render_organization_admin_portal(user):
+    """Manage members and invitations for one organization only."""
+    if not user or user.get("role") != "company_admin":
+        st.error("Only your organization's administrator can open this portal.")
+        return
+    company = str(user.get("company") or "").strip()
+    st.markdown("## Organization Admin Portal")
+    st.caption(f"Manage membership for {_escape_html(company)}. Invitation codes grant access only to this organization and should be shared privately.")
+    with st.form("company_invite_create_form"):
+        c1, c2 = st.columns(2)
+        with c1: hours = st.selectbox("Code expires after", [24, 72, 168, 720], index=1, format_func=lambda x: f"{x} hours")
+        with c2: uses = st.selectbox("Maximum signups", [1, 2, 5, 10, 25, 50], index=0)
+        create = st.form_submit_button("Create invitation code", type="primary", use_container_width=True)
+    if create:
+        ok, result = create_company_invite(user, hours, uses)
+        if ok:
+            st.success("Invitation created. Copy this code now; DACRE stores only its hash and cannot show it again.")
+            st.code(result, language=None)
+        else:
+            st.error(result)
+    con = db()
+    try:
+        members = con.execute("SELECT id,first_name,last_name,username,email,role,created_at,last_login FROM users WHERE lower(company_name)=lower(?) ORDER BY id", (company,)).fetchall()
+        invites = con.execute("SELECT id,created_by,created_at,expires_at,max_uses,used_count,revoked_at FROM company_invites WHERE lower(company_name)=lower(?) ORDER BY id DESC LIMIT 30", (company,)).fetchall()
+    finally:
+        con.close()
+    st.markdown("### Team members")
+    if members:
+        st.dataframe(pd.DataFrame([{ "Name": f"{r['first_name']} {r['last_name']}", "Email": r['email'], "Role": r['role'], "Joined": r['created_at'], "Last sign-in": r['last_login'] or "—"} for r in members]), use_container_width=True, hide_index=True)
+        eligible_members = [r for r in members if str(r["role"]).lower() != "master"]
+        if eligible_members:
+            st.markdown("#### Member permissions")
+            member_ids = [int(r["id"]) for r in eligible_members]
+            selected_member = st.selectbox("Select team member", member_ids, format_func=lambda mid: next(f"{r['first_name']} {r['last_name']} · {r['email']}" for r in eligible_members if int(r['id']) == mid), key="org_admin_member_role_target")
+            current_target = next(r for r in eligible_members if int(r["id"]) == int(selected_member))
+            selected_role = st.selectbox("Organization role", ["user", "company_admin"], index=1 if str(current_target["role"]).lower() == "company_admin" else 0, key="org_admin_member_role_value", help="Company admins can manage invitation codes and organization membership. Users can work in the shared company workspace.")
+            if st.button("Save member role", type="primary", key="org_admin_member_role_save"):
+                if int(selected_member) == int(user.get("id") or -1) and selected_role != "company_admin":
+                    admin_count = sum(1 for r in eligible_members if str(r["role"]).lower() == "company_admin")
+                    if admin_count <= 1:
+                        st.error("Promote another member to organization admin before removing your own admin role.")
+                    else:
+                        _save_member_role(selected_member, company, selected_role, user)
+                else:
+                    _save_member_role(selected_member, company, selected_role, user)
+    else:
+        st.info("No members found for this organization yet.")
+    st.markdown("### Invitation status")
+    if invites:
+        st.dataframe(pd.DataFrame([{ "Created by": r['created_by'], "Created": r['created_at'], "Expires": r['expires_at'], "Uses": f"{r['used_count']}/{r['max_uses']}", "Status": "Revoked" if r['revoked_at'] else ("Expired" if str(r['expires_at']) <= datetime.now().isoformat(timespec="seconds") else "Available") } for r in invites]), use_container_width=True, hide_index=True)
+        revoke_id = st.selectbox("Select an invitation to revoke", [int(r['id']) for r in invites if not r['revoked_at']], key="company_invite_revoke_select") if any(not r['revoked_at'] for r in invites) else None
+        if revoke_id is not None and st.button("Revoke selected invitation", key="company_invite_revoke_button"):
+            con = db()
+            try:
+                con.execute("UPDATE company_invites SET revoked_at=? WHERE id=? AND lower(company_name)=lower(?) AND revoked_at IS NULL", (datetime.now().isoformat(timespec="seconds"), int(revoke_id), company))
+                con.commit(); st.success("Invitation revoked."); st.rerun()
+            finally: con.close()
+    else:
+        st.caption("No invitation codes have been created yet.")
+
+def ensure_master():
+    # Do not create a usable owner account unless an explicit deployment secret exists.
+    if not _master_credential_configured():
+        return
+    master_hash = hash_password(MASTER_PASSKEY) if len(MASTER_PASSKEY) >= 16 else MASTER_PASSKEY_HASH
     con = db()
     cur = con.cursor()
     cur.execute("SELECT id FROM users WHERE username = ?", (MASTER_USERNAME,))
@@ -1916,7 +2087,7 @@ def ensure_master():
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             "David", "Emenike", MASTER_USERNAME, "DACRE MASTER", "master@dacre.local", "",
-            MASTER_PASSKEY_HASH, MASTER_PASSKEY_HASH, "master", 0, now,
+            master_hash, master_hash, "master", 0, now,
         ))
         con.commit()
     con.close()
@@ -2387,11 +2558,69 @@ def _create_authenticated_session(user):
     return token
 
 def _clear_authenticated_session():
-    _revoke_auth_session(str(st.session_state.get("dacre_auth_token") or ""))
+    raw_token = str(st.session_state.get("dacre_auth_token") or "")
+    try:
+        _revoke_auth_session(raw_token)
+    except Exception:
+        # Always clear the browser session locally, even if the database is down.
+        pass
     st.session_state.pop("dacre_auth_token", None)
     st.session_state.pop("dacre_auth_expires", None)
 
-def authenticate(company_name, full_name, passkey, email=""):
+def _validate_authenticated_session(user, touch=True):
+    """Validate the current browser session against the database on app reruns."""
+    if not user:
+        return False
+    raw_token = str(st.session_state.get("dacre_auth_token") or "")
+    if not raw_token:
+        # Compatibility for an already-authenticated Streamlit session created
+        # before persistent sessions were introduced. Establish a database record.
+        try:
+            _create_authenticated_session(user)
+            raw_token = str(st.session_state.get("dacre_auth_token") or "")
+        except Exception:
+            return False
+    token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+    now = datetime.now().isoformat(timespec="seconds")
+    con = db()
+    try:
+        row = con.execute(
+            "SELECT s.id,s.user_id,s.expires_at,s.revoked_at,u.username,u.company_name,u.role FROM auth_sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? LIMIT 1",
+            (token_hash,),
+        ).fetchone()
+        if not row:
+            return False
+        data = dict(row)
+        if data.get("revoked_at"):
+            return False
+        try:
+            expires = datetime.fromisoformat(str(data.get("expires_at") or "").replace("Z", "+00:00"))
+            if expires.tzinfo:
+                expires = expires.replace(tzinfo=None)
+        except Exception:
+            return False
+        if expires <= datetime.now():
+            return False
+        user_id = user.get("id")
+        if user_id is not None and int(data.get("user_id") or -1) != int(user_id):
+            return False
+        if str(data.get("username") or "").casefold() != str(user.get("username") or "").casefold():
+            return False
+        if str(data.get("company_name") or "").casefold() != str(user.get("company") or user.get("company_name") or "").casefold():
+            return False
+        if str(data.get("role") or "").casefold() != str(user.get("role") or "").casefold():
+            return False
+        if touch:
+            con.execute("UPDATE auth_sessions SET last_seen_at=? WHERE id=? AND revoked_at IS NULL", (now, data["id"]))
+            con.commit()
+        return True
+    except Exception:
+        # Fail closed if the persistent session cannot be checked.
+        return False
+    finally:
+        con.close()
+
+def _authenticate_core(company_name, full_name, passkey, email=""):
     company_clean = (company_name or "").strip().lower()
     full_name_clean = (full_name or "").strip().lower()
     email_clean = (email or "").strip().lower()
@@ -2402,15 +2631,22 @@ def authenticate(company_name, full_name, passkey, email=""):
         return None, "Please enter your Company / Organization Name or Email Address."
     con = db()
     try:
-        if (company_clean == "dacre master" or full_name_clean == "david emenike" or email_clean == "master@dacre.local") and master_passkey_gate(passkey_clean):
-            row = con.execute("SELECT first_name,last_name,username,company_name,email,role FROM users WHERE username=?", (MASTER_USERNAME,)).fetchone()
+        is_master_attempt = (company_clean == "dacre master" or full_name_clean == "david emenike" or email_clean == "master@dacre.local")
+        if is_master_attempt:
+            if not master_passkey_gate(passkey_clean):
+                if not _master_credential_configured():
+                    return None, "Master access is not configured securely. The owner must set a unique DACRE_MASTER_PASSKEY of at least 16 characters or a valid PBKDF2 DACRE_MASTER_PASSKEY_HASH in Streamlit Secrets."
+                return None, "The master passkey is incorrect."
+            row = con.execute("SELECT id,first_name,last_name,username,company_name,email,role FROM users WHERE username=?", (MASTER_USERNAME,)).fetchone()
             if row:
                 now = datetime.now().isoformat(timespec="seconds")
                 con.execute("UPDATE users SET login_count=login_count+1,last_login=? WHERE username=?", (now, MASTER_USERNAME))
                 con.commit()
                 result = dict(row)
+                result["company"] = result.get("company_name", "DACRE MASTER")
                 log_activity(MASTER_USERNAME, result.get("company_name", "DACRE MASTER"), "Signed in", notify_admin=False)
                 return result, None
+            return None, "The DACRE master account has not been initialized. Contact the platform owner."
         if email_clean:
             rows = con.execute("SELECT id,first_name,last_name,username,company_name,email,password_hash,passkey_hash,role FROM users WHERE lower(email)=?", (email_clean,)).fetchall()
         else:
@@ -2446,7 +2682,186 @@ def authenticate(company_name, full_name, passkey, email=""):
     try: _create_authenticated_session(result)
     except Exception: pass
     return result, None
-def create_account(first, last, company, email, email_password, passkey, website_url="", confirm_passkey=""):
+def _auth_identity_key(company_name="", full_name="", email=""):
+    """Return a non-reversible key for login throttling; never store raw login input."""
+    identity = _normalise_email(email) or (str(company_name or "").strip().casefold() + "|" + str(full_name or "").strip().casefold())
+    return hashlib.sha256(identity.encode("utf-8", errors="replace")).hexdigest()
+
+def _auth_rate_limited(identity_hash, window_minutes=15, max_failures=8):
+    """Database-backed login throttling shared across app reruns and devices."""
+    cutoff = (datetime.now() - timedelta(minutes=window_minutes)).isoformat(timespec="seconds")
+    con = db()
+    try:
+        row = con.execute(
+            "SELECT COUNT(*) AS failures FROM auth_login_attempts WHERE identity_hash=? AND succeeded=0 AND attempted_at>=?",
+            (identity_hash, cutoff),
+        ).fetchone()
+        return int((dict(row) if row else {}).get("failures", 0) or 0) >= max_failures
+    finally:
+        con.close()
+
+def _record_auth_attempt(identity_hash, succeeded):
+    con = db()
+    try:
+        now = datetime.now().isoformat(timespec="seconds")
+        con.execute("INSERT INTO auth_login_attempts(identity_hash,attempted_at,succeeded) VALUES(?,?,?)", (identity_hash, now, 1 if succeeded else 0))
+        # Keep this small table bounded; old entries no longer affect the throttle.
+        cutoff = (datetime.now() - timedelta(days=7)).isoformat(timespec="seconds")
+        con.execute("DELETE FROM auth_login_attempts WHERE attempted_at<?", (cutoff,))
+        con.commit()
+    finally:
+        con.close()
+
+def authenticate(company_name, full_name, passkey, email=""):
+    """Rate-limited authentication wrapper around DACRE's existing credential checks."""
+    identity_hash = _auth_identity_key(company_name, full_name, email)
+    try:
+        if _auth_rate_limited(identity_hash):
+            return None, "Too many unsuccessful sign-in attempts. Please wait 15 minutes before trying again."
+    except Exception:
+        return None, "Sign-in is temporarily unavailable because DACRE could not verify its security controls. Please retry shortly."
+    user, error = _authenticate_core(company_name, full_name, passkey, email)
+    try:
+        _record_auth_attempt(identity_hash, bool(user))
+    except Exception:
+        if user:
+            _clear_authenticated_session()
+        return None, "Sign-in is temporarily unavailable because DACRE could not record its security check. Please retry shortly."
+    if user and not st.session_state.get("dacre_auth_token"):
+        try:
+            _create_authenticated_session(user)
+        except Exception:
+            _clear_authenticated_session()
+            return None, "DACRE could not establish a secure session. Please retry shortly."
+    return user, error
+
+def _send_password_reset_email(email, first_name, reset_token):
+    """Send a short-lived reset token through configured server-side SMTP."""
+    subject = "Reset your DACRE Analysis password"
+    body = (
+        f"Hello {first_name or 'there'},\n\n"
+        "A password reset was requested for your DACRE account.\n\n"
+        f"Your one-time reset code is: {reset_token}\n\n"
+        "This code expires in 30 minutes and can be used once. If you did not request this, ignore this email.\n\n"
+        "DACRE Analysis Security"
+    )
+    providers = [
+        ("DACRE_GMAIL_SMTP_HOST", "DACRE_GMAIL_SMTP_PORT", "DACRE_GMAIL_SMTP_USER", "DACRE_GMAIL_SMTP_PASSWORD", "DACRE_GMAIL_SMTP_FROM"),
+        ("DACRE_OUTLOOK_SMTP_HOST", "DACRE_OUTLOOK_SMTP_PORT", "DACRE_OUTLOOK_SMTP_USER", "DACRE_OUTLOOK_SMTP_PASSWORD", "DACRE_OUTLOOK_SMTP_FROM"),
+        ("DACRE_PROTON_SMTP_HOST", "DACRE_PROTON_SMTP_PORT", "DACRE_PROTON_SMTP_USER", "DACRE_PROTON_SMTP_PASSWORD", "DACRE_PROTON_SMTP_FROM"),
+        ("DACRE_SMTP_HOST", "DACRE_SMTP_PORT", "DACRE_SMTP_USER", "DACRE_SMTP_PASSWORD", "DACRE_SMTP_FROM"),
+    ]
+    for host_key, port_key, user_key, pass_key, from_key in providers:
+        host = _dacre_env_secret(host_key) if "_dacre_env_secret" in globals() else _early_secret(host_key)
+        smtp_user = _dacre_env_secret(user_key) if "_dacre_env_secret" in globals() else _early_secret(user_key)
+        smtp_pass = _dacre_env_secret(pass_key) if "_dacre_env_secret" in globals() else _early_secret(pass_key)
+        if not (host and smtp_user and smtp_pass):
+            continue
+        try:
+            port_value = _dacre_env_secret(port_key, "587") if "_dacre_env_secret" in globals() else _early_secret(port_key) or "587"
+            sender = (_dacre_env_secret(from_key) if "_dacre_env_secret" in globals() else _early_secret(from_key)) or smtp_user
+            msg = MIMEMultipart()
+            msg["From"] = sender; msg["To"] = email; msg["Subject"] = subject
+            msg.attach(MIMEText(body, "plain", "utf-8"))
+            with smtplib.SMTP(host, int(port_value or 587), timeout=15) as server:
+                server.starttls(); server.login(smtp_user, smtp_pass)
+                server.sendmail(sender, [email], msg.as_string())
+            return True
+        except Exception:
+            continue
+    return False
+
+def request_password_reset(email):
+    """Create a one-time reset token without revealing whether an email exists."""
+    email_clean = _normalise_email(email)
+    generic = "If that email belongs to a DACRE account and email delivery is configured, a reset code will be sent shortly."
+    if not _valid_email(email_clean):
+        return True, generic
+    con = db()
+    try:
+        row = con.execute("SELECT id,first_name,email,role FROM users WHERE lower(email)=? LIMIT 1", (email_clean,)).fetchone()
+        if not row or str(row["role"] or "").lower() == "master":
+            return True, generic
+        user = dict(row)
+        recent_cutoff = (datetime.now() - timedelta(minutes=15)).isoformat(timespec="seconds")
+        recent = con.execute("SELECT COUNT(*) AS n FROM password_reset_tokens WHERE user_id=? AND created_at>=?", (int(user["id"]), recent_cutoff)).fetchone()
+        if int((dict(recent) if recent else {}).get("n", 0) or 0) >= 3:
+            return True, generic
+        raw_token = base64.urlsafe_b64encode(os.urandom(32)).decode("ascii").rstrip("=")
+        token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+        now_dt = datetime.now(); now = now_dt.isoformat(timespec="seconds")
+        expires = (now_dt + timedelta(minutes=30)).isoformat(timespec="seconds")
+        con.execute("UPDATE password_reset_tokens SET used_at=? WHERE user_id=? AND used_at IS NULL", (now, int(user["id"])))
+        con.execute("INSERT INTO password_reset_tokens(user_id,token_hash,created_at,expires_at,used_at) VALUES(?,?,?,?,NULL)", (int(user["id"]), token_hash, now, expires))
+        con.commit()
+    except Exception:
+        try: con.rollback()
+        except Exception: pass
+        return True, generic
+    finally:
+        con.close()
+    if not _send_password_reset_email(user["email"], user.get("first_name", ""), raw_token):
+        con = db()
+        try:
+            con.execute("UPDATE password_reset_tokens SET used_at=? WHERE token_hash=? AND used_at IS NULL", (datetime.now().isoformat(timespec="seconds"), token_hash))
+            con.commit()
+        except Exception:
+            try: con.rollback()
+            except Exception: pass
+        finally:
+            con.close()
+    return True, generic
+
+def complete_password_reset(email, reset_token, new_password, confirm_password):
+    """Consume a valid reset token once, replace the password hash, and revoke sessions."""
+    email_clean = _normalise_email(email)
+    token = str(reset_token or "").strip()
+    password = str(new_password or "")
+    if not _valid_email(email_clean):
+        return False, "Enter the email address associated with your DACRE account."
+    if len(password) < 12:
+        return False, "Use a new password with at least 12 characters."
+    if password != str(confirm_password or ""):
+        return False, "The two new passwords do not match."
+    if not token or len(token) > 200:
+        return False, "Enter the one-time reset code from your email."
+    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    now_dt = datetime.now(); now = now_dt.isoformat(timespec="seconds")
+    con = db()
+    try:
+        if using_cloud_db():
+            row = con.execute("SELECT t.id,t.user_id,t.expires_at,u.username FROM password_reset_tokens t JOIN users u ON u.id=t.user_id WHERE lower(u.email)=? AND t.token_hash=? AND t.used_at IS NULL FOR UPDATE", (email_clean, token_hash)).fetchone()
+        else:
+            con.execute("BEGIN IMMEDIATE")
+            row = con.execute("SELECT t.id,t.user_id,t.expires_at,u.username FROM password_reset_tokens t JOIN users u ON u.id=t.user_id WHERE lower(u.email)=? AND t.token_hash=? AND t.used_at IS NULL", (email_clean, token_hash)).fetchone()
+        if not row:
+            con.rollback(); return False, "That reset code is invalid, expired, or already used. Request a new code."
+        data = dict(row)
+        try:
+            expiry = datetime.fromisoformat(str(data["expires_at"]).replace("Z", "+00:00"))
+            if expiry.tzinfo: expiry = expiry.replace(tzinfo=None)
+        except Exception:
+            con.rollback(); return False, "That reset code is invalid. Request a new code."
+        if expiry <= now_dt:
+            con.execute("UPDATE password_reset_tokens SET used_at=? WHERE id=? AND used_at IS NULL", (now, data["id"]))
+            con.commit(); return False, "That reset code has expired. Request a new code."
+        hashed = hash_password(password)
+        con.execute("UPDATE users SET password_hash=?,passkey_hash=? WHERE id=?", (hashed, hashed, int(data["user_id"])))
+        cur = con.execute("UPDATE password_reset_tokens SET used_at=? WHERE id=? AND used_at IS NULL", (now, data["id"]))
+        if getattr(cur, "rowcount", 0) != 1:
+            con.rollback(); return False, "That reset code was already used. Request a new code."
+        con.execute("UPDATE auth_sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL", (now, int(data["user_id"])))
+        con.execute("UPDATE password_reset_tokens SET used_at=? WHERE user_id=? AND used_at IS NULL", (now, int(data["user_id"])))
+        con.commit()
+        return True, "Your DACRE password has been reset. Sign in with your new password."
+    except Exception:
+        try: con.rollback()
+        except Exception: pass
+        return False, "Password reset could not be completed right now. Please retry or contact DACRE support."
+    finally:
+        con.close()
+
+def create_account(first, last, company, email, email_password, passkey, website_url="", confirm_passkey="", company_join_code=""):
     company_clean = canonical_company_name(company)
     email_clean = email.strip().lower()
     passkey_clean = passkey.strip()
@@ -2457,7 +2872,7 @@ def create_account(first, last, company, email, email_password, passkey, website
     if not company_clean or not email_clean or not passkey_clean:
         return False, "Please fill in Company Name, Email Address, and Password.", None
     if not _valid_email(email_clean): return False, "Please enter a valid email address.", None
-    if len(passkey_clean) < 10: return False, "Your DACRE password must be at least 10 characters long.", None
+    if len(passkey_clean) < 12: return False, "Your DACRE password must be at least 12 characters long.", None
     if confirm_passkey and passkey_clean != confirm_passkey.strip(): return False, "The two passwords do not match.", None
     if "@" not in email_clean or "." not in email_clean.split("@")[-1]:
         return False, "Please enter a valid email address.", None
@@ -2481,12 +2896,27 @@ def create_account(first, last, company, email, email_password, passkey, website
                 f"for {existing_account['company_name']}. Please use the Sign In page to access your account."
             ), None
         company_row = cur.execute("SELECT name FROM companies WHERE lower(name)=lower(?)", (company_clean,)).fetchone()
+        invite_row = None
         if company_row:
+            # Reuse the exact stored organization label so all members share the same workspace key.
+            company_clean = str(company_row["name"])
+            invite_hash = hashlib.sha256(str(company_join_code or "").strip().encode("utf-8")).hexdigest() if str(company_join_code or "").strip() else ""
+            now_check = datetime.now().isoformat(timespec="seconds")
+            if not invite_hash:
+                return False, "This organization already exists. Ask its administrator for an invitation code before joining.", None
+            invite_row = cur.execute("SELECT id,max_uses,used_count FROM company_invites WHERE lower(company_name)=lower(?) AND token_hash=? AND revoked_at IS NULL AND expires_at>? LIMIT 1", (company_clean, invite_hash, now_check)).fetchone()
+            if not invite_row or int(invite_row["used_count"] or 0) >= int(invite_row["max_uses"] or 1):
+                return False, "That organization invitation code is invalid, expired, revoked, or already used. Ask the administrator for a new code.", None
             role = "user"
         else:
             cur.execute("INSERT INTO companies(name,owner_username,admin_password_hash,created_at) VALUES (?,?,?,?)",
                         (company_clean, username_clean, hash_password(passkey_clean), now))
             role = "company_admin"
+        if invite_row:
+            invite_update = cur.execute("UPDATE company_invites SET used_count=used_count+1 WHERE id=? AND used_count<max_uses AND revoked_at IS NULL AND expires_at>?", (int(invite_row["id"]), now))
+            if getattr(invite_update, "rowcount", 0) != 1:
+                con.rollback()
+                return False, "That invitation code was just used or revoked. Ask the administrator for a new code.", None
         cur.execute("""
             INSERT INTO users
             (first_name,last_name,username,company_name,email,email_password,password_hash,passkey_hash,role,login_count,created_at,last_login)
@@ -4815,9 +5245,9 @@ def master_user_record():
     }
 def master_passkey_gate(passkey):
     candidate = (passkey or "").strip()
-    if not candidate:
+    if not candidate or not _master_credential_configured():
         return False
-    expected_hash = hash_password(MASTER_PASSKEY) if MASTER_PASSKEY else MASTER_PASSKEY_HASH
+    expected_hash = hash_password(MASTER_PASSKEY) if len(MASTER_PASSKEY) >= 16 else MASTER_PASSKEY_HASH
     ok, _ = verify_password(candidate, expected_hash)
     return bool(ok)
 def chibobec_login_monitor():
@@ -4946,6 +5376,7 @@ def _bootstrap_runtime(schema_version=12):
     """Bootstrap DACRE on either legacy SQLite or persistent Supabase PostgreSQL."""
     if using_cloud_db():
         init_db()
+        ensure_company_invite_schema()
         _migrate_sqlite_to_supabase_once()
         sanitize_legacy_credentials()
         ensure_di_agent_columns()
@@ -4958,6 +5389,7 @@ def _bootstrap_runtime(schema_version=12):
         seed_active_di_workforce()
         return True
     init_db()
+    ensure_company_invite_schema()
     sanitize_legacy_credentials()
     ensure_runtime_schema()
     ensure_di_agent_columns()
@@ -5875,6 +6307,10 @@ def ensure_subscription_schema():
                 receipt_mime TEXT NOT NULL, receipt_data BYTEA NOT NULL, transaction_reference TEXT,
                 status TEXT NOT NULL DEFAULT 'pending', review_note TEXT, reviewed_by TEXT,
                 reviewed_at TEXT, created_at TEXT NOT NULL)""")
+            con.execute("""CREATE TABLE IF NOT EXISTS subscription_payment_claims (
+                id BIGSERIAL PRIMARY KEY, provider TEXT NOT NULL, reference TEXT NOT NULL,
+                company_name TEXT NOT NULL, created_at TEXT NOT NULL,
+                UNIQUE(reference))""")
         else:
             con.execute("""CREATE TABLE IF NOT EXISTS company_subscriptions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT UNIQUE NOT NULL,
@@ -5895,6 +6331,15 @@ def ensure_subscription_schema():
                 receipt_mime TEXT NOT NULL, receipt_data BLOB NOT NULL, transaction_reference TEXT,
                 status TEXT NOT NULL DEFAULT 'pending', review_note TEXT, reviewed_by TEXT,
                 reviewed_at TEXT, created_at TEXT NOT NULL)""")
+            con.execute("""CREATE TABLE IF NOT EXISTS subscription_payment_claims (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, provider TEXT NOT NULL, reference TEXT NOT NULL,
+                company_name TEXT NOT NULL, created_at TEXT NOT NULL,
+                UNIQUE(reference))""")
+        # The payment-claim ledger is idempotency metadata, not customer content.
+        # Collapse duplicate references left by any earlier candidate schema, then enforce
+        # global reference uniqueness even if the table was created with an older constraint.
+        con.execute("DELETE FROM subscription_payment_claims WHERE id NOT IN (SELECT MIN(id) FROM subscription_payment_claims GROUP BY reference)")
+        con.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_claims_reference_unique ON subscription_payment_claims(reference)")
         # Safe, idempotent migration for installations that created the receipt table earlier.
         if using_cloud_db():
             for col, decl in {
@@ -5902,6 +6347,16 @@ def ensure_subscription_schema():
                 'review_note': 'TEXT', 'reviewed_by': 'TEXT', 'reviewed_at': 'TEXT'
             }.items():
                 con.execute(f"ALTER TABLE subscription_receipts ADD COLUMN IF NOT EXISTS {col} {decl}")
+        # Indexes used by receipt queues, company lookups and payment-reference checks.
+        con.execute("CREATE INDEX IF NOT EXISTS idx_receipts_company_status ON subscription_receipts(company_name, status)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_receipts_reference ON subscription_receipts(transaction_reference)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_payments_company_created ON subscription_payments(company_name, created_at)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_payments_reference ON subscription_payments(transaction_reference)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_expiry ON auth_sessions(user_id, expires_at)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_auth_attempts_identity_time ON auth_login_attempts(identity_hash, attempted_at, succeeded)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_chat_company_user_id ON chat_history(company_name, username, id)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_files_company_user_created ON files(company_name, username, created_at)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_projects_company_user_created ON projects(company_name, username, created_at)")
         con.commit()
     finally:
         con.close()
@@ -5944,7 +6399,14 @@ def subscription_snapshot(company_name):
         trial_end = datetime.fromisoformat(str(sub.get('trial_ends_at') or '').replace('Z',''))
     except Exception:
         trial_end = now
-    if paid_until and paid_until > now:
+    if status == 'paused':
+        # A manual pause is an administrative state, not an expiry transition.
+        # Preserve its status and keep the paid/trial dates and customer records intact.
+        active = False
+        display_status = 'paused'
+        expires = paid_until or trial_end
+        days_left = max(0, (expires.date() - now.date()).days) if expires else 0
+    elif status == 'active' and paid_until and paid_until > now:
         active = True
         display_status = 'active'
         days_left = max(0, (paid_until.date() - now.date()).days)
@@ -5958,11 +6420,17 @@ def subscription_snapshot(company_name):
         active = False
         display_status = 'expired'
         days_left = 0
-        expires = trial_end
-        if status != 'expired':
+        expires = paid_until or trial_end
+        if status in ('trial', 'active', ''):
             try:
-                con=db(); con.execute("UPDATE company_subscriptions SET status='expired',updated_at=? WHERE lower(company_name)=lower(?)",(datetime.now().isoformat(timespec='seconds'),company_name)); con.commit(); con.close()
-            except Exception: pass
+                con=db()
+                con.execute("UPDATE company_subscriptions SET status='expired',updated_at=? WHERE lower(company_name)=lower(?) AND lower(status) IN ('trial','active','')",(datetime.now().isoformat(timespec='seconds'),company_name))
+                con.commit()
+            except Exception:
+                pass
+            finally:
+                try: con.close()
+                except Exception: pass
     return {**sub, 'active':active, 'display_status':display_status, 'days_left':days_left, 'expires':expires}
 def _subscription_amount(months):
     return int(DACRE_MONTHLY_PRICE_NGN * int(months))
@@ -5997,6 +6465,89 @@ def activate_subscription(company_name, months, amount, method, bank_name='', pr
     finally:
         con.close()
     return paid_until
+def _activate_subscription_atomic(company_name, months, amount, method, bank_name="", provider="", reference="", username="", receipt_id=None, review_note=""):
+    """Atomically claim a payment reference, extend subscription and optionally approve a receipt."""
+    company = str(company_name or "").strip()
+    provider_name = str(provider or method or "unknown").strip()[:100]
+    ref = str(reference or "").strip()[:200]
+    months = int(months)
+    amount = float(amount)
+    if not company or months not in DACRE_PLAN_MONTHS or amount != float(_subscription_amount(months)):
+        return False, "The payment details do not match a valid DACRE subscription plan."
+    if not ref:
+        if receipt_id is None:
+            return False, "A payment reference is required to prevent duplicate activation."
+        ref = f"receipt-{int(receipt_id)}"
+    ensure_company_subscription(company)
+    con = db()
+    try:
+        if using_cloud_db():
+            # Serialize competing approvals for the same receipt/subscription row.
+            if receipt_id is not None:
+                receipt_row = con.execute("SELECT id,status,company_name,username,amount,plan_months FROM subscription_receipts WHERE id=? FOR UPDATE", (int(receipt_id),)).fetchone()
+                if not receipt_row or str(receipt_row["status"]).lower() != "pending":
+                    con.rollback()
+                    return False, "This receipt has already been reviewed or no longer exists."
+                if str(receipt_row["company_name"]).strip().casefold() != company.casefold() or int(receipt_row["plan_months"]) != months or abs(float(receipt_row["amount"]) - amount) > 0.01:
+                    con.rollback()
+                    return False, "The selected receipt no longer matches the company, plan, or amount being approved."
+            con.execute("SELECT id FROM company_subscriptions WHERE lower(company_name)=lower(?) FOR UPDATE", (company,)).fetchone()
+        else:
+            con.execute("BEGIN IMMEDIATE")
+            if receipt_id is not None:
+                receipt_row = con.execute("SELECT id,status,company_name,username,amount,plan_months FROM subscription_receipts WHERE id=?", (int(receipt_id),)).fetchone()
+                if not receipt_row or str(receipt_row["status"]).lower() != "pending":
+                    con.rollback()
+                    return False, "This receipt has already been reviewed or no longer exists."
+                if str(receipt_row["company_name"]).strip().casefold() != company.casefold() or int(receipt_row["plan_months"]) != months or abs(float(receipt_row["amount"]) - amount) > 0.01:
+                    con.rollback()
+                    return False, "The selected receipt no longer matches the company, plan, or amount being approved."
+        now_dt = datetime.now()
+        now = now_dt.isoformat(timespec="seconds")
+        # Catch already-verified transactions from before the idempotency table was added.
+        existing_payment = con.execute(
+            "SELECT id FROM subscription_payments WHERE transaction_reference=? AND lower(status)='verified' LIMIT 1",
+            (ref,),
+        ).fetchone()
+        if existing_payment:
+            con.rollback()
+            return False, "This payment reference has already been processed."
+        claim = con.execute(
+            "INSERT INTO subscription_payment_claims(provider,reference,company_name,created_at) VALUES(?,?,?,?) ON CONFLICT(reference) DO NOTHING",
+            (provider_name.casefold(), ref, company, now),
+        )
+        if getattr(claim, "rowcount", 0) != 1:
+            con.rollback()
+            return False, "This payment reference has already been processed."
+        sub = con.execute("SELECT paid_until FROM company_subscriptions WHERE lower(company_name)=lower(?) LIMIT 1", (company,)).fetchone()
+        try:
+            current_until = datetime.fromisoformat(str((dict(sub) if sub else {}).get("paid_until") or "").replace("Z", "")) if sub and sub["paid_until"] else None
+        except Exception:
+            current_until = None
+        start = current_until if current_until and current_until > now_dt else now_dt
+        paid_until = start + timedelta(days=30 * months)
+        cur = con.execute("""UPDATE company_subscriptions SET status='active',plan_months=?,amount_paid=?,currency='NGN',paid_at=?,paid_until=?,payment_method=?,bank_name=?,payment_provider=?,transaction_reference=?,updated_at=? WHERE lower(company_name)=lower(?)""",
+            (months, amount, now, paid_until.isoformat(timespec="seconds"), method, bank_name or "", provider_name, ref, now, company))
+        if getattr(cur, "rowcount", 0) != 1:
+            con.rollback()
+            return False, "The company subscription record could not be updated."
+        if receipt_id is not None:
+            cur = con.execute("UPDATE subscription_receipts SET status='verified',review_note=?,reviewed_by=?,reviewed_at=? WHERE id=? AND status='pending'", (str(review_note or "")[:500], MASTER_USERNAME, now, int(receipt_id)))
+            if getattr(cur, "rowcount", 0) != 1:
+                con.rollback()
+                return False, "This receipt was changed by another review. Refresh the board and try again."
+        con.execute("""INSERT INTO subscription_payments
+            (company_name,username,amount,currency,plan_months,payment_method,bank_name,provider,transaction_reference,status,created_at)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+            (company, str(username or "system")[:320], amount, "NGN", months, method, bank_name or "", provider_name, ref, "verified", now))
+        con.commit()
+        return True, paid_until
+    except Exception:
+        con.rollback()
+        raise
+    finally:
+        con.close()
+
 def initialize_paystack_payment(user, months, email):
     """Create a Paystack hosted checkout when the server-side secret is configured."""
     secret = _dacre_env_secret("PAYSTACK_SECRET_KEY") if "_dacre_env_secret" in globals() else ""
@@ -6037,9 +6588,15 @@ def verify_paystack_reference(user, reference):
         if abs(amount_ngn-expected)>0.01:
             return False
         months=int(meta.get("plan_months") or 1)
+        if months not in DACRE_PLAN_MONTHS:
+            return False
         method="Paystack"
-        activate_subscription(user["company"],months,amount_ngn,method,provider="Paystack",reference=str(reference))
-        record_subscription_payment(user,months,method,provider="Paystack",reference=str(reference),status="verified")
+        activated, _result = _activate_subscription_atomic(
+            user["company"], months, amount_ngn, method,
+            provider="Paystack", reference=str(reference), username=user.get("username", ""),
+        )
+        if not activated:
+            return False
         log_activity(user["username"],user["company"],f"Verified subscription payment via Paystack: ₦{amount_ngn:,.0f}",notify_admin=False)
         return True
     except Exception:
@@ -6058,6 +6615,15 @@ def submit_subscription_receipt(user, months, uploaded_file, transaction_referen
         return False, "The selected file is empty."
     if len(data) > 8 * 1024 * 1024:
         return False, "Receipt is too large. Maximum size is 8 MB."
+    # Never trust the browser-provided MIME type alone.
+    signatures = {
+        "image/png": data.startswith(b"\x89PNG\r\n\x1a\n"),
+        "image/jpeg": data.startswith(b"\xff\xd8\xff"),
+        "image/webp": len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP",
+        "application/pdf": data.startswith(b"%PDF-"),
+    }
+    if not signatures.get(mime, False):
+        return False, "The file content does not match an allowed receipt format. Please upload a genuine PNG, JPG, WEBP or PDF file."
     now = datetime.now().isoformat(timespec="seconds")
     con = db()
     try:
@@ -6069,7 +6635,12 @@ def submit_subscription_receipt(user, months, uploaded_file, transaction_referen
         con.commit()
         return True, "Receipt submitted. Your subscription remains pending until an administrator verifies the transfer."
     except Exception as exc:
-        return False, f"Receipt could not be saved: {exc}"
+        # Do not expose SQL, hostnames, connection strings, or internal details.
+        try:
+            con.rollback()
+        except Exception:
+            pass
+        return False, f"Receipt could not be saved ({type(exc).__name__}). Please retry; if it continues, contact DACRE support."
     finally:
         con.close()
 
@@ -6143,29 +6714,29 @@ def render_subscription_receipt_admin_board():
             if st.button("Approve verified payment and restore account", type="primary", use_container_width=True, key=f"approve_receipt_{selected_id}"):
                 now = datetime.now().isoformat(timespec="seconds")
                 try:
-                    activate_subscription(receipt["company_name"], int(receipt["plan_months"]), float(receipt["amount"]), "OPay Bank Transfer", provider="Manual receipt verification", reference=str(receipt.get("transaction_reference") or f"receipt-{selected_id}"))
-                    con = db()
-                    review_cur = con.execute("UPDATE subscription_receipts SET status='verified',review_note=?,reviewed_by=?,reviewed_at=? WHERE id=? AND status='pending'", (note, MASTER_USERNAME, now, int(selected_id)))
-                    if getattr(review_cur, "rowcount", 1) == 0:
-                        con.rollback()
-                        st.warning("This receipt has already been reviewed. Refresh the board before taking another action.")
-                        con.close()
+                    reference = str(receipt.get("transaction_reference") or f"receipt-{selected_id}").strip()
+                    ok, result = _activate_subscription_atomic(
+                        receipt["company_name"], int(receipt["plan_months"]), float(receipt["amount"]),
+                        "OPay Bank Transfer", bank_name="OPay", provider="Manual receipt verification",
+                        reference=reference, username=receipt.get("username", ""), receipt_id=int(selected_id),
+                        review_note=note,
+                    )
+                    if not ok:
+                        st.warning(str(result))
                         st.stop()
-                    con.execute("""INSERT INTO subscription_payments
-                        (company_name,username,amount,currency,plan_months,payment_method,bank_name,provider,transaction_reference,status,created_at)
-                        VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
-                        (receipt["company_name"], receipt["username"], float(receipt["amount"]), "NGN", int(receipt["plan_months"]),
-                         "OPay Bank Transfer", "OPay", "Manual receipt verification", str(receipt.get("transaction_reference") or f"receipt-{selected_id}"), "verified", now))
-                    con.commit(); con.close()
                     st.success("Payment marked verified and company subscription activated.")
                     st.rerun()
                 except Exception as exc:
-                    st.error(f"Could not approve receipt: {exc}")
+                    st.error(f"Could not approve receipt. No success was reported; check the transaction log and retry safely. ({type(exc).__name__})")
         with b:
             if st.button("Reject receipt", use_container_width=True, key=f"reject_receipt_{selected_id}"):
                 con = db()
                 try:
-                    con.execute("UPDATE subscription_receipts SET status='rejected',review_note=?,reviewed_by=?,reviewed_at=? WHERE id=? AND status='pending'", (note or "Receipt rejected; please contact DACRE support.", MASTER_USERNAME, datetime.now().isoformat(timespec="seconds"), int(selected_id)))
+                    cur = con.execute("UPDATE subscription_receipts SET status='rejected',review_note=?,reviewed_by=?,reviewed_at=? WHERE id=? AND status='pending'", (note or "Receipt rejected; please contact DACRE support.", MASTER_USERNAME, datetime.now().isoformat(timespec="seconds"), int(selected_id)))
+                    if getattr(cur, "rowcount", 0) != 1:
+                        con.rollback()
+                        st.warning("This receipt has already been reviewed. Refresh the board before taking another action.")
+                        st.stop()
                     con.commit()
                     st.warning("Receipt rejected. The company account remains paused until a valid payment is verified.")
                     st.rerun()
@@ -6523,6 +7094,47 @@ def _dashboard_health_ring(value):
     value=max(0,min(100,float(value)))
     r=52; circumference=2*3.141592653589793*r; offset=circumference-(value/100)*circumference
     return f'''<div class="dacre-health-ring"><svg viewBox="0 0 144 144" aria-label="System health {value:.0f}"><circle cx="72" cy="72" r="{r}" fill="none" stroke="var(--dacre-muted-bg)" stroke-width="10"/><circle cx="72" cy="72" r="{r}" fill="none" stroke="var(--dacre-chart-1)" stroke-width="10" stroke-linecap="round" stroke-dasharray="{circumference:.2f}" stroke-dashoffset="{offset:.2f}" transform="rotate(-90 72 72)" class="health-progress"/></svg><div class="dacre-health-center"><b>{value:.0f}</b><span>Health score</span></div></div>'''
+def dacre_runtime_health_checks():
+    """Return point-in-time checks based on real database/configuration evidence."""
+    checks = []
+    required_tables = (
+        "users", "auth_sessions", "auth_login_attempts", "password_reset_tokens",
+        "company_subscriptions", "subscription_payments", "subscription_receipts",
+        "subscription_payment_claims", "company_invites", "chat_history", "files", "projects",
+    )
+    con = None
+    try:
+        con = db()
+        row = con.execute("SELECT 1 AS ok").fetchone()
+        if not row:
+            raise RuntimeError("database probe returned no row")
+        checks.append({"name": "Database connection", "ok": True, "detail": "Live query succeeded"})
+        missing = []
+        for table in required_tables:
+            if using_cloud_db():
+                exists = _pg_table_exists(con, table)
+            else:
+                exists = bool(con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=? LIMIT 1", (table,)).fetchone())
+            if not exists:
+                missing.append(table)
+        checks.append({"name": "Core schema", "ok": not missing, "detail": "All required tables exist" if not missing else "Missing: " + ", ".join(missing)})
+    except Exception as exc:
+        checks.append({"name": "Database connection", "ok": False, "detail": "Connection/query failed (" + type(exc).__name__ + ")"})
+        checks.append({"name": "Core schema", "ok": False, "detail": "Not checked because the database is unavailable"})
+    finally:
+        if con is not None:
+            try: con.close()
+            except Exception: pass
+    master_configured = _master_credential_configured()
+    checks.append({"name": "Master credential configured", "ok": master_configured, "detail": "Deployment secret present" if master_configured else "Set DACRE_MASTER_PASSKEY or DACRE_MASTER_PASSKEY_HASH in Streamlit Secrets"})
+    smtp_configured = any(bool(_dacre_env_secret(k)) for k in ("DACRE_GMAIL_SMTP_HOST", "DACRE_OUTLOOK_SMTP_HOST", "DACRE_PROTON_SMTP_HOST", "DACRE_SMTP_HOST"))
+    checks.append({"name": "Password recovery email", "ok": smtp_configured, "detail": "SMTP host configured" if smtp_configured else "Not configured; email-based recovery cannot deliver codes"})
+    lk_configured = bool(livekit_configured()) if "livekit_configured" in globals() else False
+    checks.append({"name": "LiveKit configuration", "ok": lk_configured, "detail": "Credentials present; live call not tested" if lk_configured else "Optional service not configured"})
+    core = checks[:3]
+    score = round(100 * sum(1 for item in core if item["ok"]) / max(1, len(core)))
+    return score, checks
+
 def render_analytics_overview(user):
     'DACRE Analytics dashboard translated from the supplied Next/Tailwind UI into Streamlit.'
     if not user or user.get("role") != "master":
@@ -6553,25 +7165,26 @@ def render_analytics_overview(user):
                 start=now-pd.Timedelta(hours=24-h)
                 end=start+pd.Timedelta(hours=3)
                 count=int(((ts>=start)&(ts<end)).sum())
-                traffic.append((start.strftime("%H:%M"),count,max(0,int(count*0.62))))
+                traffic.append((start.strftime("%H:%M"),count,0))
     except Exception:
         traffic=[]
     if not traffic:
         traffic=[("00:00",0,0),("03:00",0,0),("06:00",0,0),("09:00",0,0),("12:00",0,0),("15:00",0,0),("18:00",0,0),("21:00",0,0)]
-    health=max(0,min(100,round(99.98 - min(errors*0.35, 25), 2)))
-    spark_users=[max(0,users+i) for i in (-12,-8,-5,-7,-2,4,8,0)]
-    spark_activity=[max(0,activities+i) for i in (-30,-20,-8,-12,0,15,24,0)]
-    spark_health=[96,97,98,97,99,99,100,health]
-    spark_calls=[max(0,active_calls+i) for i in (20,15,12,8,10,5,3,0)]
+    health, runtime_checks = dacre_runtime_health_checks()
+    # Flat sparkline data means "current snapshot"; do not fabricate historic trends.
+    spark_users=[users] * 8
+    spark_activity=[activities] * 8
+    spark_health=[health] * 8
+    spark_calls=[active_calls] * 8
     st.markdown(f'''<div class="dacre-dashboard-topbar"><div class="dacre-dashboard-brand"><span class="live-pulse"><i></i></span><div><h1>DACRE Analytics</h1><p>Real-time platform overview · all systems operational</p></div></div><div class="dacre-dashboard-tools"><span class="dashboard-time">{datetime.now().strftime('%d %b %Y · %H:%M')}</span><span class="dashboard-avatar">{_dashboard_escape((user.get('first_name','D')[:1]+user.get('last_name','A')[:1]).upper())}</span></div></div>''', unsafe_allow_html=True)
     search=st.text_input("Search metrics, agents...", value="", key="dashboard_search", label_visibility="collapsed", placeholder="Search metrics, agents...")
     if search.strip():
         st.caption(f"Dashboard search: {search.strip()} · use the navigation to open the matching workspace.")
     kpis=[
-        ("users","Total Users",f"{users:,}",12.4,spark_users,"registered platform users","Users"),
-        ("activity","Activity",f"{activities:,}",8.9,spark_activity,"recorded workspace events","↗"),
-        ("health","System Health",f"{health:.2f}%",0.3,spark_health,"availability signal · 24h","◉"),
-        ("calls","Active Calls",f"{active_calls:,}",-3.1,spark_calls,"live sessions","Calls"),
+        ("users","Total Users",f"{users:,}",None,spark_users,"registered platform users","Users"),
+        ("activity","Activity",f"{activities:,}",None,spark_activity,"recorded workspace events","↗"),
+        ("health","System Health",f"{health:.0f}%",None,spark_health,"live database/schema checks","◉"),
+        ("calls","Active Call Rooms",f"{active_calls:,}",None,spark_calls,"rooms marked active in the database","Calls"),
     ]
     cards=[]
     for key,label,value,delta,spark,hint,icon in kpis:
@@ -6580,11 +7193,13 @@ def render_analytics_overview(user):
     st.markdown('<section class="dacre-kpi-grid">'+''.join(cards)+'</section>',unsafe_allow_html=True)
     left,right=st.columns([2,1],gap="large")
     with left:
-        st.markdown(f'''<div class="dacre-panel"><div class="panel-head"><div><h2>Request Throughput</h2><p>Workspace activity and compute load across the platform</p></div><div class="range-pills"><span class="active">24h</span><span>7d</span><span>30d</span></div></div><div class="chart-legend"><span><i class="blue"></i>Activity</span><span><i class="cyan"></i>Load</span></div>{_dashboard_area_chart(traffic)}</div>''',unsafe_allow_html=True)
+        st.markdown(f'''<div class="dacre-panel"><div class="panel-head"><div><h2>Recorded Workspace Activity</h2><p>Recent event counts from DACRE's activity ledger; not a CPU/load measurement</p></div><div class="range-pills"><span class="active">24h</span></div></div><div class="chart-legend"><span><i class="blue"></i>Recorded activity</span></div>{_dashboard_area_chart(traffic)}</div>''',unsafe_allow_html=True)
     with right:
-        resource_rows=[("CPU",42,"var(--dacre-chart-1)"),("Memory",61,"var(--dacre-chart-2)"),("Network I/O",28,"var(--dacre-chart-3)"),("Storage",74,"var(--dacre-chart-5)")]
-        bars=''.join(f'''<div class="resource-row"><div><span>{label}</span><b>{value}%</b></div><div class="resource-track"><i style="width:{value}%;background:{color}"></i></div></div>''' for label,value,color in resource_rows)
-        st.markdown(f'''<div class="dacre-panel health-panel"><div class="panel-head"><div><h2>System Health</h2><p>Live resource utilization</p></div></div>{_dashboard_health_ring(health)}<div class="resource-list">{bars}</div></div>''',unsafe_allow_html=True)
+        check_rows=[]
+        for check in runtime_checks:
+            state="success" if check["ok"] else "error"
+            check_rows.append(f'''<div class="resource-row"><div><span>{_dashboard_escape(check["name"])}</span><b class="status {state}">{"OK" if check["ok"] else "ACTION NEEDED"}</b></div><small>{_dashboard_escape(check["detail"])}</small></div>''')
+        st.markdown(f'''<div class="dacre-panel health-panel"><div class="panel-head"><div><h2>Runtime Health Checks</h2><p>Point-in-time checks; LiveKit credentials are not proof of a successful call</p></div></div>{_dashboard_health_ring(health)}<div class="resource-list">{"".join(check_rows)}</div></div>''',unsafe_allow_html=True)
     try:
         con=db()
         if company_filter:
@@ -6881,7 +7496,7 @@ def _landing_auth_panel():
 </div>""", unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 2.2, 1])
     with c2:
-        tab_login, tab_signup = st.tabs(["Sign In", "Create Account"])
+        tab_login, tab_signup, tab_recovery = st.tabs(["Sign In", "Create Account", "Forgot Password"])
         with tab_login:
             with st.form("landing_login_form", clear_on_submit=False):
                 st.markdown("**Welcome back**")
@@ -6928,6 +7543,24 @@ def _landing_auth_panel():
                         auth_message or
                         "We could not sign you in. Check your details or create a DACRE account."
                     )
+        with tab_recovery:
+            st.markdown("**Recover your DACRE account**")
+            st.caption("Request a one-time code by email, then use it below. Codes expire after 30 minutes and work once.")
+            with st.form("dacre_password_reset_request_form", clear_on_submit=False):
+                recovery_email = st.text_input("Account email", placeholder="name@example.com", key="dacre_recovery_email")
+                request_reset = st.form_submit_button("Send password reset code", use_container_width=True)
+            if request_reset:
+                _ok, message = request_password_reset(recovery_email)
+                st.info(message)
+            with st.form("dacre_password_reset_complete_form", clear_on_submit=False):
+                reset_email = st.text_input("Account email", placeholder="name@example.com", key="dacre_reset_email")
+                reset_code = st.text_input("One-time reset code", type="password", key="dacre_reset_code")
+                reset_password = st.text_input("New password", type="password", help="At least 12 characters.", key="dacre_reset_password")
+                reset_confirm = st.text_input("Confirm new password", type="password", key="dacre_reset_confirm")
+                reset_submit = st.form_submit_button("Reset password", use_container_width=True, type="primary")
+            if reset_submit:
+                ok, message = complete_password_reset(reset_email, reset_code, reset_password, reset_confirm)
+                (st.success if ok else st.error)(message)
         with tab_signup:
             with st.form("landing_signup_form", clear_on_submit=False):
                 s_first = st.text_input(
@@ -6941,6 +7574,11 @@ def _landing_auth_panel():
                     placeholder="e.g. Edubridge Consultant Limited",
                     key="landing_signup_company",
                 )
+                s_join_code = st.text_input(
+                    "Company invitation code (required only when joining an existing organization)",
+                    type="password", placeholder="Ask your organization admin for a code",
+                    key="landing_signup_join_code",
+                )
                 s_email = st.text_input(
                     "Email Address",
                     placeholder="e.g. name@example.com",
@@ -6948,7 +7586,7 @@ def _landing_auth_panel():
                 )
                 s_passkey = st.text_input(
                     "Create DACRE Password", type="password",
-                    placeholder="At least 10 characters", key="landing_signup_passkey",
+                    placeholder="At least 12 characters", key="landing_signup_passkey",
                     help="DACRE stores a secure password hash, not your password itself.",
                 )
                 s_confirm_passkey = st.text_input(
@@ -6968,7 +7606,7 @@ def _landing_auth_panel():
                 )
             if signup_submit:
                 success, msg, created = create_account(
-                    s_first, s_last, s_company, s_email, "", s_passkey, s_website, s_confirm_passkey
+                    s_first, s_last, s_company, s_email, "", s_passkey, s_website, s_confirm_passkey, s_join_code
                 )
                 if success:
                     st.session_state.user = created
@@ -7419,6 +8057,12 @@ if st.session_state.user is None and str(st.query_params.get("screen_station", "
 if st.session_state.user is None:
     landing_page()
     st.stop()
+if not _validate_authenticated_session(st.session_state.user):
+    st.session_state.user = None
+    _clear_authenticated_session()
+    st.warning("Your DACRE session has expired or could not be verified. Please sign in again.")
+    landing_page()
+    st.stop()
 if not st.session_state.chat_history:
     st.session_state.chat_history = load_chat_history(st.session_state.user, limit=40)
 st.markdown("""
@@ -7569,6 +8213,7 @@ with head_col1:
 with head_col2:
     if st.button("Sign Out",use_container_width=True):
         log_activity(user["username"],user["company"],"Signed out",notify_admin=user["role"] not in ("master","company_admin"))
+        _clear_authenticated_session()
         st.session_state.user=None
         st.rerun()
 st.markdown("""
@@ -7764,6 +8409,8 @@ with st.sidebar:
         "Company Dashboard", "DI Workforce", "DI Academy", "Data Presentation Board",
         "Workspace & Data", "Formula Lab", "Charts", "File Vault", "Export Center",
     ]
+    if user.get("role") == "company_admin":
+        navigation.insert(1, "Organization Admin Portal")
     default_page="Company Dashboard"
     _nav_icons={
         "Company Dashboard":"dashboard.png",
@@ -8207,6 +8854,8 @@ except Exception:
 
 if selected_page=="Company Dashboard":
     render_company_dashboard(user)
+elif selected_page=="Organization Admin Portal":
+    render_organization_admin_portal(user)
 elif selected_page=="DI Workforce":
     agents=[dict(r) for r in get_di_agents() if r.get('di_name') in DI_HUMAN_CHARACTERS and (not r.get('assigned_company') or r.get('assigned_company')==user['company'])]
     st.markdown("""<div class='dacre-hero'><div class='dacre-title'>DI Workforce</div><div class='dacre-sub'>Six specialized digital workers. Each has a distinct human-centered character, a specialist mission, a communication style and measurable Academy competency.</div></div>""",unsafe_allow_html=True)
