@@ -1,4 +1,4 @@
-# DACRE Analysis runtime dependencies. Keep compatible ranges and avoid duplicate pins.
+# D# DACRE Analysis runtime dependencies
 streamlit>=1.53,<2
 pandas>=2.2,<3
 Pillow>=10,<13
@@ -12,5 +12,4 @@ odfpy>=1.4.1,<2
 google-auth>=2.30,<3
 google-auth-oauthlib>=1.2,<2
 google-api-python-client>=2.130,<3
-
 xlrd>=2.0.1,<3
