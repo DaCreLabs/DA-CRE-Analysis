@@ -6408,7 +6408,7 @@ def ensure_subscription_schema():
             "company_name": "TEXT DEFAULT ''", "username": "TEXT DEFAULT ''", "created_at": "TEXT DEFAULT ''",
         })
         _ensure_runtime_columns(con, "projects", {
-            "company_name": "TEXT DEFAULT ''", "username": "TEXT DEFAULT ''", "created_at": "TEXT DEFAULT ''",
+            "company_name": "TEXT DEFAULT ''", "username": "TEXT DEFAULT ''", "updated_at": "TEXT DEFAULT ''",
         })
         # The payment-claim ledger is idempotency metadata, not customer content.
         # Collapse duplicate references left by any earlier candidate schema, then enforce
@@ -6431,7 +6431,7 @@ def ensure_subscription_schema():
             for table_name, column_name, declaration in (
                 ("projects", "company_name", "TEXT DEFAULT ''"),
                 ("projects", "username", "TEXT DEFAULT ''"),
-                ("projects", "created_at", "TEXT DEFAULT ''"),
+                ("projects", "updated_at", "TEXT DEFAULT ''"),
                 ("files", "company_name", "TEXT DEFAULT ''"),
                 ("files", "username", "TEXT DEFAULT ''"),
                 ("files", "created_at", "TEXT DEFAULT ''"),
@@ -6462,14 +6462,16 @@ def ensure_subscription_schema():
         if using_cloud_db():
             con.execute("ALTER TABLE projects ADD COLUMN IF NOT EXISTS company_name TEXT DEFAULT ''")
             con.execute("ALTER TABLE projects ADD COLUMN IF NOT EXISTS username TEXT DEFAULT ''")
-            con.execute("ALTER TABLE projects ADD COLUMN IF NOT EXISTS created_at TEXT DEFAULT ''")
+            con.execute("ALTER TABLE projects ADD COLUMN IF NOT EXISTS updated_at TEXT DEFAULT ''")
         else:
             _ensure_runtime_columns(con, "projects", {
                 "company_name": "TEXT DEFAULT ''",
                 "username": "TEXT DEFAULT ''",
-                "created_at": "TEXT DEFAULT ''",
+                "updated_at": "TEXT DEFAULT ''",
             })
-        con.execute("CREATE INDEX IF NOT EXISTS idx_projects_company_user_created ON projects(company_name, username, created_at)")
+        # The projects table stores its project timestamp as updated_at (not created_at).
+        # Use the real column name to avoid UndefinedColumn on existing Supabase schemas.
+        con.execute("CREATE INDEX IF NOT EXISTS idx_projects_company_user_updated ON projects(company_name, username, updated_at)")
         con.commit()
     finally:
         con.close()
