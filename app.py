@@ -408,7 +408,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 _DB_SCHEMA_LOCK = threading.RLock()
-_DB_SCHEMA_VERSION = 19
+_DB_SCHEMA_VERSION = 20
 @contextmanager
 def _db_file_lock(timeout=90):
     """Serialize SQLite schema migrations across Streamlit processes."""
@@ -6456,6 +6456,19 @@ def ensure_subscription_schema():
         con.execute("CREATE INDEX IF NOT EXISTS idx_auth_attempts_identity_time ON auth_login_attempts(identity_hash, attempted_at, succeeded)")
         con.execute("CREATE INDEX IF NOT EXISTS idx_chat_company_user_id ON chat_history(company_name, username, id)")
         con.execute("CREATE INDEX IF NOT EXISTS idx_files_company_user_created ON files(company_name, username, created_at)")
+        # Final guard immediately before the projects index. Some older hosted
+        # databases have a legacy projects table whose columns predate this index.
+        # Add each column idempotently before PostgreSQL parses the index statement.
+        if using_cloud_db():
+            con.execute("ALTER TABLE projects ADD COLUMN IF NOT EXISTS company_name TEXT DEFAULT ''")
+            con.execute("ALTER TABLE projects ADD COLUMN IF NOT EXISTS username TEXT DEFAULT ''")
+            con.execute("ALTER TABLE projects ADD COLUMN IF NOT EXISTS created_at TEXT DEFAULT ''")
+        else:
+            _ensure_runtime_columns(con, "projects", {
+                "company_name": "TEXT DEFAULT ''",
+                "username": "TEXT DEFAULT ''",
+                "created_at": "TEXT DEFAULT ''",
+            })
         con.execute("CREATE INDEX IF NOT EXISTS idx_projects_company_user_created ON projects(company_name, username, created_at)")
         con.commit()
     finally:
