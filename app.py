@@ -408,7 +408,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 _DB_SCHEMA_LOCK = threading.RLock()
-_DB_SCHEMA_VERSION = 18
+_DB_SCHEMA_VERSION = 19
 @contextmanager
 def _db_file_lock(timeout=90):
     """Serialize SQLite schema migrations across Streamlit processes."""
@@ -6422,6 +6422,31 @@ def ensure_subscription_schema():
                 'review_note': 'TEXT', 'reviewed_by': 'TEXT', 'reviewed_at': 'TEXT'
             }.items():
                 con.execute(f"ALTER TABLE subscription_receipts ADD COLUMN IF NOT EXISTS {col} {decl}")
+        # PostgreSQL safety net for legacy deployments: index creation must not run
+        # until every indexed column is guaranteed to exist.  Keep these explicit
+        # ALTERs even though _ensure_runtime_columns above normally handles them;
+        # older installations can have projects/files tables created by a different
+        # app revision or schema search path.  All statements are idempotent.
+        if using_cloud_db():
+            for table_name, column_name, declaration in (
+                ("projects", "company_name", "TEXT DEFAULT ''"),
+                ("projects", "username", "TEXT DEFAULT ''"),
+                ("projects", "created_at", "TEXT DEFAULT ''"),
+                ("files", "company_name", "TEXT DEFAULT ''"),
+                ("files", "username", "TEXT DEFAULT ''"),
+                ("files", "created_at", "TEXT DEFAULT ''"),
+                ("chat_history", "company_name", "TEXT DEFAULT ''"),
+                ("chat_history", "username", "TEXT DEFAULT ''"),
+                ("auth_sessions", "user_id", "INTEGER"),
+                ("auth_sessions", "expires_at", "TEXT DEFAULT ''"),
+                ("auth_login_attempts", "identity_hash", "TEXT DEFAULT ''"),
+                ("auth_login_attempts", "attempted_at", "TEXT DEFAULT ''"),
+                ("auth_login_attempts", "succeeded", "INTEGER DEFAULT 0"),
+            ):
+                con.execute(
+                    f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS {column_name} {declaration}"
+                )
+
         # Indexes used by receipt queues, company lookups and payment-reference checks.
         con.execute("CREATE INDEX IF NOT EXISTS idx_receipts_company_status ON subscription_receipts(company_name, status)")
         con.execute("CREATE INDEX IF NOT EXISTS idx_receipts_reference ON subscription_receipts(transaction_reference)")
