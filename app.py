@@ -408,7 +408,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 _DB_SCHEMA_LOCK = threading.RLock()
-_DB_SCHEMA_VERSION = 16
+_DB_SCHEMA_VERSION = 18
 @contextmanager
 def _db_file_lock(timeout=90):
     """Serialize SQLite schema migrations across Streamlit processes."""
@@ -4758,6 +4758,10 @@ def normalize_di_identity(text):
 DI_PAGE_ALIASES = {
     "company dashboard": "Company Dashboard",
     "dashboard": "Company Dashboard",
+    "trader business desk": "Trader Business Desk",
+    "business desk": "Trader Business Desk",
+    "inventory": "Trader Business Desk",
+    "record a sale": "Trader Business Desk",
     "di workforce": "DI Workforce",
     "workforce": "DI Workforce",
     "data presentation board": "Data Presentation Board",
@@ -6283,6 +6287,29 @@ DACRE_BANK_OPTIONS = [
     ("Sterling Bank", "ST"), ("Stanbic IBTC", "SI"),
 ]
 DACRE_PAYMENT_METHODS = ["Bank Transfer", "Debit/Credit Card", "USSD", "Paystack", "Flutterwave"]
+def _ensure_runtime_columns(con, table_name, columns):
+    """Idempotently add missing columns on both SQLite and PostgreSQL installs."""
+    try:
+        if using_cloud_db():
+            existing = set(_pg_table_columns(con, table_name))
+        else:
+            existing = set(_table_columns(con, table_name))
+    except Exception:
+        existing = set()
+    for column_name, declaration in columns.items():
+        if column_name in existing:
+            continue
+        try:
+            if using_cloud_db():
+                con.execute(f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS {column_name} {declaration}")
+            else:
+                con.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {declaration}")
+        except Exception as exc:
+            # Ignore only a concurrent/idempotent migration race; preserve real errors.
+            message = str(exc).lower()
+            if not any(token in message for token in ("already exists", "duplicate column", "duplicatecolumn")):
+                raise
+
 def ensure_subscription_schema():
     """Create subscription/payment tables without storing raw card or bank credentials."""
     con = db()
@@ -6335,6 +6362,54 @@ def ensure_subscription_schema():
                 id INTEGER PRIMARY KEY AUTOINCREMENT, provider TEXT NOT NULL, reference TEXT NOT NULL,
                 company_name TEXT NOT NULL, created_at TEXT NOT NULL,
                 UNIQUE(reference))""")
+        # Older deployments may already have these tables but with an earlier set of
+        # columns. CREATE TABLE IF NOT EXISTS does not upgrade them, so migrate before
+        # creating indexes that depend on the newer columns.
+        _ensure_runtime_columns(con, "company_subscriptions", {
+            "company_name": "TEXT DEFAULT ''", "trial_started_at": "TEXT DEFAULT ''",
+            "trial_ends_at": "TEXT DEFAULT ''", "status": "TEXT DEFAULT 'trial'",
+            "plan_months": "INTEGER DEFAULT 1", "amount_paid": "REAL DEFAULT 0",
+            "currency": "TEXT DEFAULT 'NGN'", "paid_at": "TEXT", "paid_until": "TEXT",
+            "payment_method": "TEXT", "bank_name": "TEXT", "payment_provider": "TEXT",
+            "transaction_reference": "TEXT", "updated_at": "TEXT DEFAULT ''",
+        })
+        _ensure_runtime_columns(con, "subscription_payments", {
+            "company_name": "TEXT DEFAULT ''", "username": "TEXT DEFAULT ''",
+            "amount": "REAL DEFAULT 0", "currency": "TEXT DEFAULT 'NGN'",
+            "plan_months": "INTEGER DEFAULT 1", "payment_method": "TEXT DEFAULT 'Other'",
+            "bank_name": "TEXT", "provider": "TEXT", "transaction_reference": "TEXT",
+            "status": "TEXT DEFAULT 'pending'", "created_at": "TEXT DEFAULT ''",
+        })
+        _ensure_runtime_columns(con, "subscription_receipts", {
+            "company_name": "TEXT DEFAULT ''", "username": "TEXT DEFAULT ''",
+            "amount": "REAL DEFAULT 0", "currency": "TEXT DEFAULT 'NGN'",
+            "plan_months": "INTEGER DEFAULT 1", "payment_method": "TEXT DEFAULT 'Bank Transfer'",
+            "receipt_filename": "TEXT DEFAULT ''", "receipt_mime": "TEXT DEFAULT ''",
+            "receipt_data": "BYTEA" if using_cloud_db() else "BLOB",
+            "transaction_reference": "TEXT", "status": "TEXT DEFAULT 'pending'",
+            "review_note": "TEXT", "reviewed_by": "TEXT", "reviewed_at": "TEXT",
+            "created_at": "TEXT DEFAULT ''",
+        })
+        _ensure_runtime_columns(con, "subscription_payment_claims", {
+            "provider": "TEXT DEFAULT ''", "reference": "TEXT DEFAULT ''",
+            "company_name": "TEXT DEFAULT ''", "created_at": "TEXT DEFAULT ''",
+        })
+        _ensure_runtime_columns(con, "auth_sessions", {
+            "user_id": "INTEGER", "expires_at": "TEXT DEFAULT ''",
+        })
+        _ensure_runtime_columns(con, "auth_login_attempts", {
+            "identity_hash": "TEXT DEFAULT ''", "attempted_at": "TEXT DEFAULT ''",
+            "succeeded": "INTEGER DEFAULT 0",
+        })
+        _ensure_runtime_columns(con, "chat_history", {
+            "company_name": "TEXT DEFAULT ''", "username": "TEXT DEFAULT ''",
+        })
+        _ensure_runtime_columns(con, "files", {
+            "company_name": "TEXT DEFAULT ''", "username": "TEXT DEFAULT ''", "created_at": "TEXT DEFAULT ''",
+        })
+        _ensure_runtime_columns(con, "projects", {
+            "company_name": "TEXT DEFAULT ''", "username": "TEXT DEFAULT ''", "created_at": "TEXT DEFAULT ''",
+        })
         # The payment-claim ledger is idempotency metadata, not customer content.
         # Collapse duplicate references left by any earlier candidate schema, then enforce
         # global reference uniqueness even if the table was created with an older constraint.
@@ -6742,6 +6817,915 @@ def render_subscription_receipt_admin_board():
                     st.rerun()
                 finally:
                     con.close()
+
+
+TRADER_CATEGORIES = [
+    "Mobile phones", "Used / refurbished phones", "Laptops", "Desktop computers",
+    "Computer accessories", "Phone accessories", "Printers & office equipment",
+    "Ink, toner & printing supplies", "Networking equipment", "Storage & memory",
+    "Power / UPS / inverter", "Gaming equipment", "Software & licences",
+    "Repairs & servicing", "Wholesale / distribution", "Retail / mixed shop", "Other",
+]
+TRADER_EXPENSE_CATEGORIES = [
+    "Shop rent", "Transport / logistics", "Power / generator", "Internet / phone",
+    "Staff salaries", "Repairs / maintenance", "Packaging", "Bank / POS charges",
+    "Marketing", "Security", "Tax / levy", "Other",
+]
+TRADER_PAYMENT_METHODS = ["Cash", "Bank transfer", "POS", "USSD", "Credit / owed", "Other"]
+
+def _ensure_trader_tables():
+    """Create isolated trader tables; safe to call on every app rerun."""
+    con = db()
+    try:
+        statements = [
+            """CREATE TABLE IF NOT EXISTS dacre_trader_products (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_name TEXT NOT NULL,
+                product_name TEXT NOT NULL,
+                category TEXT DEFAULT 'Other',
+                sku TEXT DEFAULT '',
+                cost_price REAL DEFAULT 0,
+                selling_price REAL DEFAULT 0,
+                quantity INTEGER DEFAULT 0,
+                supplier TEXT DEFAULT '',
+                updated_at TEXT DEFAULT '',
+                created_by TEXT DEFAULT ''
+            )""",
+            """CREATE TABLE IF NOT EXISTS dacre_trader_sales (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_name TEXT NOT NULL,
+                product_name TEXT NOT NULL,
+                category TEXT DEFAULT 'Other',
+                quantity INTEGER DEFAULT 1,
+                unit_price REAL DEFAULT 0,
+                unit_cost REAL DEFAULT 0,
+                total_amount REAL DEFAULT 0,
+                profit REAL DEFAULT 0,
+                customer TEXT DEFAULT '',
+                payment_method TEXT DEFAULT 'Cash',
+                sold_at TEXT DEFAULT '',
+                created_by TEXT DEFAULT ''
+            )""",
+            """CREATE TABLE IF NOT EXISTS dacre_trader_expenses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_name TEXT NOT NULL,
+                description TEXT NOT NULL,
+                category TEXT DEFAULT 'Other',
+                amount REAL DEFAULT 0,
+                spent_at TEXT DEFAULT '',
+                created_by TEXT DEFAULT ''
+            )""",
+        ]
+        for sql in statements:
+            con.execute(sql)
+        # Additive, idempotent migrations for businesses already using the desk.
+        extra_tables = [
+            """CREATE TABLE IF NOT EXISTS dacre_trader_customers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL, name TEXT NOT NULL,
+                phone TEXT DEFAULT '', email TEXT DEFAULT '', address TEXT DEFAULT '', notes TEXT DEFAULT '',
+                created_at TEXT DEFAULT '', created_by TEXT DEFAULT '')""",
+            """CREATE TABLE IF NOT EXISTS dacre_trader_suppliers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL, name TEXT NOT NULL,
+                phone TEXT DEFAULT '', email TEXT DEFAULT '', address TEXT DEFAULT '', notes TEXT DEFAULT '',
+                created_at TEXT DEFAULT '', created_by TEXT DEFAULT '')""",
+            """CREATE TABLE IF NOT EXISTS dacre_trader_purchases (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL, product_name TEXT NOT NULL,
+                category TEXT DEFAULT 'Other', sku TEXT DEFAULT '', quantity INTEGER DEFAULT 0,
+                unit_cost REAL DEFAULT 0, total_cost REAL DEFAULT 0, supplier TEXT DEFAULT '',
+                invoice_reference TEXT DEFAULT '', purchased_at TEXT DEFAULT '', status TEXT DEFAULT 'received',
+                created_by TEXT DEFAULT '')""",
+            """CREATE TABLE IF NOT EXISTS dacre_trader_repairs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL, job_number TEXT DEFAULT '',
+                customer TEXT DEFAULT '', customer_phone TEXT DEFAULT '', device_type TEXT DEFAULT '',
+                device_model TEXT DEFAULT '', serial_imei TEXT DEFAULT '', issue_reported TEXT NOT NULL,
+                diagnosis TEXT DEFAULT '', repair_status TEXT DEFAULT 'Received', estimated_cost REAL DEFAULT 0,
+                final_cost REAL DEFAULT 0, amount_paid REAL DEFAULT 0, received_at TEXT DEFAULT '',
+                due_at TEXT DEFAULT '', completed_at TEXT DEFAULT '', technician TEXT DEFAULT '',
+                notes TEXT DEFAULT '', created_by TEXT DEFAULT '')""",
+            """CREATE TABLE IF NOT EXISTS dacre_trader_movements (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL, product_id INTEGER,
+                product_name TEXT NOT NULL, movement_type TEXT NOT NULL, quantity INTEGER DEFAULT 0,
+                unit_cost REAL DEFAULT 0, reference TEXT DEFAULT '', notes TEXT DEFAULT '',
+                moved_at TEXT DEFAULT '', created_by TEXT DEFAULT '')""",
+            """CREATE TABLE IF NOT EXISTS dacre_trader_returns (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL, product_name TEXT NOT NULL,
+                quantity INTEGER DEFAULT 1, return_type TEXT DEFAULT 'Customer return', reason TEXT DEFAULT '',
+                refund_amount REAL DEFAULT 0, restock INTEGER DEFAULT 0, reference TEXT DEFAULT '',
+                returned_at TEXT DEFAULT '', created_by TEXT DEFAULT '')""",
+            """CREATE TABLE IF NOT EXISTS dacre_trader_payments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL, party_type TEXT NOT NULL,
+                party_name TEXT NOT NULL, direction TEXT NOT NULL, amount REAL NOT NULL DEFAULT 0,
+                payment_method TEXT DEFAULT 'Cash', reference TEXT DEFAULT '', notes TEXT DEFAULT '',
+                paid_at TEXT DEFAULT '', created_by TEXT DEFAULT '')""",
+            """CREATE TABLE IF NOT EXISTS dacre_trader_devices (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL, product_name TEXT DEFAULT '',
+                brand TEXT DEFAULT '', model TEXT DEFAULT '', serial_imei TEXT NOT NULL, device_type TEXT DEFAULT 'Phone',
+                condition_label TEXT DEFAULT 'New', device_status TEXT DEFAULT 'In stock', supplier TEXT DEFAULT '',
+                customer TEXT DEFAULT '', purchase_cost REAL DEFAULT 0, selling_price REAL DEFAULT 0,
+                purchased_at TEXT DEFAULT '', sold_at TEXT DEFAULT '', warranty_months INTEGER DEFAULT 0,
+                warranty_expires TEXT DEFAULT '', notes TEXT DEFAULT '', created_at TEXT DEFAULT '', created_by TEXT DEFAULT '')""",
+        ]
+        for sql in extra_tables:
+            con.execute(sql)
+        for table, columns in {
+            "dacre_trader_products": {
+                "brand": "TEXT DEFAULT ''", "model": "TEXT DEFAULT ''", "serial_imei": "TEXT DEFAULT ''",
+                "location": "TEXT DEFAULT ''", "reorder_level": "INTEGER DEFAULT 3", "condition_label": "TEXT DEFAULT 'New'",
+                "warranty_months": "INTEGER DEFAULT 0", "notes": "TEXT DEFAULT ''",
+            },
+            "dacre_trader_sales": {"discount": "REAL DEFAULT 0", "sale_reference": "TEXT DEFAULT ''", "sale_status": "TEXT DEFAULT 'completed'"},
+        }.items():
+            _ensure_runtime_columns(con, table, columns)
+        # Query indexes keep the company-scoped desk responsive as transaction history grows.
+        for index_sql in [
+            "CREATE INDEX IF NOT EXISTS idx_trader_products_company_name ON dacre_trader_products(company_name,product_name)",
+            "CREATE INDEX IF NOT EXISTS idx_trader_sales_company_date ON dacre_trader_sales(company_name,sold_at)",
+            "CREATE INDEX IF NOT EXISTS idx_trader_expenses_company_date ON dacre_trader_expenses(company_name,spent_at)",
+            "CREATE INDEX IF NOT EXISTS idx_trader_purchases_company_date ON dacre_trader_purchases(company_name,purchased_at)",
+            "CREATE INDEX IF NOT EXISTS idx_trader_repairs_company_status ON dacre_trader_repairs(company_name,repair_status)",
+            "CREATE INDEX IF NOT EXISTS idx_trader_movements_company_date ON dacre_trader_movements(company_name,moved_at)",
+            "CREATE INDEX IF NOT EXISTS idx_trader_payments_company_date ON dacre_trader_payments(company_name,paid_at)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_trader_devices_company_serial ON dacre_trader_devices(company_name,serial_imei)",
+        ]:
+            con.execute(index_sql)
+        con.commit()
+    finally:
+        con.close()
+
+def _trader_rows(sql, params=()):
+    con = db()
+    try:
+        return [dict(r) for r in con.execute(sql, params).fetchall()]
+    finally:
+        con.close()
+
+def _trader_money(value):
+    try:
+        return f"₦{float(value or 0):,.2f}"
+    except (TypeError, ValueError):
+        return "₦0.00"
+
+def render_trader_business(user):
+    """Simple, mobile-friendly sales and stock workspace for Computer Village traders."""
+    company = str(user.get("company") or "Your Company").strip()
+    try:
+        _ensure_trader_tables()
+        products = _trader_rows(
+            "SELECT * FROM dacre_trader_products WHERE company_name=? ORDER BY product_name",
+            (company,),
+        )
+        sales = _trader_rows(
+            "SELECT * FROM dacre_trader_sales WHERE company_name=? ORDER BY sold_at DESC, id DESC",
+            (company,),
+        )
+        expenses = _trader_rows(
+            "SELECT * FROM dacre_trader_expenses WHERE company_name=? ORDER BY spent_at DESC, id DESC",
+            (company,),
+        )
+    except Exception as exc:
+        st.error("The trader workspace could not load its database tables. Your existing DACRE data has not been intentionally changed.")
+        st.caption(f"Technical detail: {type(exc).__name__}. Check the Streamlit Cloud logs for the full database error.")
+        return
+
+    sdf = pd.DataFrame(sales)
+    pdf = pd.DataFrame(products)
+    edf = pd.DataFrame(expenses)
+    revenue = float(sdf["total_amount"].sum()) if not sdf.empty else 0.0
+    gross_profit = float(sdf["profit"].sum()) if not sdf.empty else 0.0
+    total_expenses = float(edf["amount"].sum()) if not edf.empty else 0.0
+    units = sum(max(0, int(p.get("quantity") or 0)) for p in products)
+    stock_value = sum(max(0, float(p.get("cost_price") or 0)) * max(0, int(p.get("quantity") or 0)) for p in products)
+    low_stock = sum(1 for p in products if int(p.get("quantity") or 0) <= 3)
+    st.markdown(f"""
+    <div class="company-dashboard-hero">
+      <div class="company-dashboard-brand">
+        <div class="company-logo-wrap"><img src="{_dacre_logo_data_uri()}" alt="DACRE"></div>
+        <div><div class="company-dashboard-kicker">DACRE ANALYSIS · TRADER WORKSPACE</div>
+        <h1>Business Desk</h1>
+        <p>Sales, stock, expenses and profit — in one simple workspace for { _escape_html(company) }.</p></div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.caption("Designed for phone and laptop dealers, accessory sellers, repair shops, printer vendors, wholesalers and other Computer Village businesses. Enter real figures; DACRE does not invent missing records.")
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Sales recorded", _trader_money(revenue))
+    m2.metric("Gross profit", _trader_money(gross_profit))
+    m3.metric("Stock units", f"{units:,}")
+    m4.metric("Low-stock items", f"{low_stock:,}")
+    st.caption(f"Stock value at recorded cost: {_trader_money(stock_value)} · Expenses recorded: {_trader_money(total_expenses)} · Net after recorded expenses: {_trader_money(gross_profit-total_expenses)}")
+    overview, inventory, sale_tab, expenses_tab, import_tab = st.tabs(
+        ["Overview", "Inventory", "Record a sale", "Expenses", "Import a file"]
+    )
+    with overview:
+        left, right = st.columns([1.25, 1])
+        with left:
+            st.subheader("Recent sales")
+            if sales:
+                recent = pd.DataFrame(sales[:8])
+                cols = [c for c in ["sold_at", "product_name", "quantity", "total_amount", "profit", "payment_method"] if c in recent.columns]
+                st.dataframe(safe_dataframe_for_streamlit(recent[cols]), use_container_width=True, hide_index=True)
+            else:
+                st.info("Your sales will appear here after you record your first sale.")
+        with right:
+            st.subheader("Stock that needs attention")
+            low_items = [p for p in products if int(p.get("quantity") or 0) <= int(p.get("reorder_level") or 3)]
+            if low_items:
+                st.dataframe(safe_dataframe_for_streamlit(pd.DataFrame([{
+                    "Product": p.get("product_name", ""),
+                    "Category": p.get("category", ""),
+                    "In stock": int(p.get("quantity") or 0),
+                } for p in low_items])), use_container_width=True, hide_index=True)
+            else:
+                st.success("No items at or below the low-stock threshold (3 units).")
+        if not products:
+            st.info("Start by adding products in the Inventory tab or uploading a product spreadsheet.")
+    with inventory:
+        st.subheader("Add a product or update your stock")
+        with st.form("trader_add_product_form", clear_on_submit=True):
+            a, b = st.columns(2)
+            name = a.text_input("Product name *", placeholder="e.g. Samsung Galaxy A15")
+            category = b.selectbox("Business category", TRADER_CATEGORIES)
+            c, d, e = st.columns(3)
+            sku = c.text_input("SKU / part number", placeholder="Optional")
+            quantity = d.number_input("Quantity in stock", min_value=0, step=1, value=0)
+            cost = e.number_input("Cost price per unit (₦)", min_value=0.0, step=500.0, value=0.0)
+            f, g = st.columns(2)
+            price = f.number_input("Selling price per unit (₦)", min_value=0.0, step=500.0, value=0.0)
+            supplier = g.text_input("Supplier", placeholder="Optional")
+            h, i, j = st.columns(3)
+            brand = h.text_input("Brand", placeholder="e.g. HP, Samsung, Logitech")
+            model = i.text_input("Model / variant", placeholder="Optional")
+            condition_label = j.selectbox("Condition", ["New", "Used", "Refurbished", "Open box", "Faulty / for parts"])
+            k, l, m = st.columns(3)
+            serial_imei = k.text_input("Serial number / IMEI", placeholder="Optional; for unique devices")
+            location = l.text_input("Shelf / stock location", placeholder="Optional")
+            reorder_level = m.number_input("Low-stock alert at", min_value=0, step=1, value=3)
+            warranty_months = st.number_input("Warranty (months)", min_value=0, step=1, value=0)
+            product_notes = st.text_input("Product notes", placeholder="Compatibility, specs, condition details…")
+            save_product = st.form_submit_button("Save product", type="primary", use_container_width=True)
+        if save_product:
+            if not name.strip():
+                st.warning("Enter a product name before saving.")
+            else:
+                con = db()
+                try:
+                    existing = con.execute(
+                        "SELECT id, quantity FROM dacre_trader_products WHERE company_name=? AND lower(product_name)=lower(?) AND sku=?",
+                        (company, name.strip(), sku.strip()),
+                    ).fetchone()
+                    now = datetime.now().isoformat(timespec="seconds")
+                    if existing:
+                        con.execute(
+                            "UPDATE dacre_trader_products SET category=?,cost_price=?,selling_price=?,quantity=?,supplier=?,brand=?,model=?,condition_label=?,serial_imei=?,location=?,reorder_level=?,warranty_months=?,notes=?,updated_at=?,created_by=? WHERE id=? AND company_name=?",
+                            (category, float(cost), float(price), int(quantity), supplier.strip(), brand.strip(), model.strip(), condition_label, serial_imei.strip(), location.strip(), int(reorder_level), int(warranty_months), product_notes.strip(), now, str(user.get("username") or ""), int(existing["id"]), company),
+                        )
+                        st.success("Product updated. The quantity entered replaces the previous stock count.")
+                    else:
+                        con.execute(
+                            "INSERT INTO dacre_trader_products(company_name,product_name,category,sku,cost_price,selling_price,quantity,supplier,brand,model,condition_label,serial_imei,location,reorder_level,warranty_months,notes,updated_at,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                            (company, name.strip(), category, sku.strip(), float(cost), float(price), int(quantity), supplier.strip(), brand.strip(), model.strip(), condition_label, serial_imei.strip(), location.strip(), int(reorder_level), int(warranty_months), product_notes.strip(), now, str(user.get("username") or "")),
+                        )
+                        st.success("Product saved to your company inventory.")
+                    # Capture an auditable opening/count adjustment for each saved product.
+                    current_product = con.execute("SELECT id,quantity,cost_price FROM dacre_trader_products WHERE company_name=? AND lower(product_name)=lower(?) AND sku=?", (company, name.strip(), sku.strip())).fetchone()
+                    if current_product:
+                        previous_qty = int(existing["quantity"] or 0) if existing else 0
+                        change_qty = int(quantity) - previous_qty
+                        if change_qty != 0:
+                            con.execute("INSERT INTO dacre_trader_movements(company_name,product_id,product_name,movement_type,quantity,unit_cost,reference,notes,moved_at,created_by) VALUES(?,?,?,?,?,?,?,?,?,?)", (company, int(current_product["id"]), name.strip(), "Manual inventory save" if existing else "Opening stock", change_qty, float(cost), "", f"Stock count set to {int(quantity)}", now, str(user.get("username") or "")))
+                    con.commit()
+                except Exception as exc:
+                    con.rollback()
+                    st.error(f"Could not save product ({type(exc).__name__}). Please check the app logs.")
+                finally:
+                    con.close()
+                st.rerun()
+        if products:
+            st.subheader("Current inventory")
+            view = pd.DataFrame([{
+                "Product": p.get("product_name", ""),
+                "Category": p.get("category", ""),
+                "Brand": p.get("brand", ""),
+                "Model": p.get("model", ""),
+                "Condition": p.get("condition_label", "New"),
+                "SKU / part number": p.get("sku", ""),
+                "Serial / IMEI": p.get("serial_imei", ""),
+                "Location": p.get("location", ""),
+                "Warranty months": int(p.get("warranty_months") or 0),
+                "Cost price (₦)": float(p.get("cost_price") or 0),
+                "Selling price (₦)": float(p.get("selling_price") or 0),
+                "Quantity": int(p.get("quantity") or 0),
+                "Reorder level": int(p.get("reorder_level") or 3),
+                "Supplier": p.get("supplier", ""),
+                "Notes": p.get("notes", ""),
+            } for p in products])
+            st.dataframe(safe_dataframe_for_streamlit(view), use_container_width=True, hide_index=True)
+            st.download_button("Download inventory CSV", view.to_csv(index=False).encode("utf-8-sig"), "dacre_inventory.csv", "text/csv", use_container_width=True)
+    with sale_tab:
+        st.subheader("Record a completed sale")
+        product_names = [str(p.get("product_name") or "") for p in products]
+        with st.form("trader_record_sale_form", clear_on_submit=True):
+            selected_product = st.selectbox("Product", product_names + ["Other / not in inventory"])
+            other_product_name = st.text_input("Product name (if using Other)", placeholder="Enter product name if not in inventory")
+            if selected_product != "Other / not in inventory" and selected_product in product_names:
+                chosen = next((p for p in products if p.get("product_name") == selected_product), {})
+                default_price = float(chosen.get("selling_price") or 0)
+                default_cost = float(chosen.get("cost_price") or 0)
+                default_category = str(chosen.get("category") or "Other")
+            else:
+                default_price, default_cost, default_category = 0.0, 0.0, "Other"
+            qty = st.number_input("Units sold", min_value=1, step=1, value=1)
+            unit_price = st.number_input("Selling price per unit (₦)", min_value=0.0, step=500.0, value=default_price)
+            unit_cost = st.number_input("Cost price per unit (₦)", min_value=0.0, step=500.0, value=default_cost)
+            customer = st.text_input("Customer (optional)")
+            payment = st.selectbox("Payment method", ["Cash", "Transfer", "POS", "Credit / owed", "Other"])
+            submit_sale = st.form_submit_button("Save sale", type="primary", use_container_width=True)
+        if submit_sale:
+            pname = selected_product if selected_product != "Other / not in inventory" else other_product_name
+            if not pname.strip():
+                st.warning("Choose an inventory product or enter a product name.")
+            else:
+                chosen_product = next((p for p in products if p.get("product_name") == selected_product), {}) if selected_product != "Other / not in inventory" else {}
+                available_qty = int(chosen_product.get("quantity") or 0)
+                if selected_product != "Other / not in inventory" and int(qty) > available_qty:
+                    st.error(f"Not enough stock. Available: {available_qty}; requested: {int(qty)}. Receive or adjust stock first.")
+                    st.stop()
+                amount = float(qty) * float(unit_price)
+                profit = float(qty) * (float(unit_price) - float(unit_cost))
+                con = db()
+                try:
+                    sale_time = datetime.now().isoformat(timespec="seconds")
+                    if selected_product != "Other / not in inventory":
+                        stock_update = con.execute(
+                            "UPDATE dacre_trader_products SET quantity=quantity-?, updated_at=? WHERE company_name=? AND id=? AND quantity>=?",
+                            (int(qty), sale_time, company, int(chosen_product["id"]), int(qty)),
+                        )
+                        if getattr(stock_update, "rowcount", 0) != 1:
+                            con.rollback()
+                            st.error("The stock changed before this sale could be saved. Refresh the page and check the available quantity; no sale was recorded.")
+                            st.stop()
+                    con.execute(
+                        "INSERT INTO dacre_trader_sales(company_name,product_name,category,quantity,unit_price,unit_cost,total_amount,profit,customer,payment_method,sold_at,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                        (company, pname.strip(), default_category, int(qty), float(unit_price), float(unit_cost), amount, profit, customer.strip(), payment, sale_time, str(user.get("username") or "")),
+                    )
+                    if selected_product != "Other / not in inventory":
+                        con.execute(
+                            "INSERT INTO dacre_trader_movements(company_name,product_id,product_name,movement_type,quantity,unit_cost,reference,notes,moved_at,created_by) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                            (company, int(chosen_product["id"]), pname.strip(), "Sale", -int(qty), float(unit_cost), "", f"Sale recorded; revenue {_trader_money(amount)}", sale_time, str(user.get("username") or "")),
+                        )
+                    if payment == "Credit / owed":
+                        con.execute(
+                            "INSERT INTO dacre_trader_payments(company_name,party_type,party_name,direction,amount,payment_method,reference,notes,paid_at,created_by) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                            (company, "Customer", customer.strip() or "Walk-in customer", "Credit sale / amount owed", amount, payment, "", f"Credit sale: {pname.strip()}", sale_time, str(user.get("username") or "")),
+                        )
+                    con.commit()
+                    st.success(f"Sale recorded. Revenue: {_trader_money(amount)} · Gross profit: {_trader_money(profit)}.")
+                except Exception as exc:
+                    con.rollback()
+                    st.error(f"Could not save sale ({type(exc).__name__}). Please check the app logs.")
+                finally:
+                    con.close()
+                st.rerun()
+        if sales:
+            st.subheader("Sales history")
+            sales_view = pd.DataFrame([{
+                "Date": s.get("sold_at", ""),
+                "Product": s.get("product_name", ""),
+                "Quantity": s.get("quantity", 0),
+                "Revenue (₦)": s.get("total_amount", 0),
+                "Gross profit (₦)": s.get("profit", 0),
+                "Payment": s.get("payment_method", ""),
+                "Customer": s.get("customer", ""),
+            } for s in sales])
+            st.dataframe(safe_dataframe_for_streamlit(sales_view.head(100)), use_container_width=True, hide_index=True)
+            st.download_button("Download sales CSV", sales_view.to_csv(index=False).encode("utf-8-sig"), "dacre_sales.csv", "text/csv", use_container_width=True)
+    with expenses_tab:
+        st.subheader("Record business expenses")
+        with st.form("trader_expense_form", clear_on_submit=True):
+            desc = st.text_input("Expense description *", placeholder="e.g. transport, shop rent, repairs")
+            exp_category = st.selectbox("Expense category", TRADER_EXPENSE_CATEGORIES)
+            amount = st.number_input("Amount (₦)", min_value=0.0, step=500.0, value=0.0)
+            exp_date = st.date_input("Date", value=datetime.now().date())
+            save_expense = st.form_submit_button("Save expense", type="primary", use_container_width=True)
+        if save_expense:
+            if not desc.strip() or amount <= 0:
+                st.warning("Enter an expense description and an amount greater than zero.")
+            else:
+                con = db()
+                try:
+                    con.execute(
+                        "INSERT INTO dacre_trader_expenses(company_name,description,category,amount,spent_at,created_by) VALUES(?,?,?,?,?,?)",
+                        (company, desc.strip(), exp_category, float(amount), exp_date.isoformat(), str(user.get("username") or "")),
+                    )
+                    con.commit()
+                    st.success("Expense saved.")
+                except Exception as exc:
+                    con.rollback()
+                    st.error(f"Could not save expense ({type(exc).__name__}). Please check the app logs.")
+                finally:
+                    con.close()
+                st.rerun()
+        if expenses:
+            st.dataframe(safe_dataframe_for_streamlit(pd.DataFrame([{
+                "Date": e.get("spent_at", ""),
+                "Description": e.get("description", ""),
+                "Category": e.get("category", ""),
+                "Amount (₦)": e.get("amount", 0),
+            } for e in expenses[:100]])), use_container_width=True, hide_index=True)
+    with import_tab:
+        st.subheader("Bring in your existing spreadsheet")
+        st.write("Upload a CSV or Excel workbook. You can preview it first, then import rows into inventory. The original file is not modified.")
+        uploaded = st.file_uploader("Choose CSV or Excel file", type=["csv", "xlsx", "xls"], key="trader_import_file")
+        if uploaded is not None:
+            try:
+                if uploaded.name.lower().endswith(".csv"):
+                    incoming = pd.read_csv(uploaded)
+                elif uploaded.name.lower().endswith(".xls"):
+                    incoming = pd.read_excel(uploaded, engine="xlrd")
+                else:
+                    incoming = pd.read_excel(uploaded)
+                if incoming.empty:
+                    st.warning("This file has no data rows.")
+                else:
+                    st.caption(f"Preview: {len(incoming):,} rows · {len(incoming.columns):,} columns")
+                    st.dataframe(safe_dataframe_for_streamlit(incoming.head(20)), use_container_width=True, hide_index=True)
+                    st.write("Map your file columns to DACRE fields. Fields not present in your file can be left blank.")
+                    columns = list(incoming.columns)
+                    def _guess_column(terms):
+                        return next((c for c in columns if any(t in str(c).lower().replace("_", " ") for t in terms)), columns[0])
+                    ncol = st.selectbox("Product name column", columns, index=columns.index(_guess_column(["product", "item", "name", "model", "description"])), key="trader_import_name")
+                    qcol = st.selectbox("Quantity / stock column", ["(none)"] + columns, index=(["(none)"] + columns).index(_guess_column(["quantity", "qty", "stock", "units"]) if any(any(t in str(c).lower() for t in ["quantity", "qty", "stock", "units"]) for c in columns) else "(none)"), key="trader_import_qty")
+                    ccol = st.selectbox("Cost price column", ["(none)"] + columns, index=(["(none)"] + columns).index(_guess_column(["cost", "buying", "purchase"]) if any(any(t in str(c).lower() for t in ["cost", "buying", "purchase"]) for c in columns) else "(none)"), key="trader_import_cost")
+                    pcol = st.selectbox("Selling price column", ["(none)"] + columns, index=(["(none)"] + columns).index(_guess_column(["selling", "sale price", "retail", "price"]) if any(any(t in str(c).lower() for t in ["selling", "sale price", "retail", "price"]) for c in columns) else "(none)"), key="trader_import_price")
+                    scol = st.selectbox("SKU / part number column", ["(none)"] + columns, index=(["(none)"] + columns).index(_guess_column(["sku", "part number", "code", "id"]) if any(any(t in str(c).lower() for t in ["sku", "part number", "code", "id"]) for c in columns) else "(none)"), key="trader_import_sku")
+                    if st.button("Import rows to inventory", type="primary", use_container_width=True, key="trader_import_commit"):
+                        con = db()
+                        imported, skipped = 0, 0
+                        try:
+                            for _, row in incoming.iterrows():
+                                raw_name = row.get(ncol, "")
+                                pname = "" if pd.isna(raw_name) else str(raw_name).strip()
+                                if not pname or pname.lower() == "nan":
+                                    skipped += 1
+                                    continue
+                                def _number(col):
+                                    if col == "(none)": return 0.0
+                                    value = pd.to_numeric(pd.Series([row.get(col)]).astype(str).str.replace(r"[₦,$ ]", "", regex=True).str.replace(",", "", regex=False), errors="coerce").iloc[0]
+                                    return float(value) if pd.notna(value) else 0.0
+                                qvalue = int(max(0, _number(qcol))) if qcol != "(none)" else 0
+                                cost_value = _number(ccol)
+                                price_value = _number(pcol)
+                                raw_sku = None if scol == "(none)" else row.get(scol, "")
+                                sku_value = "" if raw_sku is None or pd.isna(raw_sku) else str(raw_sku).strip()
+                                found = con.execute("SELECT id FROM dacre_trader_products WHERE company_name=? AND lower(product_name)=lower(?) AND sku=?", (company, pname, sku_value)).fetchone()
+                                now = datetime.now().isoformat(timespec="seconds")
+                                if found:
+                                    con.execute("UPDATE dacre_trader_products SET quantity=?,cost_price=?,selling_price=?,updated_at=?,created_by=? WHERE id=? AND company_name=?", (qvalue,cost_value,price_value,now,str(user.get("username") or ""),int(found["id"]),company))
+                                else:
+                                    con.execute("INSERT INTO dacre_trader_products(company_name,product_name,category,sku,cost_price,selling_price,quantity,supplier,updated_at,created_by) VALUES(?,?,?,?,?,?,?,?,?,?)", (company,pname,"Other",sku_value,cost_value,price_value,qvalue,"",now,str(user.get("username") or "")))
+                                imported += 1
+                            con.commit()
+                            st.success(f"Imported {imported:,} product rows. Skipped {skipped:,} blank-name rows.")
+                            st.rerun()
+                        except Exception as exc:
+                            con.rollback()
+                            st.error(f"Import failed ({type(exc).__name__}); no partial import was committed.")
+                        finally:
+                            con.close()
+            except Exception as exc:
+                st.error(f"Could not read this file ({type(exc).__name__}). Try saving it as CSV or a standard Excel workbook and upload again.")
+    render_trader_advanced_operations(company, user)
+
+def render_trader_advanced_operations(company, user):
+    """Expanded Computer Village operations: customers, suppliers, purchasing, repairs, returns, ledger and analytics."""
+    actor = str(user.get("username") or user.get("email") or "")
+    try:
+        _ensure_trader_tables()
+        customers = _trader_rows("SELECT * FROM dacre_trader_customers WHERE company_name=? ORDER BY name", (company,))
+        suppliers = _trader_rows("SELECT * FROM dacre_trader_suppliers WHERE company_name=? ORDER BY name", (company,))
+        purchases = _trader_rows("SELECT * FROM dacre_trader_purchases WHERE company_name=? ORDER BY purchased_at DESC,id DESC", (company,))
+        repairs = _trader_rows("SELECT * FROM dacre_trader_repairs WHERE company_name=? ORDER BY received_at DESC,id DESC", (company,))
+        movements = _trader_rows("SELECT * FROM dacre_trader_movements WHERE company_name=? ORDER BY moved_at DESC,id DESC", (company,))
+        returns = _trader_rows("SELECT * FROM dacre_trader_returns WHERE company_name=? ORDER BY returned_at DESC,id DESC", (company,))
+        payments = _trader_rows("SELECT * FROM dacre_trader_payments WHERE company_name=? ORDER BY paid_at DESC,id DESC", (company,))
+        devices = _trader_rows("SELECT * FROM dacre_trader_devices WHERE company_name=? ORDER BY created_at DESC,id DESC", (company,))
+        products = _trader_rows("SELECT * FROM dacre_trader_products WHERE company_name=? ORDER BY product_name", (company,))
+    except Exception as exc:
+        st.error("Advanced trader operations could not load. Existing DACRE data has not been intentionally changed.")
+        st.caption(f"Technical detail: {type(exc).__name__}; review Streamlit Cloud logs.")
+        return
+
+    st.markdown("---")
+    st.markdown("## Complete business operations")
+    st.caption("Manage buying, suppliers, customer records, repairs, returns, stock movement and money owed. All records are scoped to the signed-in company.")
+    tabs = st.tabs(["Customers", "Suppliers", "Purchases & receiving", "Repair jobs", "Returns", "Stock history", "IMEI / serial registry", "Money ledger", "Business analytics", "Bulk import"])
+
+    with tabs[0]:
+        with st.form("trader_customer_form", clear_on_submit=True):
+            st.markdown("### Add customer")
+            a,b = st.columns(2)
+            cname = a.text_input("Customer / business name *", key="tr_customer_name")
+            cphone = b.text_input("Phone / WhatsApp", key="tr_customer_phone")
+            cemail = a.text_input("Email (optional)", key="tr_customer_email")
+            caddress = b.text_input("Address / location", key="tr_customer_address")
+            cnotes = st.text_area("Notes", key="tr_customer_notes")
+            save_customer = st.form_submit_button("Save customer", type="primary", use_container_width=True)
+        if save_customer:
+            if not cname.strip(): st.warning("Enter the customer name.")
+            else:
+                con=db()
+                try:
+                    con.execute("INSERT INTO dacre_trader_customers(company_name,name,phone,email,address,notes,created_at,created_by) VALUES(?,?,?,?,?,?,?,?)",(company,cname.strip(),cphone.strip(),cemail.strip(),caddress.strip(),cnotes.strip(),datetime.now().isoformat(timespec="seconds"),actor)); con.commit(); st.success("Customer saved."); st.rerun()
+                except Exception as exc: con.rollback(); st.error(f"Customer could not be saved ({type(exc).__name__}).")
+                finally: con.close()
+        if customers:
+            cdf=pd.DataFrame([{ "Name":r.get("name"),"Phone":r.get("phone"),"Email":r.get("email"),"Address":r.get("address"),"Notes":r.get("notes")} for r in customers])
+            st.dataframe(safe_dataframe_for_streamlit(cdf),use_container_width=True,hide_index=True)
+            st.download_button("Export customers CSV",cdf.to_csv(index=False).encode("utf-8-sig"),"dacre_customers.csv","text/csv",key="tr_export_customers")
+        else: st.info("Customer records will appear here after you add them.")
+
+    with tabs[1]:
+        with st.form("trader_supplier_form", clear_on_submit=True):
+            st.markdown("### Add supplier / wholesaler")
+            a,b=st.columns(2); sname=a.text_input("Supplier / business name *",key="tr_supplier_name"); sphone=b.text_input("Phone",key="tr_supplier_phone")
+            semail=a.text_input("Email",key="tr_supplier_email"); saddress=b.text_input("Address / market location",key="tr_supplier_address"); snotes=st.text_area("Account notes",key="tr_supplier_notes")
+            save_supplier=st.form_submit_button("Save supplier",type="primary",use_container_width=True)
+        if save_supplier:
+            if not sname.strip(): st.warning("Enter the supplier name.")
+            else:
+                con=db()
+                try: con.execute("INSERT INTO dacre_trader_suppliers(company_name,name,phone,email,address,notes,created_at,created_by) VALUES(?,?,?,?,?,?,?,?)",(company,sname.strip(),sphone.strip(),semail.strip(),saddress.strip(),snotes.strip(),datetime.now().isoformat(timespec="seconds"),actor)); con.commit(); st.success("Supplier saved."); st.rerun()
+                except Exception as exc: con.rollback(); st.error(f"Supplier could not be saved ({type(exc).__name__}).")
+                finally: con.close()
+        if suppliers:
+            supdf=pd.DataFrame([{ "Supplier":r.get("name"),"Phone":r.get("phone"),"Email":r.get("email"),"Location":r.get("address"),"Notes":r.get("notes")} for r in suppliers]); st.dataframe(safe_dataframe_for_streamlit(supdf),use_container_width=True,hide_index=True); st.download_button("Export suppliers CSV",supdf.to_csv(index=False).encode("utf-8-sig"),"dacre_suppliers.csv","text/csv",key="tr_export_suppliers")
+        else: st.info("Record your wholesalers and suppliers to keep contact details in one place.")
+
+    with tabs[2]:
+        st.markdown("### Record stock purchased from a supplier")
+        pnames=[str(x.get("product_name") or "") for x in products]
+        with st.form("trader_purchase_form",clear_on_submit=True):
+            product_choice=st.selectbox("Existing product (or choose new)",pnames+["Add new product"],key="tr_purchase_product")
+            newp=st.text_input("New product name",key="tr_purchase_new_name",disabled=product_choice!="Add new product")
+            a,b=st.columns(2); pcat=a.selectbox("Category",TRADER_CATEGORIES,key="tr_purchase_category"); psku=b.text_input("SKU / part number",key="tr_purchase_sku")
+            c,d,e=st.columns(3); pqty=c.number_input("Quantity received",min_value=1,step=1,value=1,key="tr_purchase_qty"); pcost=d.number_input("Cost per unit (₦)",min_value=0.0,step=500.0,key="tr_purchase_cost"); pdate=e.date_input("Purchase date",value=datetime.now().date(),key="tr_purchase_date")
+            f,g=st.columns(2); psupplier=f.selectbox("Supplier",["(not listed)"]+[str(x.get("name")) for x in suppliers],key="tr_purchase_supplier"); pref=g.text_input("Invoice / receipt reference",key="tr_purchase_ref")
+            receive=st.form_submit_button("Save purchase and receive stock",type="primary",use_container_width=True)
+        if receive:
+            pname=product_choice if product_choice!="Add new product" else newp.strip()
+            if not pname: st.warning("Select a product or enter a new product name.")
+            else:
+                con=db(); now=datetime.now().isoformat(timespec="seconds")
+                try:
+                    found=con.execute("SELECT id,quantity,cost_price FROM dacre_trader_products WHERE company_name=? AND lower(product_name)=lower(?) AND sku=?",(company,pname,psku.strip())).fetchone()
+                    if found:
+                        con.execute("UPDATE dacre_trader_products SET quantity=quantity+?,cost_price=?,category=?,supplier=?,updated_at=?,created_by=? WHERE id=? AND company_name=?",(int(pqty),float(pcost),pcat,psupplier if psupplier!="(not listed)" else "",now,actor,int(found["id"]),company)); pid=int(found["id"])
+                    else:
+                        con.execute("INSERT INTO dacre_trader_products(company_name,product_name,category,sku,cost_price,selling_price,quantity,supplier,updated_at,created_by) VALUES(?,?,?,?,?,?,?,?,?,?)",(company,pname,pcat,psku.strip(),float(pcost),0.0,int(pqty),psupplier if psupplier!="(not listed)" else "",now,actor))
+                        inserted=con.execute("SELECT id FROM dacre_trader_products WHERE company_name=? AND lower(product_name)=lower(?) AND sku=?",(company,pname,psku.strip())).fetchone(); pid=int(inserted["id"]) if inserted else None
+                    total=float(pqty)*float(pcost)
+                    con.execute("INSERT INTO dacre_trader_purchases(company_name,product_name,category,sku,quantity,unit_cost,total_cost,supplier,invoice_reference,purchased_at,status,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",(company,pname,pcat,psku.strip(),int(pqty),float(pcost),total,psupplier if psupplier!="(not listed)" else "",pref.strip(),pdate.isoformat(),"received",actor))
+                    con.execute("INSERT INTO dacre_trader_movements(company_name,product_id,product_name,movement_type,quantity,unit_cost,reference,notes,moved_at,created_by) VALUES(?,?,?,?,?,?,?,?,?,?)",(company,pid,pname,"Purchase received",int(pqty),float(pcost),pref.strip(),"Stock received from supplier",now,actor)); con.commit(); st.success(f"Purchase saved and {int(pqty)} units received. Purchase cost: {_trader_money(total)}."); st.rerun()
+                except Exception as exc: con.rollback(); st.error(f"Purchase was not saved ({type(exc).__name__}). Check the logs before retrying.")
+                finally: con.close()
+        if purchases:
+            pdf=pd.DataFrame([{ "Date":r.get("purchased_at"),"Product":r.get("product_name"),"Qty":r.get("quantity"),"Unit cost (₦)":r.get("unit_cost"),"Total (₦)":r.get("total_cost"),"Supplier":r.get("supplier"),"Invoice":r.get("invoice_reference")} for r in purchases]); st.dataframe(safe_dataframe_for_streamlit(pdf.head(200)),use_container_width=True,hide_index=True); st.download_button("Export purchase history CSV",pdf.to_csv(index=False).encode("utf-8-sig"),"dacre_purchases.csv","text/csv",key="tr_export_purchases")
+
+    with tabs[3]:
+        with st.form("trader_repair_form",clear_on_submit=True):
+            st.markdown("### Open a repair / service job")
+            a,b=st.columns(2); rcustomer=a.text_input("Customer name",key="tr_repair_customer"); rphone=b.text_input("Customer phone",key="tr_repair_phone")
+            c,d=st.columns(2); dtype=c.selectbox("Device / service type",["Phone","Laptop","Desktop","Printer","Tablet","Networking","Data recovery","Other"],key="tr_repair_type"); dmodel=d.text_input("Model",key="tr_repair_model")
+            imei=st.text_input("Serial number / IMEI (optional)",key="tr_repair_imei"); issue=st.text_area("Fault reported *",key="tr_repair_issue"); diagnosis=st.text_area("Diagnosis / work required",key="tr_repair_diagnosis")
+            e,f=st.columns(2); estimate=e.number_input("Estimated charge (₦)",min_value=0.0,step=500.0,key="tr_repair_estimate"); due=f.date_input("Expected completion date",value=datetime.now().date(),key="tr_repair_due")
+            tech=st.text_input("Technician",key="tr_repair_tech"); rnotes=st.text_input("Internal notes",key="tr_repair_notes")
+            open_job=st.form_submit_button("Create repair job",type="primary",use_container_width=True)
+        if open_job:
+            if not issue.strip(): st.warning("Describe the fault reported before creating a job.")
+            else:
+                now=datetime.now().isoformat(timespec="seconds"); job=f"REP-{datetime.now().strftime('%y%m%d%H%M%S')}"
+                con=db()
+                try: con.execute("INSERT INTO dacre_trader_repairs(company_name,job_number,customer,customer_phone,device_type,device_model,serial_imei,issue_reported,diagnosis,repair_status,estimated_cost,final_cost,amount_paid,received_at,due_at,completed_at,technician,notes,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",(company,job,rcustomer.strip(),rphone.strip(),dtype,dmodel.strip(),imei.strip(),issue.strip(),diagnosis.strip(),"Received",float(estimate),0.0,0.0,now,due.isoformat(),"",tech.strip(),rnotes.strip(),actor)); con.commit(); st.success(f"Repair job {job} created."); st.rerun()
+                except Exception as exc: con.rollback(); st.error(f"Repair job could not be created ({type(exc).__name__}).")
+                finally: con.close()
+        if repairs:
+            st.markdown("### Repair job board")
+            rmap={f"{r.get('job_number')} · {r.get('customer') or 'Walk-in'} · {r.get('device_model') or r.get('device_type')} · {r.get('repair_status')}":r for r in repairs}
+            selected_label=st.selectbox("Select job to update",list(rmap),key="tr_repair_update_pick")
+            selected=rmap[selected_label]
+            with st.form(f"tr_repair_update_{selected['id']}"):
+                new_status=st.selectbox("Status",["Received","Diagnosing","Awaiting customer approval","Awaiting parts","In repair","Ready for collection","Completed","Collected","Cancelled"],index=["Received","Diagnosing","Awaiting customer approval","Awaiting parts","In repair","Ready for collection","Completed","Collected","Cancelled"].index(selected.get("repair_status") if selected.get("repair_status") in ["Received","Diagnosing","Awaiting customer approval","Awaiting parts","In repair","Ready for collection","Completed","Collected","Cancelled"] else "Received"))
+                fcost=st.number_input("Final charge (₦)",min_value=0.0,value=float(selected.get("final_cost") or selected.get("estimated_cost") or 0),step=500.0); paid=st.number_input("Amount received (₦)",min_value=0.0,value=float(selected.get("amount_paid") or 0),step=500.0); upd=st.form_submit_button("Update repair job",type="primary")
+            if upd:
+                previous_paid=float(selected.get("amount_paid") or 0)
+                if float(paid)<previous_paid:
+                    st.warning("Recorded payments cannot be reduced here. Keep the payment history accurate; use a separate refund/adjustment entry if money was returned.")
+                elif float(paid)>float(fcost):
+                    st.warning("Amount received cannot exceed the final repair charge. Adjust the final charge or enter the correct amount received.")
+                else:
+                    completed=datetime.now().isoformat(timespec="seconds") if new_status in ("Completed","Collected") else str(selected.get("completed_at") or "")
+                    con=db()
+                    try:
+                        con.execute("UPDATE dacre_trader_repairs SET repair_status=?,final_cost=?,amount_paid=?,completed_at=? WHERE company_name=? AND id=?",(new_status,float(fcost),float(paid),completed,company,int(selected["id"])))
+                        delta_paid=float(paid)-previous_paid
+                        if delta_paid>0:
+                            con.execute("INSERT INTO dacre_trader_payments(company_name,party_type,party_name,direction,amount,payment_method,reference,notes,paid_at,created_by) VALUES(?,?,?,?,?,?,?,?,?,?)",(company,"Repair customer",str(selected.get("customer") or "Walk-in customer"),"Money received",delta_paid,"Other",str(selected.get("job_number") or ""),f"Repair job payment for {selected.get('job_number')}",datetime.now().isoformat(timespec="seconds"),actor))
+                        con.commit(); st.success("Repair job updated." + (f" Payment of {_trader_money(delta_paid)} added to the ledger." if delta_paid>0 else "")); st.rerun()
+                    except Exception as exc: con.rollback(); st.error(f"Repair job update failed ({type(exc).__name__}).")
+                    finally: con.close()
+            rdf=pd.DataFrame([{ "Job":r.get("job_number"),"Received":r.get("received_at"),"Customer":r.get("customer"),"Phone":r.get("customer_phone"),"Device":r.get("device_model") or r.get("device_type"),"IMEI / Serial":r.get("serial_imei"),"Fault":r.get("issue_reported"),"Status":r.get("repair_status"),"Due":r.get("due_at"),"Charge (₦)":r.get("final_cost") or r.get("estimated_cost"),"Paid (₦)":r.get("amount_paid"),"Balance (₦)":max(0,float(r.get("final_cost") or r.get("estimated_cost") or 0)-float(r.get("amount_paid") or 0))} for r in repairs]); st.dataframe(safe_dataframe_for_streamlit(rdf),use_container_width=True,hide_index=True); st.download_button("Export repair jobs CSV",rdf.to_csv(index=False).encode("utf-8-sig"),"dacre_repairs.csv","text/csv",key="tr_export_repairs")
+        else: st.info("Repair jobs you create will appear here, with status and payment balance tracking.")
+
+    with tabs[4]:
+        st.markdown("### Record customer return or supplier return")
+        product_names=[str(x.get("product_name") or "") for x in products]
+        with st.form("trader_return_form",clear_on_submit=True):
+            rproduct=st.selectbox("Product",product_names+(["Other product"] if product_names else ["Other product"]),key="tr_return_product")
+            rother=st.text_input("Product name if not listed",key="tr_return_other",disabled=rproduct!="Other product")
+            rtype=st.selectbox("Return type",["Customer return","Return to supplier","Warranty return","Exchange","Refund only"],key="tr_return_type")
+            rqty=st.number_input("Quantity",min_value=1,step=1,value=1,key="tr_return_qty"); reason=st.text_input("Reason",key="tr_return_reason"); refund=st.number_input("Refund / credit amount (₦)",min_value=0.0,step=500.0,key="tr_return_refund"); restock=st.checkbox("Returned item is resalable; add it back to stock",value=False,key="tr_return_restock"); rref=st.text_input("Receipt / reference",key="tr_return_ref")
+            save_return=st.form_submit_button("Save return",type="primary",use_container_width=True)
+        if save_return:
+            rp=rproduct if rproduct!="Other product" else rother.strip()
+            if not rp: st.warning("Enter the returned product name.")
+            else:
+                con=db(); now=datetime.now().isoformat(timespec="seconds")
+                try:
+                    con.execute("INSERT INTO dacre_trader_returns(company_name,product_name,quantity,return_type,reason,refund_amount,restock,reference,returned_at,created_by) VALUES(?,?,?,?,?,?,?,?,?,?)",(company,rp,int(rqty),rtype,reason.strip(),float(refund),1 if restock else 0,rref.strip(),now,actor))
+                    if restock and rproduct!="Other product": con.execute("UPDATE dacre_trader_products SET quantity=quantity+?,updated_at=? WHERE company_name=? AND lower(product_name)=lower(?)",(int(rqty),now,company,rp))
+                    con.execute("INSERT INTO dacre_trader_movements(company_name,product_id,product_name,movement_type,quantity,unit_cost,reference,notes,moved_at,created_by) VALUES(?,?,?,?,?,?,?,?,?,?)",(company,None,rp,"Return / restock" if restock else "Return recorded",int(rqty),0.0,rref.strip(),reason.strip(),now,actor)); con.commit(); st.success("Return recorded."); st.rerun()
+                except Exception as exc: con.rollback(); st.error(f"Return could not be saved ({type(exc).__name__}).")
+                finally: con.close()
+        if returns:
+            ret_df=pd.DataFrame([{ "Date":r.get("returned_at"),"Product":r.get("product_name"),"Qty":r.get("quantity"),"Type":r.get("return_type"),"Reason":r.get("reason"),"Refund (₦)":r.get("refund_amount"),"Restocked":bool(r.get("restock")),"Reference":r.get("reference")} for r in returns]); st.dataframe(safe_dataframe_for_streamlit(ret_df),use_container_width=True,hide_index=True); st.download_button("Export returns CSV",ret_df.to_csv(index=False).encode("utf-8-sig"),"dacre_returns.csv","text/csv",key="tr_export_returns")
+
+    with tabs[5]:
+        st.markdown("### Stock movement audit trail")
+        if movements:
+            mdf=pd.DataFrame([{ "Date":r.get("moved_at"),"Product":r.get("product_name"),"Movement":r.get("movement_type"),"Quantity":r.get("quantity"),"Unit cost (₦)":r.get("unit_cost"),"Reference":r.get("reference"),"Notes":r.get("notes"),"User":r.get("created_by")} for r in movements]); st.dataframe(safe_dataframe_for_streamlit(mdf.head(500)),use_container_width=True,hide_index=True); st.download_button("Export stock movement history CSV",mdf.to_csv(index=False).encode("utf-8-sig"),"dacre_stock_movements.csv","text/csv",key="tr_export_movements")
+        else: st.info("Purchases and recorded returns will build the stock audit trail here. Sales and manual adjustments are also listed when recorded going forward.")
+        st.markdown("### Correct a stock count")
+        if products:
+            pmap={f"{p.get('product_name')} · SKU {p.get('sku') or '—'} · current {p.get('quantity',0)}":p for p in products}; pick=st.selectbox("Product to adjust",list(pmap),key="tr_adjust_pick"); pp=pmap[pick]
+            with st.form("tr_stock_adjust_form"):
+                new_qty=st.number_input("Verified physical quantity",min_value=0,step=1,value=int(pp.get("quantity") or 0)); adjust_note=st.text_input("Reason for adjustment *",placeholder="Stock count, damaged goods, correction"); adj=st.form_submit_button("Save stock adjustment",type="primary")
+            if adj:
+                if not adjust_note.strip(): st.warning("Enter a reason so the change is auditable.")
+                else:
+                    old_qty=int(pp.get("quantity") or 0); delta=int(new_qty)-old_qty; now=datetime.now().isoformat(timespec="seconds"); con=db()
+                    try: con.execute("UPDATE dacre_trader_products SET quantity=?,updated_at=?,created_by=? WHERE company_name=? AND id=?",(int(new_qty),now,actor,company,int(pp["id"]))); con.execute("INSERT INTO dacre_trader_movements(company_name,product_id,product_name,movement_type,quantity,unit_cost,reference,notes,moved_at,created_by) VALUES(?,?,?,?,?,?,?,?,?,?)",(company,int(pp["id"]),pp.get("product_name"),"Stock adjustment",delta,float(pp.get("cost_price") or 0),"",adjust_note.strip()+f" (from {old_qty} to {int(new_qty)})",now,actor)); con.commit(); st.success("Stock count adjusted and recorded in the audit trail."); st.rerun()
+                    except Exception as exc: con.rollback(); st.error(f"Stock adjustment failed ({type(exc).__name__}).")
+                    finally: con.close()
+        else: st.info("Add or import a product before adjusting stock.")
+
+    with tabs[6]:
+        st.markdown("### Individual device tracking")
+        st.caption("Track each phone, laptop or other serialized device separately by IMEI or serial number. This is useful when multiple units share the same product model.")
+        with st.form("trader_device_registry_form",clear_on_submit=True):
+            a,b=st.columns(2); dserial=a.text_input("IMEI / serial number *",key="tr_device_serial"); dproduct=b.text_input("Product / item name",key="tr_device_product")
+            c,d=st.columns(2); dtype=c.selectbox("Device type",["Phone","Laptop","Desktop","Tablet","Printer","Networking device","Other"],key="tr_device_type"); dbrand=d.text_input("Brand",key="tr_device_brand")
+            e,f=st.columns(2); dmodel=e.text_input("Model",key="tr_device_model"); dcondition=f.selectbox("Condition",["New","Used","Refurbished","Open box","Faulty / for parts"],key="tr_device_condition")
+            g,h=st.columns(2); dstatus=g.selectbox("Status",["In stock","Reserved","Sold","Under repair","Returned to supplier","Written off"],key="tr_device_status"); dsupplier=h.text_input("Supplier",key="tr_device_supplier")
+            i,j=st.columns(2); dcost=i.number_input("Purchase cost (₦)",min_value=0.0,step=500.0,key="tr_device_cost"); dprice=j.number_input("Selling price (₦)",min_value=0.0,step=500.0,key="tr_device_price")
+            k,l=st.columns(2); dpurchased=k.date_input("Purchase date",value=datetime.now().date(),key="tr_device_purchase_date"); dwarranty=l.number_input("Warranty months",min_value=0,step=1,value=0,key="tr_device_warranty")
+            dcustomer=st.text_input("Customer (if sold)",key="tr_device_customer"); dnotes=st.text_input("Notes",key="tr_device_notes")
+            save_device=st.form_submit_button("Register device",type="primary",use_container_width=True)
+        if save_device:
+            if not dserial.strip(): st.warning("IMEI or serial number is required for unique-device tracking.")
+            else:
+                existing_device=_trader_rows("SELECT id FROM dacre_trader_devices WHERE company_name=? AND lower(serial_imei)=lower(?)",(company,dserial.strip()))
+                if existing_device: st.warning("That IMEI / serial number is already registered in this company. Update the existing record instead of creating a duplicate.")
+                else:
+                    if int(dwarranty)>0:
+                        month_index=dpurchased.month-1+int(dwarranty)
+                        expiry_year=dpurchased.year+month_index//12
+                        expiry_month=month_index%12+1
+                        import calendar as _calendar
+                        expiry_day=min(dpurchased.day,_calendar.monthrange(expiry_year,expiry_month)[1])
+                        exp_date=dpurchased.replace(year=expiry_year,month=expiry_month,day=expiry_day).isoformat()
+                    else: exp_date=""
+                    sold_at=datetime.now().isoformat(timespec="seconds") if dstatus=="Sold" else ""
+                    con=db()
+                    try: con.execute("INSERT INTO dacre_trader_devices(company_name,product_name,brand,model,serial_imei,device_type,condition_label,device_status,supplier,customer,purchase_cost,selling_price,purchased_at,sold_at,warranty_months,warranty_expires,notes,created_at,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",(company,dproduct.strip(),dbrand.strip(),dmodel.strip(),dserial.strip(),dtype,dcondition,dstatus,dsupplier.strip(),dcustomer.strip(),float(dcost),float(dprice),dpurchased.isoformat(),sold_at,int(dwarranty),exp_date,dnotes.strip(),datetime.now().isoformat(timespec="seconds"),actor)); con.commit(); st.success("Device registered."); st.rerun()
+                    except Exception as exc: con.rollback(); st.error(f"Device could not be registered ({type(exc).__name__}).")
+                    finally: con.close()
+        if devices:
+            st.markdown("### Registered device inventory")
+            devmap={f"{d.get('serial_imei')} · {d.get('brand')} {d.get('model')} · {d.get('device_status')}":d for d in devices}
+            devlabel=st.selectbox("Select device to update",list(devmap),key="tr_device_update_pick"); dev=devmap[devlabel]
+            with st.form(f"tr_device_update_{dev['id']}"):
+                updated_status=st.selectbox("Update device status",["In stock","Reserved","Sold","Under repair","Returned to supplier","Written off"],index=["In stock","Reserved","Sold","Under repair","Returned to supplier","Written off"].index(dev.get("device_status") if dev.get("device_status") in ["In stock","Reserved","Sold","Under repair","Returned to supplier","Written off"] else "In stock"))
+                updated_customer=st.text_input("Customer / buyer",value=str(dev.get("customer") or "")); updated_notes=st.text_input("Update notes",value=str(dev.get("notes") or "")); update_device=st.form_submit_button("Update device")
+            if update_device:
+                sold_stamp=datetime.now().isoformat(timespec="seconds") if updated_status=="Sold" and not dev.get("sold_at") else (dev.get("sold_at") or "")
+                con=db()
+                try: con.execute("UPDATE dacre_trader_devices SET device_status=?,customer=?,notes=?,sold_at=? WHERE company_name=? AND id=?",(updated_status,updated_customer.strip(),updated_notes.strip(),sold_stamp,company,int(dev["id"]))); con.commit(); st.success("Device status updated."); st.rerun()
+                except Exception as exc: con.rollback(); st.error(f"Device update failed ({type(exc).__name__}).")
+                finally: con.close()
+            today=datetime.now().date(); expiring=[]
+            for devrow in devices:
+                try:
+                    expiry=datetime.fromisoformat(str(devrow.get("warranty_expires"))).date()
+                    if expiry>=today and (expiry-today).days<=30: expiring.append(devrow)
+                except Exception: pass
+            if expiring: st.warning(f"{len(expiring)} registered device(s) have warranty expiring in the next 30 days.")
+            devdf=pd.DataFrame([{ "IMEI / Serial":d.get("serial_imei"),"Product":d.get("product_name"),"Brand":d.get("brand"),"Model":d.get("model"),"Type":d.get("device_type"),"Condition":d.get("condition_label"),"Status":d.get("device_status"),"Supplier":d.get("supplier"),"Customer":d.get("customer"),"Cost (₦)":d.get("purchase_cost"),"Price (₦)":d.get("selling_price"),"Purchased":d.get("purchased_at"),"Sold":d.get("sold_at"),"Warranty expires":d.get("warranty_expires")} for d in devices]); st.dataframe(safe_dataframe_for_streamlit(devdf),use_container_width=True,hide_index=True); st.download_button("Export IMEI / serial register CSV",devdf.to_csv(index=False).encode("utf-8-sig"),"dacre_device_registry.csv","text/csv",key="tr_export_devices")
+        else: st.info("Register individual serialized devices here. IMEI / serial numbers must be unique within your company workspace.")
+
+    with tabs[7]:
+        st.markdown("### Customer and supplier payment ledger")
+        with st.form("trader_ledger_form",clear_on_submit=True):
+            a,b=st.columns(2); party_type=a.selectbox("Account type",["Customer","Supplier","Repair customer","Other"],key="tr_ledger_party_type"); direction=b.selectbox("Money movement",["Money received","Money paid","Credit sale / amount owed","Supplier bill / amount owed"],key="tr_ledger_direction")
+            party_name=st.text_input("Customer / supplier name *",key="tr_ledger_party_name"); c,d=st.columns(2); pay_amount=c.number_input("Amount (₦)",min_value=0.0,step=500.0,key="tr_ledger_amount"); pay_method=d.selectbox("Method",TRADER_PAYMENT_METHODS,key="tr_ledger_method"); pay_ref=st.text_input("Transaction / invoice reference",key="tr_ledger_ref"); pay_notes=st.text_input("Notes",key="tr_ledger_notes")
+            save_payment=st.form_submit_button("Save ledger entry",type="primary",use_container_width=True)
+        if save_payment:
+            if not party_name.strip() or pay_amount<=0: st.warning("Enter the account name and an amount greater than zero.")
+            else:
+                con=db()
+                try: con.execute("INSERT INTO dacre_trader_payments(company_name,party_type,party_name,direction,amount,payment_method,reference,notes,paid_at,created_by) VALUES(?,?,?,?,?,?,?,?,?,?)",(company,party_type,party_name.strip(),direction,float(pay_amount),pay_method,pay_ref.strip(),pay_notes.strip(),datetime.now().isoformat(timespec="seconds"),actor)); con.commit(); st.success("Ledger entry saved."); st.rerun()
+                except Exception as exc: con.rollback(); st.error(f"Ledger entry failed ({type(exc).__name__}).")
+                finally: con.close()
+        if payments:
+            ldf=pd.DataFrame([{ "Date":r.get("paid_at"),"Account type":r.get("party_type"),"Name":r.get("party_name"),"Entry":r.get("direction"),"Amount (₦)":r.get("amount"),"Method":r.get("payment_method"),"Reference":r.get("reference"),"Notes":r.get("notes")} for r in payments]); st.dataframe(safe_dataframe_for_streamlit(ldf.head(500)),use_container_width=True,hide_index=True); st.download_button("Export ledger CSV",ldf.to_csv(index=False).encode("utf-8-sig"),"dacre_money_ledger.csv","text/csv",key="tr_export_ledger")
+            received=sum(float(r.get("amount") or 0) for r in payments if r.get("direction")=="Money received")
+            paid=sum(float(r.get("amount") or 0) for r in payments if r.get("direction")=="Money paid")
+            customer_owed=sum(float(r.get("amount") or 0) for r in payments if r.get("direction")=="Credit sale / amount owed")
+            supplier_owed=sum(float(r.get("amount") or 0) for r in payments if r.get("direction")=="Supplier bill / amount owed")
+            x,y,z,w=st.columns(4); x.metric("Money received (ledger)",_trader_money(received)); y.metric("Money paid (ledger)",_trader_money(paid)); z.metric("Customer credit recorded",_trader_money(customer_owed)); w.metric("Supplier bills recorded",_trader_money(supplier_owed))
+            customer_balances={}; supplier_balances={}
+            for entry in payments:
+                party=str(entry.get("party_name") or "").strip()
+                if not party: continue
+                key=party.casefold(); value=float(entry.get("amount") or 0); direction=str(entry.get("direction") or ""); ptype=str(entry.get("party_type") or "").lower()
+                if ptype in ("customer","repair customer"):
+                    customer_balances.setdefault(key,{"Name":party,"Outstanding (₦)":0.0})
+                    if direction=="Credit sale / amount owed": customer_balances[key]["Outstanding (₦)"]+=value
+                    elif direction=="Money received": customer_balances[key]["Outstanding (₦)"]-=value
+                if ptype=="supplier":
+                    supplier_balances.setdefault(key,{"Name":party,"Outstanding (₦)":0.0})
+                    if direction=="Supplier bill / amount owed": supplier_balances[key]["Outstanding (₦)"]+=value
+                    elif direction=="Money paid": supplier_balances[key]["Outstanding (₦)"]-=value
+            outstanding_customers=[r for r in customer_balances.values() if r["Outstanding (₦)"]>0.005]
+            outstanding_suppliers=[r for r in supplier_balances.values() if r["Outstanding (₦)"]>0.005]
+            st.markdown("#### Outstanding balances (matched by account name)")
+            x,y=st.columns(2)
+            with x:
+                st.markdown("**Customers owing the business**")
+                if outstanding_customers: st.dataframe(safe_dataframe_for_streamlit(pd.DataFrame(sorted(outstanding_customers,key=lambda r:r["Outstanding (₦)"],reverse=True))),use_container_width=True,hide_index=True)
+                else: st.caption("No customer balances are currently outstanding in the ledger.")
+            with y:
+                st.markdown("**Amounts owed to suppliers**")
+                if outstanding_suppliers: st.dataframe(safe_dataframe_for_streamlit(pd.DataFrame(sorted(outstanding_suppliers,key=lambda r:r["Outstanding (₦)"],reverse=True))),use_container_width=True,hide_index=True)
+                else: st.caption("No supplier balances are currently outstanding in the ledger.")
+            st.caption("Balances are matched by account name and account type. Use consistent spelling and enter receipts/payments against the same name. Repair payments are added automatically when the recorded amount paid increases.")
+        else: st.info("Use the ledger to record customer payments, supplier payments, credit sales and bills. Ledger entries are separate from sales totals to avoid silently double-counting revenue.")
+
+    with tabs[8]:
+        st.markdown("### Sales, stock and service performance")
+        sales=_trader_rows("SELECT * FROM dacre_trader_sales WHERE company_name=? ORDER BY sold_at DESC,id DESC",(company,))
+        expenses=_trader_rows("SELECT * FROM dacre_trader_expenses WHERE company_name=? ORDER BY spent_at DESC,id DESC",(company,))
+        sdf=pd.DataFrame(sales); edf=pd.DataFrame(expenses); pdf=pd.DataFrame(products); purdf=pd.DataFrame(purchases); repdf=pd.DataFrame(repairs)
+        if not sdf.empty:
+            sdf["sold_at_parsed"]=pd.to_datetime(sdf["sold_at"],errors="coerce")
+            start=st.date_input("Analyse sales from",value=(datetime.now().date().replace(day=1)),key="tr_analytics_start"); end=st.date_input("Through",value=datetime.now().date(),key="tr_analytics_end")
+            filtered=sdf[(sdf["sold_at_parsed"].dt.date>=start)&(sdf["sold_at_parsed"].dt.date<=end)] if start<=end else sdf.iloc[0:0]
+            rev=float(pd.to_numeric(filtered.get("total_amount",pd.Series(dtype=float)),errors="coerce").fillna(0).sum()); prof=float(pd.to_numeric(filtered.get("profit",pd.Series(dtype=float)),errors="coerce").fillna(0).sum())
+            a,b,c,d=st.columns(4); a.metric("Revenue in period",_trader_money(rev)); b.metric("Gross profit",_trader_money(prof)); c.metric("Transactions",f"{len(filtered):,}"); d.metric("Units sold",f"{int(pd.to_numeric(filtered.get('quantity',pd.Series(dtype=float)),errors='coerce').fillna(0).sum()):,}")
+            if not filtered.empty:
+                by_product=filtered.groupby("product_name",dropna=False).agg(Units=("quantity","sum"),Revenue=("total_amount","sum"),Profit=("profit","sum")).sort_values("Revenue",ascending=False).reset_index().rename(columns={"product_name":"Product"}); st.markdown("#### Best sellers by revenue"); st.dataframe(safe_dataframe_for_streamlit(by_product.head(20)),use_container_width=True,hide_index=True)
+                by_day=filtered.assign(Day=filtered["sold_at_parsed"].dt.date.astype(str)).groupby("Day",as_index=False).agg(Revenue=("total_amount","sum"),Profit=("profit","sum")); st.markdown("#### Daily trend"); st.line_chart(by_day.set_index("Day")[["Revenue","Profit"]])
+            else: st.info("No sales fall within this date range.")
+        else: st.info("Record sales to unlock best-seller, trend and period reporting.")
+        low=[p for p in products if int(p.get("quantity") or 0)<=int(p.get("reorder_level") or 3)]
+        a,b,c=st.columns(3); a.metric("Products",f"{len(products):,}"); b.metric("Purchase orders / receipts",f"{len(purchases):,}"); c.metric("Open repair jobs",f"{sum(1 for r in repairs if r.get('repair_status') not in ('Collected','Cancelled')):,}")
+        if low: st.warning(f"{len(low)} product(s) are at or below their reorder level."); st.dataframe(safe_dataframe_for_streamlit(pd.DataFrame([{ "Product":p.get("product_name"),"SKU":p.get("sku"),"On hand":p.get("quantity"),"Reorder at":p.get("reorder_level",3),"Supplier":p.get("supplier")} for p in low])),use_container_width=True,hide_index=True)
+        if not purdf.empty: st.caption(f"Recorded stock purchases: {_trader_money(pd.to_numeric(purdf['total_cost'],errors='coerce').fillna(0).sum())}")
+        if not repdf.empty: st.caption(f"Repair work recorded: {len(repdf):,} jobs · Charges recorded: {_trader_money(sum(float(r.get('final_cost') or r.get('estimated_cost') or 0) for r in repairs))} · Payments recorded: {_trader_money(sum(float(r.get('amount_paid') or 0) for r in repairs))}")
+        if not edf.empty: st.caption(f"Expenses recorded: {_trader_money(pd.to_numeric(edf['amount'],errors='coerce').fillna(0).sum())}")
+        # One-click portable export of the business data currently held in DACRE.
+        export_summary={"products":len(products),"sales":len(sales),"customers":len(customers),"suppliers":len(suppliers),"purchases":len(purchases),"repairs":len(repairs),"returns":len(returns),"devices":len(devices),"ledger_entries":len(payments)}
+        st.markdown("#### Data coverage"); st.dataframe(pd.DataFrame([{"Record type":k.replace("_"," ").title(),"Records":v} for k,v in export_summary.items()]),use_container_width=True,hide_index=True)
+        st.markdown("#### Full business backup")
+        st.caption("Export the current company records to one Excel workbook with separate sheets. This is a data export, not a database backup of DACRE authentication or subscription records.")
+        try:
+            workbook_buffer=io.BytesIO()
+            with pd.ExcelWriter(workbook_buffer,engine="openpyxl") as writer:
+                def _write_sheet(frame, sheet):
+                    if frame is None or frame.empty: pd.DataFrame().to_excel(writer,index=False,sheet_name=sheet)
+                    else: frame.to_excel(writer,index=False,sheet_name=sheet)
+                _write_sheet(pd.DataFrame(products),"Inventory")
+                _write_sheet(pd.DataFrame(sales),"Sales")
+                _write_sheet(pd.DataFrame(expenses),"Expenses")
+                _write_sheet(pd.DataFrame(customers),"Customers")
+                _write_sheet(pd.DataFrame(suppliers),"Suppliers")
+                _write_sheet(pd.DataFrame(purchases),"Purchases")
+                _write_sheet(pd.DataFrame(repairs),"Repairs")
+                _write_sheet(pd.DataFrame(returns),"Returns")
+                _write_sheet(pd.DataFrame(movements),"Stock Movements")
+                _write_sheet(pd.DataFrame(payments),"Money Ledger")
+                _write_sheet(pd.DataFrame(devices),"Device Registry")
+            st.download_button("Download all trader records (Excel)",data=workbook_buffer.getvalue(),file_name="dacre_computer_village_business_backup.xlsx",mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",type="primary",use_container_width=True,key="tr_full_business_backup")
+        except Exception as exc:
+            st.warning(f"Excel backup could not be prepared ({type(exc).__name__}). Use the individual CSV exports above for now.")
+
+    with tabs[9]:
+        st.markdown("### Import business records from CSV / Excel")
+        st.caption("Import customers, suppliers, expenses or historical sales. Preview the file and map columns before importing. Your source file is not changed.")
+        bulk_file=st.file_uploader("Choose CSV or Excel workbook",type=["csv","xlsx","xls"],key="tr_bulk_import_file")
+        if bulk_file is not None:
+            try:
+                if bulk_file.name.lower().endswith(".csv"): bulk_df=pd.read_csv(bulk_file)
+                elif bulk_file.name.lower().endswith(".xls"): bulk_df=pd.read_excel(bulk_file,engine="xlrd")
+                else: bulk_df=pd.read_excel(bulk_file)
+                if bulk_df.empty: st.warning("This file has no data rows.")
+                else:
+                    st.caption(f"File preview · {len(bulk_df):,} rows · {len(bulk_df.columns):,} columns")
+                    st.dataframe(safe_dataframe_for_streamlit(bulk_df.head(15)),use_container_width=True,hide_index=True)
+                    record_type=st.selectbox("What kind of records are in this file?",["Customers","Suppliers","Expenses","Historical sales"],key="tr_bulk_record_type")
+                    cols=list(bulk_df.columns)
+                    def _bulk_guess(terms):
+                        for colname in cols:
+                            normal=str(colname).lower().replace("_"," ").replace("-"," ")
+                            if any(term in normal for term in terms): return colname
+                        return cols[0]
+                    def _bulk_map(label, terms, key, optional=False):
+                        default=_bulk_guess(terms)
+                        opts=( ["(none)"]+cols ) if optional else cols
+                        ix=opts.index(default) if default in opts else 0
+                        return st.selectbox(label,opts,index=ix,key=key)
+                    with st.form("tr_bulk_import_mapping_form"):
+                        if record_type in ("Customers","Suppliers"):
+                            name_col=_bulk_map("Name column *",["name","customer","supplier","business","company"],"tr_bulk_name")
+                            phone_col=_bulk_map("Phone column",["phone","mobile","whatsapp","tel"],"tr_bulk_phone",True)
+                            email_col=_bulk_map("Email column",["email","e-mail"],"tr_bulk_email",True)
+                            address_col=_bulk_map("Address / location column",["address","location","market","shop"],"tr_bulk_address",True)
+                            notes_col=_bulk_map("Notes column",["note","comment","remark"],"tr_bulk_notes",True)
+                        elif record_type=="Expenses":
+                            name_col=_bulk_map("Expense description column *",["description","expense","item","name","details"],"tr_bulk_name")
+                            amount_col=_bulk_map("Amount column *",["amount","cost","price","total","value"],"tr_bulk_amount")
+                            category_col=_bulk_map("Category column",["category","type"],"tr_bulk_category",True)
+                            date_col=_bulk_map("Date column",["date","spent","created","time"],"tr_bulk_date",True)
+                        else:
+                            name_col=_bulk_map("Product name column *",["product","item","name","model","description"],"tr_bulk_name")
+                            qty_col=_bulk_map("Quantity column",["quantity","qty","units","count"],"tr_bulk_qty",True)
+                            price_col=_bulk_map("Unit selling price column *",["selling price","unit price","sale price","price","revenue"],"tr_bulk_price")
+                            cost_col=_bulk_map("Unit cost column",["unit cost","cost price","buying","purchase cost","cost"],"tr_bulk_cost",True)
+                            customer_col=_bulk_map("Customer column",["customer","buyer","client"],"tr_bulk_customer",True)
+                            payment_col=_bulk_map("Payment method column",["payment","method"],"tr_bulk_payment",True)
+                            date_col=_bulk_map("Sale date column",["date","sold","time","created"],"tr_bulk_date",True)
+                        confirmed=st.checkbox("I have reviewed the column mapping and understand imported rows will be added to the company records.",key="tr_bulk_confirm")
+                        if record_type=="Historical sales": historical_confirm=st.checkbox("These are historical sales: importing them will NOT reduce current inventory stock.",key="tr_bulk_sales_history_confirm")
+                        else: historical_confirm=True
+                        run_import=st.form_submit_button("Import mapped rows",type="primary",use_container_width=True)
+                    if run_import:
+                        if not confirmed: st.warning("Confirm the mapping before importing.")
+                        elif record_type=="Historical sales" and not historical_confirm: st.warning("Confirm that these are historical sales before importing them.")
+                        else:
+                            imported=skipped=0; con=db(); now=datetime.now().isoformat(timespec="seconds")
+                            def _bulk_text(row,col):
+                                if col=="(none)": return ""
+                                val=row.get(col,"")
+                                return "" if pd.isna(val) else str(val).strip()
+                            def _bulk_num(row,col):
+                                if col=="(none)": return 0.0
+                                raw_value=row.get(col,"")
+                                if pd.isna(raw_value): return 0.0
+                                raw=str(raw_value).replace("₦","").replace("$","").replace(",","").strip()
+                                val=pd.to_numeric(raw,errors="coerce")
+                                return float(val) if pd.notna(val) else 0.0
+                            try:
+                                for _,row in bulk_df.iterrows():
+                                    recname=_bulk_text(row,name_col)
+                                    if not recname or recname.lower()=="nan": skipped+=1; continue
+                                    if record_type in ("Customers","Suppliers"):
+                                        table="dacre_trader_customers" if record_type=="Customers" else "dacre_trader_suppliers"
+                                        con.execute(f"INSERT INTO {table}(company_name,name,phone,email,address,notes,created_at,created_by) VALUES(?,?,?,?,?,?,?,?)",(company,recname,_bulk_text(row,phone_col),_bulk_text(row,email_col),_bulk_text(row,address_col),_bulk_text(row,notes_col),now,actor))
+                                    elif record_type=="Expenses":
+                                        amount_value=_bulk_num(row,amount_col)
+                                        if amount_value<=0: skipped+=1; continue
+                                        rawdate=_bulk_text(row,date_col) if date_col!="(none)" else now
+                                        try: datevalue=pd.to_datetime(rawdate,errors="raise").date().isoformat()
+                                        except Exception: datevalue=now
+                                        cat=_bulk_text(row,category_col) if category_col!="(none)" else "Other"
+                                        con.execute("INSERT INTO dacre_trader_expenses(company_name,description,category,amount,spent_at,created_by) VALUES(?,?,?,?,?,?)",(company,recname,cat or "Other",amount_value,datevalue,actor))
+                                    else:
+                                        qty_value=max(1,int(_bulk_num(row,qty_col))) if qty_col!="(none)" else 1
+                                        price_value=_bulk_num(row,price_col); cost_value=_bulk_num(row,cost_col)
+                                        if price_value<0 or cost_value<0: skipped+=1; continue
+                                        customer_value=_bulk_text(row,customer_col) if customer_col!="(none)" else ""
+                                        payment_value=_bulk_text(row,payment_col) if payment_col!="(none)" else "Historical import"
+                                        rawdate=_bulk_text(row,date_col) if date_col!="(none)" else now
+                                        try: datevalue=pd.to_datetime(rawdate,errors="raise").isoformat()
+                                        except Exception: datevalue=now
+                                        con.execute("INSERT INTO dacre_trader_sales(company_name,product_name,category,quantity,unit_price,unit_cost,total_amount,profit,customer,payment_method,sold_at,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",(company,recname,"Other",qty_value,price_value,cost_value,qty_value*price_value,qty_value*(price_value-cost_value),customer_value,payment_value,datevalue,actor))
+                                    imported+=1
+                                con.commit(); st.success(f"Import complete: {imported:,} rows added; {skipped:,} rows skipped. Review the resulting table before importing the same file again."); st.rerun()
+                            except Exception as exc:
+                                con.rollback(); st.error(f"Import failed and the transaction was rolled back ({type(exc).__name__}). No partial import was committed.")
+                            finally: con.close()
+            except Exception as exc:
+                st.error(f"Could not read this file ({type(exc).__name__}). Try CSV or a standard Excel workbook.")
+
 
 def render_company_dashboard(user):
     company = str(user.get('company') or 'Your Company').strip()
@@ -8406,7 +9390,7 @@ with st.sidebar:
     st.caption(f"{user['company']} · {user['role']}")
     st.markdown("<div style='font-size:.78rem;color:#3556a8!important;margin:4px 0 14px'>DI is available across your workspace.</div>",unsafe_allow_html=True)
     navigation=[
-        "Company Dashboard", "DI Workforce", "DI Academy", "Data Presentation Board",
+        "Company Dashboard", "Trader Business Desk", "DI Workforce", "DI Academy", "Data Presentation Board",
         "Workspace & Data", "Formula Lab", "Charts", "File Vault", "Export Center",
     ]
     if user.get("role") == "company_admin":
@@ -8414,6 +9398,7 @@ with st.sidebar:
     default_page="Company Dashboard"
     _nav_icons={
         "Company Dashboard":"dashboard.png",
+        "Trader Business Desk":"data.png",
         "DI Workforce":"workforce.png",
         "DI Academy":"workforce.png",
         "Data Presentation Board":"presentation.png",
@@ -8854,6 +9839,8 @@ except Exception:
 
 if selected_page=="Company Dashboard":
     render_company_dashboard(user)
+elif selected_page=="Trader Business Desk":
+    render_trader_business(user)
 elif selected_page=="Organization Admin Portal":
     render_organization_admin_portal(user)
 elif selected_page=="DI Workforce":
