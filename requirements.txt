@@ -1,4 +1,4 @@
-# D# DACRE Analysis runtime dependencies
+# DACRE Analysis runtime dependencies
 streamlit>=1.53,<2
 pandas>=2.2,<3
 Pillow>=10,<13
