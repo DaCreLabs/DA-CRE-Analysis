@@ -244,7 +244,7 @@ ALL_FILE_TYPES = None
 SHEET_FORMULAS = ["SUM","AVERAGE","COUNT","COUNTA","MAX","MIN","CONCATENATE","UPPER","LOWER","TRIM"]
 APP_KNOWLEDGE = """
 DACRE Analysis is a data analysis and presentation workspace. Users can upload CSV, Excel, TSV and JSON files; clean datasets; remove empty rows/columns and duplicates; inspect rows and columns; run formulas such as SUM, AVERAGE, COUNT, COUNTA, MAX, MIN, CONCATENATE, UPPER, LOWER and TRIM; build bar, line and area charts; save workspace state; use a File Vault; and export processed data as CSV or Excel.
-DI means David's Intelligence. DI is the assistant inside DACRE Analysis. Free-first reasoning is preferred: the normal deployment must not make paid model calls automatically. Free-tier Gemini and Groq keys may be configured server-side, while OpenAI remains disabled unless the owner explicitly enables paid AI. DACRE Analysis is intentionally focused on data work, DI execution and presentation. Platform-wide business administration, global customer oversight and the Overall Admin portal belong to the future DGL (DACRE Global Limited) platform. DACRE Analysis exposes only the user workspace and its six active DIs. Online AI/research connectors remain server-side and are not displayed as infrastructure screens.
+DI means David's Intelligence. DI is the assistant inside DACRE Analysis. Free-first reasoning is preferred: the normal deployment must not make paid model calls automatically. Free-tier Gemini and Groq keys may be configured server-side, while OpenAI remains disabled unless the owner explicitly enables paid AI. DACRE Analysis includes a company-scoped Business Suite for cashbook income and expenses, customer and supplier records, inventory quantities and reorder alerts, device serial/IMEI registration, point-of-sale sales with partial payments, loan records and repayments, CSV exports and audit history. Business records are isolated by company. The Business Suite is an operating ledger and inventory register; it does not claim to verify bank transfers, connect to banks, send SMS/WhatsApp reminders automatically, or provide offline synchronization unless those integrations are separately configured and tested. DACRE Analysis also retains its data work, DI execution and presentation workflows. Platform-wide business administration, global customer oversight and the Overall Admin portal belong to the future DGL (DACRE Global Limited) platform. DACRE Analysis exposes the user workspace and its six active DIs. Online AI/research connectors remain server-side and are not displayed as infrastructure screens.
 """.strip()
 def _secret_or_env(name, default=""):
     try:
@@ -408,7 +408,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 _DB_SCHEMA_LOCK = threading.RLock()
-_DB_SCHEMA_VERSION = 16
+_DB_SCHEMA_VERSION = 17
 @contextmanager
 def _db_file_lock(timeout=90):
     """Serialize SQLite schema migrations across Streamlit processes."""
@@ -5372,6 +5372,133 @@ def seed_named_di_workforce():
         con.commit()
     finally:
         con.close()
+def ensure_business_suite_schema():
+    """Create DACRE's company-scoped cashbook, POS, inventory and lending tables.
+
+    Migrations are additive and idempotent. Existing DACRE records are never dropped.
+    """
+    con = db()
+    try:
+        if using_cloud_db():
+            statements = [
+                """CREATE TABLE IF NOT EXISTS business_parties (
+                    id BIGSERIAL PRIMARY KEY, company_name TEXT NOT NULL, party_type TEXT NOT NULL,
+                    name TEXT NOT NULL, phone TEXT, email TEXT, address TEXT, notes TEXT,
+                    opening_balance NUMERIC(16,2) NOT NULL DEFAULT 0, created_by TEXT, created_at TEXT NOT NULL)""",
+                """CREATE TABLE IF NOT EXISTS cashbook_entries (
+                    id BIGSERIAL PRIMARY KEY, company_name TEXT NOT NULL, entry_date TEXT NOT NULL,
+                    entry_type TEXT NOT NULL, category TEXT NOT NULL, description TEXT NOT NULL,
+                    amount NUMERIC(16,2) NOT NULL, payment_account TEXT NOT NULL DEFAULT 'Cash',
+                    party_id BIGINT, reference TEXT, created_by TEXT NOT NULL, created_at TEXT NOT NULL)""",
+                """CREATE TABLE IF NOT EXISTS inventory_items (
+                    id BIGSERIAL PRIMARY KEY, company_name TEXT NOT NULL, sku TEXT, product_name TEXT NOT NULL,
+                    category TEXT, unit_cost NUMERIC(16,2) NOT NULL DEFAULT 0, selling_price NUMERIC(16,2) NOT NULL DEFAULT 0,
+                    quantity NUMERIC(16,3) NOT NULL DEFAULT 0, reorder_level NUMERIC(16,3) NOT NULL DEFAULT 0,
+                    location TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)""",
+                """CREATE TABLE IF NOT EXISTS inventory_movements (
+                    id BIGSERIAL PRIMARY KEY, company_name TEXT NOT NULL, item_id BIGINT NOT NULL,
+                    movement_type TEXT NOT NULL, quantity NUMERIC(16,3) NOT NULL, unit_cost NUMERIC(16,2) NOT NULL DEFAULT 0,
+                    reference TEXT, notes TEXT, created_by TEXT NOT NULL, created_at TEXT NOT NULL)""",
+                """CREATE TABLE IF NOT EXISTS device_serials (
+                    id BIGSERIAL PRIMARY KEY, company_name TEXT NOT NULL, item_id BIGINT,
+                    serial_number TEXT NOT NULL, imei TEXT, status TEXT NOT NULL DEFAULT 'In Stock',
+                    supplier_id BIGINT, customer_id BIGINT, purchase_date TEXT, sale_date TEXT,
+                    notes TEXT, created_at TEXT NOT NULL, UNIQUE(company_name, serial_number))""",
+                """CREATE TABLE IF NOT EXISTS business_sales (
+                    id BIGSERIAL PRIMARY KEY, company_name TEXT NOT NULL, receipt_number TEXT NOT NULL,
+                    sale_date TEXT NOT NULL, customer_id BIGINT, subtotal NUMERIC(16,2) NOT NULL,
+                    discount NUMERIC(16,2) NOT NULL DEFAULT 0, total NUMERIC(16,2) NOT NULL,
+                    amount_paid NUMERIC(16,2) NOT NULL DEFAULT 0, payment_method TEXT NOT NULL,
+                    notes TEXT, created_by TEXT NOT NULL, created_at TEXT NOT NULL, UNIQUE(company_name, receipt_number))""",
+                """CREATE TABLE IF NOT EXISTS business_sale_lines (
+                    id BIGSERIAL PRIMARY KEY, company_name TEXT NOT NULL, sale_id BIGINT NOT NULL,
+                    item_id BIGINT NOT NULL, quantity NUMERIC(16,3) NOT NULL,
+                    unit_price NUMERIC(16,2) NOT NULL, unit_cost NUMERIC(16,2) NOT NULL,
+                    line_total NUMERIC(16,2) NOT NULL)""",
+                """CREATE TABLE IF NOT EXISTS business_loans (
+                    id BIGSERIAL PRIMARY KEY, company_name TEXT NOT NULL, borrower_id BIGINT NOT NULL,
+                    principal NUMERIC(16,2) NOT NULL, interest_rate NUMERIC(8,4) NOT NULL DEFAULT 0,
+                    interest_type TEXT NOT NULL DEFAULT 'Flat', start_date TEXT NOT NULL,
+                    due_date TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'Active', notes TEXT,
+                    created_by TEXT NOT NULL, created_at TEXT NOT NULL)""",
+                """CREATE TABLE IF NOT EXISTS loan_repayments (
+                    id BIGSERIAL PRIMARY KEY, company_name TEXT NOT NULL, loan_id BIGINT NOT NULL,
+                    payment_date TEXT NOT NULL, amount NUMERIC(16,2) NOT NULL, payment_method TEXT NOT NULL,
+                    reference TEXT, received_by TEXT NOT NULL, created_at TEXT NOT NULL)""",
+                """CREATE TABLE IF NOT EXISTS business_audit_log (
+                    id BIGSERIAL PRIMARY KEY, company_name TEXT NOT NULL, username TEXT NOT NULL,
+                    action TEXT NOT NULL, record_type TEXT NOT NULL, record_id TEXT,
+                    details TEXT, created_at TEXT NOT NULL)""",
+            ]
+        else:
+            statements = [
+                """CREATE TABLE IF NOT EXISTS business_parties (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL, party_type TEXT NOT NULL,
+                    name TEXT NOT NULL, phone TEXT, email TEXT, address TEXT, notes TEXT,
+                    opening_balance REAL NOT NULL DEFAULT 0, created_by TEXT, created_at TEXT NOT NULL)""",
+                """CREATE TABLE IF NOT EXISTS cashbook_entries (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL, entry_date TEXT NOT NULL,
+                    entry_type TEXT NOT NULL, category TEXT NOT NULL, description TEXT NOT NULL,
+                    amount REAL NOT NULL, payment_account TEXT NOT NULL DEFAULT 'Cash',
+                    party_id INTEGER, reference TEXT, created_by TEXT NOT NULL, created_at TEXT NOT NULL)""",
+                """CREATE TABLE IF NOT EXISTS inventory_items (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL, sku TEXT, product_name TEXT NOT NULL,
+                    category TEXT, unit_cost REAL NOT NULL DEFAULT 0, selling_price REAL NOT NULL DEFAULT 0,
+                    quantity REAL NOT NULL DEFAULT 0, reorder_level REAL NOT NULL DEFAULT 0,
+                    location TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)""",
+                """CREATE TABLE IF NOT EXISTS inventory_movements (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL, item_id INTEGER NOT NULL,
+                    movement_type TEXT NOT NULL, quantity REAL NOT NULL, unit_cost REAL NOT NULL DEFAULT 0,
+                    reference TEXT, notes TEXT, created_by TEXT NOT NULL, created_at TEXT NOT NULL)""",
+                """CREATE TABLE IF NOT EXISTS device_serials (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL, item_id INTEGER,
+                    serial_number TEXT NOT NULL, imei TEXT, status TEXT NOT NULL DEFAULT 'In Stock',
+                    supplier_id INTEGER, customer_id INTEGER, purchase_date TEXT, sale_date TEXT,
+                    notes TEXT, created_at TEXT NOT NULL, UNIQUE(company_name, serial_number))""",
+                """CREATE TABLE IF NOT EXISTS business_sales (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL, receipt_number TEXT NOT NULL,
+                    sale_date TEXT NOT NULL, customer_id INTEGER, subtotal REAL NOT NULL,
+                    discount REAL NOT NULL DEFAULT 0, total REAL NOT NULL, amount_paid REAL NOT NULL DEFAULT 0,
+                    payment_method TEXT NOT NULL, notes TEXT, created_by TEXT NOT NULL, created_at TEXT NOT NULL,
+                    UNIQUE(company_name, receipt_number))""",
+                """CREATE TABLE IF NOT EXISTS business_sale_lines (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL, sale_id INTEGER NOT NULL,
+                    item_id INTEGER NOT NULL, quantity REAL NOT NULL, unit_price REAL NOT NULL,
+                    unit_cost REAL NOT NULL, line_total REAL NOT NULL)""",
+                """CREATE TABLE IF NOT EXISTS business_loans (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL, borrower_id INTEGER NOT NULL,
+                    principal REAL NOT NULL, interest_rate REAL NOT NULL DEFAULT 0,
+                    interest_type TEXT NOT NULL DEFAULT 'Flat', start_date TEXT NOT NULL,
+                    due_date TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'Active', notes TEXT,
+                    created_by TEXT NOT NULL, created_at TEXT NOT NULL)""",
+                """CREATE TABLE IF NOT EXISTS loan_repayments (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL, loan_id INTEGER NOT NULL,
+                    payment_date TEXT NOT NULL, amount REAL NOT NULL, payment_method TEXT NOT NULL,
+                    reference TEXT, received_by TEXT NOT NULL, created_at TEXT NOT NULL)""",
+                """CREATE TABLE IF NOT EXISTS business_audit_log (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, company_name TEXT NOT NULL, username TEXT NOT NULL,
+                    action TEXT NOT NULL, record_type TEXT NOT NULL, record_id TEXT,
+                    details TEXT, created_at TEXT NOT NULL)""",
+            ]
+        for sql in statements:
+            con.execute(sql)
+        indexes = [
+            "CREATE INDEX IF NOT EXISTS idx_business_parties_company_type ON business_parties(company_name, party_type)",
+            "CREATE INDEX IF NOT EXISTS idx_cashbook_company_date ON cashbook_entries(company_name, entry_date)",
+            "CREATE INDEX IF NOT EXISTS idx_inventory_company_name ON inventory_items(company_name, product_name)",
+            "CREATE INDEX IF NOT EXISTS idx_serial_company_imei ON device_serials(company_name, imei)",
+            "CREATE INDEX IF NOT EXISTS idx_sales_company_date ON business_sales(company_name, sale_date)",
+            "CREATE INDEX IF NOT EXISTS idx_loans_company_due ON business_loans(company_name, due_date, status)",
+            "CREATE INDEX IF NOT EXISTS idx_repayments_loan ON loan_repayments(company_name, loan_id, payment_date)",
+            "CREATE INDEX IF NOT EXISTS idx_business_audit_company_date ON business_audit_log(company_name, created_at)",
+        ]
+        for sql in indexes:
+            con.execute(sql)
+        con.commit()
+        return True
+    finally:
+        con.close()
+
 def _bootstrap_runtime(schema_version=12):
     """Bootstrap DACRE on either legacy SQLite or persistent Supabase PostgreSQL."""
     if using_cloud_db():
@@ -5386,6 +5513,7 @@ def _bootstrap_runtime(schema_version=12):
         seed_named_di_workforce()
         ensure_presentation_schema()
         ensure_subscription_schema()
+        ensure_business_suite_schema()
         seed_active_di_workforce()
         return True
     init_db()
@@ -5399,6 +5527,7 @@ def _bootstrap_runtime(schema_version=12):
     seed_named_di_workforce()
     ensure_presentation_schema()
     ensure_subscription_schema()
+    ensure_business_suite_schema()
     seed_active_di_workforce()
     return True
 @st.cache_resource(show_spinner=False)
@@ -6274,7 +6403,7 @@ def _escape_html(value):
             .replace("<", "&lt;")
             .replace(">", "&gt;")
             .replace('"', "&quot;"))
-DACRE_MONTHLY_PRICE_NGN = 30000
+DACRE_MONTHLY_PRICE_NGN = 25000
 DACRE_TRIAL_DAYS = 30
 DACRE_PLAN_MONTHS = [1, 3, 6, 12, 24]
 DACRE_BANK_OPTIONS = [
@@ -6798,7 +6927,7 @@ def render_company_dashboard(user):
     for col,months in zip(price_cols,DACRE_PLAN_MONTHS):
         amount=_subscription_amount(months)
         with col:
-            st.markdown(f"<div class='plan-card'><div class='plan-months'>{months} month{'s' if months!=1 else ''}</div><div class='plan-price'>₦{amount:,.0f}</div><div class='plan-note'>₦30,000 / month</div></div>",unsafe_allow_html=True)
+            st.markdown(f"<div class='plan-card'><div class='plan-months'>{months} month{'s' if months!=1 else ''}</div><div class='plan-price'>₦{amount:,.0f}</div><div class='plan-note'>₦25,000 / month</div></div>",unsafe_allow_html=True)
     st.markdown("<div class='trial-banner'><b>30 DAYS FREE</b><span>Every new company starts with a 30-day free tier. After the trial expires, DACRE Analysis is locked until a subscription payment is verified. Your subscription record and selected payment method remain available.</span></div>",unsafe_allow_html=True)
     c1,c2,c3,c4=st.columns(4)
     c1.metric('Plan status',sub['display_status'].title())
@@ -6843,6 +6972,249 @@ def render_company_dashboard(user):
             st.caption("Your selected duration and payment method are preserved. Only a verified payment response activates DACRE access.")
     if not sub['active']:
         st.error("Your 30-day free tier has ended. DACRE Analysis features are locked until a subscription payment is verified. Your account and billing record remain available so payment can reopen access.")
+def _business_audit(user, action, record_type, record_id=None, details=""):
+    con = db()
+    try:
+        con.execute("INSERT INTO business_audit_log(company_name,username,action,record_type,record_id,details,created_at) VALUES(?,?,?,?,?,?,?)",
+                    (str(user.get("company") or ""), str(user.get("username") or ""), action, record_type,
+                     str(record_id or ""), str(details or "")[:1000], datetime.now().isoformat(timespec="seconds")))
+        con.commit()
+    finally:
+        con.close()
+
+def _business_rows(table, user, order_by="id DESC", limit=500):
+    allowed = {"business_parties", "cashbook_entries", "inventory_items", "inventory_movements", "device_serials", "business_sales", "business_loans", "loan_repayments", "business_audit_log"}
+    if table not in allowed:
+        raise ValueError("Unsupported business table")
+    con = db()
+    try:
+        return con.execute(f"SELECT * FROM {table} WHERE company_name=? ORDER BY {order_by} LIMIT ?",
+                           (str(user.get("company") or ""), int(limit))).fetchall()
+    finally:
+        con.close()
+
+def _business_party_options(user, party_type=None):
+    con = db()
+    try:
+        if party_type:
+            rows = con.execute("SELECT id,name FROM business_parties WHERE company_name=? AND party_type=? ORDER BY name",
+                               (str(user.get("company") or ""), party_type)).fetchall()
+        else:
+            rows = con.execute("SELECT id,name FROM business_parties WHERE company_name=? ORDER BY name",
+                               (str(user.get("company") or ""),)).fetchall()
+        return {int(r["id"]): str(r["name"]) for r in rows}
+    finally:
+        con.close()
+
+def render_business_suite(user):
+    """Company-scoped operating suite: cashbook, parties, inventory, POS and loans."""
+    company = str(user.get("company") or "").strip()
+    username = str(user.get("username") or "")
+    st.markdown("""<div class='business-suite-hero'><div><div class='business-suite-kicker'>DACRE BUSINESS OPERATIONS</div><h1>Business Suite</h1><p>Cash flow, customers, suppliers, stock, device identifiers, sales and lending in one company workspace.</p></div><div class='business-suite-brand'>DACRE · FINANCE & OPERATIONS</div></div>""", unsafe_allow_html=True)
+    tabs = st.tabs(["Overview", "Cash Book", "Customers & Suppliers", "Inventory & IMEI", "Point of Sale", "Loan Management", "Reports & Audit"])
+    with tabs[0]:
+        cash = _business_rows("cashbook_entries", user, "entry_date DESC, id DESC")
+        items = _business_rows("inventory_items", user)
+        sales = _business_rows("business_sales", user, "sale_date DESC, id DESC")
+        loans = _business_rows("business_loans", user)
+        income = sum(float(r["amount"] or 0) for r in cash if r["entry_type"] == "Income")
+        expenses = sum(float(r["amount"] or 0) for r in cash if r["entry_type"] == "Expense")
+        stock_value = sum(float(r["quantity"] or 0) * float(r["unit_cost"] or 0) for r in items)
+        receivables = sum(max(0, float(r["total"] or 0)-float(r["amount_paid"] or 0)) for r in sales)
+        cols=st.columns(4)
+        for col,label,value in zip(cols,["Cashbook income","Cashbook expenses","Inventory at cost","Unpaid sales"],[income,expenses,stock_value,receivables]):
+            with col: st.markdown(f"<div class='business-kpi'><span>{label}</span><b>₦{value:,.2f}</b></div>",unsafe_allow_html=True)
+        st.caption(f"{len(sales)} recorded sales · {len(items)} inventory items · {len(loans)} loans")
+        if cash:
+            st.markdown("#### Recent cash movements")
+            st.dataframe(pd.DataFrame([dict(r) for r in cash[:10]]), use_container_width=True, hide_index=True)
+        else:
+            st.info("Your business ledger is ready. Start by recording an income or expense in the Cash Book tab.")
+    with tabs[1]:
+        st.subheader("Record money in or out")
+        with st.form("business_cashbook_form", clear_on_submit=True):
+            a,b=st.columns(2)
+            entry_type=a.selectbox("Transaction type",["Income","Expense"])
+            entry_date=b.date_input("Transaction date",value=datetime.now().date())
+            category=st.selectbox("Category",["Sales","Service income","Customer repayment","Loan disbursement","Stock purchase","Rent","Salary","Transport","Utilities","Bank charges","Other"])
+            description=st.text_input("Description",placeholder="What was this transaction for?")
+            c,d=st.columns(2)
+            amount=c.number_input("Amount (₦)",min_value=0.01,step=100.0,format="%.2f")
+            account=d.selectbox("Account",["Cash","Bank Transfer","POS","Mobile Money","Other"])
+            reference=st.text_input("Reference / receipt number (optional)")
+            submitted=st.form_submit_button("Save cashbook entry",type="primary",use_container_width=True)
+        if submitted:
+            if not description.strip(): st.error("Enter a transaction description.")
+            else:
+                con=db()
+                try:
+                    cur=con.execute("INSERT INTO cashbook_entries(company_name,entry_date,entry_type,category,description,amount,payment_account,reference,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                                    (company,entry_date.isoformat(),entry_type,category,description.strip(),float(amount),account,reference.strip(),username,datetime.now().isoformat(timespec="seconds")))
+                    con.commit(); _business_audit(user,"created", "cashbook_entry", getattr(cur,"lastrowid",None), description)
+                    st.success("Cashbook entry saved."); st.rerun()
+                finally: con.close()
+        rows=_business_rows("cashbook_entries",user,"entry_date DESC, id DESC")
+        if rows: st.dataframe(pd.DataFrame([dict(r) for r in rows]),use_container_width=True,hide_index=True)
+        else: st.info("No cashbook entries yet.")
+    with tabs[2]:
+        st.subheader("Add a customer or supplier")
+        with st.form("business_party_form",clear_on_submit=True):
+            a,b=st.columns(2); party_type=a.selectbox("Record type",["Customer","Supplier"]); name=b.text_input("Full name / business name")
+            c,d=st.columns(2); phone=c.text_input("Phone number"); email=d.text_input("Email (optional)")
+            address=st.text_input("Address / shop location (optional)"); opening=st.number_input("Opening balance (₦)",min_value=0.0,step=500.0)
+            notes=st.text_area("Notes (optional)"); save=st.form_submit_button("Save contact",type="primary",use_container_width=True)
+        if save:
+            if not name.strip(): st.error("Enter the customer or supplier name.")
+            else:
+                con=db()
+                try:
+                    cur=con.execute("INSERT INTO business_parties(company_name,party_type,name,phone,email,address,notes,opening_balance,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                                    (company,party_type,name.strip(),phone.strip(),email.strip(),address.strip(),notes.strip(),float(opening),username,datetime.now().isoformat(timespec="seconds")))
+                    con.commit(); _business_audit(user,"created", "business_party",getattr(cur,"lastrowid",None),name.strip()); st.success("Contact saved."); st.rerun()
+                finally: con.close()
+        parties=_business_rows("business_parties",user,"party_type, name")
+        if parties: st.dataframe(pd.DataFrame([dict(r) for r in parties]),use_container_width=True,hide_index=True)
+        else: st.info("No customers or suppliers have been added.")
+    with tabs[3]:
+        st.subheader("Inventory catalogue")
+        with st.form("business_inventory_form",clear_on_submit=True):
+            a,b=st.columns(2); product=b.text_input("Product name"); sku=a.text_input("SKU / part number")
+            c,d=st.columns(2); category=c.text_input("Category"); location=d.text_input("Shelf / branch / location")
+            e,f=st.columns(2); cost=e.number_input("Unit cost (₦)",min_value=0.0,step=100.0); price=f.number_input("Selling price (₦)",min_value=0.0,step=100.0)
+            g,h=st.columns(2); qty=g.number_input("Opening quantity",min_value=0.0,step=1.0); reorder=h.number_input("Reorder alert level",min_value=0.0,step=1.0)
+            save_item=st.form_submit_button("Add inventory item",type="primary",use_container_width=True)
+        if save_item:
+            if not product.strip(): st.error("Enter a product name.")
+            else:
+                now=datetime.now().isoformat(timespec="seconds"); con=db()
+                try:
+                    cur=con.execute("INSERT INTO inventory_items(company_name,sku,product_name,category,unit_cost,selling_price,quantity,reorder_level,location,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                                    (company,sku.strip(),product.strip(),category.strip(),float(cost),float(price),float(qty),float(reorder),location.strip(),now,now))
+                    con.commit(); _business_audit(user,"created","inventory_item",getattr(cur,"lastrowid",None),product.strip()); st.success("Inventory item added."); st.rerun()
+                finally: con.close()
+        items=_business_rows("inventory_items",user,"product_name")
+        if items:
+            frame=pd.DataFrame([dict(r) for r in items]); frame["stock_status"]=frame.apply(lambda r:"REORDER" if float(r.get("quantity") or 0)<=float(r.get("reorder_level") or 0) else "In stock",axis=1)
+            st.dataframe(frame,use_container_width=True,hide_index=True)
+            st.markdown("#### Stock movement")
+            item_options={int(r["id"]):str(r["product_name"]) for r in items}
+            with st.form("business_stock_movement_form",clear_on_submit=True):
+                item_id=st.selectbox("Product",list(item_options),format_func=lambda x:item_options[x]); movement=st.selectbox("Movement",["Stock In","Stock Out","Adjustment"])
+                movement_qty=st.number_input("Quantity",min_value=0.001,step=1.0); move_note=st.text_input("Reason / reference"); move=st.form_submit_button("Post stock movement")
+            if move:
+                con=db()
+                try:
+                    current=con.execute("SELECT quantity,unit_cost FROM inventory_items WHERE company_name=? AND id=?",(company,item_id)).fetchone()
+                    delta=float(movement_qty) if movement=="Stock In" else -float(movement_qty)
+                    if movement=="Adjustment": delta=float(movement_qty)-float(current["quantity"] or 0)
+                    if current is None: st.error("Inventory item not found.")
+                    elif float(current["quantity"] or 0)+delta<0: st.error("Stock movement would make quantity negative.")
+                    else:
+                        con.execute("UPDATE inventory_items SET quantity=?,updated_at=? WHERE company_name=? AND id=?",(float(current["quantity"] or 0)+delta,datetime.now().isoformat(timespec="seconds"),company,item_id))
+                        con.execute("INSERT INTO inventory_movements(company_name,item_id,movement_type,quantity,unit_cost,notes,created_by,created_at) VALUES(?,?,?,?,?,?,?,?)",(company,item_id,movement,float(movement_qty),float(current["unit_cost"] or 0),move_note,username,datetime.now().isoformat(timespec="seconds")))
+                        con.commit(); _business_audit(user,"stock movement", "inventory_item",item_id,f"{movement}: {movement_qty}"); st.success("Stock updated."); st.rerun()
+                finally: con.close()
+        else: st.info("Add your first inventory item to begin tracking stock.")
+        st.markdown("#### IMEI / serial-number register")
+        item_map={int(r["id"]):str(r["product_name"]) for r in items} if items else {}
+        if item_map:
+            with st.form("business_serial_form",clear_on_submit=True):
+                item_id=st.selectbox("Device / product",list(item_map),format_func=lambda x:item_map[x]); serial=st.text_input("Serial number (unique)"); imei=st.text_input("IMEI (optional)"); serial_status=st.selectbox("Status",["In Stock","Sold","Returned","Under Repair","Transferred"]); serial_save=st.form_submit_button("Register identifier")
+            if serial_save:
+                if not serial.strip(): st.error("Serial number is required.")
+                else:
+                    con=db()
+                    try:
+                        con.execute("INSERT INTO device_serials(company_name,item_id,serial_number,imei,status,created_at) VALUES(?,?,?,?,?,?)",(company,item_id,serial.strip(),imei.strip(),serial_status,datetime.now().isoformat(timespec="seconds"))); con.commit(); st.success("Identifier registered."); st.rerun()
+                    except Exception as exc: st.error("Could not register this identifier. Check that the serial number is not already registered.")
+                    finally: con.close()
+        serial_rows=_business_rows("device_serials",user)
+        if serial_rows: st.dataframe(pd.DataFrame([dict(r) for r in serial_rows]),use_container_width=True,hide_index=True)
+    with tabs[4]:
+        st.subheader("Record a point-of-sale transaction")
+        items=_business_rows("inventory_items",user,"product_name")
+        parties=_business_party_options(user,"Customer")
+        if not items: st.info("Add inventory items before recording a sale.")
+        else:
+            item_map={int(r["id"]):dict(r) for r in items}
+            with st.form("business_pos_form",clear_on_submit=True):
+                customer_options={0:"Walk-in customer",**parties}; customer_id=st.selectbox("Customer",list(customer_options),format_func=lambda x:customer_options[x])
+                item_id=st.selectbox("Product",list(item_map),format_func=lambda x:item_map[x]["product_name"])
+                quantity=st.number_input("Quantity",min_value=0.001,step=1.0); unit_price=st.number_input("Unit selling price (₦)",min_value=0.0,step=100.0,value=float(item_map[item_id]["selling_price"] or 0))
+                discount=st.number_input("Discount (₦)",min_value=0.0,step=100.0); paid=st.number_input("Amount received now (₦)",min_value=0.0,step=100.0)
+                method=st.selectbox("Payment method",["Cash","Bank Transfer","POS","Mobile Money","Credit"]); sale_notes=st.text_input("Notes / bank reference"); sale=st.form_submit_button("Complete sale",type="primary",use_container_width=True)
+            if sale:
+                row=item_map[item_id]; total=max(0.0,float(quantity)*float(unit_price)-float(discount))
+                if float(quantity)>float(row["quantity"] or 0): st.error("Not enough stock available for this sale.")
+                elif float(paid)>total: st.error("Amount received cannot exceed the sale total.")
+                else:
+                    receipt="DC-"+datetime.now().strftime("%y%m%d%H%M%S")+uuid.uuid4().hex[:4].upper(); now=datetime.now().isoformat(timespec="seconds"); con=db()
+                    try:
+                        cur=con.execute("INSERT INTO business_sales(company_name,receipt_number,sale_date,customer_id,subtotal,discount,total,amount_paid,payment_method,notes,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",(company,receipt,datetime.now().date().isoformat(),customer_id or None,float(quantity)*float(unit_price),float(discount),total,float(paid),method,sale_notes,username,now))
+                        sale_id=getattr(cur,"lastrowid",None)
+                        if sale_id is None:
+                            got=con.execute("SELECT id FROM business_sales WHERE company_name=? AND receipt_number=?",(company,receipt)).fetchone(); sale_id=got["id"]
+                        con.execute("INSERT INTO business_sale_lines(company_name,sale_id,item_id,quantity,unit_price,unit_cost,line_total) VALUES(?,?,?,?,?,?,?)",(company,sale_id,item_id,float(quantity),float(unit_price),float(row["unit_cost"] or 0),total))
+                        con.execute("UPDATE inventory_items SET quantity=quantity-?,updated_at=? WHERE company_name=? AND id=?",(float(quantity),now,company,item_id))
+                        if paid>0: con.execute("INSERT INTO cashbook_entries(company_name,entry_date,entry_type,category,description,amount,payment_account,reference,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)",(company,datetime.now().date().isoformat(),"Income","Sales",f"POS sale {receipt}",float(paid),method,receipt,username,now))
+                        con.commit(); _business_audit(user,"completed sale","sale",sale_id,receipt); st.success(f"Sale recorded. Receipt: {receipt}"); st.rerun()
+                    except Exception:
+                        con.rollback(); st.error("The sale could not be completed. No success was recorded; check the item stock and try again.")
+                    finally: con.close()
+        sales=_business_rows("business_sales",user,"sale_date DESC, id DESC")
+        if sales: st.dataframe(pd.DataFrame([dict(r) for r in sales]),use_container_width=True,hide_index=True)
+    with tabs[5]:
+        st.subheader("Loan and repayment register")
+        parties=_business_party_options(user,"Customer")
+        if not parties: st.info("Add a borrower as a Customer in Customers & Suppliers first.")
+        else:
+            with st.form("business_loan_form",clear_on_submit=True):
+                borrower=st.selectbox("Borrower",list(parties),format_func=lambda x:parties[x]); principal=st.number_input("Principal (₦)",min_value=1.0,step=1000.0); rate=st.number_input("Interest rate (%)",min_value=0.0,max_value=1000.0,step=1.0); interest_type=st.selectbox("Interest calculation",["Flat","Reducing balance"]); start=st.date_input("Disbursement date",value=datetime.now().date()); due=st.date_input("Due date",value=datetime.now().date()); loan_notes=st.text_input("Loan notes"); create=st.form_submit_button("Register loan",type="primary")
+            if create:
+                if due<start: st.error("Due date cannot be before disbursement date.")
+                else:
+                    con=db()
+                    try:
+                        loan_created_at=datetime.now().isoformat(timespec="seconds")
+                        cur=con.execute("INSERT INTO business_loans(company_name,borrower_id,principal,interest_rate,interest_type,start_date,due_date,notes,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)",(company,borrower,float(principal),float(rate),interest_type,start.isoformat(),due.isoformat(),loan_notes,username,loan_created_at))
+                        loan_id=getattr(cur,"lastrowid",None)
+                        if loan_id is None:
+                            found=con.execute("SELECT id FROM business_loans WHERE company_name=? AND borrower_id=? AND created_at=? ORDER BY id DESC LIMIT 1",(company,borrower,loan_created_at)).fetchone()
+                            loan_id=found["id"] if found else None
+                        con.execute("INSERT INTO cashbook_entries(company_name,entry_date,entry_type,category,description,amount,payment_account,reference,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)",(company,start.isoformat(),"Expense","Loan disbursement",f"Loan principal disbursed to borrower #{borrower}",float(principal),"Cash","Loan #"+str(loan_id or "pending"),username,datetime.now().isoformat(timespec="seconds")))
+                        con.commit(); _business_audit(user,"created","loan",loan_id,f"Principal ₦{principal:,.2f}"); st.success("Loan registered and disbursement entered in the cashbook."); st.rerun()
+                    finally: con.close()
+        loans=_business_rows("business_loans",user,"due_date")
+        if loans:
+            loan_map={int(r["id"]):r for r in loans}
+            st.dataframe(pd.DataFrame([dict(r) for r in loans]),use_container_width=True,hide_index=True)
+            with st.form("business_repayment_form",clear_on_submit=True):
+                loan_id=st.selectbox("Loan",list(loan_map),format_func=lambda x:f"Loan #{x} · ₦{float(loan_map[x]['principal']):,.2f}"); repay=st.number_input("Repayment amount (₦)",min_value=0.01,step=500.0); repay_date=st.date_input("Payment date",value=datetime.now().date()); repay_method=st.selectbox("Method",["Cash","Bank Transfer","POS","Mobile Money"]); repay_ref=st.text_input("Reference"); repay_save=st.form_submit_button("Record repayment")
+            if repay_save:
+                con=db()
+                try:
+                    con.execute("INSERT INTO loan_repayments(company_name,loan_id,payment_date,amount,payment_method,reference,received_by,created_at) VALUES(?,?,?,?,?,?,?,?)",(company,loan_id,repay_date.isoformat(),float(repay),repay_method,repay_ref,username,datetime.now().isoformat(timespec="seconds")))
+                    con.execute("INSERT INTO cashbook_entries(company_name,entry_date,entry_type,category,description,amount,payment_account,reference,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)",(company,repay_date.isoformat(),"Income","Customer repayment",f"Loan repayment #{loan_id}",float(repay),repay_method,repay_ref,username,datetime.now().isoformat(timespec="seconds")))
+                    con.commit(); _business_audit(user,"recorded repayment","loan",loan_id,f"₦{repay:,.2f}"); st.success("Repayment recorded."); st.rerun()
+                finally: con.close()
+        else: st.info("No loans registered.")
+    with tabs[6]:
+        st.subheader("Business reports")
+        cash=_business_rows("cashbook_entries",user,"entry_date DESC, id DESC")
+        sales=_business_rows("business_sales",user,"sale_date DESC, id DESC")
+        items=_business_rows("inventory_items",user,"product_name")
+        if cash:
+            cash_df=pd.DataFrame([dict(r) for r in cash]); st.markdown("#### Cashbook ledger"); st.dataframe(cash_df,use_container_width=True,hide_index=True)
+            st.download_button("Export cashbook CSV",cash_df.to_csv(index=False).encode("utf-8-sig"),"dacre_cashbook.csv","text/csv")
+        if sales:
+            sales_df=pd.DataFrame([dict(r) for r in sales]); st.markdown("#### Sales register"); st.dataframe(sales_df,use_container_width=True,hide_index=True)
+            st.download_button("Export sales CSV",sales_df.to_csv(index=False).encode("utf-8-sig"),"dacre_sales.csv","text/csv")
+        if items:
+            stock_df=pd.DataFrame([dict(r) for r in items]); stock_df["stock_value_at_cost"]=stock_df["quantity"].astype(float)*stock_df["unit_cost"].astype(float); st.markdown("#### Stock valuation"); st.dataframe(stock_df,use_container_width=True,hide_index=True)
+            st.download_button("Export inventory CSV",stock_df.to_csv(index=False).encode("utf-8-sig"),"dacre_inventory.csv","text/csv")
+        audit=_business_rows("business_audit_log",user,"created_at DESC",200)
+        if audit: st.markdown("#### Activity and audit trail"); st.dataframe(pd.DataFrame([dict(r) for r in audit]),use_container_width=True,hide_index=True)
+
 ANALYTICS_COMMANDS = {
     "1 · Give me a data health report": "health",
     "2 · Remove duplicate rows": "dedupe",
@@ -8406,7 +8778,7 @@ with st.sidebar:
     st.caption(f"{user['company']} · {user['role']}")
     st.markdown("<div style='font-size:.78rem;color:#3556a8!important;margin:4px 0 14px'>DI is available across your workspace.</div>",unsafe_allow_html=True)
     navigation=[
-        "Company Dashboard", "DI Workforce", "DI Academy", "Data Presentation Board",
+        "Company Dashboard", "Business Suite", "DI Workforce", "DI Academy", "Data Presentation Board",
         "Workspace & Data", "Formula Lab", "Charts", "File Vault", "Export Center",
     ]
     if user.get("role") == "company_admin":
@@ -8451,6 +8823,27 @@ if user.get("role") != "master":
         st.session_state["billing_lock_reason"] = "Your free 30-day access has ended. Open the Company Dashboard to renew your subscription."
         selected_page = "Company Dashboard"
 render_page_chrome(selected_page, user)
+st.markdown("""<style>
+/* DACRE financial-workspace theme: original styling, not a copy of another bank. */
+:root{--dacre-ink:#101828;--dacre-blue:#1557a6;--dacre-blue-deep:#0d3972;--dacre-gold:#c99a2e;--dacre-surface:#eaf2fc;--dacre-line:#d9e3f0}
+.stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"]{background:#f7f9fc!important;color:#152238!important}
+[data-testid="stHeader"]{background:rgba(247,249,252,.94)!important}
+[data-testid="stSidebar"]{background:#101b2c!important;border-right:1px solid #263a55!important}
+[data-testid="stSidebar"] *{color:#f2f6fc!important}
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] .dacre-nav-image-item{background:#172941!important;border-color:#314763!important;color:#eef4ff!important}
+[data-testid="stMain"] [data-testid="stVerticalBlockBorderWrapper"], [data-testid="stMain"] .stExpander{border-color:#dbe5f1!important}
+[data-testid="stMain"] .stMarkdown,[data-testid="stMain"] .stText,[data-testid="stMain"] label,[data-testid="stMain"] p,[data-testid="stMain"] li{color:#24364d}
+[data-testid="stMain"] h1,[data-testid="stMain"] h2,[data-testid="stMain"] h3,[data-testid="stMain"] h4{color:#102b4c!important}
+[data-testid="stMain"] [data-testid="stCaptionContainer"]{color:#61748d!important}
+[data-testid="stMain"] [data-testid="stMetric"]{background:#eaf2fc;border:1px solid #d7e5f6;border-radius:16px;padding:14px}
+[data-testid="stMain"] [data-testid="stDataFrame"], [data-testid="stMain"] [data-testid="stTable"]{background:#eaf2fc;border-radius:14px}
+[data-testid="stMain"] .stButton>button,[data-testid="stMain"] .stFormSubmitButton>button,[data-testid="stMain"] .stDownloadButton>button{background:linear-gradient(135deg,#c99a2e,#e4bd5b)!important;color:#172033!important;border:1px solid #b88720!important;border-radius:11px!important;font-weight:800!important;min-height:42px}
+[data-testid="stMain"] input,[data-testid="stMain"] textarea,[data-testid="stMain"] [data-baseweb="select"]>div{background:#fff!important;color:#172033!important;border-color:#cbd8e8!important}
+.business-suite-hero{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:26px 30px;margin:0 0 20px;border-radius:22px;background:linear-gradient(120deg,#123f78,#1b68b5);color:#fff;box-shadow:0 14px 36px rgba(18,63,120,.16)}
+.business-suite-hero h1{font-size:clamp(28px,4vw,40px);font-weight:850;margin:4px 0;color:#fff}.business-suite-hero p{margin:0;color:#e3efff;font-size:14px}.business-suite-kicker{font-size:10px;letter-spacing:.16em;font-weight:900;color:#f0d48a}.business-suite-brand{font-size:11px;letter-spacing:.12em;font-weight:900;color:#f6d982;text-align:right}
+.business-kpi{background:#eaf2fc;border:1px solid #d6e4f4;border-radius:16px;padding:16px 18px;min-height:88px}.business-kpi span{display:block;color:#526782;font-size:12px;font-weight:700}.business-kpi b{display:block;color:#113f78;font-size:23px;margin-top:8px}
+@media(max-width:700px){.business-suite-hero{display:block;padding:20px}.business-suite-brand{text-align:left;margin-top:14px}}
+</style>""",unsafe_allow_html=True)
 render_di_navigation_guide(user)
 
 # DI navigation is permission-based: it can propose a destination, but it cannot
@@ -8854,6 +9247,8 @@ except Exception:
 
 if selected_page=="Company Dashboard":
     render_company_dashboard(user)
+elif selected_page=="Business Suite":
+    render_business_suite(user)
 elif selected_page=="Organization Admin Portal":
     render_organization_admin_portal(user)
 elif selected_page=="DI Workforce":
